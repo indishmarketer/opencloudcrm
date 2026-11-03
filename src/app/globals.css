@@ -1,0 +1,420 @@
+@import "tailwindcss";
+@import "@xyflow/react/dist/style.css";
+@plugin "@tailwindcss/typography";
+
+:root {
+  --paper: #ffffff;
+  --paper-soft: #f5f5f4;
+  --ink: #0a0a0a;
+  --ink-soft: #4b4b4b;
+  --line: #e2e2e0;
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-paper-soft: var(--paper-soft);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-line: var(--line);
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body), Arial, Helvetica, sans-serif;
+}
+
+h1, h2, h3, h4, .font-display {
+  font-family: var(--font-display), Arial, Helvetica, sans-serif;
+}
+
+/* Tailwind v4's Preflight resets <button> to the native default cursor
+   (an arrow), unlike <a>, which has always defaulted to a pointer. Every
+   clickable button sitewide (Subscribe, Confirm, etc.) was silently
+   showing the wrong cursor on hover as a result. */
+button:not(:disabled), [role="button"]:not([aria-disabled="true"]) {
+  cursor: pointer;
+}
+button:disabled, [role="button"][aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--ink);
+}
+
+.bg-ink-gradient {
+  background: linear-gradient(160deg, #0a0a0a 0%, #262626 55%, #0a0a0a 100%);
+}
+
+.bg-paper-gradient {
+  background: linear-gradient(160deg, #ffffff 0%, #f5f5f4 60%, #ececea 100%);
+}
+
+.text-balance {
+  text-wrap: balance;
+}
+
+/* Skip initial layout and paint work for long, below-the-fold homepage
+   sections. The content remains in the HTML and is rendered normally as it
+   approaches the viewport. The intrinsic size prevents scroll jumps before
+   the browser has measured the real section. */
+.defer-offscreen {
+  content-visibility: auto;
+  contain-intrinsic-block-size: auto 640px;
+}
+
+/* Razorpay's payment-button.js renders a <span class="razorpay-payment-button">
+   wrapping an <a>, not a <button> -- and a bare <span> ignores the `width`
+   property entirely since it's display:inline by default. Force both the
+   span and its inner link to stretch so it lines up with the PayPal button
+   next to it. */
+.razorpay-embed-form {
+  display: block !important;
+  width: 100% !important;
+}
+.razorpay-embed-form .razorpay-payment-button {
+  display: block !important;
+  width: 100% !important;
+}
+.razorpay-embed-form .razorpay-payment-button > a {
+  display: flex !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  justify-content: center !important;
+}
+
+/* Defensive: page must never pan horizontally. Only intentional
+   overflow-x-auto containers (e.g. community tab row) may scroll */
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* Keep all scroll areas usable without exposing browser scrollbar chrome. */
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+*::-webkit-scrollbar {
+  display: none;
+}
+
+/* Blog post bodies are raw HTML migrated from Ghost. Comparison tables and
+   YouTube embeds in that content carry fixed pixel widths (e.g. iframe
+   width="700") that Tailwind's preflight only resets for img/video, not
+   table/iframe -- on mobile they were wider than the viewport with nowhere
+   to scroll, which is exactly the broken, needs-to-zoom mobile experience
+   this rewrite was meant to fix (confirmed live on
+   best-digital-marketers-in-india's table and the YouTube embed in
+   6-high-ticket-affiliate-programs-that-actually-work-in-2025). */
+.prose table {
+  display: block;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.prose iframe {
+  max-width: 100%;
+}
+.prose iframe[src*="youtube.com"] {
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  height: auto;
+}
+.blog-writing-canvas p.is-empty:first-child::before {
+  color: var(--ink-soft);
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  opacity: 0.7;
+  pointer-events: none;
+}
+.blog-writing-canvas {
+  max-width: 64rem;
+}
+.blog-toolbar-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.prose .blog-video-embed {
+  margin: 2rem 0;
+}
+.prose .blog-video-embed iframe {
+  display: block;
+  width: 100%;
+  border: 0;
+}
+.prose .blog-video-embed iframe[src*="youtube.com"],
+.prose .blog-video-embed iframe[src*="player.vimeo.com"] {
+  aspect-ratio: 16 / 9;
+  height: auto;
+}
+.prose .blog-video-embed-link {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  background: var(--paper);
+  color: var(--ink);
+  text-decoration: none;
+}
+.prose .blog-video-embed-link span {
+  color: var(--ink-soft);
+  font-size: 0.875rem;
+}
+
+/* Turnstile verification hexagon animations */
+@keyframes turnstile-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes turnstile-dash {
+  0% { stroke-dashoffset: 105; }
+  50% { stroke-dashoffset: 35; }
+  100% { stroke-dashoffset: 105; }
+}
+
+@keyframes turnstile-check {
+  to { stroke-dashoffset: 0; }
+}
+
+/* Voice agent live transcript: each new line fades/lifts in place instead
+   of appending to a scrolling list. */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* The console's WhatsApp conversation view. The site's three-colour rule
+   (black/white/red) is deliberately set aside for this one surface, at the
+   owner's explicit request (2026-10-23): the scrolling message list used
+   bg-paper-soft, which is a hair off the page behind it, so a thread read
+   as another console panel instead of as a chat. A tinted wallpaper with
+   the hand-drawn doodle tile makes the conversation area obvious at a
+   glance, the way WhatsApp's own background does. Bubbles stay brand
+   black/white -- only the paper behind them is green.
+
+   The same tile is painted twice, at two sizes that don't divide each
+   other and at different offsets. One tiling of a tidy set of doodles
+   reads as a lattice; two that never line up read as a random scatter,
+   which is what the real thing looks like. */
+.whatsapp-wallpaper {
+  background-color: #e9efe4;
+  background-image: url("/console/whatsapp-wallpaper.svg"), url("/console/whatsapp-wallpaper.svg");
+  background-repeat: repeat, repeat;
+  background-size: 320px 320px, 235px 235px;
+  background-position: 0 0, 97px 61px;
+}
+
+/* Homepage "Featured on" marquee.
+
+   The constraint that shapes this: every directory in the strip re-checks
+   our homepage for its own badge, and pulls the free dofollow listing if it
+   stops finding one. So this cannot be a slideshow that mounts one slide at
+   a time. Every badge, and every link, is in the server-rendered HTML the
+   whole time; only a CSS transform moves them. A crawler fetching this page
+   sees all of them regardless of where the animation happens to be.
+
+   The track holds the list twice and slides exactly half its own width, so
+   the moment it would show the seam it is back at the start. Changing one
+   without the other is what makes a marquee visibly jump.
+
+   The duplicate exists only to fill that seam, so it is aria-hidden in the
+   markup and screen readers hear the list once.
+
+   Reduced motion gets the old layout back rather than a frozen strip: no
+   animation, the copy hidden outright, and the badges wrapped and centred. */
+.badge-marquee-viewport {
+  overflow: hidden;
+  /* Fades the badges out at both edges instead of letting them hit a hard
+     line, which is what makes a marquee read as deliberate. */
+  mask-image: linear-gradient(to right, transparent, #000 1.5rem, #000 calc(100% - 1.5rem), transparent);
+}
+@media (min-width: 640px) {
+  /* A wider fade only works where there is width to spare. On a phone a
+     4rem fade on each side ate most of the strip. */
+  .badge-marquee-viewport {
+    mask-image: linear-gradient(to right, transparent, #000 4rem, #000 calc(100% - 4rem), transparent);
+  }
+}
+.badge-marquee {
+  display: flex;
+  width: max-content;
+  align-items: center;
+  animation: badge-marquee 48s linear infinite;
+}
+.badge-marquee-viewport:hover .badge-marquee,
+.badge-marquee-viewport:focus-within .badge-marquee {
+  animation-play-state: paused;
+}
+@keyframes badge-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .badge-marquee-viewport {
+    mask-image: none;
+    overflow: visible;
+  }
+  .badge-marquee {
+    width: auto;
+    animation: none;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .badge-marquee [data-marquee-copy="true"] {
+    display: none;
+  }
+}
+
+/* Tools directory hero.
+
+   The background is drawn, not photographed: a faint grid plus two large
+   radial glows that drift across it. The owner asked for an image behind
+   the search bar that still feels premium and "not very heavy", and a
+   raster hero at this width is 150-400KB that has to decode before the
+   page looks finished. This is a few hundred bytes of CSS, composites on
+   the GPU (transform and opacity only, no layout or paint per frame), and
+   scales to any viewport without a second art file.
+
+   The logo strip underneath reuses the badge-marquee keyframes rather than
+   declaring its own, so the two never drift out of sync if one is tuned.
+   Unlike the homepage badge strip nothing depends on those logos being
+   crawlable -- they are decoration for listings that each have their own
+   page -- so the strip is aria-hidden in the markup. */
+.directory-hero-grid {
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.055) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.055) 1px, transparent 1px);
+  background-size: 46px 46px;
+  /* Fades the lattice out before it reaches the panel's edges, so the grid
+     reads as depth rather than as a table drawn on top of the hero. */
+  mask-image: radial-gradient(120% 100% at 50% 0%, #000 35%, transparent 78%);
+}
+.directory-hero-glow {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(72px);
+  will-change: transform;
+}
+.directory-hero-glow-a {
+  top: -28%;
+  left: -10%;
+  width: 32rem;
+  height: 32rem;
+  background: rgba(255, 255, 255, 0.16);
+  animation: directory-glow-a 26s ease-in-out infinite alternate;
+}
+.directory-hero-glow-b {
+  right: -14%;
+  bottom: -40%;
+  width: 28rem;
+  height: 28rem;
+  /* The one place red appears in the hero. Any more of it and the panel
+     stops matching the rest of the site, which is black, white and red
+     used sparingly. */
+  background: rgba(220, 38, 38, 0.3);
+  animation: directory-glow-b 32s ease-in-out infinite alternate;
+}
+@keyframes directory-glow-a {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to { transform: translate3d(14%, 18%, 0) scale(1.18); }
+}
+@keyframes directory-glow-b {
+  from { transform: translate3d(0, 0, 0) scale(1.1); }
+  to { transform: translate3d(-18%, -14%, 0) scale(0.9); }
+}
+.tool-logo-marquee {
+  display: flex;
+  width: max-content;
+  align-items: center;
+  animation: badge-marquee 70s linear infinite;
+}
+.tool-logo-marquee-viewport {
+  overflow: hidden;
+  mask-image: linear-gradient(to right, transparent, #000 3rem, #000 calc(100% - 3rem), transparent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .directory-hero-glow-a,
+  .directory-hero-glow-b,
+  .tool-logo-marquee {
+    animation: none;
+  }
+}
+
+/* Homepage hero.
+
+   Reuses the directory hero's grid+glow panel (see above) for the dark
+   background itself. These two are specific to the homepage: a soft white
+   halo behind the portrait photo (the owner asked for a glow "behind the
+   image too"), and a one-shot fade-up on the headline/subhead/CTA on first
+   paint -- no scroll trigger needed, the hero is above the fold. */
+.hero-image-glow {
+  position: absolute;
+  inset: -12%;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.14);
+  filter: blur(80px);
+  animation: hero-image-glow-drift 24s ease-in-out infinite alternate;
+  will-change: transform;
+  z-index: -1;
+}
+@keyframes hero-image-glow-drift {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to { transform: translate3d(-6%, 8%, 0) scale(1.1); }
+}
+@keyframes hero-fade-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.hero-animate {
+  animation: hero-fade-up 0.6s ease-out both;
+}
+.hero-animate-1 { animation-delay: 0ms; }
+.hero-animate-2 { animation-delay: 90ms; }
+.hero-animate-3 { animation-delay: 180ms; }
+.hero-animate-4 { animation-delay: 270ms; }
+@media (prefers-reduced-motion: reduce) {
+  .hero-image-glow {
+    animation: none;
+  }
+  .hero-animate {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Page builder sections with the "Dark" background. Re-pointing the theme
+   variables (not adding text-white everywhere) makes every utility inside
+   -- text-ink-soft, border-line, bg-paper cards -- flip to its dark-mode
+   counterpart automatically, so each block only has one set of classes. */
+.page-section-dark {
+  --paper: #0a0a0a;
+  --paper-soft: #171717;
+  --ink: #fafafa;
+  --ink-soft: rgb(255 255 255 / 0.7);
+  --line: rgb(255 255 255 / 0.16);
+  background: var(--paper);
+  color: var(--ink);
+}
+
+/* Rich text written in the page editor. */
+.page-richtext :where(h2) { margin-top: 2rem; font-size: 1.5rem; font-weight: 600; line-height: 1.3; color: var(--ink); }
+.page-richtext :where(h3) { margin-top: 1.5rem; font-size: 1.25rem; font-weight: 600; color: var(--ink); }
+.page-richtext :where(p, ul, ol, blockquote, table, figure) { margin-top: 1rem; }
+.page-richtext > :first-child { margin-top: 0; }
+.page-richtext :where(ul) { list-style: disc; padding-left: 1.25rem; }
+.page-richtext :where(ol) { list-style: decimal; padding-left: 1.25rem; }
+.page-richtext :where(li) { margin-top: 0.35rem; }
+.page-richtext :where(a) { color: var(--ink); text-decoration: underline; text-underline-offset: 2px; }
+.page-richtext :where(blockquote) { border-left: 3px solid var(--line); padding-left: 1rem; font-style: italic; }
+.page-richtext :where(img) { border-radius: 12px; max-width: 100%; height: auto; }
+.page-richtext :where(strong) { color: var(--ink); }

@@ -1,0 +1,4 @@
+-- Originally enriched existing directory_tools rows with longer
+-- descriptions and real screenshots. Already applied; a real self-hosted
+-- directory's content (descriptions, screenshots) is this deployment's
+-- own content, not a generic default, so nothing is seeded here.

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="250" height="56" viewBox="0 0 250 56" role="img" aria-label="Listed on The Runway - LaunchFree.io">
+  <rect x="0.5" y="0.5" width="249" height="55" rx="12" fill="#0A0F1A" stroke="#E8FF47" stroke-opacity="0.25"/>
+  <circle cx="30" cy="28" r="13" fill="#E8FF47"/>
+  <path d="M30 19 L37 33 L30 29 L23 33 Z" fill="#0A0F1A"/>
+  <text x="52" y="23" font-family="Arial, Helvetica, sans-serif" font-size="9" font-weight="700" letter-spacing="1.6" fill="#8A9BB5">LISTED ON THE RUNWAY</text>
+  <text x="52" y="41" font-family="Georgia, 'Times New Roman', serif" font-size="17" font-weight="700" fill="#F8F5EE">LaunchFree<tspan fill="#E8FF47">.io</tspan></text>
+</svg>

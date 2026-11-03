@@ -1,0 +1,16 @@
+{
+  "name": "voice-agent-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js"
+  },
+  "dependencies": {
+    "@msgpack/msgpack": "^3.0.0",
+    "jose": "^6.2.9",
+    "pg": "^8.23.0",
+    "ws": "^8.18.0",
+    "zod": "^4.4.3"
+  }
+}

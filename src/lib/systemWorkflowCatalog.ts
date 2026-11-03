@@ -1,0 +1,42 @@
+export const SYSTEM_WORKFLOW_CATALOG = [
+  {
+    id: "account-phone-otp",
+    name: "Account phone verification",
+    trigger: "Someone requests phone verification",
+    actions: ["Send authentication WhatsApp template", "Verify entered code"],
+    detail: "Validates the new number before saving it to the account.",
+    source: "src/app/api/account/phone/start/route.ts",
+  },
+  {
+    id: "course-purchase-confirmation",
+    name: "Course purchase and access",
+    trigger: "A course payment is confirmed",
+    actions: ["Grant course access", "Send receipt and access email", "Send WhatsApp confirmation when configured"],
+    detail: "Payment access grants remain handled by the payment service.",
+    source: "src/lib/coursePurchaseGrant.ts",
+  },
+  {
+    id: "newsletter-confirmation",
+    name: "Newsletter confirmation",
+    trigger: "A visitor confirms the email code",
+    actions: ["Save subscription consent", "Send confirmation email"],
+    detail: "Double opt-in and consent recording remain built into the signup flow.",
+    source: "src/lib/otpCompletion.ts",
+  },
+  {
+    id: "author-application-review",
+    name: "Author application review",
+    trigger: "An author application is submitted or reviewed",
+    actions: ["Notify the editorial team", "Send applicant update"],
+    detail: "Review decisions are tied to the author application state machine.",
+    source: "src/app/api/console/author-applications/[id]/route.ts",
+  },
+  {
+    id: "webinar-reminders",
+    name: "Webinar schedule and reminders",
+    trigger: "A registrant reserves a broadcast time",
+    actions: ["Schedule confirmation and timed reminders", "Show quizzes and calls to action during playback"],
+    detail: "Per-attendee reminders and in-player interactions are managed by Webinar Studio.",
+    source: "src/app/api/webinars/register/route.ts",
+  },
+] as const;

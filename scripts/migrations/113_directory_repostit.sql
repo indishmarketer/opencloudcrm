@@ -1,0 +1,4 @@
+-- Originally seeded one real directory listing for this deployment.
+-- Already applied; a real self-hosted directory's listings are this
+-- deployment's own content, not a generic default, so nothing is seeded
+-- here. Add tools at /console/directory after install.

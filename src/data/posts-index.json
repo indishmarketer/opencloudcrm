@@ -1,0 +1,484 @@
+[
+  {
+    "slug": "short-video-publishing-qa-checklist",
+    "title": "After the Export: a QA Checklist for Publishing One Finished Short Video Across Platforms",
+    "excerpt": "A practical, tool-agnostic workflow for creators and social media marketers publishing one finished video to several channels.",
+    "feature_image": "https://images.indishmarketer.com/2026/08/short-video-publishing-qa-checklist-featured.webp",
+    "published_at": "2026-10-17 18:00:00",
+    "category": "ai-video-content",
+    "status": "draft",
+    "author": "habib-hassan"
+  },
+  {
+    "slug": "best-ai-avatar-video-generators",
+    "title": "Top 10 AI Avatar and Talking-Head Video Generators I've Actually Used (2026)",
+    "excerpt": "My honest take on 10 AI avatar video generators, from HeyGen and Synthesia to Arcads, based on what I have actually tested and built workflows around.",
+    "feature_image": "https://images.indishmarketer.com/2026/08/best-ai-avatar-video-generators-featured.webp",
+    "published_at": "2026-10-17 12:00:00",
+    "category": "ai-video-content"
+  },
+  {
+    "slug": "claude-code-lessons-workflow-skills-context",
+    "title": "Claude Code Lessons From 1,000+ Hours: Workflow, Skills, Context, and Verification",
+    "excerpt": "An original, source-credited guide to The Coding Sloth's Claude Code workflow, covering skills, planning, verification, MCP, context, subagents, worktrees, and alternatives.",
+    "feature_image": "https://images.indishmarketer.com/2026/08/claude-code-lessons-workflow-skills-context-featured.webp",
+    "published_at": "2026-08-21 18:00:00",
+    "category": "ai-automation"
+  },
+  {
+    "slug": "build-ai-mobile-app-stitch-antigravity-flutter",
+    "title": "How to Build an AI Mobile App With Stitch, Antigravity, Flutter, and Gemini",
+    "excerpt": "Build CookSmart from one prompt using Stitch MCP, Antigravity, Flutter, and Gemini, then package it as an Android APK and test it on a real phone.",
+    "feature_image": "https://images.indishmarketer.com/2026/08/build-ai-mobile-app-stitch-antigravity-flutter-featured.webp",
+    "published_at": "2026-08-20 20:00:00",
+    "category": "ai-automation"
+  },
+  {
+    "slug": "10-github-repos-kill-subscriptions",
+    "title": "10 Open-Source GitHub Repos That Can Replace Your Paid Subscriptions",
+    "excerpt": "Notion, Figma, Calendly, Mailchimp, and six more popular paid tools all have free, open-source, self-hosted alternatives on GitHub. Here is what to swap and why.",
+    "feature_image": "https://images.indishmarketer.com/2026/08/10-github-repos-kill-subscriptions-featured.webp",
+    "published_at": "2026-08-17 17:30:00",
+    "category": "ai-automation"
+  },
+  {
+    "slug": "n8n-ai-lead-generation-agent",
+    "title": "How to Build a Free AI Lead Generation Agent With n8n, Apollo.io, and Gemini",
+    "excerpt": "Build a free n8n AI agent that finds leads via Apollo.io and Apify, drafts personalized emails with Gemini, and logs everything to Google Sheets.",
+    "feature_image": "https://images.indishmarketer.com/2026/08/n8n-ai-lead-generation-agent-featured.webp",
+    "published_at": "2026-08-08 10:31:58",
+    "category": "ai-automation"
+  },
+  {
+    "slug": "find-ready-to-buy-b2b-leads-close-with-ai",
+    "title": "How to Find Ready-to-Buy B2B Leads and Close Them With AI",
+    "excerpt": "A step-by-step system to find business owners actively searching for your service, validate their email, and pitch a personalized AI lead magnet.",
+    "feature_image": "https://images.indishmarketer.com/2026/08/find-ready-to-buy-b2b-leads-close-with-ai-featured.webp",
+    "published_at": "2026-08-06 00:15:14",
+    "category": "ai-automation"
+  },
+  {
+    "slug": "hermes-agent-quicksilver-update-chief-of-staff",
+    "title": "Hermes Agent Quicksilver Update: How to Turn It Into Your Chief of Staff",
+    "excerpt": "The Quicksilver update unlocks smart approvals and background jobs that turn Hermes agent into a real chief of staff.",
+    "feature_image": "https://images.indishmarketer.com/2026/08/hermes-agent-quicksilver-update-chief-of-staff-featured.webp",
+    "published_at": "2026-08-04 00:11:33",
+    "category": "ai-automation"
+  },
+  {
+    "slug": "automated-youtube-video-system-claude-n8n-heygen",
+    "title": "I Built a Fully Automated YouTube Video System With Claude, n8n, and HeyGen",
+    "excerpt": "A step-by-step look at an automated video pipeline that turns a Telegram message into a published YouTube video using Claude, n8n, and HeyGen.",
+    "feature_image": "https://images.indishmarketer.com/2026/08/automated-youtube-video-system-claude-n8n-heygen-featured.webp",
+    "published_at": "2026-08-02 18:57:44",
+    "category": "ai-automation"
+  },
+  {
+    "slug": "host-multiple-apps-one-vps-coolify",
+    "title": "How to Host Multiple Websites and Apps on One VPS Using Coolify (n8n, WordPress, Ghost)",
+    "excerpt": "Learn how to host unlimited websites, n8n, WordPress, and Ghost on a single VPS using Coolify and Hostinger — for less than $7/month.",
+    "feature_image": "https://images.indishmarketer.com/2026/08/host-multiple-apps-one-vps-coolify-featured.webp",
+    "published_at": "2026-06-04 18:05:02",
+    "category": "ai-automation"
+  },
+  {
+    "slug": "kimi-k2-6-agent-swarm-review",
+    "title": "Kimi K2.6 Review: Agent Swarm, 300 AI Agents, and What Changed from K2.5",
+    "excerpt": "One prompt, 300 AI agents deployed, and a deliverable that would have taken weeks done in minutes. Here's everything you need to know about Kimi K2.6 and Agent Swarm.",
+    "feature_image": "https://images.indishmarketer.com/2026/08/kimi-k2-6-agent-swarm-review-featured.webp",
+    "published_at": "2026-06-01 16:49:43",
+    "category": "tool-reviews"
+  },
+  {
+    "slug": "claude-opus-free-30-days-gitlab",
+    "title": "How to Use Claude Opus 4.8 for Free for 30 Days (Using GitLab)",
+    "excerpt": "You can access Claude Opus 4.8 completely free for 30 days through GitLab's free trial. Here is exactly how to do it.",
+    "feature_image": "https://images.indishmarketer.com/2026/08/claude-opus-free-30-days-gitlab-featured.webp",
+    "published_at": "2026-05-31 06:57:26",
+    "category": "tool-reviews"
+  },
+  {
+    "slug": "whatsapp-business-ai-agent-setup-free",
+    "title": "WhatsApp Business AI Agent: How to Set It Up for Free and Automate Your Customer Replies",
+    "excerpt": "WhatsApp has launched a free built-in AI agent for the WhatsApp Business app in India. Here is a complete step-by-step guide to setting it up and automating your customer replies.",
+    "feature_image": "https://images.indishmarketer.com/2026/08/whatsapp-business-ai-agent-setup-free-featured.webp",
+    "published_at": "2026-05-29 09:40:27",
+    "category": "whatsapp-marketing"
+  },
+  {
+    "slug": "ai-lead-generation-hermes-agent-google-antigravity",
+    "title": "How to Build a Free AI Lead Generation System That Finds 1000+ Leads While You Sleep",
+    "excerpt": "Learn how to combine Hermes Agent and Google Antigravity to automatically find local business leads, build demo websites, and pitch clients on autopilot, completely free.",
+    "feature_image": "https://images.indishmarketer.com/2026/08/ai-lead-generation-hermes-agent-google-antigravity-featured.webp",
+    "published_at": "2026-05-28 06:56:28",
+    "category": "ai-automation"
+  },
+  {
+    "slug": "sell-ai-websites-local-businesses-india",
+    "title": "How to Sell AI Websites to Local Businesses and Make ₹7,000–10,000 Per Deal",
+    "excerpt": "Learn how to use Replit AI to build websites for local businesses and sell them for ₹7,000–10,000 per deal. Step-by-step guide with client outreach, hosting on Hostinger, and pricing tips.",
+    "feature_image": "https://images.indishmarketer.com/2026/08/sell-ai-websites-local-businesses-india-featured.webp",
+    "published_at": "2026-05-27 15:13:05",
+    "category": "make-money-online"
+  },
+  {
+    "slug": "make-money-clipping-india",
+    "title": "How to Make Money Clipping in India: A Complete Beginner's Guide (2026)",
+    "excerpt": "Learn how to make money through social media clipping in India, including the zero-audience brokering strategy and bounties method that most guides never mention.",
+    "feature_image": "https://images.indishmarketer.com/2026/08/make-money-clipping-india-featured.webp",
+    "published_at": "2026-05-26 05:14:22",
+    "category": "make-money-online"
+  },
+  {
+    "slug": "pass-utm-parameters-gohighlevel-form",
+    "title": "How to Pass UTM Parameters Through GoHighLevel Embedded Forms (Complete Guide)",
+    "excerpt": "Most GoHighLevel UTM guides only cover form-level tracking. Here's how to actually pass UTM parameters through an embedded iframe form using a simple JavaScript snippet.",
+    "feature_image": "https://images.indishmarketer.com/2026/08/pass-utm-parameters-gohighlevel-form-featured.webp",
+    "published_at": "2026-05-25 17:09:27",
+    "category": "gohighlevel-crm"
+  },
+  {
+    "slug": "how-to-use-google-gemini-omni",
+    "title": "How to Use Google Gemini Omni: Create AI Avatar Videos and UGC Content (Complete Guide)",
+    "excerpt": "Google just launched Gemini Omni, a brand-new AI video model that lets you create AI avatar videos with your own face and voice. Here's exactly how to use it, step by step.",
+    "feature_image": "https://images.indishmarketer.com/2026/08/how-to-use-google-gemini-omni-featured.webp",
+    "published_at": "2026-05-25 08:35:51",
+    "category": "ai-video-content"
+  },
+  {
+    "slug": "octo-browser-review-anti-detect-browser",
+    "title": "Octo Browser Review 2026: Best Anti-Detect Browser for Multi-Account Management?",
+    "excerpt": "A full review of Octo Browser — the anti-detect browser used for multi-account management, TikTok automation, AdSense, and affiliate marketing. Features, pricing, setup, and who it's actually for.",
+    "feature_image": "https://images.indishmarketer.com/2026/08/octo-browser-review-anti-detect-browser-featured.webp",
+    "published_at": "2026-05-23 14:08:19",
+    "category": "anti-detect-browsers"
+  },
+  {
+    "slug": "adspower-review-anti-detect-browser",
+    "title": "AdsPower Review 2026: Best Anti-Detect Browser for Managing Multiple Accounts?",
+    "excerpt": "A full review of AdsPower — the anti-detect browser used by 9 million+ marketers, e-commerce sellers, and agencies to manage multiple accounts without getting banned.",
+    "feature_image": "https://images.indishmarketer.com/2026/08/adspower-review-anti-detect-browser-featured.webp",
+    "published_at": "2026-05-23 14:08:07",
+    "category": "anti-detect-browsers"
+  },
+  {
+    "slug": "multi-login-browser-setup",
+    "title": "How to Set Up a Multi-Login Browser to Run Multiple App Profiles",
+    "excerpt": "Learn how to use a multi-login browser to safely run multiple mobile app profiles for TikTok, Facebook, and Instagram simultaneously on one desktop.",
+    "feature_image": "https://images.indishmarketer.com/2026/08/multi-login-browser-setup-featured.webp",
+    "published_at": "2026-05-22 15:13:37",
+    "category": "anti-detect-browsers"
+  },
+  {
+    "slug": "connect-claude-ai-to-wordpress-novamira",
+    "title": "How to Connect Claude AI to WordPress (The Easiest Way Using Novamira)",
+    "excerpt": "Learn how to connect Claude AI to your WordPress site using the free Novamira plugin. A step-by-step guide to giving Claude full access to your WordPress at the PHP level.",
+    "feature_image": "https://images.indishmarketer.com/2026/08/connect-claude-ai-to-wordpress-novamira-featured.webp",
+    "published_at": "2026-05-21 13:27:05",
+    "category": "ai-automation"
+  },
+  {
+    "slug": "aisensy-vs-wati-whatsapp-marketing-tool",
+    "title": "AiSensy vs Wati: Best WhatsApp Marketing Tool for Indian Businesses in 2026",
+    "excerpt": "AiSensy vs Wati compared on pricing, features, and integrations for Indian businesses. Find out which WhatsApp marketing tool is right for you in 2026.",
+    "feature_image": "https://images.indishmarketer.com/2026/08/aisensy-vs-wati-whatsapp-marketing-tool-featured.webp",
+    "published_at": "2026-05-21 05:21:06",
+    "category": "whatsapp-marketing"
+  },
+  {
+    "slug": "ai-tools-whatsapp-automation",
+    "title": "5 AI Tools for WhatsApp Automation That Actually Work in 2026",
+    "excerpt": "WhatsApp has 90%+ open rates, but most businesses still reply manually. Here are 5 AI tools that automate the whole thing — from chatbots to bulk campaigns.",
+    "feature_image": "https://images.indishmarketer.com/2026/08/ai-tools-whatsapp-automation-featured.webp",
+    "published_at": "2026-05-20 16:12:46",
+    "category": "whatsapp-marketing"
+  },
+  {
+    "slug": "ghl-ai-studio-lead-generation-system",
+    "title": "How to Build a Lead Generation System with GHL AI Studio (Step-by-Step)",
+    "excerpt": "Build a complete lead generation system for any local business using GHL Ask AI, AI Studio, and Workflows — no code, no marketing experience needed.",
+    "feature_image": "https://images.indishmarketer.com/2026/08/ghl-ai-studio-lead-generation-system-featured.webp",
+    "published_at": "2026-05-20 06:32:10",
+    "category": "gohighlevel-crm"
+  },
+  {
+    "slug": "free-open-source-whatsapp-crm-setup",
+    "title": "Free Open-Source WhatsApp CRM: Full Setup Guide (WA CRM on Meta API)",
+    "excerpt": "Stop paying ₹10,000/month for WATI or Interakt. WA CRM is a free, open-source WhatsApp CRM built on Meta's official API — set it up on your own server in a few hours.",
+    "feature_image": "https://images.indishmarketer.com/2026/08/free-open-source-whatsapp-crm-setup-featured.webp",
+    "published_at": "2026-05-19 11:51:47",
+    "category": "whatsapp-marketing"
+  },
+  {
+    "slug": "liven-app-review",
+    "title": "Liven App Review: Is This Mental Health App Worth It or a Subscription Trap?",
+    "excerpt": "You've seen the ads — AI-generated songs, crochet characters, dopamine obsession. But is the Liven app actually useful? Here's my honest breakdown.",
+    "feature_image": "https://images.indishmarketer.com/2026/08/liven-app-review-featured.webp",
+    "published_at": "2026-05-18 08:38:34",
+    "category": "tool-reviews"
+  },
+  {
+    "slug": "gohighlevel-vs-systemeio",
+    "title": "GoHighLevel vs Systeme.io: Which All-in-One Platform is Right for You in 2026?",
+    "excerpt": "GoHighLevel vs Systeme.io — a full breakdown of features, pricing, CRM, automation, and ease of use. Find out which all-in-one platform fits your business in 2026.",
+    "feature_image": "https://images.indishmarketer.com/2026/08/gohighlevel-vs-systemeio-featured.webp",
+    "published_at": "2026-05-17 17:38:41",
+    "category": "gohighlevel-crm"
+  },
+  {
+    "slug": "gohighlevel-vs-hubspot",
+    "title": "GoHighLevel vs HubSpot: Which CRM Actually Wins in 2026?",
+    "excerpt": "GoHighLevel and HubSpot are both powerful CRMs — but built for completely different businesses. Here's the honest comparison on features, pricing, and who each platform actually serves.",
+    "feature_image": "https://images.indishmarketer.com/2026/08/gohighlevel-vs-hubspot-featured.webp",
+    "published_at": "2026-05-17 16:56:33",
+    "category": "gohighlevel-crm"
+  },
+  {
+    "slug": "gohighlevel-ai-voice-agent-website-chat-widget",
+    "title": "How to Build a GoHighLevel AI Voice Agent and Sell It to Local Businesses",
+    "excerpt": "GoHighLevel's AI Voice Agent lets any local business answer calls, qualify leads, and book appointments 24/7 — no code required. Here's the exact setup and how to sell it.",
+    "feature_image": "https://images.indishmarketer.com/2026/08/gohighlevel-ai-voice-agent-website-chat-widget-featured.webp",
+    "published_at": "2026-05-17 01:48:00",
+    "category": "gohighlevel-crm"
+  },
+  {
+    "slug": "8-ai-agents-replace-agency-staff-2026",
+    "title": "8 AI Agents That Can Replace Your Entire Agency Staff in 2026",
+    "excerpt": "Agencies in 2026 are replacing SDRs, ad managers, and support reps with AI agents that work 24/7. Here are the 8 specific agents and exactly how they work.",
+    "feature_image": "https://images.indishmarketer.com/2026/08/8-ai-agents-replace-agency-staff-2026-featured.webp",
+    "published_at": "2026-05-16 19:25:15",
+    "category": "ai-automation"
+  },
+  {
+    "slug": "ai-businesses-you-can-start-this-week",
+    "title": "6 AI Businesses You Can Start This Week (Most People Don't Know These Exist)",
+    "excerpt": "Six months ago, none of these businesses existed. Today, regular people are making ₹1–5 lakh a month from them. Here are 6 AI-powered businesses you can start this week — no coding, no team, no funding required.",
+    "feature_image": "https://images.indishmarketer.com/2026/08/ai-businesses-you-can-start-this-week-featured.webp",
+    "published_at": "2026-05-15 19:09:05",
+    "category": "make-money-online"
+  },
+  {
+    "slug": "gohighlevel-review-tutorial-2026",
+    "title": "GoHighLevel Review & Tutorial 2026: Is It Still the Best All-in-One CRM for Agencies?",
+    "excerpt": "A complete GoHighLevel review and hands-on tutorial for 2026 — covering pricing, automation, AI agents, white-label SaaS, and whether it's actually worth building your business on.",
+    "feature_image": "https://images.indishmarketer.com/2026/08/gohighlevel-review-tutorial-2026-featured.webp",
+    "published_at": "2026-05-11 16:27:52",
+    "category": "gohighlevel-crm"
+  },
+  {
+    "slug": "best-voice-ai-agents-agencies-businesses",
+    "title": "10 Best Voice AI Agents for Agencies and Businesses (2026)",
+    "excerpt": "Comparing the 10 best voice AI agents for agencies and businesses in 2026 — from no-code platforms to developer-first tools. Find the right one for your use case.",
+    "feature_image": "https://images.indishmarketer.com/2026/08/best-voice-ai-agents-agencies-businesses-featured.webp",
+    "published_at": "2026-05-10 17:15:18",
+    "category": "ai-automation"
+  },
+  {
+    "slug": "gohighlevel-reputation-management-automate-google-reviews",
+    "title": "GoHighLevel Reputation Management: How to Automate Google Reviews and Build Trust Faster",
+    "excerpt": "GoHighLevel Reputation Management automates your entire Google review process — from SMS and email requests to AI-powered responses. Here is exactly how to set it up for your business or agency clients.",
+    "feature_image": "https://images.indishmarketer.com/2026/08/gohighlevel-reputation-management-automate-google-reviews-featured.webp",
+    "published_at": "2026-05-09 20:19:34",
+    "category": "gohighlevel-crm"
+  },
+  {
+    "slug": "retell-ai-voice-agents-in-gohighlevel",
+    "title": "Use Retell AI and Build AI Voice Agents Inside GoHighLevel",
+    "excerpt": "Master Retell AI with this complete guide. Learn to build human-sounding AI voice agents, optimize prompting, and integrate with GoHighLevel.",
+    "feature_image": "https://images.indishmarketer.com/2026/08/retell-ai-voice-agents-in-gohighlevel-featured.webp",
+    "published_at": "2026-03-14 18:20:05",
+    "category": "gohighlevel-crm"
+  },
+  {
+    "slug": "best-websites-to-make-money-from-home",
+    "title": "Best Websites to Make Money From Home (Free + Proven Options)",
+    "excerpt": "Discover 25+ best websites to make money from home without investment. Perfect for students, side-hustlers & 9-5 professionals.",
+    "feature_image": "https://images.indishmarketer.com/2026/08/best-websites-to-make-money-from-home-featured.webp",
+    "published_at": "2026-01-04 13:27:57",
+    "category": "make-money-online"
+  },
+  {
+    "slug": "n8n-mcp-update",
+    "title": "The New n8n MCP Update: Automate and Build Full Apps with AI",
+    "excerpt": "Build full apps instantly with n8n’s new MCP update. AI can read workflows, generate UIs, and create complete tools without coding.",
+    "feature_image": "https://images.indishmarketer.com/2026/08/n8n-mcp-update-featured.webp",
+    "published_at": "2025-12-10 17:41:13",
+    "category": "ai-automation"
+  },
+  {
+    "slug": "best-digital-marketers-in-india",
+    "title": "Best Digital Marketers in India: Top 10 Experts Transforming Brands in 2026",
+    "excerpt": "Discover the best digital marketers in India for 2026—a comprehensive guide featuring the top 10 digital marketing experts.",
+    "feature_image": "https://images.indishmarketer.com/2026/08/best-digital-marketers-in-india-featured.webp",
+    "published_at": "2025-11-23 06:50:04",
+    "category": "make-money-online"
+  },
+  {
+    "slug": "best-anti-detect-browsers",
+    "title": "10 Best Anti-Detect Browsers for 2026",
+    "excerpt": "Compare the 10 best anti-detect browsers for managing multiple accounts safely. We review GoLogin, Multilogin, and top free options for 2026.",
+    "feature_image": "https://images.indishmarketer.com/2026/08/best-anti-detect-browsers-featured.webp",
+    "published_at": "2025-11-11 19:08:04",
+    "category": "anti-detect-browsers"
+  },
+  {
+    "slug": "whop-clipping-review-legit-or-scam",
+    "title": "Whop Clipping Review: Is Whop Clips Legit or Just a Risky Side Hustle?",
+    "excerpt": "Learn what is Whop Clipping. Discover how it works, real user reviews, pay-per-view rates, AI clipping tools, and the best alternatives to Whop.",
+    "feature_image": "https://images.indishmarketer.com/2026/08/whop-clipping-review-legit-or-scam-featured.webp",
+    "published_at": "2025-11-07 17:52:37",
+    "category": "affiliate-reviews"
+  },
+  {
+    "slug": "hostinger-horizons-review",
+    "title": "Hostinger Horizons Review (2026): The AI App Builder That Turns Prompts Into Products—Is It Worth It?",
+    "excerpt": "In this Hostinger Horizons review, you will learn about Horizon AI, its price, free plan, coupon codes, AdSense compliance, and top alternatives.",
+    "feature_image": "https://images.indishmarketer.com/2026/08/hostinger-horizons-review-featured.webp",
+    "published_at": "2025-10-13 15:42:04",
+    "category": "tool-reviews"
+  },
+  {
+    "slug": "paperpal-ai-review",
+    "title": "Paperpal AI Review (2026): Features, Pricing, Plagiarism Checker, and Best Alternatives Compared",
+    "excerpt": "Is Paperpal the best AI writing tool for researchers in 2026? We tested its plagiarism checker, grammar tools, pricing, and compared it against Grammarly and Jenni AI so you don't have to.",
+    "feature_image": "https://images.indishmarketer.com/2026/08/paperpal-ai-review-featured.webp",
+    "published_at": "2025-10-12 11:50:40",
+    "category": "tool-reviews"
+  },
+  {
+    "slug": "jenni-ai-review-2025-is-for-academic-writing",
+    "title": "Jenni AI Review (2026): Is It Worth It for Academic Writing?",
+    "excerpt": "Jenni AI is one of the most popular AI writing tools for students and researchers. But is it still worth it in 2026? Read our in-depth review covering features, pricing, Turnitin detection, and the best alternatives.",
+    "feature_image": "https://images.indishmarketer.com/2026/08/jenni-ai-review-2025-is-for-academic-writing-featured.webp",
+    "published_at": "2025-10-10 13:11:07",
+    "category": "tool-reviews"
+  },
+  {
+    "slug": "abacus-ai-chatllm-in-depth-review-the-10-ai-super-tool",
+    "title": "ChatLLM.Abacus.AI Review: The $10 AI Super-Tool",
+    "excerpt": "Read our honest review of chatllm.abacus.ai before you subscribe. We test the $10 plan and weigh the pros against the serious cons.",
+    "feature_image": "https://images.indishmarketer.com/2026/08/abacus-ai-chatllm-in-depth-review-the-10-ai-super-tool-featured.webp",
+    "published_at": "2025-07-26 19:46:39",
+    "category": "tool-reviews"
+  },
+  {
+    "slug": "honest-heygen-ai-review-is-it-worth-it",
+    "title": "Honest HeyGen AI Review: Is It Worth It?",
+    "excerpt": "Tired of inconsistent AI avatars? My honest HeyGen AI review covers its pros, cons, pricing, and why it's a game-changer for content creators.",
+    "feature_image": "https://images.indishmarketer.com/2026/08/honest-heygen-ai-review-is-it-worth-it-featured.webp",
+    "published_at": "2025-07-12 20:22:24",
+    "category": "ai-video-content"
+  },
+  {
+    "slug": "invideo-ai-review-my-honest-thoughts-after-1-year-of-use",
+    "title": "InVideo AI Review: My Honest Thoughts After 1 Year of Use",
+    "excerpt": "Is InVideo AI worth it? My detailed review on creating videos and ads with this tool. I share my honest take on its features, price, and experience.",
+    "feature_image": "https://images.indishmarketer.com/2026/08/invideo-ai-review-my-honest-thoughts-after-1-year-of-use-featured.webp",
+    "published_at": "2025-07-08 13:52:34",
+    "category": "ai-video-content"
+  },
+  {
+    "slug": "my-honest-syllaby-ai-review-is-it-worth-your-money",
+    "title": "My Honest Syllaby AI Review: Is It Worth Your Money?",
+    "excerpt": "Dive into our honest Syllaby AI review. We break down the pros, cons, pricing, AI avatars, and whether it is truly worth your investment.",
+    "feature_image": "https://images.indishmarketer.com/2026/08/my-honest-syllaby-ai-review-is-it-worth-your-money-featured.webp",
+    "published_at": "2025-07-05 14:12:33",
+    "category": "ai-video-content"
+  },
+  {
+    "slug": "i-found-7-must-try-ai-tools-and-theyre-free",
+    "title": "I Found 7 Must-Try AI Tools, and They're Free!",
+    "excerpt": "These powerful ai tools help me with all my boring tasks so I have more time for fun. Maybe they can help you too.",
+    "feature_image": "https://images.indishmarketer.com/2026/08/i-found-7-must-try-ai-tools-and-theyre-free-featured.webp",
+    "published_at": "2025-07-04 10:56:51",
+    "category": "tool-reviews"
+  },
+  {
+    "slug": "finelo-review-a-scam-read-this-before-you-pay",
+    "title": "Finelo Review — What Users Say Before You Pay",
+    "excerpt": "Is Finelo a fraud? My simple look into Finelo reviews shows a subscription trap. Learn the truth about the Finelo scam before you risk your money.",
+    "feature_image": "https://images.indishmarketer.com/2026/08/finelo-review-a-scam-read-this-before-you-pay-featured.webp",
+    "published_at": "2025-06-29 20:35:59",
+    "category": "affiliate-reviews"
+  },
+  {
+    "slug": "is-livegood-another-mlm-scam-heres-what-i-found",
+    "title": "Is LiveGood Another MLM Scam? Here's What I Found",
+    "excerpt": "People keep asking me, \"Is LiveGood MLM a scam?\" so I did some real digging. What I found was pretty shocking - regulatory warnings, an F rating from BBB, and founders with a history of dissolved MLM companies.",
+    "feature_image": "https://images.indishmarketer.com/2026/08/is-livegood-another-mlm-scam-heres-what-i-found-featured.webp",
+    "published_at": "2025-06-24 18:40:55",
+    "category": "affiliate-reviews"
+  },
+  {
+    "slug": "my-honest-review-on-digital-boss-academy-dba-2",
+    "title": "My Honest Review on Digital Boss Academy (DBA)",
+    "excerpt": "A deep, no-hype DBA review  based on my real experience with all three volumes ,  plus a better alternative",
+    "feature_image": "https://images.indishmarketer.com/2026/08/my-honest-review-on-digital-boss-academy-dba-2-featured.webp",
+    "published_at": "2025-06-19 12:39:16",
+    "category": "affiliate-reviews"
+  },
+  {
+    "slug": "6-high-ticket-affiliate-programs-that-actually-work-in-2025",
+    "title": "6 High-Ticket Affiliate Programs That Actually Work in 2026",
+    "excerpt": "After 4 years of testing (and scams), here’s what delivers real results — and what drains your wallet",
+    "feature_image": "https://images.indishmarketer.com/2026/08/6-high-ticket-affiliate-programs-that-actually-work-in-2025-featured.webp",
+    "published_at": "2025-06-13 20:54:16",
+    "category": "affiliate-reviews"
+  },
+  {
+    "slug": "i-tried-the-super-affiliate-funnel-a-candid-review",
+    "title": "I Tried the Super Affiliate Funnel — A Candid Review",
+    "excerpt": "My honest experience with David Dekel’s multi-offer system, sharing what worked, what didn’t, and the lessons I learned along the way.",
+    "feature_image": "https://images.indishmarketer.com/2026/08/i-tried-the-super-affiliate-funnel-a-candid-review-featured.webp",
+    "published_at": "2025-06-13 19:57:05",
+    "category": "affiliate-reviews"
+  },
+  {
+    "slug": "i-bought-sara-finances-affiliate-course-so-you-dont-have-to",
+    "title": "I Bought Sara Finance’s Affiliate Course So You Don’t Have To",
+    "excerpt": "A brutally honest review from someone who’s already spent years in affiliate marketing",
+    "feature_image": "https://images.indishmarketer.com/2026/08/i-bought-sara-finances-affiliate-course-so-you-dont-have-to-featured.webp",
+    "published_at": "2025-06-11 21:26:57",
+    "category": "affiliate-reviews"
+  },
+  {
+    "slug": "top-12-high-demand-skills-that-will-make-you-money-in-2025",
+    "title": "Top 12 High-Demand Skills That Will Make You Money in 2026",
+    "excerpt": "Discover the top 12 high-demand skills for 2026 that can future-proof your career and help you earn more. From AI to emotional intelligence.",
+    "feature_image": "https://images.indishmarketer.com/2026/08/top-12-high-demand-skills-that-will-make-you-money-in-2025-featured.webp",
+    "published_at": "2025-06-09 19:53:37",
+    "category": "make-money-online"
+  },
+  {
+    "slug": "why-i-left-outlier-ai-for-a-more-reliable-side-hustle",
+    "title": "Outlier AI Reviews: Is it Legit?",
+    "excerpt": "Wondering if Outlier AI is legit or a scam? Read my honest review based on real earnings, experience, and trust issues users are reporting.",
+    "feature_image": "https://images.indishmarketer.com/2026/08/why-i-left-outlier-ai-for-a-more-reliable-side-hustle-featured.webp",
+    "published_at": "2025-06-09 19:13:51",
+    "category": "make-money-online"
+  },
+  {
+    "slug": "why-is-clepher-the-best-manychat-alternative-for-instagram",
+    "title": "Why Is Clepher the Best ManyChat Alternative for Instagram?",
+    "excerpt": "Learn why Clepher is the best alternative to ManyChat for Instagram. Compare features, pricing, AI tools, and get lifetime access without monthly fees.",
+    "feature_image": "https://images.indishmarketer.com/2026/08/why-is-clepher-the-best-manychat-alternative-for-instagram-featured.webp",
+    "published_at": "2025-06-09 13:33:34",
+    "category": "tool-reviews"
+  },
+  {
+    "slug": "i-tried-coursiv-io-for-one-week-heres-my-honest-review",
+    "title": "I Tried Coursiv.io for One Week. Here's My Honest Review",
+    "excerpt": "Tried Coursiv.io for a week—here’s my honest review, including pros, cons, refund issues, and a better free alternative with real AI tools.\n",
+    "feature_image": "https://images.indishmarketer.com/2026/08/i-tried-coursiv-io-for-one-week-heres-my-honest-review-featured.webp",
+    "published_at": "2025-06-04 20:13:03",
+    "category": "affiliate-reviews"
+  },
+  {
+    "slug": "how-you-can-create-and-monetize-animations-using-ai-for-free",
+    "title": "How You Can Create and Monetize Animations Using AI For FREE",
+    "excerpt": "STEP BY STEP GUIDE (100% Free Methods)",
+    "feature_image": "https://images.indishmarketer.com/2026/08/how-you-can-create-and-monetize-animations-using-ai-for-free-featured.webp",
+    "published_at": "2025-06-04 10:55:09",
+    "category": "ai-video-content"
+  }
+]

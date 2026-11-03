@@ -1,0 +1,6 @@
+node_modules
+.next
+.git
+ghost-export
+.env.deploy.local
+*.log
