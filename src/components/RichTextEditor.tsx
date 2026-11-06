@@ -1336,15 +1336,13 @@ export default function RichTextEditor({
           const anchor = target.closest("a");
           if (anchor) {
             event.preventDefault();
-            if (blogCanvas) {
-              const pos = view.posAtDOM(anchor, 0);
-              setLinkBubble({
-                pos,
-                href: anchor.getAttribute("href") || "",
-                rel: anchor.getAttribute("rel") || "",
-                rect: anchor.getBoundingClientRect(),
-              });
-            }
+            const pos = view.posAtDOM(anchor, 0);
+            setLinkBubble({
+              pos,
+              href: anchor.getAttribute("href") || "",
+              rel: anchor.getAttribute("rel") || "",
+              rect: anchor.getBoundingClientRect(),
+            });
             return true;
           }
           setLinkBubble(null);

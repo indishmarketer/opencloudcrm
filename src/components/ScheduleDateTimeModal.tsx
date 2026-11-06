@@ -94,7 +94,7 @@ export default function ScheduleDateTimeModal({
                 </div>
               </div>
               <div className="rounded-lg bg-paper-soft px-3 py-2.5 text-sm">
-                <span className="text-ink-soft">Scheduled for </span>
+                <span className="text-ink-soft">Will send at </span>
                 <span className="font-medium text-ink">{dateLabel}, {hour}:{minute} IST</span>
               </div>
               {(validationError || error) && <p role="alert" className="text-sm text-red-600">{error || validationError}</p>}
