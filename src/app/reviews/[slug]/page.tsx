@@ -3,7 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCuratedReviewers } from "@/lib/curatedReviews";
-import { pool } from "@/lib/db";
+import { pool, buildSafe } from "@/lib/db";
 import Stars from "@/components/Stars";
 import { serializeJsonLd } from "@/lib/jsonLd";
 import { SITE_NAME } from "@/config/brand";
@@ -66,9 +66,9 @@ async function getReviewDetail(slug: string): Promise<ReviewDetail | null> {
   };
 }
 
+// See the same note on blog/[slug]/page.tsx.
 export async function generateStaticParams() {
-  const reviewers = await getCuratedReviewers();
-  return reviewers.map((r) => ({ slug: r.slug }));
+  return buildSafe(async () => (await getCuratedReviewers()).map((r) => ({ slug: r.slug })), []);
 }
 
 export async function generateMetadata({

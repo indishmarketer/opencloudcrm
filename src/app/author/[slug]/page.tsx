@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { listActiveAuthorSlugs, getAuthorViewBySlug } from "@/lib/blogAuthors";
+import { buildSafe } from "@/lib/db";
 import { getPublicPosts } from "@/lib/blogPosts";
 import { serializeJsonLd } from "@/lib/jsonLd";
 import { defaultAuthorSlug } from "@/data/authors";
@@ -16,9 +17,9 @@ const PER_PAGE = 12;
 // JSON files, this page just also reads the author's own DB row).
 export const revalidate = 300;
 
+// See the same note on blog/[slug]/page.tsx.
 export async function generateStaticParams() {
-  const slugs = await listActiveAuthorSlugs();
-  return slugs.map((slug) => ({ slug }));
+  return buildSafe(async () => (await listActiveAuthorSlugs()).map((slug) => ({ slug })), []);
 }
 
 export async function generateMetadata({

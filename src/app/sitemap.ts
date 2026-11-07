@@ -8,10 +8,20 @@ import { PUBLIC_SITE_PAGES } from "@/lib/publicSitePages";
 import { listPublishedPageEntries } from "@/lib/sitePages";
 import { BUILT_IN_PATHS } from "@/lib/defaultPages";
 import { SITE_URL as BASE_URL } from "@/config/brand";
+import { buildSafe } from "@/lib/db";
 
 export const revalidate = 3600; // Revalidate every hour to keep in sync with DB
 
+// See the build-phase note on buildSafe (src/lib/db.ts): a fresh
+// self-host install's database may not be migrated yet when this runs
+// during `next build`, and it's better to ship an empty sitemap that
+// fills in on the next revalidation than to fail the whole production
+// build over it.
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  return buildSafe(buildSitemap, []);
+}
+
+async function buildSitemap(): Promise<MetadataRoute.Sitemap> {
   const staticRoutes: MetadataRoute.Sitemap = PUBLIC_SITE_PAGES
     .filter((p) => !p.noindex)
     .map(({ url, changeFrequency, priority }) => ({

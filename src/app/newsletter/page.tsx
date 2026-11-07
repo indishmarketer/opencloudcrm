@@ -3,6 +3,7 @@ import Link from "next/link";
 import Image from "next/image";
 import NewsletterSignupForm from "@/components/NewsletterSignupForm";
 import { getPublicPosts } from "@/lib/blogPosts";
+import { buildSafe } from "@/lib/db";
 import { resolveImage } from "@/lib/images";
 import { SITE_NAME, SITE_URL, OG_LOCALE, assetUrl } from "@/config/brand";
 import { BuiltInPage, builtInPageMetadata } from "@/components/pageBlocks/SitePageView";
@@ -141,7 +142,8 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function NewsletterPage() {
-  const recentPosts = (await getPublicPosts()).slice(0, 3);
+  // See the build-phase note on buildSafe (src/lib/db.ts).
+  const recentPosts = await buildSafe(async () => (await getPublicPosts()).slice(0, 3), []);
   return (
     <BuiltInPage path="/newsletter">
     <div>

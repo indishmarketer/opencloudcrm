@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { resolveImage } from "@/lib/images";
 import { getPublicPost, getPublicPosts, getPostBySlug } from "@/lib/blogPosts";
+import { buildSafe } from "@/lib/db";
 import BlogPostArticle, { type FullPost } from "@/components/BlogPostArticle";
 import { SITE_NAME, SITE_URL, OG_LOCALE } from "@/config/brand";
 
@@ -26,9 +27,13 @@ function toFullPost(row: NonNullable<Awaited<ReturnType<typeof getPostBySlug>>>)
 }
 
 // Drafts are left out here; once published from the console they render
-// on demand.
+// on demand. A fresh self-host install's database may not be migrated yet
+// when this runs during `next build` (see Dockerfile) -- buildSafe falls
+// back to an empty list there so the build still succeeds, and every post
+// just renders on first visit instead of being pre-built, same as
+// dynamicParams already allows.
 export async function generateStaticParams() {
-  return (await getPublicPosts()).map((p) => ({ slug: p.slug }));
+  return buildSafe(async () => (await getPublicPosts()).map((p) => ({ slug: p.slug })), []);
 }
 
 // Content now lives in Postgres (not just RelatedTools' directory_tools

@@ -1,4 +1,4 @@
-import { pool } from "@/lib/db";
+import { pool, buildSafe } from "@/lib/db";
 import NavClient from "@/components/NavClient";
 import { getPublicPosts } from "@/lib/blogPosts";
 import { getBlogCategories } from "@/lib/blogCategories";
@@ -22,19 +22,22 @@ async function latestBlogCategories() {
   return result;
 }
 
+// Nav renders on every page via the root layout, so any unguarded query
+// here fails every single page's build, not just one route -- see the
+// buildSafe note in src/lib/db.ts.
 export default async function Nav() {
-  const [coursesResult, webinarsResult, categories, chrome, identity] = await Promise.all([
-    pool.query("SELECT slug, title FROM courses WHERE published = true ORDER BY created_at DESC LIMIT 3"),
-    pool.query("SELECT slug, title FROM webinars WHERE status = 'published' ORDER BY created_at DESC LIMIT 3"),
-    latestBlogCategories(),
+  const [courses, webinars, categories, chrome, identity] = await Promise.all([
+    buildSafe(async () => (await pool.query("SELECT slug, title FROM courses WHERE published = true ORDER BY created_at DESC LIMIT 3")).rows, []),
+    buildSafe(async () => (await pool.query("SELECT slug, title FROM webinars WHERE status = 'published' ORDER BY created_at DESC LIMIT 3")).rows, []),
+    buildSafe(() => latestBlogCategories(), []),
     getSiteChrome(),
     getSiteIdentity(),
   ]);
 
   return (
     <NavClient
-      courses={coursesResult.rows}
-      webinars={webinarsResult.rows}
+      courses={courses}
+      webinars={webinars}
       categories={categories}
       items={chrome.header.items}
       ctaLabel={chrome.header.ctaLabel}

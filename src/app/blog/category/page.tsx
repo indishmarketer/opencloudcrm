@@ -3,6 +3,7 @@ import Image from "next/image";
 import type { Metadata } from "next";
 import { getBlogCategories } from "@/lib/blogCategories";
 import { getPublicPosts } from "@/lib/blogPosts";
+import { buildSafe } from "@/lib/db";
 import { serializeJsonLd } from "@/lib/jsonLd";
 import { SITE_NAME, SITE_URL } from "@/config/brand";
 
@@ -13,7 +14,13 @@ export const metadata: Metadata = {
 };
 
 export default async function BlogCategoryIndex() {
-  const [postsIndex, categories] = await Promise.all([getPublicPosts(), getBlogCategories()]);
+  // See the build-phase note on buildSafe (src/lib/db.ts): a fresh
+  // self-host install's database may not be migrated yet when this page
+  // is statically generated during `next build`.
+  const [postsIndex, categories] = await buildSafe(
+    () => Promise.all([getPublicPosts(), getBlogCategories()]),
+    [[], []]
+  );
   const countBySlug = new Map<string, number>();
   for (const p of postsIndex) {
     countBySlug.set(p.category, (countBySlug.get(p.category) || 0) + 1);

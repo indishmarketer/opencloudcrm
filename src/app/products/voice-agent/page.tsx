@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { getPublicPosts } from "@/lib/blogPosts";
 import { getBlogCategories } from "@/lib/blogCategories";
+import { buildSafe } from "@/lib/db";
 import VoiceAgentBusinessForm from "@/components/VoiceAgentBusinessForm";
 import { serializeJsonLd } from "@/lib/jsonLd";
 import { SITE_NAME, OG_LOCALE, SITE_URL, assetUrl } from "@/config/brand";
@@ -88,7 +89,11 @@ const features = [
 ];
 
 export default async function VoiceAgentPage() {
-  const [postsIndex, blogCategories] = await Promise.all([getPublicPosts(), getBlogCategories()]);
+  // See the build-phase note on buildSafe (src/lib/db.ts).
+  const [postsIndex, blogCategories] = await buildSafe(
+    () => Promise.all([getPublicPosts(), getBlogCategories()]),
+    [[], []]
+  );
   return (
     <main className="bg-paper text-ink">
       <script

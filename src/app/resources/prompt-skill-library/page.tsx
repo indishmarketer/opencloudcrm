@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { pool } from "@/lib/db";
+import { pool, buildSafe } from "@/lib/db";
 import { serializeJsonLd } from "@/lib/jsonLd";
 import { SITE_NAME, SITE_URL, OG_LOCALE, assetUrl } from "@/config/brand";
 
@@ -85,8 +85,12 @@ const FAQS = [
 ];
 
 export default async function PromptSkillLibraryLandingPage() {
-  const categories = await pool.query(
-    `SELECT c.slug, c.name, c.description,
+  // See the build-phase note on buildSafe (src/lib/db.ts).
+  const categoryRows = await buildSafe(
+    async () =>
+      (
+        await pool.query(
+          `SELECT c.slug, c.name, c.description,
             COUNT(DISTINCT p.id)::int AS prompt_count,
             COUNT(DISTINCT s.id)::int AS skill_count
      FROM prompt_categories c
@@ -94,6 +98,9 @@ export default async function PromptSkillLibraryLandingPage() {
      LEFT JOIN skills s ON s.category_id = c.id AND s.status = 'published' AND s.show_in_library = true
      GROUP BY c.id
      ORDER BY c.sort_order ASC`
+        )
+      ).rows,
+    []
   );
 
   const jsonLd = {
@@ -165,7 +172,7 @@ export default async function PromptSkillLibraryLandingPage() {
           category on its own.
         </p>
         <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {categories.rows.map((c) => {
+          {categoryRows.map((c) => {
             const meta = CATEGORY_META[c.slug];
             return (
               <div key={c.slug} className="overflow-hidden rounded-2xl border border-line">

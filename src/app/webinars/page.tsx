@@ -3,6 +3,7 @@ import Link from "next/link";
 import WebinarArtwork from "@/components/WebinarArtwork";
 import { serializeJsonLd } from "@/lib/jsonLd";
 import { listPublishedWebinars } from "@/lib/webinars";
+import { buildSafe } from "@/lib/db";
 import { SITE_NAME, SITE_URL, assetUrl } from "@/config/brand";
 import { BuiltInPage, builtInPageMetadata } from "@/components/pageBlocks/SitePageView";
 
@@ -37,7 +38,8 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function WebinarsListingPage() {
-  const webinars = await listPublishedWebinars();
+  // See the build-phase note on buildSafe (src/lib/db.ts).
+  const webinars = await buildSafe(listPublishedWebinars, []);
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
