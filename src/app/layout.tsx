@@ -63,9 +63,11 @@ export async function generateMetadata(): Promise<Metadata> {
       template: `%s | ${name}`,
     },
     description,
-    ...(identity.faviconUrl
-      ? { icons: { icon: [{ url: identity.faviconUrl }], apple: [{ url: identity.faviconUrl }] } }
-      : {}),
+    // Favicon/apple-icon come from icon.tsx / apple-icon.tsx instead of
+    // here. Next's metadata resolver always puts a static icon file
+    // (icon.png, favicon.ico) ahead of whatever this `icons` field says,
+    // so setting it here was silently a no-op as long as those static
+    // files also existed -- see icon.tsx for the full explanation.
     openGraph: {
       type: "website",
       url: SITE_URL,
