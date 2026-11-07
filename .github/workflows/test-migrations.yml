@@ -1,0 +1,60 @@
+name: Test migrations against a fresh database
+
+# This is the actual permanent fix for the class of bug found throughout
+# this repo's history (2026-11): a migration that silently depended on
+# schema state which only existed on the one long-running production
+# database, invisible until someone tried a genuinely empty database for
+# the first time -- which nobody had, until a fresh self-host deploy did.
+#
+# From here on, every migration is proven against a brand-new, empty
+# Postgres right here, automatically, before it's merged -- not
+# discovered months later as a crash on a stranger's server. If this job
+# is red, do not merge; fix the migration it's pointing at.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/migrations/**"
+      - "scripts/migrate.mjs"
+      - ".github/workflows/test-migrations.yml"
+  pull_request:
+    paths:
+      - "scripts/migrations/**"
+      - "scripts/migrate.mjs"
+
+jobs:
+  migrate-fresh-db:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: opencloudcrm
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: opencloudcrm
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - run: npm ci
+
+      - name: Run every migration against a brand-new, empty database
+        env:
+          DATABASE_URL: postgres://opencloudcrm:test@localhost:5432/opencloudcrm
+        run: node scripts/migrate.mjs
+
+      - name: Confirm nothing is left pending (sanity check on the runner itself)
+        env:
+          DATABASE_URL: postgres://opencloudcrm:test@localhost:5432/opencloudcrm
+        run: node scripts/migrate.mjs --status
