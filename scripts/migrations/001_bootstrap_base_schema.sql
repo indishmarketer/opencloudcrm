@@ -248,3 +248,12 @@ CREATE TABLE IF NOT EXISTS webhook_events (
   payload JSONB NOT NULL,
   received_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Retired by migration 097 (DROP TABLE IF EXISTS), which runs two steps
+-- after this -- but 095 joins against it first, for a cleanup DELETE that
+-- matches zero rows on a fresh database anyway (no users exist yet).
+-- Minimal shape: just the two columns that DELETE actually reads.
+CREATE TABLE IF NOT EXISTS course_access_invites (
+  user_id INTEGER,
+  account_existed BOOLEAN NOT NULL DEFAULT false
+);
