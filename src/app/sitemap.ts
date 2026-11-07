@@ -9,6 +9,7 @@ import { listPublishedPageEntries } from "@/lib/sitePages";
 import { BUILT_IN_PATHS } from "@/lib/defaultPages";
 import { SITE_URL as BASE_URL } from "@/config/brand";
 import { buildSafe } from "@/lib/db";
+import { getCrawlSettings } from "@/lib/siteCrawlSettings";
 
 export const revalidate = 3600; // Revalidate every hour to keep in sync with DB
 
@@ -161,7 +162,18 @@ async function buildSitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.6,
   }));
 
+  // Owner's own additions from /console/site-actions, for pages outside
+  // every generator above. To remove something a generator already
+  // includes, use that page's own "noindex" setting instead.
+  const { sitemapExtraUrls } = await getCrawlSettings();
+  const extraRoutes: MetadataRoute.Sitemap = sitemapExtraUrls.map((path) => ({
+    url: `${BASE_URL}${path}`,
+    changeFrequency: "monthly",
+    priority: 0.5,
+  }));
+
   return [
+    ...extraRoutes,
     ...builderRoutes,
     ...staticRoutes,
     ...courseRoutes,

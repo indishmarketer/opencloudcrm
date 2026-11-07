@@ -1,11 +1,16 @@
 import type { MetadataRoute } from "next";
 import { SITE_URL } from "@/config/brand";
+import { getCrawlSettings } from "@/lib/siteCrawlSettings";
 
-export default function robots(): MetadataRoute.Robots {
+export default async function robots(): Promise<MetadataRoute.Robots> {
+  // getCrawlSettings never throws (readCrawlSettings falls back to no
+  // extra rules on a DB hiccup) -- the protected disallow list below
+  // always applies regardless.
+  const extra = await getCrawlSettings();
   return {
     rules: {
       userAgent: "*",
-      allow: "/",
+      allow: ["/", ...extra.robotsExtraAllow],
       disallow: [
         "/console",
         "/console/",
@@ -38,6 +43,11 @@ export default function robots(): MetadataRoute.Robots {
         // guide detail page) is fully public and crawlable -- 2026-09-20,
         // owner decided the library itself should drive signups via
         // on-page CTAs rather than gating it behind login.
+
+        // Owner's own additions from /console/site-actions, below the
+        // built-in list above. normalizeCrawlSettings already strips out
+        // anything that would touch a protected path.
+        ...extra.robotsExtraDisallow,
       ],
     },
     sitemap: `${SITE_URL}/sitemap.xml`,

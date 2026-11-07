@@ -1,4 +1,5 @@
 import ConsoleSeoActions from "@/components/ConsoleSeoActions";
+import ConsoleCrawlSettings from "@/components/ConsoleCrawlSettings";
 
 export const metadata = {
   title: "Site Actions - Console",
@@ -14,6 +15,11 @@ export default function SiteActionsPage() {
 
       <div className="mt-8">
         <ConsoleSeoActions />
+      </div>
+
+      <div className="mt-8">
+        <h2 className="font-display text-xl font-semibold">Crawling &amp; search engines</h2>
+        <ConsoleCrawlSettings />
       </div>
     </div>
   );
