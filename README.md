@@ -20,29 +20,9 @@ VPS (the build just gets killed, no error, deploy shows "failed").
 
 ### Coolify
 
-**Manually:**
+**Deploy With AI Agents**
 
-1. **New Resource -> Docker Compose**, point it at this repo (branch
-   `main`). If Coolify gives you an empty box instead of a Git source
-   option, open [`docker-compose.yml`](docker-compose.yml) and paste its
-   contents in. (If that box mangles the indentation on paste -- a known
-   editor bug in some Coolify versions -- use the AI-agent path below
-   instead; it goes through Coolify's API, not that editor.)
-2. Fill in the environment variables it asks for -- at minimum:
-   - `DB_PASSWORD` -- any strong password
-   - `SESSION_SECRET` -- a long random string
-   - `ADMIN_EMAIL` -- your email; whoever logs in with this address becomes
-     the console owner
-3. Deploy. Coolify creates two resources (the app and Postgres) and starts
-   both -- each has a real health check (`docker-compose.yml`), so Coolify
-   can tell you when the app is actually ready to serve requests, not just
-   that the container started.
-4. Visit your domain, then `/console/login`, and sign in with
-   `ADMIN_EMAIL`. The homepage shows "not live yet" until you publish your
-   first page from `/console/pages` -- that's expected, not a failed
-   deploy.
-
-**Or let an AI agent do the whole thing, through Coolify's own MCP server**
+*Or let AI agents (Claude Code, Codex, Antigravity, Opencode, etc) do the whole thing, through Coolify's own MCP server*
 (Coolify 4.5+ -- Settings -> Advanced -> MCP Server must show Enabled):
 
 1. In Coolify: **Keys & Tokens** -> create an API token with `write` and
@@ -82,8 +62,31 @@ VPS (the build just gets killed, no error, deploy shows "failed").
    > *exact same* error again, that's why -- don't keep redeploying.
    > Delete the service (with its volumes) and deploy fresh instead.
 
-**Already have this running and just want to update it?** Redeploy the
-same app resource -- don't switch it to Compose. Redeploying only rebuilds
+**Deploy Manually:**
+
+1. **New Resource -> Docker Compose**, point it at this repo (branch
+   `main`). If Coolify gives you an empty box instead of a Git source
+   option, open [`docker-compose.yml`](docker-compose.yml) and paste its
+   contents in. (If that box mangles the indentation on paste -- a known
+   editor bug in some Coolify versions -- use the AI-agent path below
+   instead; it goes through Coolify's API, not that editor.)
+2. Fill in the environment variables it asks for -- at minimum:
+   - `DB_PASSWORD` -- any strong password
+   - `SESSION_SECRET` -- a long random string
+   - `ADMIN_EMAIL` -- your email; whoever logs in with this address becomes
+     the console owner
+3. Deploy. Coolify creates two resources (the app and Postgres) and starts
+   both -- each has a real health check (`docker-compose.yml`), so Coolify
+   can tell you when the app is actually ready to serve requests, not just
+   that the container started.
+4. Visit your domain, then `/console/login`, and sign in with
+   `ADMIN_EMAIL`. The homepage shows "not live yet" until you publish your
+   first page from `/console/pages` -- that's expected, not a failed
+   deploy.
+
+
+**Already have this running and just want to update it?** 
+Redeploy the same app resource -- don't switch it to Compose. Redeploying only rebuilds
 that one container; it never touches your existing database. Migrations
 only ever add (`CREATE TABLE IF NOT EXISTS`, etc.), never drop, so this is
 safe even with real data in there.
