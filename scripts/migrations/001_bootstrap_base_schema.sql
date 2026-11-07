@@ -57,7 +57,13 @@ CREATE TABLE IF NOT EXISTS courses (
   published BOOLEAN NOT NULL DEFAULT false,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   price INTEGER,
-  price_currency TEXT NOT NULL DEFAULT 'INR' CHECK (price_currency IN ('INR', 'USD'))
+  price_currency TEXT NOT NULL DEFAULT 'INR' CHECK (price_currency IN ('INR', 'USD')),
+  -- Retired, pre-unified-price columns -- dropped by migration 103, but
+  -- migrations 035/043/045/102 read or write them before that point, so
+  -- (unlike every other column this file leaves out) they have to exist
+  -- here too, not just be left for a later ADD COLUMN that never comes.
+  price_inr INTEGER,
+  price_usd NUMERIC(10, 2)
 );
 
 CREATE TABLE IF NOT EXISTS course_modules (
