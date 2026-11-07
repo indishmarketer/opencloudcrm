@@ -1,0 +1,80 @@
+# One-click self-host stack: the web app, the voice agent server, and
+# Postgres, wired together. See README.md's Deployment section first --
+# especially what the prebuilt images below do and don't bake in.
+#
+# Both app images are pulled prebuilt from GitHub Container Registry
+# (built by .github/workflows/docker-publish.yml on GitHub's own runners)
+# instead of being built on whatever machine runs `docker compose up`.
+# Building this app locally needs several GB of RAM; pulling a prebuilt
+# image needs a few hundred MB, so this works the same on a minimal VPS
+# as on a powerful one.
+#
+# In Coolify: New Resource -> Docker Compose, point it at this repo, and
+# it will create all three resources below in one project instead of the
+# single "Public Repository" app you get from the Dockerfile alone.
+#
+# Everywhere else (plain `docker compose up`, Railway, a raw VPS): set the
+# variables below (a .env file next to this one works for plain Compose)
+# and run it directly.
+
+services:
+  app:
+    image: ghcr.io/indishmarketer/opencloudcrm:latest
+    restart: unless-stopped
+    depends_on:
+      - db
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgres://opencloudcrm:${DB_PASSWORD:?set a DB_PASSWORD}@db:5432/opencloudcrm
+      SESSION_SECRET: ${SESSION_SECRET:?set a long random SESSION_SECRET}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:?set ADMIN_EMAIL -- whoever logs in with this address becomes the console owner}
+      EMAIL_FROM: ${EMAIL_FROM:-}
+      SES_REGION: ${SES_REGION:-}
+      SES_ACCESS_KEY_ID: ${SES_ACCESS_KEY_ID:-}
+      SES_SECRET_ACCESS_KEY: ${SES_SECRET_ACCESS_KEY:-}
+      SES_SNS_WEBHOOK_SECRET: ${SES_SNS_WEBHOOK_SECRET:-}
+      SES_SNS_TOPIC_ARN: ${SES_SNS_TOPIC_ARN:-}
+      TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:-}
+      NEXT_PUBLIC_TURNSTILE_SITE_KEY: ${NEXT_PUBLIC_TURNSTILE_SITE_KEY:-}
+      # See README.md's Deployment section: this (and the other
+      # NEXT_PUBLIC_*/VOICE_AGENT_WS_URL vars, and the voice-agent CSP
+      # below) take effect only in an image YOU build yourself, not this
+      # prebuilt one -- they're baked in at build time, which is exactly
+      # what the prebuilt image skips. Harmless to set anyway; also read
+      # correctly by anything in the app that isn't build-time-inlined.
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-}
+      NEXT_PUBLIC_ASSET_DOMAIN: ${NEXT_PUBLIC_ASSET_DOMAIN:-}
+
+  voice-agent-server:
+    image: ghcr.io/indishmarketer/opencloudcrm-voice-agent:latest
+    restart: unless-stopped
+    depends_on:
+      - db
+    ports:
+      - "4000:4000"
+    environment:
+      DATABASE_URL: postgres://opencloudcrm:${DB_PASSWORD:?set a DB_PASSWORD}@db:5432/opencloudcrm
+      SESSION_SECRET: ${SESSION_SECRET:?set a long random SESSION_SECRET}
+      WEBSITE_URL: ${NEXT_PUBLIC_SITE_URL:-}
+      ALLOWED_ORIGINS: ${NEXT_PUBLIC_SITE_URL:-}
+      # Optional: the voice demo no-ops without these (src/config/features.ts
+      # equivalent on this side -- see voice-agent-server/src for exactly
+      # which features each key turns on).
+      ASSEMBLYAI_API_KEY: ${ASSEMBLYAI_API_KEY:-}
+      FISH_API_KEY: ${FISH_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: opencloudcrm
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set a DB_PASSWORD}
+      POSTGRES_DB: opencloudcrm
+    volumes:
+      - db-data:/var/lib/postgresql/data
+
+volumes:
+  db-data:

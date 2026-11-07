@@ -205,6 +205,63 @@ runs as a non-root user). It expects `DATABASE_URL` and the rest of
 Docker-based host (Coolify, Railway, Fly, a VPS) works; there's nothing
 Coolify-specific in the app itself.
 
+### Recommended: `docker-compose.yml`, prebuilt images
+
+Building this app from source (`npm run build` inside the Dockerfile) needs
+several GB of RAM -- a large TypeScript project with hundreds of pages.
+That's genuinely heavy, and on a smaller VPS it fails silently: the build
+gets OOM-killed mid-compile with no error in the logs, just "failed". If
+you hit that, this is why, and **more swap or a smaller build doesn't fully
+fix it** -- the real fix is to not build on that machine at all.
+
+`.github/workflows/docker-publish.yml` builds the app and the voice agent
+server on GitHub's own runners (free for this public repo) on every push to
+`main`, and publishes both to GitHub Container Registry. `docker-compose.yml`
+at the repo root pulls those prebuilt images plus a `postgres:16-alpine`
+service, so `docker compose up` (or Coolify's **New Resource -> Docker
+Compose**, pointed at this repo) needs only a few hundred MB to bring up
+all three resources -- no build step runs on your server at all.
+
+Set `DB_PASSWORD`, `SESSION_SECRET`, and `ADMIN_EMAIL` at minimum (see the
+`:?` markers in `docker-compose.yml`); the rest of `.env.example`'s
+variables are optional and each integration quietly turns itself off
+without them.
+
+**What the prebuilt image doesn't give you:** the `NEXT_PUBLIC_*` brand
+vars and `VOICE_AGENT_WS_URL` are inlined into the app at build time (see
+above), and a single shared image can't carry a different value per
+deployer's domain -- so the published image builds with none of them set.
+In practice that means:
+
+- The site name/logo shown to visitors comes from the console
+  (`getSiteIdentity()`/`site_settings`, same as any fresh install) and is
+  unaffected -- set it from `/console/login` once you're in.
+- `NEXT_PUBLIC_SITE_URL`'s fallback (`https://example.com`) still ends up
+  in `metadataBase` and a couple of SEO tags (canonical URLs, OG image
+  absolute URLs) until you build your own image. Cosmetic, not functional.
+- The voice agent demo widget on the main site **will not connect**: its
+  CSP entry is also computed from `VOICE_AGENT_WS_URL` at build time
+  (`src/config/csp.ts`), and the published image has none configured, so
+  the browser blocks the connection even though `voice-agent-server`
+  itself is running fine. This is the one real functional gap, not just
+  cosmetic.
+
+If you want any of that fully correct, fork this repo, set your own
+`NEXT_PUBLIC_SITE_URL`/`NEXT_PUBLIC_SITE_NAME`/`NEXT_PUBLIC_ASSET_DOMAIN`/
+`VOICE_AGENT_WS_URL` (as repository variables, read into the same
+`docker-publish.yml` workflow as build args), and let your fork's own
+Actions build your own correctly-branded image -- still on GitHub's
+runners, never on your own server.
+
+### Building from source instead
+
+If you'd rather build on your own server (the plain `Dockerfile`, no
+compose file), give it real headroom: **4+ GB of RAM free during the build
+step**, separate from whatever Coolify/Docker itself is already using. On
+anything smaller, add swap before you deploy, not after a mysterious
+"failed" -- a few GB of swap is enough to turn a silent OOM-kill into a
+successful (if slower) build.
+
 The container runs `scripts/migrate.mjs` against `DATABASE_URL` before
 starting the server on every boot (a no-op once everything is applied), so
 a brand-new database is schema'd automatically on first deploy -- you don't
