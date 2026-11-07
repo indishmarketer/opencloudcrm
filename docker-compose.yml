@@ -22,9 +22,16 @@ services:
     image: ghcr.io/indishmarketer/opencloudcrm:latest
     restart: unless-stopped
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     ports:
       - "3000:3000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     environment:
       DATABASE_URL: postgres://opencloudcrm:${DB_PASSWORD:?set a DB_PASSWORD}@db:5432/opencloudcrm
       SESSION_SECRET: ${SESSION_SECRET:?set a long random SESSION_SECRET}
@@ -48,6 +55,11 @@ services:
   db:
     image: postgres:16-alpine
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U opencloudcrm"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
     environment:
       POSTGRES_USER: opencloudcrm
       POSTGRES_PASSWORD: ${DB_PASSWORD:?set a DB_PASSWORD}
