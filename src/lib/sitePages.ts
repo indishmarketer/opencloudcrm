@@ -97,18 +97,25 @@ function cleanBlocks(raw: unknown, allowBuiltIn: boolean): PageBlock[] {
 const STARTER_FLAG = "starter_pages_seeded";
 
 /** Creates the neutral starter pages exactly once per database, the first
- * time anything asks for a page. Deleting one later doesn't bring it back. */
+ * time anything asks for a page. Deleting one later doesn't bring it back.
+ *
+ * Seeded as drafts, not published: a fresh install should stay offline
+ * (visitors see "not live yet" -- src/app/page.tsx) until the owner logs
+ * into /console and publishes something on purpose, rather than going live
+ * instantly with placeholder copy nobody wrote. This only touches the
+ * one-time insert gated by STARTER_FLAG, so it can't retroactively affect a
+ * database where these rows (and the flag) already exist and are published. */
 async function ensureStarterPages(): Promise<void> {
   const flag = await pool.query("SELECT 1 FROM site_settings WHERE key = $1", [STARTER_FLAG]);
   if (flag.rowCount) return;
   for (const starter of STARTER_PAGES) {
     await pool.query(
       `INSERT INTO site_pages (kind, path, title, meta_title, meta_description, og_image, noindex, status, blocks, published, published_at, updated_by)
-       VALUES ('page', $1, $2, $3, $4, $5, $6, 'published', $7, $8, now(), 'starter')
+       VALUES ('page', $1, $2, $3, $4, $5, $6, 'draft', $7, NULL, NULL, 'starter')
        ON CONFLICT (path) WHERE kind = 'page' DO NOTHING`,
       [
         starter.path, starter.title, starter.metaTitle, starter.metaDescription, starter.ogImage, starter.noindex,
-        JSON.stringify(starter.blocks), JSON.stringify(snapshotOf(starter)),
+        JSON.stringify(starter.blocks),
       ]
     );
   }

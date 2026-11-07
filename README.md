@@ -38,7 +38,9 @@ VPS (the build just gets killed, no error, deploy shows "failed").
    can tell you when the app is actually ready to serve requests, not just
    that the container started.
 4. Visit your domain, then `/console/login`, and sign in with
-   `ADMIN_EMAIL`.
+   `ADMIN_EMAIL`. The homepage shows "not live yet" until you publish your
+   first page from `/console/pages` -- that's expected, not a failed
+   deploy.
 
 **Or let an AI agent do the whole thing, through Coolify's own MCP server**
 (Coolify 4.5+ -- Settings -> Advanced -> MCP Server must show Enabled):
@@ -70,7 +72,9 @@ VPS (the build just gets killed, no error, deploy shows "failed").
    > Deploy it, then check the logs: confirm the migration step finished
    > ("Nothing pending" or a list of applied migrations) and the server
    > started without crashing. Tell me the URL and confirm `/console/login`
-   > is reachable.
+   > is reachable. The homepage itself will say "not live yet" until
+   > someone publishes a page from `/console/pages` -- that's expected on
+   > a fresh install, not a sign anything is broken.
    >
    > If a migration fails: a migration that already succeeded is marked
    > done permanently on that database and will not re-run just because
@@ -127,8 +131,10 @@ Same two resources, same prebuilt image, same result.
 > Confirm the app container's logs show the migration step finishing
 > ("Nothing pending" or a list of applied migrations) and the server
 > starting, not crashing. Then tell me the URL and confirm I can log in at
-> `/console/login` with `ADMIN_EMAIL`. If anything fails, show me the
-> actual error instead of guessing.
+> `/console/login` with `ADMIN_EMAIL`. The homepage itself will say "not
+> live yet" until a page is published from `/console/pages` -- that's
+> expected on a fresh install. If anything fails, show me the actual
+> error instead of guessing.
 >
 > If a migration fails: a migration that already succeeded is marked
 > done permanently in that database and won't re-run just because its
@@ -141,8 +147,10 @@ Same two resources, same prebuilt image, same result.
 
 - Everything a visitor reads -- pages, menu, footer, business details,
   blog posts, directory listings -- is edited from `/console`, not in
-  code. A fresh install ships neutral starter pages you replace with your
-  own.
+  code. A fresh install ships neutral starter pages as unpublished drafts
+  (the live site shows "not live yet" until you publish one) -- edit and
+  publish from `/console/pages` rather than going live with placeholder
+  copy nobody wrote.
 - Postgres holds all of it. `npm run migrate` (or the Docker image's own
   startup step) applies `scripts/migrations/*.sql` in order.
 - Payments, storage, video, WhatsApp, and SSO are each optional --
