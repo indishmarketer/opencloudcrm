@@ -22,20 +22,23 @@ VPS (the build just gets killed, no error, deploy shows "failed").
 
 **Deploy With AI Agents**
 
-*let AI agents (Claude Code, Codex, Antigravity, Opencode, etc) do the whole thing, 
-through Coolify's own MCP server*
-(Coolify 4.5+ -- Settings -> Advanced -> MCP Server must show Enabled):
+Let AI agents (Claude Code, Codex, Antigravity, OpenCode, etc.) do the whole thing through Coolify's own MCP server.
 
-1. In Coolify: **Keys & Tokens** -> create an API token with `write` and
-   `deploy` permissions.
-2. Connect your agent to `https://your-coolify-domain/mcp` using that
-   token as a Bearer credential. Claude Code:
+1. In Coolify (v4.5+), go to **Settings → Advanced**.
+2. Enable **MCP Server** and **API Access**.
+3. Copy your Coolify MCP server URL (`https://your-coolify-domain/mcp`).
+4. Go to **Keys & Tokens → API Tokens**.
+5. Create a new API token with **root** permissions. Keep the token secure, as it provides full access.
+6. Connect your AI agent to the MCP server using the copied URL and API token as a Bearer credential.
+
+   **For Claude Code:**
+
    ```bash
    claude mcp add --transport http coolify https://your-coolify-domain/mcp --header "Authorization: Bearer YOUR_TOKEN"
    ```
-   Other MCP-capable agents: the same URL and header, however that agent
-   adds a remote MCP server.
-3. Give it this prompt:
+
+7. For other MCP-capable agents (Codex, Antigravity, OpenCode, etc.), add a remote MCP server using the same URL and Authorization header.
+8. Give it this prompt:
 
    > Using the Coolify MCP tools connected to this session, deploy
    > OpenCloudCRM (https://github.com/indishmarketer/opencloudcrm) for me.
