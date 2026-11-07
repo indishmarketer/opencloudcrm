@@ -34,7 +34,9 @@ VPS (the build just gets killed, no error, deploy shows "failed").
    - `ADMIN_EMAIL` -- your email; whoever logs in with this address becomes
      the console owner
 3. Deploy. Coolify creates two resources (the app and Postgres) and starts
-   both.
+   both -- each has a real health check (`docker-compose.yml`), so Coolify
+   can tell you when the app is actually ready to serve requests, not just
+   that the container started.
 4. Visit your domain, then `/console/login`, and sign in with
    `ADMIN_EMAIL`.
 
@@ -69,12 +71,28 @@ VPS (the build just gets killed, no error, deploy shows "failed").
    > ("Nothing pending" or a list of applied migrations) and the server
    > started without crashing. Tell me the URL and confirm `/console/login`
    > is reachable.
+   >
+   > If a migration fails: a migration that already succeeded is marked
+   > done permanently on that database and will not re-run just because
+   > its file changes later, so if you retry after a fix and see the
+   > *exact same* error again, that's why -- don't keep redeploying.
+   > Delete the service (with its volumes) and deploy fresh instead.
 
 **Already have this running and just want to update it?** Redeploy the
 same app resource -- don't switch it to Compose. Redeploying only rebuilds
 that one container; it never touches your existing database. Migrations
 only ever add (`CREATE TABLE IF NOT EXISTS`, etc.), never drop, so this is
 safe even with real data in there.
+
+**Stuck on a migration error on a brand-new (not yet real-data) deploy?**
+A migration that completes successfully is marked done permanently for
+that database -- re-deploying doesn't retry it, even after you (or a fix
+from upstream) change that file's contents. If you're debugging a failed
+first deploy, redeploying alone will not pick up a fix to an already-
+applied migration; delete the service (**Danger Zone -> Delete Service**,
+with volumes checked) and deploy fresh instead. If you have `DATABASE_URL`
+for that database, `npm run migrate:status` tells you exactly what's
+pending (or not) before you redeploy, rather than guessing.
 
 ### Any other Docker host (a VPS, Railway, Render, Fly...)
 
@@ -111,6 +129,13 @@ Same two resources, same prebuilt image, same result.
 > starting, not crashing. Then tell me the URL and confirm I can log in at
 > `/console/login` with `ADMIN_EMAIL`. If anything fails, show me the
 > actual error instead of guessing.
+>
+> If a migration fails: a migration that already succeeded is marked
+> done permanently in that database and won't re-run just because its
+> file changes later, so retrying after a fix with just `docker compose
+> up -d` won't help -- you'll see the exact same error. Run `docker
+> compose down -v` (removes the database volume too) and `docker compose
+> up -d` again instead, so migrations run fresh from an empty database.
 
 ## What it is
 
