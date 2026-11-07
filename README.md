@@ -22,7 +22,8 @@ VPS (the build just gets killed, no error, deploy shows "failed").
 
 **Deploy With AI Agents**
 
-*Or let AI agents (Claude Code, Codex, Antigravity, Opencode, etc) do the whole thing, through Coolify's own MCP server*
+*let AI agents (Claude Code, Codex, Antigravity, Opencode, etc) do the whole thing, 
+through Coolify's own MCP server*
 (Coolify 4.5+ -- Settings -> Advanced -> MCP Server must show Enabled):
 
 1. In Coolify: **Keys & Tokens** -> create an API token with `write` and
