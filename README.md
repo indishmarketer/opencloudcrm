@@ -20,10 +20,14 @@ VPS (the build just gets killed, no error, deploy shows "failed").
 
 ### Coolify
 
+**Manually:**
+
 1. **New Resource -> Docker Compose**, point it at this repo (branch
    `main`). If Coolify gives you an empty box instead of a Git source
    option, open [`docker-compose.yml`](docker-compose.yml) and paste its
-   contents in.
+   contents in. (If that box mangles the indentation on paste -- a known
+   editor bug in some Coolify versions -- use the AI-agent path below
+   instead; it goes through Coolify's API, not that editor.)
 2. Fill in the environment variables it asks for -- at minimum:
    - `DB_PASSWORD` -- any strong password
    - `SESSION_SECRET` -- a long random string
@@ -34,6 +38,38 @@ VPS (the build just gets killed, no error, deploy shows "failed").
 4. Visit your domain, then `/console/login`, and sign in with
    `ADMIN_EMAIL`.
 
+**Or let an AI agent do the whole thing, through Coolify's own MCP server**
+(Coolify 4.5+ -- Settings -> Advanced -> MCP Server must show Enabled):
+
+1. In Coolify: **Keys & Tokens** -> create an API token with `write` and
+   `deploy` permissions.
+2. Connect your agent to `https://your-coolify-domain/mcp` using that
+   token as a Bearer credential. Claude Code:
+   ```bash
+   claude mcp add --transport http coolify https://your-coolify-domain/mcp --header "Authorization: Bearer YOUR_TOKEN"
+   ```
+   Other MCP-capable agents: the same URL and header, however that agent
+   adds a remote MCP server.
+3. Give it this prompt:
+
+   > Using the Coolify MCP tools connected to this session, deploy
+   > OpenCloudCRM (https://github.com/indishmarketer/opencloudcrm) for me.
+   >
+   > Fetch the current `docker-compose.yml` from
+   > https://raw.githubusercontent.com/indishmarketer/opencloudcrm/main/docker-compose.yml
+   > and use it exactly as-is -- don't retype or edit it. Create a Docker
+   > Compose service from it (`create_service`, `compose` mode), in
+   > whichever project/server I confirm if more than one exists.
+   >
+   > Generate a strong random `DB_PASSWORD` and `SESSION_SECRET`, ask me
+   > for the email to use as `ADMIN_EMAIL`, and set all three as
+   > environment variables on the service.
+   >
+   > Deploy it, then check the logs: confirm the migration step finished
+   > ("Nothing pending" or a list of applied migrations) and the server
+   > started without crashing. Tell me the URL and confirm `/console/login`
+   > is reachable.
+
 **Already have this running and just want to update it?** Redeploy the
 same app resource -- don't switch it to Compose. Redeploying only rebuilds
 that one container; it never touches your existing database. Migrations
@@ -41,6 +77,8 @@ only ever add (`CREATE TABLE IF NOT EXISTS`, etc.), never drop, so this is
 safe even with real data in there.
 
 ### Any other Docker host (a VPS, Railway, Render, Fly...)
+
+**Manually:**
 
 ```bash
 git clone https://github.com/indishmarketer/opencloudcrm
@@ -51,14 +89,11 @@ docker compose up -d
 
 Same two resources, same prebuilt image, same result.
 
-### Let an AI agent deploy it for you
-
-Give this to Claude Code, Cursor, or any agent that has access to your
-server (SSH, a Coolify API token, or just a terminal):
+**Or hand it to an AI agent** with shell access to your server:
 
 > Deploy OpenCloudCRM (https://github.com/indishmarketer/opencloudcrm) for
-> me on [describe what you have -- e.g. "my Coolify instance at
-> https://..." or "an Ubuntu VPS I can SSH into" or "Render"].
+> me on [describe what you have -- e.g. "an Ubuntu VPS I can SSH into" or
+> "Render"].
 >
 > Use `docker-compose.yml` from the repo root as-is. It pulls a prebuilt
 > image from `ghcr.io/indishmarketer/opencloudcrm` and runs Postgres
@@ -67,12 +102,9 @@ server (SSH, a Coolify API token, or just a terminal):
 >
 > Generate a strong random `DB_PASSWORD` and `SESSION_SECRET`. Ask me for
 > the email to use as `ADMIN_EMAIL` (whoever logs in with it becomes the
-> console owner) and my domain if I have one.
->
-> If I'm on Coolify: create a Docker Compose resource pointed at this
-> repo, set the variables, and deploy. If I'm on a plain server: clone the
-> repo, write the variables to a `.env` file next to `docker-compose.yml`,
-> and run `docker compose up -d`.
+> console owner) and my domain if I have one. Clone the repo, write the
+> variables to a `.env` file next to `docker-compose.yml`, and run
+> `docker compose up -d`.
 >
 > Confirm the app container's logs show the migration step finishing
 > ("Nothing pending" or a list of applied migrations) and the server
