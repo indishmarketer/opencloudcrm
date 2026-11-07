@@ -26,7 +26,7 @@ export const SEGMENT_FIELDS = [
   { value: "site_inactive_days", label: "Not active on the website in the last N days", values: [] },
   { value: "never_engaged", label: "Never engaged", values: ["true", "false"] },
   { value: "country", label: "Country", values: [] },
-  { value: "source", label: "Acquisition/action source", values: ["account", "newsletter", "contact", "product_lead", "voice_lead"] },
+  { value: "source", label: "Acquisition/action source", values: ["account", "newsletter", "contact", "product_lead"] },
 ] as const;
 
 /** Rules whose value is a number of days (operator "within"). */
@@ -57,7 +57,7 @@ const BOOLEAN_VALUES = new Set(["true", "false"]);
 const MARKETING_VALUES = new Set(["subscribed", "pending", "unsubscribed", "unknown"]);
 const WHATSAPP_VALUES = new Set(["subscribed", "unsubscribed", "unknown"]);
 const AUTHOR_VALUES = new Set(["any", "pending", "approved", "rejected"]);
-const SOURCE_VALUES = new Set(["account", "newsletter", "contact", "product_lead", "voice_lead"]);
+const SOURCE_VALUES = new Set(["account", "newsletter", "contact", "product_lead"]);
 
 export function isValidSegmentRule(rule: SegmentRule): boolean {
   if (rule.operator !== "equals" && rule.operator !== "within") return false;

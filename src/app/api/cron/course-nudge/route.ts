@@ -42,9 +42,6 @@ export async function POST(req: NextRequest) {
   const rateLimitCleanup = await pool.query(
     "DELETE FROM rate_limits WHERE window_start < now() - interval '7 days'",
   );
-  const voiceTokenCleanup = await pool.query(
-    "DELETE FROM voice_call_tokens WHERE expires_at < now() - interval '24 hours'",
-  );
   // Outbound webhook delivery history: keep successful deliveries 30 days
   // (enough for a "yep it worked" glance), keep dead/failed-out ones 90 days
   // (diagnosis needs the longer window), then drop outbox events once every
@@ -85,7 +82,6 @@ export async function POST(req: NextRequest) {
       used_auth_tokens: tokenCleanup.rowCount ?? 0,
       email_flow_scheduled: flowCleanup.rowCount ?? 0,
       rate_limits: rateLimitCleanup.rowCount ?? 0,
-      voice_call_tokens: voiceTokenCleanup.rowCount ?? 0,
       webhook_deliveries_delivered: webhookDeliveredCleanup.rowCount ?? 0,
       webhook_deliveries_dead: webhookDeadCleanup.rowCount ?? 0,
       webhook_outbox_events: webhookEventCleanup.rowCount ?? 0,

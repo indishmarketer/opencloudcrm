@@ -50,27 +50,6 @@ SELECT f.id, 1, 3, 'support@example.com',
 FROM email_flows f WHERE f.trigger_key = 'user_signup_verified'
   AND NOT EXISTS (SELECT 1 FROM email_flow_steps st WHERE st.flow_id = f.id AND st.position = 1);
 
-INSERT INTO email_flows (name, trigger_key, active, purpose, goal_type)
-SELECT 'Voice agent interest follow-up', 'voice_agent_interest', true, 'service', 'none'
-WHERE NOT EXISTS (SELECT 1 FROM email_flows WHERE trigger_key = 'voice_agent_interest' AND archived_at IS NULL);
-
-INSERT INTO email_flow_steps (flow_id, position, delay_days, from_email, subject, body_html)
-SELECT f.id, 0, 0, 'support@example.com',
-  'Thanks for trying our voice agent',
-  '<p>Hi {{first_name}},</p><p>Thanks for trying our voice agent for {{company}}. You can revisit the demo and see how it handles natural business conversations here.</p><p><a href="{{voice_agent_url}}">View the voice agent</a></p>'
-FROM email_flows f WHERE f.trigger_key = 'voice_agent_interest'
-  AND NOT EXISTS (SELECT 1 FROM email_flow_steps st WHERE st.flow_id = f.id AND st.position = 0);
-
-INSERT INTO email_flow_steps (flow_id, position, delay_days, from_email, subject, body_html, condition_type, condition_step_id)
-SELECT f.id, 1, 3, 'support@example.com',
-  'Could a voice agent help {{company}}?',
-  '<p>Hi {{first_name}},</p><p>If you are still evaluating a voice agent for {{company}}, reply to this email with the calls you want it to handle. We can help you think through the setup.</p><p><a href="{{voice_agent_url}}">Review the voice agent</a></p>',
-  'not_clicked', first.id
-FROM email_flows f
-JOIN email_flow_steps first ON first.flow_id = f.id AND first.position = 0
-WHERE f.trigger_key = 'voice_agent_interest'
-  AND NOT EXISTS (SELECT 1 FROM email_flow_steps st WHERE st.flow_id = f.id AND st.position = 1);
-
 -- Course purchase and upgrade triggers already exist in application code.
 -- Give each real course an onboarding journey instead of leaving them empty.
 INSERT INTO email_flows (name, trigger_key, course_id, active, purpose, goal_type)

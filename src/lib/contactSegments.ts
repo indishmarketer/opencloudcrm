@@ -99,7 +99,6 @@ export function buildSegmentPredicate(rulesInput: unknown, parameterOffset = 1):
         newsletter: "EXISTS (SELECT 1 FROM newsletter_subscribers ns WHERE lower(trim(ns.email)) = c.normalized_email)",
         contact: "EXISTS (SELECT 1 FROM contact_submissions cs WHERE lower(trim(cs.email)) = c.normalized_email)",
         product_lead: "EXISTS (SELECT 1 FROM product_leads pl WHERE pl.user_id = c.user_id)",
-        voice_lead: "EXISTS (SELECT 1 FROM voice_leads vl WHERE lower(trim(vl.email)) = c.normalized_email OR vl.user_id = c.user_id)",
       };
       clause = sourceClauses[rule.value] || "";
     }

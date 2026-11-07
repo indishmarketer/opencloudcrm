@@ -79,7 +79,6 @@ export async function POST(req: Request) {
         await client.query(`DELETE FROM email_events WHERE lower(trim(recipient_email)) = ANY($1::text[])`, [guestEmails.map((email) => email.toLowerCase())]);
         await client.query(`DELETE FROM email_deliveries WHERE lower(trim(recipient_email)) = ANY($1::text[])`, [guestEmails.map((email) => email.toLowerCase())]);
         await client.query(`DELETE FROM email_suppressions WHERE lower(trim(email)) = ANY($1::text[])`, [guestEmails.map((email) => email.toLowerCase())]);
-        await client.query(`DELETE FROM voice_leads WHERE lower(trim(email)) = ANY($1::text[])`, [guestEmails.map((email) => email.toLowerCase())]);
       }
 
       if (contactIds.length > 0) {

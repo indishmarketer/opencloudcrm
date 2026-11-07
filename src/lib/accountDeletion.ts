@@ -25,7 +25,6 @@ export async function deleteOwnAccount(userId: number): Promise<void> {
     await client.query("UPDATE review_submissions SET user_id = NULL WHERE user_id = $1", [userId]);
     await client.query("DELETE FROM direct_messages WHERE sender_id = $1 OR receiver_id = $1", [userId]);
     await client.query("DELETE FROM notifications WHERE user_id = $1", [userId]);
-    await client.query("DELETE FROM voice_call_tokens WHERE user_id = $1", [userId]);
     await client.query("DELETE FROM lesson_progress WHERE user_id = $1", [userId]);
     await client.query("DELETE FROM course_enrollments WHERE user_id = $1", [userId]);
     await client.query("DELETE FROM community_memberships WHERE user_id = $1", [userId]);

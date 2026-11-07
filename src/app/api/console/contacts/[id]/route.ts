@@ -4,10 +4,9 @@ import { pool } from "@/lib/db";
 import { normalizeCountry } from "@/lib/countries";
 
 /** Editing is limited to name/phone/country. Email is the join key every synced
- * source table (users, newsletter_subscribers, contact_submissions,
- * voice_leads) keys off of via normalized_email/user_id -- changing it here
- * would silently desync those triggers, so it's out of scope for this
- * endpoint. */
+ * source table (users, newsletter_subscribers, contact_submissions) keys off
+ * of via normalized_email/user_id -- changing it here would silently desync
+ * those triggers, so it's out of scope for this endpoint. */
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const isAdmin = await getAdminSession();
   if (!isAdmin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

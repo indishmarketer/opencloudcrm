@@ -85,18 +85,6 @@ ON CONFLICT (normalized_email) DO UPDATE SET
   last_seen_at = GREATEST(contacts.last_seen_at, EXCLUDED.last_seen_at),
   updated_at = now();
 
-INSERT INTO contacts (email, normalized_email, user_id, name, first_seen_at, last_seen_at)
-SELECT lower(trim(vl.email)), lower(trim(vl.email)), max(vl.user_id), max(vl.name), min(vl.created_at), max(vl.created_at)
-FROM voice_leads vl
-WHERE vl.email IS NOT NULL AND trim(vl.email) <> ''
-GROUP BY lower(trim(vl.email))
-ON CONFLICT (normalized_email) DO UPDATE SET
-  user_id = COALESCE(contacts.user_id, EXCLUDED.user_id),
-  name = COALESCE(contacts.name, EXCLUDED.name),
-  first_seen_at = LEAST(contacts.first_seen_at, EXCLUDED.first_seen_at),
-  last_seen_at = GREATEST(contacts.last_seen_at, EXCLUDED.last_seen_at),
-  updated_at = now();
-
 UPDATE contacts c
 SET deliverability_status = 'suppressed', updated_at = now()
 WHERE EXISTS (SELECT 1 FROM email_suppressions es WHERE lower(trim(es.email)) = c.normalized_email);
@@ -170,27 +158,6 @@ $$ LANGUAGE plpgsql;
 DROP TRIGGER IF EXISTS trg_sync_submission_contact ON contact_submissions;
 CREATE TRIGGER trg_sync_submission_contact AFTER INSERT OR UPDATE OF email, name, user_id ON contact_submissions
 FOR EACH ROW EXECUTE FUNCTION sync_submission_contact();
-
-CREATE OR REPLACE FUNCTION sync_voice_lead_contact() RETURNS trigger AS $$
-DECLARE synced_contact_id BIGINT;
-BEGIN
-  IF NEW.email IS NULL OR trim(NEW.email) = '' THEN RETURN NEW; END IF;
-  INSERT INTO contacts (email, normalized_email, user_id, name, first_seen_at, last_seen_at)
-  VALUES (lower(trim(NEW.email)), lower(trim(NEW.email)), NEW.user_id, NEW.name, NEW.created_at, now())
-  ON CONFLICT (normalized_email) DO UPDATE SET
-    user_id = COALESCE(contacts.user_id, EXCLUDED.user_id),
-    name = COALESCE(contacts.name, EXCLUDED.name),
-    last_seen_at = now(), updated_at = now()
-  RETURNING id INTO synced_contact_id;
-  INSERT INTO contact_activities (contact_id, activity_type, source, source_record_id, occurred_at)
-  VALUES (synced_contact_id, 'voice_agent_lead', 'voice_leads', NEW.id::text, NEW.created_at)
-  ON CONFLICT DO NOTHING;
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-DROP TRIGGER IF EXISTS trg_sync_voice_lead_contact ON voice_leads;
-CREATE TRIGGER trg_sync_voice_lead_contact AFTER INSERT OR UPDATE OF email, name, user_id ON voice_leads
-FOR EACH ROW EXECUTE FUNCTION sync_voice_lead_contact();
 
 -- Any feature backed by a user_id can join the same identity automatically.
 -- New feature tables should use this trigger or the application helper in
@@ -270,11 +237,6 @@ INSERT INTO contact_activities (contact_id, activity_type, source, source_record
 SELECT c.id, 'community_post', 'forum_posts', fp.id::text, fp.created_at FROM forum_posts fp JOIN contacts c ON c.user_id = fp.user_id ON CONFLICT DO NOTHING;
 INSERT INTO contact_activities (contact_id, activity_type, source, source_record_id, occurred_at)
 SELECT c.id, 'community_comment', 'forum_comments', fc.id::text, fc.created_at FROM forum_comments fc JOIN contacts c ON c.user_id = fc.user_id ON CONFLICT DO NOTHING;
-INSERT INTO contact_activities (contact_id, activity_type, source, source_record_id, occurred_at)
-SELECT c.id, 'voice_agent_lead', 'voice_leads', vl.id::text, vl.created_at
-FROM voice_leads vl JOIN contacts c ON c.normalized_email = lower(trim(vl.email)) OR (vl.user_id IS NOT NULL AND c.user_id = vl.user_id)
-WHERE vl.email IS NOT NULL OR vl.user_id IS NOT NULL ON CONFLICT DO NOTHING;
-
 CREATE TABLE IF NOT EXISTS contact_segments (
   id SERIAL PRIMARY KEY,
   name TEXT NOT NULL,
