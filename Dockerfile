@@ -63,10 +63,22 @@ RUN addgroup --system --gid 1001 nodejs \
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+# Not traced into the standalone output (nothing in the app imports them),
+# but needed at runtime so a fresh deploy can create its own schema --
+# see the entrypoint below and scripts/migrate.mjs.
+COPY --from=builder --chown=nextjs:nodejs /app/scripts/migrate.mjs ./scripts/migrate.mjs
+COPY --from=builder --chown=nextjs:nodejs /app/scripts/migrations ./scripts/migrations
 
 USER nextjs
 EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-CMD ["node", "server.js"]
+# Fresh deployments (a new Coolify app pointed at a brand-new Postgres
+# database) start with zero tables. Running the migration runner on every
+# boot -- it's a no-op once everything is applied -- is what makes a
+# one-click deploy actually come up usable instead of failing at runtime
+# with "relation ... does not exist" the first time a visitor hits a page
+# that queries it (this is how the WhatsApp tables went missing for
+# people deploying the public repo: nobody had run `npm run migrate`).
+CMD ["sh", "-c", "node scripts/migrate.mjs && node server.js"]

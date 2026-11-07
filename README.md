@@ -205,6 +205,18 @@ runs as a non-root user). It expects `DATABASE_URL` and the rest of
 Docker-based host (Coolify, Railway, Fly, a VPS) works; there's nothing
 Coolify-specific in the app itself.
 
+The container runs `scripts/migrate.mjs` against `DATABASE_URL` before
+starting the server on every boot (a no-op once everything is applied), so
+a brand-new database is schema'd automatically on first deploy -- you don't
+need to run `npm run migrate` by hand in production. It does mean
+`DATABASE_URL` has to point at a reachable, empty-or-matching Postgres
+instance *before* the app's first start, and that deployment logs are the
+place to look first if a deploy fails: a migration error there will stop
+the container from starting, with a clear `<file>.sql: FAILED -- ...`
+message, instead of the app coming up and failing at runtime with
+confusing "relation ... does not exist" errors on whatever page a visitor
+hits first.
+
 **This app assumes it sits behind Cloudflare.** Login, signup, and most
 other rate-limited endpoints key their per-IP throttling off the
 `cf-connecting-ip` request header, which Cloudflare's edge sets and
