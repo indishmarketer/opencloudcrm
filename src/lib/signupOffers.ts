@@ -6,7 +6,7 @@
  * not an interruption, and (2) a popup that appears the moment someone
  * copies a prompt/skill, with a headline, subheadline, a thumbnail, and a
  * button -- rotating WHAT it offers (newsletter, courses, webinars, a
- * call, the voice agent, community) instead of always the same thing. */
+ * call, community) instead of always the same thing. */
 export type SignupOffer = {
   headline: string;
   subheadline: string;
@@ -52,14 +52,6 @@ export const SIGNUP_OFFERS: SignupOffer[] = [
     linkLabel: "Book a free discovery call",
     href: "/book/discovery-call",
     image: `${IMG_BASE}-call.webp`,
-  },
-  {
-    headline: "Hear an AI voice agent in action",
-    subheadline: "Try our AI voice agent free, it answers calls and books appointments.",
-    buttonLabel: "Try it free",
-    linkLabel: "Try the AI voice agent free",
-    href: "/products/voice-agent",
-    image: `${IMG_BASE}-voice-agent.webp`,
   },
   {
     headline: "Trade notes with other builders",

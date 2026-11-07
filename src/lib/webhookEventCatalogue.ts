@@ -22,7 +22,6 @@ export const WEBHOOK_EVENT_TYPES = [
   { key: "contact_form.submitted", label: "Contact form submitted", description: "Someone submits the public contact form." },
   { key: "external_webhook.received", label: "External webhook received", description: "A signed inbound webhook reaches this deployment; use the source slug and payload fields in conditions and actions." },
   { key: "meeting.booked", label: "Meeting booked", description: "A visitor books a meeting and receives a confirmed time." },
-  { key: "voice_agent.interest", label: "Voice agent lead captured", description: "Someone shares their email while trying the voice agent demo." },
   { key: "author_application.submitted", label: "Author application submitted", description: "Someone applies to write for the blog." },
   { key: "author_application.draft_submitted", label: "Author draft submitted", description: "An approved applicant submits (or resubmits) their draft link." },
   { key: "author_application.accepted", label: "Author draft accepted", description: "An admin accepts an applicant's draft, ready to publish." },

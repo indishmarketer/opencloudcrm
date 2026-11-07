@@ -19,7 +19,6 @@ const TRIGGERS: Record<string, string> = {
   course_completed: "Someone completes every accessible lesson in a course",
   newsletter_signup: "Someone confirms a newsletter signup",
   community_inactivity: "A community member has not created their first post",
-  voice_agent_interest: "Someone shares their email while trying the voice agent",
 };
 
 const FROM_ADDRESSES = [

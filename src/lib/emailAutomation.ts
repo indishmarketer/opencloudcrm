@@ -15,7 +15,6 @@ export const EMAIL_TRIGGERS = [
   { key: "course_completed", label: "Someone completes every accessible lesson in a course", courseScoped: true },
   { key: "newsletter_signup", label: "Someone confirms a newsletter signup", courseScoped: false },
   { key: "community_inactivity", label: "A community member has not created their first post", courseScoped: false },
-  { key: "voice_agent_interest", label: "Someone shares their email while trying the voice agent", courseScoped: false },
 ] as const;
 
 export type EmailTriggerKey = (typeof EMAIL_TRIGGERS)[number]["key"];
@@ -418,62 +417,6 @@ export async function syncCommunityInactivityFlows(): Promise<number> {
     }
   } catch (error) {
     console.error("Community inactivity synchronization failed (non-fatal):", error);
-  }
-  return scheduledCount;
-}
-
-/** Convert real voice-agent leads into a normal automation journey. Only leads
- * created after the flow itself are enrolled, preventing surprise backfills. */
-export async function syncVoiceAgentInterestFlows(): Promise<number> {
-  let scheduledCount = 0;
-  try {
-    const flows = await pool.query(
-      `SELECT id, created_at FROM email_flows
-       WHERE trigger_key = 'voice_agent_interest' AND active = true AND visual_workflow_id IS NULL AND archived_at IS NULL`,
-    );
-    for (const flow of flows.rows) {
-      const steps = await pool.query(
-        "SELECT id, delay_days FROM email_flow_steps WHERE flow_id = $1 AND archived_at IS NULL ORDER BY position, id",
-        [flow.id],
-      );
-      const leads = await pool.query(
-        `SELECT id, user_id, email, name, company, created_at FROM voice_leads
-         WHERE email IS NOT NULL AND trim(email) <> '' AND created_at >= $1`,
-        [flow.created_at],
-      );
-      for (const lead of leads.rows) {
-        const eventKey = `voice-agent-interest:${lead.id}`;
-        const existing = await pool.query(
-          "SELECT id FROM email_flow_runs WHERE flow_id = $1 AND event_key = $2 LIMIT 1",
-          [flow.id, eventKey],
-        );
-        if (existing.rowCount) continue;
-        const contactId = await ensureContact({ email: lead.email, name: lead.name, userId: lead.user_id });
-        const vars = {
-          ...contactMessageValues({ name: lead.name, email: lead.email }),
-          company: lead.company || "your business",
-          voice_agent_url: `${SITE_URL}/products/voice-agent`,
-        };
-        const run = await pool.query(
-          `INSERT INTO email_flow_runs (flow_id, contact_id, recipient_email, event_key, vars)
-           VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-          [flow.id, contactId, lead.email.toLowerCase(), eventKey, JSON.stringify(vars)],
-        );
-        let cumulativeDays = 0;
-        for (const step of steps.rows) {
-          cumulativeDays += Number(step.delay_days);
-          await pool.query(
-            `INSERT INTO email_flow_scheduled (step_id, run_id, recipient_email, vars, send_at)
-             VALUES ($1, $2, $3, $4, $5)`,
-            [step.id, run.rows[0].id, lead.email.toLowerCase(), JSON.stringify(vars),
-              new Date(new Date(lead.created_at).getTime() + cumulativeDays * 86400000)],
-          );
-          scheduledCount++;
-        }
-      }
-    }
-  } catch (error) {
-    console.error("Voice-agent interest synchronization failed (non-fatal):", error);
   }
   return scheduledCount;
 }

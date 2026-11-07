@@ -10,7 +10,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types --loader ./test/alias-loader.mjs --test test/**/*.test.mjs test/**/*.test.ts voice-agent-server/test/**/*.test.js",
+    "test": "node --experimental-strip-types --loader ./test/alias-loader.mjs --test test/**/*.test.mjs test/**/*.test.ts",
     "verify": "npm run lint && npm run typecheck && npm run test",
     "audit:seo": "node scripts/audit-seo.mjs",
     "audit:seo:strict": "node scripts/audit-seo.mjs --strict",

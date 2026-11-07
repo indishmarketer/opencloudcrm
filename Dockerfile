@@ -38,12 +38,6 @@ ARG NEXT_PUBLIC_SOCIAL_YOUTUBE
 ENV NEXT_PUBLIC_SOCIAL_YOUTUBE=$NEXT_PUBLIC_SOCIAL_YOUTUBE
 ARG NEXT_PUBLIC_SOCIAL_LINKEDIN
 ENV NEXT_PUBLIC_SOCIAL_LINKEDIN=$NEXT_PUBLIC_SOCIAL_LINKEDIN
-# Not a NEXT_PUBLIC_* var, but next.config.ts's headers() (the CSP) is also
-# evaluated once at build time for a standalone build, not per-request --
-# so the voice-agent domain it derives from this needs to be known now too,
-# same build-time constraint as the brand vars above (see next.config.ts).
-ARG VOICE_AGENT_WS_URL
-ENV VOICE_AGENT_WS_URL=$VOICE_AGENT_WS_URL
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build

@@ -53,16 +53,16 @@ another deployment recreates them.
 **Still set by environment variables** (deployment-level, see
 `.env.example`): site name, site URL and asset domain
 (`NEXT_PUBLIC_*`, `src/config/brand.ts`), plus credentials for each
-integration. A few deeper pages still have copy in code: the voice-agent
-product page, `/open-source`, `/apply-to-write`, and the reviews shown on
-`/reviews` (`src/data/reviews.ts`).
+integration. A few deeper pages still have copy in code: `/open-source`,
+`/apply-to-write`, and the reviews shown on `/reviews`
+(`src/data/reviews.ts`).
 
 ## Stack & requirements
 
 - Node 20, Next.js 16 (App Router)
 - PostgreSQL (all app data: blog, directory, courses, contacts, console
   admins, API tokens, etc.)
-- Everything else (email, storage, payments, WhatsApp, voice) is optional --
+- Everything else (email, storage, payments, WhatsApp) is optional --
   the app runs with just the two above, and each integration quietly turns
   itself off if its env vars aren't set (see `src/config/features.ts`).
 
@@ -98,17 +98,13 @@ more than the rest for getting a usable deployment running:
   captcha-gated form (signup, contact, newsletter, etc.) fails closed in
   production if this isn't set, i.e. those forms silently stop accepting
   submissions, not silently skip the check.
-- `NEXT_PUBLIC_SITE_NAME`, `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_ASSET_DOMAIN`,
-  and `VOICE_AGENT_WS_URL` -- these all have to be passed as Docker build
-  args, not just runtime env vars. The brand ones are `NEXT_PUBLIC_*`,
-  which Next.js inlines into the client bundle at build time -- a value
-  only set at container runtime never reaches client components like the
-  nav logo. `VOICE_AGENT_WS_URL` isn't `NEXT_PUBLIC_*`, but
-  `next.config.ts` reads it to build the CSP header, and that CSP is also
-  computed once at build time for a standalone build, not per-request.
-  The `Dockerfile` already declares `ARG`s for all of these; if you're
-  building a different way, make sure your build step passes them
-  through too.
+- `NEXT_PUBLIC_SITE_NAME`, `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_ASSET_DOMAIN`
+  -- these all have to be passed as Docker build args, not just runtime
+  env vars. Next.js inlines `NEXT_PUBLIC_*` into the client bundle at
+  build time -- a value only set at container runtime never reaches
+  client components like the nav logo. The `Dockerfile` already declares
+  `ARG`s for all of these; if you're building a different way, make sure
+  your build step passes them through too.
 
 Payments (Razorpay/PayPal), R2 storage, Mux video, Cal.com, Google Business
 Profile, and WhatsApp are each fully optional -- leave their section blank
@@ -214,13 +210,13 @@ gets OOM-killed mid-compile with no error in the logs, just "failed". If
 you hit that, this is why, and **more swap or a smaller build doesn't fully
 fix it** -- the real fix is to not build on that machine at all.
 
-`.github/workflows/docker-publish.yml` builds the app and the voice agent
-server on GitHub's own runners (free for this public repo) on every push to
-`main`, and publishes both to GitHub Container Registry. `docker-compose.yml`
-at the repo root pulls those prebuilt images plus a `postgres:16-alpine`
-service, so `docker compose up` (or Coolify's **New Resource -> Docker
-Compose**, pointed at this repo) needs only a few hundred MB to bring up
-all three resources -- no build step runs on your server at all.
+`.github/workflows/docker-publish.yml` builds the app on GitHub's own
+runners (free for this public repo) on every push to `main`, and publishes
+it to GitHub Container Registry. `docker-compose.yml` at the repo root
+pulls that prebuilt image plus a `postgres:16-alpine` service, so
+`docker compose up` (or Coolify's **New Resource -> Docker Compose**,
+pointed at this repo) needs only a few hundred MB to bring up both
+resources -- no build step runs on your server at all.
 
 Set `DB_PASSWORD`, `SESSION_SECRET`, and `ADMIN_EMAIL` at minimum (see the
 `:?` markers in `docker-compose.yml`); the rest of `.env.example`'s
@@ -228,30 +224,22 @@ variables are optional and each integration quietly turns itself off
 without them.
 
 **What the prebuilt image doesn't give you:** the `NEXT_PUBLIC_*` brand
-vars and `VOICE_AGENT_WS_URL` are inlined into the app at build time (see
-above), and a single shared image can't carry a different value per
-deployer's domain -- so the published image builds with none of them set.
-In practice that means:
+vars are inlined into the app at build time (see above), and a single
+shared image can't carry a different value per deployer's domain -- so
+the published image builds with none of them set. The site name/logo
+shown to visitors comes from the console (`getSiteIdentity()`/
+`site_settings`, same as any fresh install) and is unaffected -- set it
+from `/console/login` once you're in. `NEXT_PUBLIC_SITE_URL`'s fallback
+(`https://example.com`) still ends up in `metadataBase` and a couple of
+SEO tags (canonical URLs, OG image absolute URLs) until you build your
+own image -- cosmetic, not functional.
 
-- The site name/logo shown to visitors comes from the console
-  (`getSiteIdentity()`/`site_settings`, same as any fresh install) and is
-  unaffected -- set it from `/console/login` once you're in.
-- `NEXT_PUBLIC_SITE_URL`'s fallback (`https://example.com`) still ends up
-  in `metadataBase` and a couple of SEO tags (canonical URLs, OG image
-  absolute URLs) until you build your own image. Cosmetic, not functional.
-- The voice agent demo widget on the main site **will not connect**: its
-  CSP entry is also computed from `VOICE_AGENT_WS_URL` at build time
-  (`src/config/csp.ts`), and the published image has none configured, so
-  the browser blocks the connection even though `voice-agent-server`
-  itself is running fine. This is the one real functional gap, not just
-  cosmetic.
-
-If you want any of that fully correct, fork this repo, set your own
-`NEXT_PUBLIC_SITE_URL`/`NEXT_PUBLIC_SITE_NAME`/`NEXT_PUBLIC_ASSET_DOMAIN`/
-`VOICE_AGENT_WS_URL` (as repository variables, read into the same
-`docker-publish.yml` workflow as build args), and let your fork's own
-Actions build your own correctly-branded image -- still on GitHub's
-runners, never on your own server.
+If you want that fully correct, fork this repo, set your own
+`NEXT_PUBLIC_SITE_URL`/`NEXT_PUBLIC_SITE_NAME`/`NEXT_PUBLIC_ASSET_DOMAIN`
+(as repository variables, read into the same `docker-publish.yml`
+workflow as build args), and let your fork's own Actions build your own
+correctly-branded image -- still on GitHub's runners, never on your own
+server.
 
 ### Building from source instead
 

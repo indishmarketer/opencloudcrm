@@ -47,7 +47,7 @@ const workflowEmailVariables = [
   { token: "data.guide", label: "Guide slug" }, { token: "data.guide_url", label: "Guide link" },
   { token: "data.application_id", label: "Application ID" }, { token: "data.topics", label: "Application topics" },
   { token: "data.message", label: "Contact message" }, { token: "data.sample_url", label: "Writing sample link" },
-  { token: "data.community_url", label: "Community link" }, { token: "data.voice_agent_url", label: "Voice agent link" },
+  { token: "data.community_url", label: "Community link" },
 ];
 
 function WorkflowNodeView({ id, data, selected }: NodeProps<CanvasNode>) {

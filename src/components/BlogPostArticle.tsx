@@ -13,7 +13,6 @@ import { getRelatedToolsForPost } from "@/lib/relatedBlogPosts";
 import { serializeJsonLd } from "@/lib/jsonLd";
 import { sanitizeBlogHtml } from "@/lib/sanitizeBlogHtml";
 import { buildTableOfContents } from "@/lib/tableOfContents";
-import VoiceAgentBanner from "@/components/VoiceAgentBanner";
 import AuthorSocialLinks from "@/components/SocialIcon";
 import type { BlogIndexEntry, BlogSource } from "@/lib/blogPosts";
 import { SITE_NAME, SITE_URL } from "@/config/brand";
@@ -92,28 +91,6 @@ export default async function BlogPostArticle({ post, indexEntry, preview = fals
 
   const fullHtml = buildTableOfContents(resolveHtml(post.html));
 
-  const searchStr = (post.title + " " + post.slug + " " + (post.custom_excerpt || "")).toLowerCase();
-  const isVoiceAgentRelated =
-    searchStr.includes("voice agent") ||
-    searchStr.includes("voice-agent") ||
-    searchStr.includes("voice ai") ||
-    searchStr.includes("voice-ai") ||
-    searchStr.includes("retell ai") ||
-    searchStr.includes("retell-ai");
-
-  let firstPart = fullHtml;
-  let secondPart = "";
-  let hasSplit = false;
-
-  if (isVoiceAgentRelated) {
-    const paragraphs = fullHtml.split("</p>");
-    if (paragraphs.length > 2) {
-      firstPart = paragraphs.slice(0, 2).join("</p>") + "</p>";
-      secondPart = paragraphs.slice(2).join("</p>");
-      hasSplit = true;
-    }
-  }
-
   return (
     <article className="mx-auto max-w-3xl px-6 py-20">
       {preview ? (
@@ -155,20 +132,10 @@ export default async function BlogPostArticle({ post, indexEntry, preview = fals
           <strong>Edition note:</strong> This article covers the {latestTitleYear} edition. Features, pricing, and availability may have changed; follow the linked primary sources for current details.
         </aside>
       )}
-      {hasSplit ? (
-        <div className="prose prose-neutral mt-10 max-w-none prose-headings:font-display prose-a:text-ink prose-a:underline prose-img:w-full prose-img:h-auto [&_img+p]:mt-2 [&_img+p]:text-center [&_img+p]:text-sm [&_img+p]:italic [&_img+p]:text-ink-soft [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:border-line [&_th]:border [&_th]:border-line [&_td]:p-2 [&_th]:p-2 [&_th]:bg-paper-soft">
-          <div dangerouslySetInnerHTML={{ __html: firstPart }} />
-          <div className="not-prose my-10">
-            <VoiceAgentBanner />
-          </div>
-          <div dangerouslySetInnerHTML={{ __html: secondPart }} />
-        </div>
-      ) : (
-        <div
-          className="prose prose-neutral mt-10 max-w-none prose-headings:font-display prose-a:text-ink prose-a:underline prose-img:w-full prose-img:h-auto [&_img+p]:mt-2 [&_img+p]:text-center [&_img+p]:text-sm [&_img+p]:italic [&_img+p]:text-ink-soft [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:border-line [&_th]:border [&_th]:border-line [&_td]:p-2 [&_th]:p-2 [&_th]:bg-paper-soft"
-          dangerouslySetInnerHTML={{ __html: fullHtml }}
-        />
-      )}
+      <div
+        className="prose prose-neutral mt-10 max-w-none prose-headings:font-display prose-a:text-ink prose-a:underline prose-img:w-full prose-img:h-auto [&_img+p]:mt-2 [&_img+p]:text-center [&_img+p]:text-sm [&_img+p]:italic [&_img+p]:text-ink-soft [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:border-line [&_th]:border [&_th]:border-line [&_td]:p-2 [&_th]:p-2 [&_th]:bg-paper-soft"
+        dangerouslySetInnerHTML={{ __html: fullHtml }}
+      />
       {post.sources.length > 0 && (
         <aside className="mt-12 rounded-2xl border border-line bg-paper-soft p-6" aria-labelledby="article-sources">
           <h2 id="article-sources" className="font-display text-xl font-semibold">Sources and further reading</h2>

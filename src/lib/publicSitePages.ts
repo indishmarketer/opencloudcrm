@@ -24,7 +24,6 @@ export type PublicSitePage = SearchResult & {
  * listPublishedPageEntries() instead.
  */
 export const PUBLIC_SITE_PAGES: PublicSitePage[] = [
-  { type: "page", title: "AI Voice Agent", desc: "An AI voice agent product for handling business calls.", url: "/products/voice-agent", changeFrequency: "monthly", priority: 0.8 },
   { type: "page", title: "Courses", desc: "Practical courses for marketers and business owners.", url: "/courses", changeFrequency: "monthly", priority: 0.8 },
   { type: "page", title: "Reviews", desc: `Client stories and reviews of ${SITE_NAME}.`, url: "/reviews", changeFrequency: "monthly", priority: 0.7 },
   { type: "page", title: "Blog", desc: "Guides, reviews, and practical marketing insights.", url: "/blog", changeFrequency: "daily", priority: 0.9 },

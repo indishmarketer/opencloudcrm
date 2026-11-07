@@ -1,7 +1,6 @@
 import crypto from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { dispatchDueEmailWork } from "@/lib/emailDispatcher";
-import { syncVoiceAgentInterestFlows } from "@/lib/emailAutomation";
 import { sendPendingCampaignBatch as sendPendingWhatsAppBatch } from "@/lib/whatsappCampaigns";
 import { dispatchWorkflowRuns } from "@/lib/workflows";
 
@@ -12,7 +11,6 @@ export async function POST(req: NextRequest) {
   const authorized = !!expected && !!auth && expected.length === auth.length &&
     crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(auth));
   if (!authorized) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  await syncVoiceAgentInterestFlows();
   const result = await dispatchDueEmailWork();
   // WhatsApp campaigns drain on this same five-minute schedule rather than
   // on a cron of their own: the VPS crontab is edited by hand, and a new

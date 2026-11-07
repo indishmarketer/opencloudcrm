@@ -42,7 +42,7 @@ test("validatePagePath rejects built-in app routes and bad shapes", () => {
   assert.equal(validatePagePath("/services/web-design"), null);
   assert.match(validatePagePath("/blog/hello"), /built-in/);
   assert.match(validatePagePath("/console"), /built-in/);
-  assert.match(validatePagePath("/products/voice-agent"), /built-in/);
+  assert.match(validatePagePath("/webinars"), /built-in/);
   assert.equal(validatePagePath("/products"), null, "/products itself is a builder page");
   assert.match(validatePagePath("/a/b/c/d"), /three levels/);
 });

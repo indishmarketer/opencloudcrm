@@ -60,11 +60,6 @@ export const EMAIL_FLOW_VARIABLES: Record<string, MessageVariable[]> = {
     { token: "current_lesson", label: "Next lesson" },
   ],
   community_inactivity: [...RECIPIENT_FIELDS, { token: "community_url", label: "Community link" }],
-  voice_agent_interest: [
-    ...RECIPIENT_FIELDS,
-    { token: "company", label: "Company name" },
-    { token: "voice_agent_url", label: "Voice agent link" },
-  ],
 };
 
 export function contactMessageValues(contact: {

@@ -173,7 +173,7 @@ export default function DirectoryBrowser({
                 type="search"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search 'voice agent', 'CRM', 'free API'..."
+                placeholder="Search 'CRM', 'free API', 'email tool'..."
                 className="min-w-0 flex-1 bg-transparent py-3 text-base text-paper outline-none placeholder:text-paper/50 sm:py-4"
               />
               {query && (

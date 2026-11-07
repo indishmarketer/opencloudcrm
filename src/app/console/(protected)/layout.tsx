@@ -8,9 +8,8 @@ import { FEATURES } from "@/config/features";
 // Every WhatsApp console page already renders a full "not connected yet"
 // block with zero config -- there's nothing to discover by leaving the
 // link visible, so it's hidden entirely rather than leading to a dead
-// end. Voice Agent's console page is different (pure settings/history,
-// no live call to VOICE_AGENT_WS_URL) and Payments already shows its own
-// live Configured/Not configured state inline, so neither is gated here.
+// end. Payments already shows its own live Configured/Not configured
+// state inline, so it isn't gated here.
 const baseNavGroups = [
   {
     title: "General",
@@ -43,7 +42,6 @@ const baseNavGroups = [
       { href: "/console/media", label: "Media Library" },
       { href: "/console/courses", label: "Courses" },
       { href: "/console/directory", label: "Tools directory" },
-      { href: "/console/voice-agent", label: "Voice agent" },
       { href: "/console/lead-magnets", label: "Free guides" },
     ],
   },

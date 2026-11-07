@@ -16,7 +16,6 @@ import { getPaypalClientId } from "@/lib/paypal";
  * prop from a server-component parent instead. */
 export const FEATURES = {
   whatsapp: isWhatsAppManagementConfigured(),
-  voiceAgent: Boolean(process.env.VOICE_AGENT_WS_URL),
   razorpay: Boolean(getRazorpayKeyId()),
   paypal: Boolean(getPaypalClientId()),
   email: Boolean(process.env.SES_ACCESS_KEY_ID && process.env.SES_SECRET_ACCESS_KEY),

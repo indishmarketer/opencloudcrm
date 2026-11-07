@@ -1,6 +1,12 @@
 import { Pool } from "pg";
 import type { PoolClient } from "pg";
-import { PHASE_PRODUCTION_BUILD } from "next/constants";
+
+// Not imported from "next/constants": that package resolves fine inside
+// Next's own webpack build but breaks plain Node ESM resolution (this
+// project's test suite runs under node --test, not Next) -- see
+// test/alias-loader.mjs. This value is Next's own stable, documented
+// build-phase constant (confirmed equal to PHASE_PRODUCTION_BUILD).
+const PHASE_PRODUCTION_BUILD = "phase-production-build";
 
 declare global {
   var _pgPool: Pool | undefined;

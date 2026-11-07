@@ -6,11 +6,7 @@ const securityHeaders = [
   { key: "X-Frame-Options", value: "SAMEORIGIN" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-  // microphone=(self), not (): VoiceAgentCall.tsx uses getUserMedia()
-  // directly on this origin (the /products/voice-agent demo), not just on
-  // the separate voice-agent subdomain (see src/config/csp.ts) --
-  // denying it outright would break that feature.
-  { key: "Permissions-Policy", value: "camera=(), microphone=(self), geolocation=(), browsing-topics=()" },
+  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), browsing-topics=()" },
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
   { key: "Cross-Origin-Opener-Policy", value: "same-origin-allow-popups" },
   { key: "Content-Security-Policy", value: SITE_CSP },
@@ -58,7 +54,6 @@ const nextConfig: NextConfig = {
       { source: "/api/console/:path*", headers: privateHeaders },
       { source: "/api/payments/:path*", headers: privateHeaders },
       { source: "/api/notifications/:path*", headers: privateHeaders },
-      { source: "/api/voice-agent/:path*", headers: privateHeaders },
       { source: "/api/course-comments/:path*", headers: privateHeaders },
     ];
   },

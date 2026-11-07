@@ -24,21 +24,6 @@ import { SITE_HOSTNAME, ASSET_DOMAIN } from "./brand";
 const siteWww = `https://www.${SITE_HOSTNAME}`;
 const assetOrigin = `https://${ASSET_DOMAIN}`;
 
-// The voice agent is a fully optional feature (src/config/features.ts) --
-// no VOICE_AGENT_WS_URL means no voice-agent CSP/image entries at all,
-// rather than hardcoding a domain nobody configured.
-function voiceAgentHost(): string | null {
-  const wsUrl = process.env.VOICE_AGENT_WS_URL;
-  if (!wsUrl) return null;
-  try {
-    return new URL(wsUrl).hostname;
-  } catch {
-    return null;
-  }
-}
-const voiceHost = voiceAgentHost();
-const voiceAgentCsp = voiceHost ? ` https://${voiceHost} wss://${voiceHost}` : "";
-
 const cspDirectives = [
   "default-src 'self'",
   // No sentry-cdn.com entry needed: Sentry is loaded from our own bundle
@@ -65,7 +50,7 @@ const cspDirectives = [
   // longer need any Daily.co entries here -- the actual video call happens
   // on Cal.com's own domain (app.cal.com), which visitors are simply
   // navigated to via a normal link, not embedded on this site.
-  `connect-src 'self' https://www.google-analytics.com https://analytics.google.com https://challenges.cloudflare.com https://*.r2.cloudflarestorage.com https://api.razorpay.com https://lumberjack.razorpay.com https://www.paypal.com https://connect.facebook.net https://www.facebook.com${voiceAgentCsp} https://streaming.assemblyai.com wss://streaming.assemblyai.com https://*.mux.com https://*.litix.io`,
+  `connect-src 'self' https://www.google-analytics.com https://analytics.google.com https://challenges.cloudflare.com https://*.r2.cloudflarestorage.com https://api.razorpay.com https://lumberjack.razorpay.com https://www.paypal.com https://connect.facebook.net https://www.facebook.com https://*.mux.com https://*.litix.io`,
   // 'self': the console's own page preview embeds /preview/page/:id in an
   // iframe -- frame-src doesn't fall back to default-src once it's set
   // explicitly, so without this every same-origin iframe (not just

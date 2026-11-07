@@ -85,12 +85,6 @@ const PATHS: Record<string, React.ReactNode> = {
       <rect x="13.5" y="13" width="7.5" height="7.5" rx="1.5" />
     </>
   ),
-  "/console/voice-agent": (
-    <>
-      <rect x="9" y="2.5" width="6" height="11" rx="3" />
-      <path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3.5" />
-    </>
-  ),
   "/console/lead-magnets": (
     <>
       <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a2.5 2.5 0 0 1-2.5-2.5Z" />

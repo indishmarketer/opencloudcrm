@@ -3,7 +3,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { pool, withTransaction } from "@/lib/db";
 import { deliverWebhookAttempt } from "@/lib/webhookDelivery";
 import { MAX_DELIVERY_ATTEMPTS, nextBackoffDelayMs } from "@/lib/webhookRetry";
-import { syncVoiceAgentInterestWebhookEvents } from "@/lib/webhookEvents";
 
 const CLAIM_BATCH_SIZE = 25;
 const STALE_CLAIM_MINUTES = 10;
@@ -23,8 +22,6 @@ export async function POST(req: NextRequest) {
   const authorized = !!expected && !!auth && expected.length === auth.length &&
     crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(auth));
   if (!authorized) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const voiceAgentEventsEmitted = await syncVoiceAgentInterestWebhookEvents();
 
   // Claim due deliveries for currently-enabled destinations only. SKIP
   // LOCKED means two overlapping cron invocations (a slow prior run plus a
@@ -121,6 +118,5 @@ export async function POST(req: NextRequest) {
     delivered,
     retried,
     dead,
-    voiceAgentEventsEmitted,
   });
 }
