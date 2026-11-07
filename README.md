@@ -201,7 +201,49 @@ runs as a non-root user). It expects `DATABASE_URL` and the rest of
 Docker-based host (Coolify, Railway, Fly, a VPS) works; there's nothing
 Coolify-specific in the app itself.
 
+### Updating an existing deployment
+
+If you already have this running somewhere (an existing Coolify app
+resource pointed at this repo, with its own Postgres resource), **just
+redeploy that same app** -- don't switch it to the Docker Compose setup
+below. Redeploying rebuilds and restarts only the app container; it never
+touches, recreates, or drops the separate database resource, which is why
+this is safe:
+
+- `scripts/migrate.mjs` only ever adds: every statement in every migration
+  is `CREATE TABLE IF NOT EXISTS`, `ALTER TABLE ... ADD COLUMN IF NOT
+  EXISTS`, or similar. It tracks what's already applied in a
+  `schema_migrations` table and only runs what's new -- it has no DROP,
+  no destructive step, and no code path that touches existing rows in a
+  way that loses data.
+- Your database is a separate resource with its own volume. Nothing in
+  the app's Dockerfile or deploy process creates, deletes, or resets it.
+
+Want to check what a redeploy would actually do before running it? If you
+have the `im_website_db` MCP connected (or an equivalent read-only
+connection to your own database), `migration_status` lists every
+migration file against what your database already has applied, with zero
+risk -- it only reads. "0 pending" means a redeploy runs no migration SQL
+at all, it just restarts the server.
+
+One thing that read can surface, and is worth understanding rather than
+worrying about: a database that's been running a while may show
+migrations tracked as applied that no longer have a matching file in
+`scripts/migrations/`. That isn't data loss or a broken deploy -- it
+means a migration ran at some point (by hand, by an earlier version of
+this repo, or via a direct database tool) and its `.sql` file was later
+removed from the repo, often deliberately, e.g. a one-off script that
+seeded this specific site's own real page content or review data, which
+by design (see "What you actually get" above) doesn't belong in the
+public repo at all. The migration already ran; removing the file
+afterward doesn't undo it. If a name looks unfamiliar, treat it as
+history, not a problem -- nothing reruns anything by deleting a file.
+
 ### Recommended: `docker-compose.yml`, prebuilt images
+
+For a **new** deployment (nothing running yet, no existing database to
+preserve) -- if you already have one running, see "Updating an existing
+deployment" above instead.
 
 Building this app from source (`npm run build` inside the Dockerfile) needs
 several GB of RAM -- a large TypeScript project with hundreds of pages.
@@ -214,9 +256,17 @@ fix it** -- the real fix is to not build on that machine at all.
 runners (free for this public repo) on every push to `main`, and publishes
 it to GitHub Container Registry. `docker-compose.yml` at the repo root
 pulls that prebuilt image plus a `postgres:16-alpine` service, so
-`docker compose up` (or Coolify's **New Resource -> Docker Compose**,
-pointed at this repo) needs only a few hundred MB to bring up both
+`docker compose up` needs only a few hundred MB to bring up both
 resources -- no build step runs on your server at all.
+
+In Coolify, **New Resource -> Docker Compose** offers two ways to fill
+that in: pointing it at a Git source (which then reads `docker-compose.yml`
+from this repo automatically on every deploy), or an empty box for pasting
+compose content directly. If you get the empty box, open
+[`docker-compose.yml`](docker-compose.yml) in this repo and paste its
+contents in as-is -- it's the same file either way, pasting just means
+Coolify won't auto-update its copy if this file changes later, so a Git
+source is preferable when that option is offered.
 
 Set `DB_PASSWORD`, `SESSION_SECRET`, and `ADMIN_EMAIL` at minimum (see the
 `:?` markers in `docker-compose.yml`); the rest of `.env.example`'s
