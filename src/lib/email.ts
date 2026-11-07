@@ -5,10 +5,32 @@ import { createEmailClickToken, createEmailOpenToken } from "@/lib/emailOpenTrac
 import { ensureContact } from "@/lib/contacts";
 import { wrapEmailHtml } from "@/lib/emailShell";
 import { sendViaSes } from "@/lib/sesEmail";
+import { sendViaBrevo } from "@/lib/brevoEmail";
 import { SITE_URL, SITE_NAME } from "@/config/brand";
 import { getReplyToEmail } from "@/lib/businessProfile";
 
 const EMAIL_DOMAIN = new URL(SITE_URL).hostname.replace(/^www\./, "");
+
+type EmailProvider = "ses" | "brevo";
+
+/** Which provider actually has credentials set, right now. `EMAIL_PROVIDER`
+ * picks explicitly when both are configured; otherwise SES wins if both are
+ * set (this project's original provider, so an existing deployment's
+ * behavior never changes just because someone also added a Brevo key). */
+function resolveProvider(): EmailProvider | null {
+  const explicit = process.env.EMAIL_PROVIDER?.toLowerCase();
+  if (explicit === "ses" || explicit === "brevo") return explicit;
+  if (process.env.SES_ACCESS_KEY_ID && process.env.SES_SECRET_ACCESS_KEY && process.env.SES_REGION) return "ses";
+  if (process.env.BREVO_API_KEY) return "brevo";
+  return null;
+}
+
+/** For callers that need to know, before attempting a send, whether ANY
+ * provider is usable -- e.g. the magic-link login route falls back to
+ * logging the link instead of silently failing when this is false. */
+export function isEmailProviderConfigured(): boolean {
+  return resolveProvider() !== null;
+}
 
 function withFooter(html: string, unsubscribeUrl: string): string {
   return `${html}
@@ -122,9 +144,11 @@ export async function sendEmail({
    * go by the filename extension; name .ics attachments accordingly. */
   attachments?: { name: string; content: string }[];
 }) {
-  // All mail goes out through Amazon SES (src/lib/sesEmail.ts); delivery,
-  // bounce and complaint events come back via /api/webhooks/ses-sns.
-  const provider = "ses";
+  // Amazon SES (src/lib/sesEmail.ts) or Brevo (src/lib/brevoEmail.ts),
+  // whichever has credentials set -- see resolveProvider() above. SES
+  // delivery/bounce/complaint events come back via
+  // /api/webhooks/ses-sns; Brevo doesn't have an equivalent wired up yet.
+  const provider = resolveProvider();
   // info@indishmarketer.com is a receive-only inbox (the owner's real
   // forwarding target), never an automated "From" identity -- support@ is
   // the safe fallback if a call site somehow omits `from`.
@@ -149,9 +173,9 @@ export async function sendEmail({
     console.error("email delivery creation failed (non-fatal):", error);
   }
 
-  if ((!process.env.SES_ACCESS_KEY_ID || !process.env.SES_SECRET_ACCESS_KEY || !process.env.SES_REGION)) {
-    console.warn("SES credentials not configured, skipping email send.");
-    await updateDelivery(deliveryId, "status = 'failed', failed_at = now(), last_error = $2", ["SES credentials missing"]);
+  if (!provider) {
+    console.warn("No email provider configured (SES or Brevo), skipping email send.");
+    await updateDelivery(deliveryId, "status = 'failed', failed_at = now(), last_error = $2", ["No email provider configured"]);
     await logEmailEvent({ deliveryId, templateKey: resolvedTemplateKey, category: resolvedCategory, recipientEmail: to, messageId: null, event: "failed", meta: { reason: "missing_api_key" } });
     return { ok: false, deliveryId };
   }
@@ -202,7 +226,7 @@ export async function sendEmail({
   // or accidentally send an unstyled fragment.
   outgoingHtml = wrapEmailHtml(outgoingHtml, { serif: resolvedCategory === "campaign" });
 
-  const sendResult = await sendViaSes({
+  const sendOpts = {
     to,
     subject,
     html: outgoingHtml,
@@ -211,7 +235,8 @@ export async function sendEmail({
     listUnsubscribe: oneClickUnsubscribeUrl,
     listUnsubscribePost: "List-Unsubscribe=One-Click",
     attachments,
-  });
+  };
+  const sendResult = provider === "brevo" ? await sendViaBrevo(sendOpts) : await sendViaSes(sendOpts);
 
   if (!sendResult.ok) {
     console.error(`${provider} send failed:`, sendResult.error);

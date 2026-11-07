@@ -33,24 +33,126 @@ services:
       retries: 5
       start_period: 30s
     environment:
+      # Required -- see README.md's Deployment section.
       DATABASE_URL: postgres://opencloudcrm:${DB_PASSWORD:?set a DB_PASSWORD}@db:5432/opencloudcrm
       SESSION_SECRET: ${SESSION_SECRET:?set a long random SESSION_SECRET}
       ADMIN_EMAIL: ${ADMIN_EMAIL:?set ADMIN_EMAIL -- whoever logs in with this address becomes the console owner}
+
+      # Everything below is optional -- every integration quietly turns
+      # itself off if its own vars aren't set (src/config/features.ts).
+      # Full documentation for each one lives in .env.example; this list
+      # exists so Coolify (or any compose-reading UI) surfaces all of
+      # them as fillable fields instead of only whichever few happened to
+      # be hardcoded here.
+
+      # --- Identity / email (console login needs one of SES or Brevo --
+      # see README.md if you're locked out of a fresh deploy) ---
       EMAIL_FROM: ${EMAIL_FROM:-}
+      EMAIL_PROVIDER: ${EMAIL_PROVIDER:-}
       SES_REGION: ${SES_REGION:-}
       SES_ACCESS_KEY_ID: ${SES_ACCESS_KEY_ID:-}
       SES_SECRET_ACCESS_KEY: ${SES_SECRET_ACCESS_KEY:-}
       SES_SNS_WEBHOOK_SECRET: ${SES_SNS_WEBHOOK_SECRET:-}
       SES_SNS_TOPIC_ARN: ${SES_SNS_TOPIC_ARN:-}
+      BREVO_API_KEY: ${BREVO_API_KEY:-}
+
+      # --- Turnstile (bot protection) ---
       TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:-}
       NEXT_PUBLIC_TURNSTILE_SITE_KEY: ${NEXT_PUBLIC_TURNSTILE_SITE_KEY:-}
-      # See README.md's Deployment section: these take effect only in an
-      # image YOU build yourself, not this prebuilt one -- they're baked
-      # in at build time, which is exactly what the prebuilt image skips.
-      # Harmless to set anyway; also read correctly by anything in the
-      # app that isn't build-time-inlined.
+
+      # --- Brand (NEXT_PUBLIC_* only take effect in an image you build
+      # yourself -- inlined at build time, which this prebuilt image
+      # skips. Harmless to set anyway; SITE_URL/ASSET_DOMAIN are also
+      # read at runtime by code that isn't build-time-inlined.) ---
+      NEXT_PUBLIC_SITE_NAME: ${NEXT_PUBLIC_SITE_NAME:-}
       NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-}
       NEXT_PUBLIC_ASSET_DOMAIN: ${NEXT_PUBLIC_ASSET_DOMAIN:-}
+
+      # --- Single sign-on (src/lib/sso.ts) ---
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
+      LINKEDIN_CLIENT_ID: ${LINKEDIN_CLIENT_ID:-}
+      LINKEDIN_CLIENT_SECRET: ${LINKEDIN_CLIENT_SECRET:-}
+
+      # --- Payments ---
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-}
+      RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET:-}
+      PAYPAL_CLIENT_ID: ${PAYPAL_CLIENT_ID:-}
+      PAYPAL_CLIENT_SECRET: ${PAYPAL_CLIENT_SECRET:-}
+      PAYPAL_ENV: ${PAYPAL_ENV:-}
+      PAYPAL_WEBHOOK_ID: ${PAYPAL_WEBHOOK_ID:-}
+
+      # --- Storage (Cloudflare R2) ---
+      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:-}
+      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:-}
+      R2_S3_ENDPOINT: ${R2_S3_ENDPOINT:-}
+      R2_BUCKET: ${R2_BUCKET:-}
+      R2_PUBLIC_URL: ${R2_PUBLIC_URL:-}
+      R2_COURSES_BUCKET: ${R2_COURSES_BUCKET:-}
+      R2_WHATSAPP_BUCKET: ${R2_WHATSAPP_BUCKET:-}
+      R2_BACKUP_BUCKET: ${R2_BACKUP_BUCKET:-}
+
+      # --- Video (Mux) ---
+      MUX_TOKEN_ID: ${MUX_TOKEN_ID:-}
+      MUX_TOKEN_SECRET: ${MUX_TOKEN_SECRET:-}
+      MUX_SIGNING_KEY_ID: ${MUX_SIGNING_KEY_ID:-}
+      MUX_SIGNING_KEY_PRIVATE: ${MUX_SIGNING_KEY_PRIVATE:-}
+      MUX_WEBHOOK_SECRET: ${MUX_WEBHOOK_SECRET:-}
+      MUX_WEBHOOK_SIGNING_SECRET: ${MUX_WEBHOOK_SIGNING_SECRET:-}
+
+      # --- Cal.com (meetings) ---
+      CALCOM_API_KEY: ${CALCOM_API_KEY:-}
+      CALCOM_WEBHOOK_SECRET: ${CALCOM_WEBHOOK_SECRET:-}
+
+      # --- Google Business Profile ---
+      GOOGLE_BUSINESS_CLIENT_ID: ${GOOGLE_BUSINESS_CLIENT_ID:-}
+      GOOGLE_BUSINESS_CLIENT_SECRET: ${GOOGLE_BUSINESS_CLIENT_SECRET:-}
+      GOOGLE_BUSINESS_REDIRECT_URI: ${GOOGLE_BUSINESS_REDIRECT_URI:-}
+      GOOGLE_BUSINESS_PUBSUB_TOPIC: ${GOOGLE_BUSINESS_PUBSUB_TOPIC:-}
+      GOOGLE_BUSINESS_PUBSUB_SERVICE_ACCOUNT: ${GOOGLE_BUSINESS_PUBSUB_SERVICE_ACCOUNT:-}
+      GOOGLE_BUSINESS_PUBSUB_AUDIENCE: ${GOOGLE_BUSINESS_PUBSUB_AUDIENCE:-}
+      GOOGLE_SERVICE_ACCOUNT_JSON: ${GOOGLE_SERVICE_ACCOUNT_JSON:-}
+
+      # --- WhatsApp ---
+      WHATSAPP_ACCESS_TOKEN: ${WHATSAPP_ACCESS_TOKEN:-}
+      WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:-}
+      WHATSAPP_WABA_ID: ${WHATSAPP_WABA_ID:-}
+      WHATSAPP_APP_ID: ${WHATSAPP_APP_ID:-}
+      WHATSAPP_APP_SECRET: ${WHATSAPP_APP_SECRET:-}
+      WHATSAPP_VERIFY_TOKEN: ${WHATSAPP_VERIFY_TOKEN:-}
+      WHATSAPP_MEDIA_RETENTION_DAYS: ${WHATSAPP_MEDIA_RETENTION_DAYS:-}
+
+      # --- AI image generation ---
+      IMAGE_PROVIDER: ${IMAGE_PROVIDER:-}
+      POLLINATIONS_API_KEY: ${POLLINATIONS_API_KEY:-}
+      POLLINATIONS_IMAGE_MODEL: ${POLLINATIONS_IMAGE_MODEL:-}
+      POLLINATIONS_IMAGE_ENDPOINT: ${POLLINATIONS_IMAGE_ENDPOINT:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_IMAGE_MODEL: ${OPENAI_IMAGE_MODEL:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_IMAGE_MODEL: ${GEMINI_IMAGE_MODEL:-}
+      PEXELS_API_KEY: ${PEXELS_API_KEY:-}
+
+      # --- Analytics / tracking ---
+      NEXT_PUBLIC_GA4_MEASUREMENT_ID: ${NEXT_PUBLIC_GA4_MEASUREMENT_ID:-}
+      GA4_API_SECRET: ${GA4_API_SECRET:-}
+      NEXT_PUBLIC_META_PIXEL_ID: ${NEXT_PUBLIC_META_PIXEL_ID:-}
+      META_CAPI_ACCESS_TOKEN: ${META_CAPI_ACCESS_TOKEN:-}
+      BING_API_KEY: ${BING_API_KEY:-}
+
+      # --- Error tracking (Sentry) ---
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN:-}
+
+      # --- Misc / security ---
+      CONSOLE_MFA: ${CONSOLE_MFA:-}
+      CRON_SECRET: ${CRON_SECRET:-}
+      WEBHOOK_SHARED_SECRET: ${WEBHOOK_SHARED_SECRET:-}
+      CLOUDFLARE_ZONE_ID: ${CLOUDFLARE_ZONE_ID:-}
+      CLOUDFLARE_ZONE_TOKEN: ${CLOUDFLARE_ZONE_TOKEN:-}
 
   db:
     image: postgres:16-alpine

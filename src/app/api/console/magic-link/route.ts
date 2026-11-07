@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createMagicLinkToken } from "@/lib/auth";
 import { isAuthorizedConsoleEmail } from "@/lib/consoleAdmins";
-import { sendEmail } from "@/lib/email";
+import { sendEmail, isEmailProviderConfigured } from "@/lib/email";
 import { getEmailTemplate, applyTemplateVars } from "@/lib/emailTemplates";
 import { checkRateLimit, privateRateLimitKey } from "@/lib/rateLimit";
 import { SITE_URL } from "@/config/brand";
@@ -23,6 +23,30 @@ export async function POST(req: NextRequest) {
   if (normalized && (await isAuthorizedConsoleEmail(normalized))) {
     const token = await createMagicLinkToken(normalized);
     const link = `${SITE_URL}/api/console/verify?token=${token}`;
+
+    // No SES or Brevo configured yet: this is most likely a fresh deploy
+    // with nobody able to log in at all otherwise (console login IS the
+    // magic link -- see README.md), not just a routine missed send. Print
+    // the real, usable link to the server's own logs (visible in Coolify's
+    // Runtime Logs, same place deploy issues have already been diagnosed
+    // from all session) instead of silently trying and failing to email
+    // it. Never happens once a provider is configured -- sendEmail's own
+    // "no provider" branch below would otherwise just log a generic
+    // warning with nothing actionable in it.
+    if (!isEmailProviderConfigured()) {
+      console.warn(
+        `\n==================== CONSOLE LOGIN LINK ====================\n` +
+        `No email provider (SES or Brevo) is configured yet, so this\n` +
+        `couldn't be emailed to ${normalized}. Open it directly to log in:\n\n` +
+        `${link}\n\n` +
+        `It expires soon and is single-use. Once SES_* or BREVO_API_KEY\n` +
+        `is set, this message stops appearing and magic links are emailed\n` +
+        `normally.\n` +
+        `==============================================================\n`
+      );
+      return NextResponse.json({ ok: true });
+    }
+
     const tpl = await getEmailTemplate("magic-link-login");
     const vars = { link };
     await sendEmail({
