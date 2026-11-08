@@ -45,7 +45,12 @@ const inputClass =
   "w-full rounded-xl border border-line bg-paper px-3.5 py-2.5 text-sm outline-none transition focus:border-ink";
 
 type EditorPage = SitePage & { builtIn: boolean; hasUnpublishedChanges: boolean };
-type Selection = { blockId: string; elementId?: string } | null;
+/** Block ids from the top-level block down to whatever's selected, any
+ * depth -- today only ever length 1 (a top-level block) or 2 (an element
+ * nested one level inside a row's column), but the shape itself doesn't
+ * hardcode that: a deeper Section/Row/Column tree just means longer
+ * paths, no new selection concept needed. */
+type Selection = { path: string[] } | null;
 type Device = "desktop" | "mobile";
 
 const TOP_LEVEL_DEFS = BLOCK_DEFS.filter((d) => !d.deprecated);
@@ -365,9 +370,9 @@ export default function ConsolePageEditor({
 
   function addBlock(type: string) {
     const block = createBlock(type);
-    const index = selection && !selection.elementId ? blocks.findIndex((b) => b.id === selection.blockId) + 1 : blocks.length;
+    const index = selection && selection.path.length === 1 ? blocks.findIndex((b) => b.id === selection.path[0]) + 1 : blocks.length;
     update([...blocks.slice(0, index), block, ...blocks.slice(index)]);
-    selectBlock({ blockId: block.id });
+    selectBlock({ path: [block.id] });
     setPicker(false);
   }
 
@@ -384,14 +389,14 @@ export default function ConsolePageEditor({
     const index = blocks.findIndex((b) => b.id === block.id);
     const next = blocks.filter((b) => b.id !== block.id);
     update(next);
-    selectBlock(next[Math.max(0, index - 1)] ? { blockId: next[Math.max(0, index - 1)].id } : null);
+    selectBlock(next[Math.max(0, index - 1)] ? { path: [next[Math.max(0, index - 1)].id] } : null);
   }
 
   function duplicateBlock(block: PageBlock) {
     const copy = { ...structuredClone(block), id: newBlockId() };
     const index = blocks.findIndex((b) => b.id === block.id) + 1;
     update([...blocks.slice(0, index), copy, ...blocks.slice(index)]);
-    selectBlock({ blockId: copy.id });
+    selectBlock({ path: [copy.id] });
   }
 
   /** The move-up/down fallback for the Mobile canvas, where @dnd-kit's
@@ -415,7 +420,7 @@ export default function ConsolePageEditor({
       const cols = rowColumns(row).map((col, i) => (i === columnIndex ? [...col, newBlock] : col));
       return { ...row, props: { ...row.props, items: cols } };
     });
-    selectBlock({ blockId: rowId, elementId: newBlock.id });
+    selectBlock({ path: [rowId, newBlock.id] });
   }
 
   function moveElementInRow(rowId: string, columnIndex: number, from: number, to: number) {
@@ -437,7 +442,7 @@ export default function ConsolePageEditor({
     const ok = await confirm({ message: `Delete this ${label.toLowerCase()}?`, confirmLabel: "Delete" });
     if (!ok) return;
     updateRowBlock(rowId, (r) => ({ ...r, props: { ...r.props, items: rowColumns(r).map((col) => col.filter((b) => b.id !== elementId)) } }));
-    setSelection((s) => (s && s.blockId === rowId && s.elementId === elementId ? { blockId: rowId } : s));
+    setSelection((s) => (s && s.path[0] === rowId && s.path[1] === elementId ? { path: [rowId] } : s));
   }
 
   function updateElementProps(rowId: string, elementId: string, nextProps: Record<string, unknown>) {
@@ -455,8 +460,8 @@ export default function ConsolePageEditor({
           <NestedElementFrame
             key={el.id}
             block={el}
-            selected={selection?.blockId === rowId && selection.elementId === el.id}
-            onSelect={() => selectBlock({ blockId: rowId, elementId: el.id })}
+            selected={selection?.path[0] === rowId && selection.path[1] === el.id}
+            onSelect={() => selectBlock({ path: [rowId, el.id] })}
             onMoveUp={() => moveElementInRow(rowId, columnIndex, i, i - 1)}
             onMoveDown={() => moveElementInRow(rowId, columnIndex, i, i + 1)}
             onRemove={() => void removeElementFromRow(rowId, el.id)}
@@ -543,7 +548,7 @@ export default function ConsolePageEditor({
       const index = over.id === "canvas-end" ? blocks.length : Math.max(0, blocks.findIndex((b) => b.id === over.id));
       const block = createBlock(data.blockType);
       update([...blocks.slice(0, index), block, ...blocks.slice(index)]);
-      selectBlock({ blockId: block.id });
+      selectBlock({ path: [block.id] });
       return;
     }
 
@@ -554,22 +559,23 @@ export default function ConsolePageEditor({
     update(arrayMove(blocks, oldIndex, newIndex));
   }
 
-  const selectedTopBlock = selection ? blocks.find((b) => b.id === selection.blockId) || null : null;
+  const selectedTopBlock = selection ? blocks.find((b) => b.id === selection.path[0]) || null : null;
   const selectBlock = (next: Selection) => {
     setSelection((current) => {
-      if (current?.blockId !== next?.blockId || current?.elementId !== next?.elementId) setNodePath(null);
+      if (current?.path.join("/") !== next?.path.join("/")) setNodePath(null);
       return next;
     });
   };
-  const selectedElement = selection?.elementId && selectedTopBlock ? rowColumns(selectedTopBlock).flat().find((b) => b.id === selection.elementId) || null : null;
+  const selectedElementId = selection && selection.path.length > 1 ? selection.path[1] : undefined;
+  const selectedElement = selectedElementId && selectedTopBlock ? rowColumns(selectedTopBlock).flat().find((b) => b.id === selectedElementId) || null : null;
 
   const settingsTarget = selectedElement
     ? {
         key: selectedElement.id,
         def: getBlockDef(selectedElement.type),
         props: selectedElement.props,
-        onChangeProps: (next: Record<string, unknown>) => updateElementProps(selection!.blockId, selection!.elementId!, next),
-        onDelete: () => void removeElementFromRow(selection!.blockId, selection!.elementId!),
+        onChangeProps: (next: Record<string, unknown>) => updateElementProps(selection!.path[0], selectedElementId!, next),
+        onDelete: () => void removeElementFromRow(selection!.path[0], selectedElementId!),
         canDuplicate: false,
       }
     : selectedTopBlock
@@ -590,7 +596,7 @@ export default function ConsolePageEditor({
    * it writes back into the same `html` prop the Code tab edits, so
    * there is one stored value and the two views cannot drift. */
   const htmlTree =
-    selectedTopBlock && selectedTopBlock.type === "custom" && !selection?.elementId
+    selectedTopBlock && selectedTopBlock.type === "custom" && !selectedElementId
       ? {
           html: String(selectedTopBlock.props.html || ""),
           onChange: (html: string) =>
@@ -869,8 +875,8 @@ export default function ConsolePageEditor({
                             key={block.id}
                             block={block}
                             liveData={liveData}
-                            selected={selection?.blockId === block.id && !selection.elementId}
-                            onSelect={() => selectBlock({ blockId: block.id })}
+                            selected={selection?.path[0] === block.id && selection.path.length === 1}
+                            onSelect={() => selectBlock({ path: [block.id] })}
                             onDuplicate={block.type === "builtIn" ? undefined : () => duplicateBlock(block)}
                             onDelete={() => void removeBlock(block)}
                             renderColumn={block.type === "row" ? renderColumnFor(block.id) : undefined}
@@ -901,8 +907,8 @@ export default function ConsolePageEditor({
                       key={block.id}
                       block={block}
                       liveData={liveData}
-                      selected={selection?.blockId === block.id && !selection.elementId}
-                      onSelect={() => selectBlock({ blockId: block.id })}
+                      selected={selection?.path[0] === block.id && selection.path.length === 1}
+                      onSelect={() => selectBlock({ path: [block.id] })}
                       onDuplicate={block.type === "builtIn" ? undefined : () => duplicateBlock(block)}
                       onDelete={() => void removeBlock(block)}
                       renderColumn={block.type === "row" ? renderColumnFor(block.id) : undefined}

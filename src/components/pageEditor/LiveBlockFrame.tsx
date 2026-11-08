@@ -158,6 +158,82 @@ const DeleteIcon = () => (
 
 const toolbarButton = "rounded-md p-1 text-ink-soft hover:bg-paper-soft hover:text-ink disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-ink-soft";
 
+/** The one selection/outline/floating-toolbar wrapper used at every depth
+ * of the block tree -- a top-level section and an element nested inside a
+ * row's column both go through this, just with a different `depth` (which
+ * only controls toolbar sizing/offset and which Tailwind hover-group name
+ * applies, since group names must be literal classes Tailwind can see in
+ * source -- not something that can vary per recursion depth at runtime)
+ * and different `actions` passed in by the caller. `TopBlockFrame` and
+ * `NestedElementFrame` below are now thin callers of this, kept as named
+ * exports since their surrounding concerns (drag-to-reorder + the public
+ * block renderer vs. the block-type-picker for adding elements) genuinely
+ * differ -- only the selection chrome itself was duplicated before. */
+export function SelectableNode({
+  depth,
+  selected,
+  onSelect,
+  label,
+  inert = true,
+  dragProps,
+  isDragging,
+  actions,
+  children,
+}: {
+  depth: "top" | "nested";
+  selected: boolean;
+  onSelect: () => void;
+  label: string;
+  inert?: boolean;
+  dragProps?: { ref: (el: HTMLElement | null) => void; style: React.CSSProperties };
+  isDragging?: boolean;
+  actions: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  const isTop = depth === "top";
+  return (
+    <div
+      ref={dragProps?.ref}
+      style={dragProps?.style}
+      onClick={(e) => {
+        if (!isTop) e.stopPropagation();
+        onSelect();
+      }}
+      className={`${isTop ? "group" : "group/el"} relative cursor-pointer outline -outline-offset-2 transition-[outline-color] ${
+        selected ? "outline-2 outline-ink" : "outline-2 outline-transparent hover:outline-ink/30"
+      } ${isDragging ? "z-10 opacity-60" : ""}`}
+    >
+      {/* A custom section in Elements mode keeps its links live rather
+          than inert: the whole point there is to click the exact element
+          you mean, and INERT would make a click on a link or button land
+          on whatever ancestor still had pointer events. CustomBlock's own
+          handler stops the navigation instead. */}
+      <div className={inert ? INERT : ""}>{children}</div>
+      <div
+        className={`absolute z-20 flex items-center gap-0.5 rounded-lg border border-line bg-white shadow-md transition-opacity ${
+          isTop ? "-top-3 right-2 px-1 py-1" : "-top-2.5 right-1 rounded-md px-0.5 py-0.5"
+        } ${
+          selected
+            ? "opacity-100"
+            : isTop
+              ? "pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100"
+              : "pointer-events-none opacity-0 group-hover/el:pointer-events-auto group-hover/el:opacity-100"
+        }`}
+      >
+        <span className={`${isTop ? "px-1.5 text-[10px]" : "px-1 text-[9px]"} font-medium uppercase tracking-wide text-ink-soft`}>{label}</span>
+        {actions}
+      </div>
+    </div>
+  );
+}
+
+function stop<T>(fn: () => T) {
+  return (e: React.MouseEvent) => {
+    e.stopPropagation();
+    fn();
+  };
+}
+
 /** The real rendered section, with a selection outline, a floating
  * drag/duplicate/delete toolbar, and drag-to-reorder -- the public site's
  * actual markup is what's on screen; this only adds the editing chrome
@@ -196,96 +272,52 @@ export function TopBlockFrame({
 }) {
   const def = getBlockDef(block.type);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.id });
-  const style = { transform: CSS.Transform.toString(transform), transition };
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      onClick={onSelect}
-      className={`group relative cursor-pointer outline -outline-offset-2 transition-[outline-color] ${
-        selected ? "outline-2 outline-ink" : "outline-2 outline-transparent hover:outline-ink/30"
-      } ${isDragging ? "z-10 opacity-60" : ""}`}
+    <SelectableNode
+      depth="top"
+      selected={selected}
+      onSelect={onSelect}
+      label={def?.label || block.type}
+      inert={!editing}
+      dragProps={{ ref: setNodeRef, style: { transform: CSS.Transform.toString(transform), transition } }}
+      isDragging={isDragging}
+      actions={
+        <>
+          {interactive ? (
+            <button
+              type="button"
+              {...attributes}
+              {...listeners}
+              onClick={(e) => e.stopPropagation()}
+              aria-label="Drag to reorder"
+              title="Drag to reorder"
+              className={`${toolbarButton} cursor-grab touch-none active:cursor-grabbing`}
+            >
+              <GripIcon />
+            </button>
+          ) : (
+            <>
+              <button type="button" disabled={!canMoveUp} onClick={stop(() => onMoveUp?.())} aria-label="Move up" className={toolbarButton}>
+                ▲
+              </button>
+              <button type="button" disabled={!canMoveDown} onClick={stop(() => onMoveDown?.())} aria-label="Move down" className={toolbarButton}>
+                ▼
+              </button>
+            </>
+          )}
+          {onDuplicate && (
+            <button type="button" onClick={stop(onDuplicate)} aria-label="Duplicate section" title="Duplicate" className={toolbarButton}>
+              <DuplicateIcon />
+            </button>
+          )}
+          <button type="button" onClick={stop(onDelete)} aria-label="Delete section" title="Delete" className={`${toolbarButton} hover:bg-red-50 hover:text-red-600`}>
+            <DeleteIcon />
+          </button>
+        </>
+      }
     >
-      {/* A custom section in Elements mode keeps its links live rather
-          than inert: the whole point there is to click the exact element
-          you mean, and INERT would make a click on a link or button land
-          on whatever ancestor still had pointer events. CustomBlock's own
-          handler stops the navigation instead. */}
-      <div className={editing ? "" : INERT}>{renderLiveBlock(block, liveData, renderColumn, editing)}</div>
-      <div
-        className={`absolute -top-3 right-2 z-20 flex items-center gap-0.5 rounded-lg border border-line bg-white px-1 py-1 shadow-md transition-opacity ${
-          selected ? "opacity-100" : "pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100"
-        }`}
-      >
-        <span className="px-1.5 text-[10px] font-medium uppercase tracking-wide text-ink-soft">{def?.label || block.type}</span>
-        {interactive ? (
-          <button
-            type="button"
-            {...attributes}
-            {...listeners}
-            onClick={(e) => e.stopPropagation()}
-            aria-label="Drag to reorder"
-            title="Drag to reorder"
-            className={`${toolbarButton} cursor-grab touch-none active:cursor-grabbing`}
-          >
-            <GripIcon />
-          </button>
-        ) : (
-          <>
-            <button
-              type="button"
-              disabled={!canMoveUp}
-              onClick={(e) => {
-                e.stopPropagation();
-                onMoveUp?.();
-              }}
-              aria-label="Move up"
-              className={toolbarButton}
-            >
-              ▲
-            </button>
-            <button
-              type="button"
-              disabled={!canMoveDown}
-              onClick={(e) => {
-                e.stopPropagation();
-                onMoveDown?.();
-              }}
-              aria-label="Move down"
-              className={toolbarButton}
-            >
-              ▼
-            </button>
-          </>
-        )}
-        {onDuplicate && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDuplicate();
-            }}
-            aria-label="Duplicate section"
-            title="Duplicate"
-            className={toolbarButton}
-          >
-            <DuplicateIcon />
-          </button>
-        )}
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete();
-          }}
-          aria-label="Delete section"
-          title="Delete"
-          className={`${toolbarButton} hover:bg-red-50 hover:text-red-600`}
-        >
-          <DeleteIcon />
-        </button>
-      </div>
-    </div>
+      {renderLiveBlock(block, liveData, renderColumn, editing)}
+    </SelectableNode>
   );
 }
 
@@ -314,61 +346,27 @@ export function NestedElementFrame({
 }) {
   const def = getBlockDef(block.type);
   return (
-    <div
-      onClick={(e) => {
-        e.stopPropagation();
-        onSelect();
-      }}
-      className={`group/el relative cursor-pointer outline -outline-offset-2 transition-[outline-color] ${
-        selected ? "outline-2 outline-ink" : "outline-2 outline-transparent hover:outline-ink/30"
-      }`}
+    <SelectableNode
+      depth="nested"
+      selected={selected}
+      onSelect={onSelect}
+      label={def?.label || block.type}
+      actions={
+        <>
+          <button type="button" disabled={!canMoveUp} onClick={stop(onMoveUp)} aria-label="Move up" className={toolbarButton}>
+            ▲
+          </button>
+          <button type="button" disabled={!canMoveDown} onClick={stop(onMoveDown)} aria-label="Move down" className={toolbarButton}>
+            ▼
+          </button>
+          <button type="button" onClick={stop(onRemove)} aria-label="Delete element" className={`${toolbarButton} hover:bg-red-50 hover:text-red-600`}>
+            <DeleteIcon />
+          </button>
+        </>
+      }
     >
-      <div className={INERT}>
-        <NestedElement block={block} />
-      </div>
-      <div
-        className={`absolute -top-2.5 right-1 z-20 flex items-center gap-0.5 rounded-md border border-line bg-white px-0.5 py-0.5 shadow-md transition-opacity ${
-          selected ? "opacity-100" : "pointer-events-none opacity-0 group-hover/el:pointer-events-auto group-hover/el:opacity-100"
-        }`}
-      >
-        <span className="px-1 text-[9px] font-medium uppercase tracking-wide text-ink-soft">{def?.label || block.type}</span>
-        <button
-          type="button"
-          disabled={!canMoveUp}
-          onClick={(e) => {
-            e.stopPropagation();
-            onMoveUp();
-          }}
-          aria-label="Move up"
-          className={toolbarButton}
-        >
-          ▲
-        </button>
-        <button
-          type="button"
-          disabled={!canMoveDown}
-          onClick={(e) => {
-            e.stopPropagation();
-            onMoveDown();
-          }}
-          aria-label="Move down"
-          className={toolbarButton}
-        >
-          ▼
-        </button>
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onRemove();
-          }}
-          aria-label="Delete element"
-          className={`${toolbarButton} hover:bg-red-50 hover:text-red-600`}
-        >
-          <DeleteIcon />
-        </button>
-      </div>
-    </div>
+      <NestedElement block={block} />
+    </SelectableNode>
   );
 }
 
