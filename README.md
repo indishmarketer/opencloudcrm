@@ -8,6 +8,10 @@ This is also the codebase behind [indishmarketer.com](https://www.indishmarketer
 A fresh install starts empty/neutral -- that site's own content isn't in
 this repo.
 
+Hit something broken on your own deployment? [Open an issue](https://github.com/indishmarketer/opencloudcrm/issues/new?template=bug_report.md) --
+the maintainer's own production site can't reproduce most fresh-install
+bugs (it's long past that state), so this is the only way they get seen.
+
 <!-- Video walkthrough: add a link here -->
 
 ## Deploy it
