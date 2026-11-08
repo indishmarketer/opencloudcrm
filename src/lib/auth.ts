@@ -5,6 +5,7 @@ import { isAuthorizedConsoleEmail } from "@/lib/consoleAdmins";
 import { pool } from "@/lib/db";
 import { getSessionSecret } from "@/lib/sessionSecret";
 import { SITE_URL } from "@/config/brand";
+import { requestOrigin } from "@/lib/requestOrigin";
 
 const SESSION_COOKIE = "im_session";
 
@@ -263,9 +264,14 @@ export function safeRedirectPath(path: string | null | undefined): string {
   return path;
 }
 
-/** Form POSTs that spend a sign-in token must come from our own pages. */
+/** Form POSTs that spend a sign-in token must come from our own pages.
+ * Compares against requestOrigin(req), not new URL(req.url).origin --
+ * behind a TLS-terminating reverse proxy (Traefik, the Coolify default)
+ * the connection Node sees is plain HTTP, so req.url's scheme is wrong
+ * and would never match the browser's https Origin header. See
+ * src/lib/requestOrigin.ts. */
 export function isSameOriginPost(req: Request): boolean {
   const origin = req.headers.get("origin");
   if (!origin) return false;
-  return origin === SITE_URL || origin === new URL(req.url).origin;
+  return origin === SITE_URL || origin === requestOrigin(req);
 }
