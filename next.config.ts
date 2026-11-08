@@ -1,6 +1,5 @@
 import type { NextConfig } from "next";
 import { SITE_HOSTNAME, ASSET_DOMAIN } from "./src/config/brand";
-import { OAUTH_AUTHORIZE_CSP, RAZORPAY_CSP, SITE_CSP } from "./src/config/csp";
 
 const securityHeaders = [
   { key: "X-Frame-Options", value: "SAMEORIGIN" },
@@ -9,12 +8,28 @@ const securityHeaders = [
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), browsing-topics=()" },
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
   { key: "Cross-Origin-Opener-Policy", value: "same-origin-allow-popups" },
-  { key: "Content-Security-Policy", value: SITE_CSP },
+  // Content-Security-Policy is NOT set here -- see src/middleware.ts.
+  // next.config.ts's own config (this headers() function included) gets
+  // serialized into the standalone build at image-build time rather than
+  // re-read from the environment at container startup, so a CSP built
+  // from ASSET_DOMAIN/SITE_HOSTNAME here would freeze to brand.ts's
+  // defaults on the project's generically-built self-host image, exactly
+  // like NEXT_PUBLIC_* does in application code. Middleware runs fresh
+  // per request instead.
 ];
 
 const nextConfig: NextConfig = {
   output: "standalone",
   images: {
+    // Unlike CSP (moved to middleware.ts for exactly this reason), there's
+    // no per-request hook for next/image's own remote-host allowlist --
+    // it's internal to Next's image-optimization route and has to be
+    // resolved at config-eval/build time. On the generic self-host image
+    // this stays frozen to brand.ts's defaults, so an <Image> for a real
+    // deployment's own asset host still needs `unoptimized` when that
+    // host isn't one of these (see src/components/pageBlocks/BlockImage.tsx
+    // for the existing pattern -- it falls back to unoptimized instead of
+    // breaking, which happens to paper over this on the generic image too).
     remotePatterns: [
       { protocol: "https", hostname: `www.${SITE_HOSTNAME}` },
       { protocol: "https", hostname: ASSET_DOMAIN },
@@ -38,11 +53,10 @@ const nextConfig: NextConfig = {
         source: "/badges/:path*",
         headers: [{ key: "Cache-Control", value: "public, max-age=86400, s-maxage=2592000, stale-while-revalidate=86400" }],
       },
-      // Must come after the global rule: for a duplicate header key, the
-      // last matching entry wins.
-      { source: "/courses/:path*", headers: [{ key: "Content-Security-Policy", value: RAZORPAY_CSP }] },
-      { source: "/account/courses/:path*", headers: [{ key: "Content-Security-Policy", value: RAZORPAY_CSP }] },
-      { source: "/oauth/authorize", headers: [{ key: "Content-Security-Policy", value: OAUTH_AUTHORIZE_CSP }] },
+      // Route-specific Content-Security-Policy variants (Razorpay's
+      // courses/account-courses pages, OAuth's /authorize) are applied in
+      // src/middleware.ts, not here -- see that file and the comment above
+      // securityHeaders.
       // No camera/mic override anywhere -- the actual video call happens on
       // Cal.com's own domain (app.cal.com), which visitors are navigated to
       // via a normal link, not embedded here. Camera/mic stay blocked
