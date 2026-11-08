@@ -14,15 +14,11 @@ export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://example.com
 export const ASSET_DOMAIN = process.env.NEXT_PUBLIC_ASSET_DOMAIN || "images.example.com";
 export const OG_LOCALE = "en_US";
 
-/** The site's color palette (src/app/globals.css's own :root values are the
- * defaults below -- these env vars just let a deployment override them
- * without touching source, the same way SITE_NAME/SITE_URL do for brand
- * identity). Applied in the root layout as a :root style override. */
-export const COLOR_INK = process.env.NEXT_PUBLIC_COLOR_INK || "#0a0a0a";
-export const COLOR_PAPER = process.env.NEXT_PUBLIC_COLOR_PAPER || "#ffffff";
-export const COLOR_PAPER_SOFT = process.env.NEXT_PUBLIC_COLOR_PAPER_SOFT || "#f5f5f4";
-export const COLOR_INK_SOFT = process.env.NEXT_PUBLIC_COLOR_INK_SOFT || "#4b4b4b";
-export const COLOR_LINE = process.env.NEXT_PUBLIC_COLOR_LINE || "#e2e2e0";
+// The color palette used to live here as NEXT_PUBLIC_COLOR_* env vars,
+// frozen into the image at CI build time like every other NEXT_PUBLIC_*
+// value -- meaning no self-hoster's own value for them ever actually took
+// effect. It's now a live, DB-backed theme instead: see
+// src/lib/siteTheme.ts (read) and Console -> Site Settings -> Theme (edit).
 
 /** WhatsApp/Facebook's crawler caches a page's og:image by that image's
  * exact URL -- if the URL never changes, editing the file in place doesn't

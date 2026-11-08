@@ -9,21 +9,14 @@ import PublicSiteOnly from "@/components/PublicSiteOnly";
 import Analytics from "@/components/Analytics";
 import EarlyBirdBanner from "@/components/EarlyBirdBanner";
 import { serializeJsonLd } from "@/lib/jsonLd";
-import {
-  OG_LOCALE,
-  OG_ASSET_VERSION,
-  assetUrl,
-  COLOR_INK,
-  COLOR_PAPER,
-  COLOR_PAPER_SOFT,
-  COLOR_INK_SOFT,
-  COLOR_LINE,
-} from "@/config/brand";
+import { OG_LOCALE, OG_ASSET_VERSION, assetUrl } from "@/config/brand";
 import { SITE_URL } from "@/lib/liveSiteUrl";
 import { getBusiness, type ResolvedBusiness } from "@/lib/businessProfile";
 import { getSiteChrome } from "@/lib/siteChrome";
 import { getSiteIdentity, resolveSiteName } from "@/lib/siteIdentity";
 import { getPublishedPage } from "@/lib/sitePages";
+import { getSiteTheme } from "@/lib/siteTheme";
+import { siteThemeCss } from "@/lib/siteThemeShape";
 
 // Inter is used for both --font-display and --font-body -- owner wants one
 // font sitewide, not a display/body pairing. Two separate next/font
@@ -149,11 +142,12 @@ const websiteJsonLd = (siteName: string) => ({
 });
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const [business, chrome, identity, homepage] = await Promise.all([
+  const [business, chrome, identity, homepage, theme] = await Promise.all([
     getBusiness(),
     getSiteChrome(),
     getSiteIdentity(),
     getPublishedPage("/"),
+    getSiteTheme(),
   ]);
   // getPublishedPage("/") is request-deduplicated (see sitePages.ts's
   // `cache()` wrapper) so this doesn't add a second DB round trip beyond
@@ -167,11 +161,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       className={`${interDisplay.variable} ${interBody.variable} h-full overflow-x-hidden antialiased`}
     >
       <head>
-        {/* Overrides globals.css's :root defaults with this deployment's own
-            NEXT_PUBLIC_COLOR_* values, if set -- lets a self-hoster pick
-            their own palette without touching source. No-op (identical
+        {/* Overrides globals.css's static :root defaults and gradient
+            classes with this deployment's live theme (Console -> Site
+            Settings -> Theme), read fresh from the DB on every request --
+            unlike the old NEXT_PUBLIC_COLOR_* env vars, a change here is
+            live immediately, no rebuild or redeploy. No-op (identical
             values) on an unconfigured install. */}
-        <style>{`:root { --ink: ${COLOR_INK}; --paper: ${COLOR_PAPER}; --paper-soft: ${COLOR_PAPER_SOFT}; --ink-soft: ${COLOR_INK_SOFT}; --line: ${COLOR_LINE}; }`}</style>
+        <style>{siteThemeCss(theme)}</style>
       </head>
       <body className="flex min-h-full flex-col overflow-x-hidden bg-paper text-ink">
         <script

@@ -7,10 +7,12 @@ import ConsoleBusinessProfile from "@/components/ConsoleBusinessProfile";
 import ConsoleNavigationEditor from "@/components/ConsoleNavigationEditor";
 import ConsoleSiteIdentity from "@/components/ConsoleSiteIdentity";
 import ConsolePageGroupToggles from "@/components/ConsolePageGroupToggles";
+import ConsoleSiteTheme from "@/components/ConsoleSiteTheme";
 import { readStoredBusinessProfile } from "@/lib/businessProfile";
 import { readSiteChrome } from "@/lib/siteChrome";
 import { readSiteIdentity } from "@/lib/siteIdentity";
 import { getPageGroupToggles } from "@/lib/pageGroupToggles";
+import { getSiteTheme } from "@/lib/siteTheme";
 import { getPageLinkOptions } from "@/lib/pageLinkOptions";
 import { SITE_NAME } from "@/config/brand";
 
@@ -31,6 +33,7 @@ const TABS = [
   { key: "business", href: "/console/site-settings?tab=business", label: "Business details" },
   { key: "navigation", href: "/console/site-settings?tab=navigation", label: "Menu & footer" },
   { key: "pageGroups", href: "/console/site-settings?tab=pageGroups", label: "Page groups" },
+  { key: "theme", href: "/console/site-settings?tab=theme", label: "Theme" },
 ] as const;
 
 export default async function ConsoleSiteSettingsPage({
@@ -43,7 +46,7 @@ export default async function ConsoleSiteSettingsPage({
 
   const sp = await searchParams;
   const tab =
-    sp.tab === "identity" || sp.tab === "business" || sp.tab === "navigation" || sp.tab === "pageGroups"
+    sp.tab === "identity" || sp.tab === "business" || sp.tab === "navigation" || sp.tab === "pageGroups" || sp.tab === "theme"
       ? sp.tab
       : "promo";
 
@@ -60,12 +63,13 @@ export default async function ConsoleSiteSettingsPage({
     initialError = "Site settings could not be loaded. Confirm migration 036 has run, then retry.";
   }
 
-  const [business, { chrome }, identity, linkOptions, pageGroupToggles] = await Promise.all([
+  const [business, { chrome }, identity, linkOptions, pageGroupToggles, theme] = await Promise.all([
     readStoredBusinessProfile(),
     readSiteChrome(),
     readSiteIdentity(),
     getPageLinkOptions(),
     getPageGroupToggles(),
+    getSiteTheme(),
   ]);
 
   return (
@@ -101,6 +105,8 @@ export default async function ConsoleSiteSettingsPage({
           <ConsoleNavigationEditor initial={chrome} linkOptions={linkOptions} />
         ) : tab === "pageGroups" ? (
           <ConsolePageGroupToggles initialToggles={pageGroupToggles} />
+        ) : tab === "theme" ? (
+          <ConsoleSiteTheme initialTheme={theme} />
         ) : (
           <ConsoleSiteSettings initialSettings={settings} initialError={initialError} />
         )}

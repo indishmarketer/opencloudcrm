@@ -2,15 +2,10 @@ import { cache } from "react";
 import { pool } from "@/lib/db";
 import { CSP_DIRECTIVES } from "@/config/csp";
 import { imageGenerationStatus } from "@/lib/imageGeneration";
-import {
-  COLOR_INK,
-  COLOR_INK_SOFT,
-  COLOR_LINE,
-  COLOR_PAPER,
-  COLOR_PAPER_SOFT,
-  SITE_NAME,
-} from "@/config/brand";
+import { SITE_NAME } from "@/config/brand";
 import { SITE_URL } from "@/lib/liveSiteUrl";
+import { getSiteTheme } from "@/lib/siteTheme";
+import { gradientCss } from "@/lib/siteThemeShape";
 
 /** What an API/MCP client needs in order to design a page section from
  * scratch and still have it look like it belongs to this site.
@@ -76,20 +71,27 @@ function cspHosts(): Record<string, string[]> {
 }
 
 export async function describeDesignSystem() {
-  const notes = await readDesignNotes();
+  const [notes, theme] = await Promise.all([readDesignNotes(), getSiteTheme()]);
   const csp = cspHosts();
 
   return {
     site: { name: SITE_NAME, url: SITE_URL },
 
-    /** The palette, as the deployment configures it. These five are the
-     * whole set -- there is no secondary/accent scale to reach for. */
+    /** The palette, as the deployment configures it (Console -> Site
+     * Settings -> Theme). These five solid colors plus the two gradients
+     * below are the whole set -- there is no secondary/accent scale to
+     * reach for. */
     colors: {
-      ink: { value: COLOR_INK, cssVar: "var(--ink)", use: "Primary text, and the background of any dark section." },
-      paper: { value: COLOR_PAPER, cssVar: "var(--paper)", use: "Page background, and text on top of ink." },
-      paperSoft: { value: COLOR_PAPER_SOFT, cssVar: "var(--paper-soft)", use: "A tinted band to separate one section from the next." },
-      inkSoft: { value: COLOR_INK_SOFT, cssVar: "var(--ink-soft)", use: "Secondary/supporting text." },
-      line: { value: COLOR_LINE, cssVar: "var(--line)", use: "Borders, rules, card outlines." },
+      ink: { value: theme.ink, cssVar: "var(--ink)", use: "Primary text, and the background of any dark section." },
+      paper: { value: theme.paper, cssVar: "var(--paper)", use: "Page background, and text on top of ink." },
+      paperSoft: { value: theme.paperSoft, cssVar: "var(--paper-soft)", use: "A tinted band to separate one section from the next." },
+      inkSoft: { value: theme.inkSoft, cssVar: "var(--ink-soft)", use: "Secondary/supporting text." },
+      line: { value: theme.line, cssVar: "var(--line)", use: "Borders, rules, card outlines." },
+    },
+
+    gradients: {
+      inkGradient: { value: gradientCss(theme.inkGradient), cssClass: "bg-ink-gradient", use: "A dark hero/band background." },
+      paperGradient: { value: gradientCss(theme.paperGradient), cssClass: "bg-paper-gradient", use: "A light hero/band background." },
     },
 
     typography: {
