@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useConfirm } from "@/components/ConfirmDialog";
 
 type Trigger = { value: string; label: string; description: string };
@@ -193,7 +194,7 @@ export default function ConsoleWorkflows({ workflows, triggers, emailFlows, fold
         </div>}
       </section>
 
-      <section className="border-t border-line pt-6"><h2 className="font-display text-lg font-semibold">Outbound webhooks</h2><p className="mt-1 text-sm text-ink-soft">Send selected site events to external services.</p>{!webhookDestinations.length ? <p className="mt-3 text-sm text-ink-soft">No webhook connections configured.</p> : <div className="mt-3 grid gap-3 lg:grid-cols-2">{webhookDestinations.map((destination) => <a href="/console/webhooks" key={destination.id} className="rounded-2xl border border-line bg-paper p-4 hover:border-ink"><div className="flex justify-between gap-3"><span className="font-medium">{destination.name}</span><span className="text-xs text-ink-soft">{destination.enabled ? "Enabled" : "Paused"}</span></div><p className="mt-2 text-xs text-ink-soft">{destination.event_types.length} subscribed events</p></a>)}</div>}</section>
+      <section className="border-t border-line pt-6"><h2 className="font-display text-lg font-semibold">Outbound webhooks</h2><p className="mt-1 text-sm text-ink-soft">Send selected site events to external services.</p>{!webhookDestinations.length ? <p className="mt-3 text-sm text-ink-soft">No webhook connections configured.</p> : <div className="mt-3 grid gap-3 lg:grid-cols-2">{webhookDestinations.map((destination) => <Link href="/console/webhooks" key={destination.id} className="rounded-2xl border border-line bg-paper p-4 hover:border-ink"><div className="flex justify-between gap-3"><span className="font-medium">{destination.name}</span><span className="text-xs text-ink-soft">{destination.enabled ? "Enabled" : "Paused"}</span></div><p className="mt-2 text-xs text-ink-soft">{destination.event_types.length} subscribed events</p></Link>)}</div>}</section>
     </div> : <div className="mt-5 space-y-3">{systemFlows.map((flow) => <article key={flow.id} className="rounded-2xl border border-line bg-paper p-5"><div className="mb-4 flex flex-wrap items-center justify-between gap-2"><h3 className="font-semibold">{flow.name}</h3><span className="rounded-full bg-paper-soft px-2.5 py-1 text-xs font-medium text-ink-soft">Critical · platform managed</span></div><div className="overflow-x-auto pb-1"><FlowMap trigger={flow.trigger} actions={flow.actions} /></div></article>)}</div>}
     {dialog}
   </div>;

@@ -130,7 +130,7 @@ export default function WorkflowCanvas({
   const history = useRef<{ past: GraphSnapshot[]; future: GraphSnapshot[] }>({ past: [], future: [] });
   const historyCapturePending = useRef(false);
   const skipEdgeRemoveCaptureUntil = useRef(0);
-  const [historyVersion, setHistoryVersion] = useState(0);
+  const [historyState, setHistoryState] = useState({ past: 0, future: 0 });
   const [actionPicker, setActionPicker] = useState<{ x: number; y: number; source: string; sourceHandle: string | null } | null>(null);
 
   const snapshot = (): GraphSnapshot => JSON.parse(JSON.stringify({ nodes, edges, triggerType, triggerKey }));
@@ -141,7 +141,7 @@ export default function WorkflowCanvas({
     history.current.past.push(snapshot());
     if (history.current.past.length > 30) history.current.past.shift();
     history.current.future = [];
-    setHistoryVersion((version) => version + 1);
+    setHistoryState({ past: history.current.past.length, future: history.current.future.length });
   }
   function restoreSnapshot(value: GraphSnapshot) {
     setNodes(value.nodes);
@@ -155,7 +155,7 @@ export default function WorkflowCanvas({
     history.current.future.push(snapshot());
     restoreSnapshot(previous);
     setSelectedId(null);
-    setHistoryVersion((version) => version + 1);
+    setHistoryState({ past: history.current.past.length, future: history.current.future.length });
   }
   function redo() {
     const next = history.current.future.pop();
@@ -163,7 +163,7 @@ export default function WorkflowCanvas({
     history.current.past.push(snapshot());
     restoreSnapshot(next);
     setSelectedId(null);
-    setHistoryVersion((version) => version + 1);
+    setHistoryState({ past: history.current.past.length, future: history.current.future.length });
   }
   const isDirty = name !== initialWorkflow.name || description !== initialWorkflow.description || status !== initialWorkflow.status ||
     triggerType !== initialWorkflow.trigger_type || triggerKey !== (initialWorkflow.trigger_key || triggers[0]?.value || "") ||
@@ -330,12 +330,12 @@ export default function WorkflowCanvas({
   return (
     <div className="fixed inset-0 z-40 flex h-[100dvh] flex-col bg-paper">
       <header className="flex flex-wrap items-center gap-3 border-b border-line px-4 py-3 sm:px-6">
-        <a href="/console/workflows" onClick={(event) => { event.preventDefault(); requestBack(); }} className="text-sm text-ink-soft hover:text-ink">← Workflows</a>
+        <button type="button" onClick={requestBack} className="text-sm text-ink-soft hover:text-ink">← Workflows</button>
         <input value={name} onChange={(event) => setName(event.target.value)} aria-label="Workflow name" placeholder="Workflow name" className="w-36 shrink-0 rounded-lg border border-line px-3 py-2 text-sm font-semibold outline-none focus:border-ink sm:w-52" />
         <span className={`rounded-full px-3 py-1 text-xs font-semibold ${status === "active" ? "bg-emerald-100 text-emerald-800" : "bg-paper-soft text-ink-soft"}`}>{status}</span>
-        <span data-history-version={historyVersion} className="ml-auto flex items-center gap-1">
-          <button type="button" disabled={history.current.past.length === 0} onClick={undo} aria-label="Undo" title="Undo" className="rounded-lg border border-line p-2 text-ink disabled:opacity-35"><svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h9a7 7 0 0 1 0 14h-1"/></svg></button>
-          <button type="button" disabled={history.current.future.length === 0} onClick={redo} aria-label="Redo" title="Redo" className="rounded-lg border border-line p-2 text-ink disabled:opacity-35"><svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="m15 14 5-5-5-5"/><path d="M20 9h-9a7 7 0 0 0 0 14h1"/></svg></button>
+        <span className="ml-auto flex items-center gap-1">
+          <button type="button" disabled={historyState.past === 0} onClick={undo} aria-label="Undo" title="Undo" className="rounded-lg border border-line p-2 text-ink disabled:opacity-35"><svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h9a7 7 0 0 1 0 14h-1"/></svg></button>
+          <button type="button" disabled={historyState.future === 0} onClick={redo} aria-label="Redo" title="Redo" className="rounded-lg border border-line p-2 text-ink disabled:opacity-35"><svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="m15 14 5-5-5-5"/><path d="M20 9h-9a7 7 0 0 0 0 14h1"/></svg></button>
         </span>
         <button type="button" disabled={saving} onClick={() => void save()} className="rounded-full border border-line px-4 py-2 text-sm font-medium disabled:opacity-50">Save</button>
         <button type="button" disabled={saving || testRunning} onClick={() => setTestPrompt(true)} className="rounded-full border border-line px-4 py-2 text-sm font-medium disabled:opacity-50">Test workflow</button>

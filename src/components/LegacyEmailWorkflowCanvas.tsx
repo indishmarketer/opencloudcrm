@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { addEdge, applyEdgeChanges, applyNodeChanges, Background, Controls, Handle, MiniMap, Position, ReactFlow, useReactFlow, type Connection, type Edge, type Node, type NodeProps, type OnEdgesChange, type OnNodesChange } from "@xyflow/react";
 import { useRouter } from "next/navigation";
 import BrandSelect from "@/components/BrandSelect";
@@ -64,7 +65,7 @@ export default function LegacyEmailWorkflowCanvas({ flow: initialFlow, graph: in
   const [message, setMessage] = useState("");
   const [testResults, setTestResults] = useState<LegacyTestStep[]>([]);
   const history = useRef<{ past: { flow: Flow; nodes: CanvasNode[]; edges: Edge[] }[]; future: { flow: Flow; nodes: CanvasNode[]; edges: Edge[] }[]; pending: boolean }>({ past: [], future: [], pending: false });
-  const [historyVersion, setHistoryVersion] = useState(0);
+  const [historyState, setHistoryState] = useState({ past: 0, future: 0 });
   const selected = nodes.find((node) => node.id === selectedId) || null;
   const selectedTrigger = triggers.find((trigger) => trigger.key === flow.trigger_key);
   const graph = useMemo(() => ({ nodes, edges }), [nodes, edges]);
@@ -75,21 +76,21 @@ export default function LegacyEmailWorkflowCanvas({ flow: initialFlow, graph: in
     history.current.past.push(JSON.parse(JSON.stringify({ flow, nodes, edges })));
     if (history.current.past.length > 30) history.current.past.shift();
     history.current.future = [];
-    setHistoryVersion((version) => version + 1);
+    setHistoryState({ past: history.current.past.length, future: history.current.future.length });
   }
   function undo() {
     const previous = history.current.past.pop();
     if (!previous) return;
     history.current.future.push(JSON.parse(JSON.stringify({ flow, nodes, edges })));
     setFlow(previous.flow); setNodes(previous.nodes); setEdges(previous.edges); setSelectedId(null);
-    setHistoryVersion((version) => version + 1);
+    setHistoryState({ past: history.current.past.length, future: history.current.future.length });
   }
   function redo() {
     const next = history.current.future.pop();
     if (!next) return;
     history.current.past.push(JSON.parse(JSON.stringify({ flow, nodes, edges })));
     setFlow(next.flow); setNodes(next.nodes); setEdges(next.edges); setSelectedId(null);
-    setHistoryVersion((version) => version + 1);
+    setHistoryState({ past: history.current.past.length, future: history.current.future.length });
   }
   const onNodesChange: OnNodesChange<CanvasNode> = useCallback((changes) => setNodes((current) => {
     const safeChanges = changes.filter((change) => change.type !== "remove" || current.find((node) => node.id === change.id)?.data.kind !== "trigger");
@@ -187,12 +188,12 @@ export default function LegacyEmailWorkflowCanvas({ flow: initialFlow, graph: in
 
   return <div className="fixed inset-0 z-40 flex h-[100dvh] flex-col bg-paper">
     <header className="flex flex-wrap items-center gap-3 border-b border-line px-4 py-3 sm:px-6">
-      <a href="/console/workflows" className="text-sm text-ink-soft hover:text-ink">← Workflows</a>
+      <Link href="/console/workflows" className="text-sm text-ink-soft hover:text-ink">← Workflows</Link>
       <input aria-label="Workflow name" value={flow.name} onChange={(event) => setFlow((current) => ({ ...current, name: event.target.value }))} className="w-52 max-w-[35vw] min-w-36 rounded-lg border border-line px-3 py-2 text-sm font-semibold outline-none focus:border-ink" />
       <span className={`rounded-full px-3 py-1 text-xs font-semibold ${flow.active ? "bg-emerald-100 text-emerald-800" : "bg-paper-soft text-ink-soft"}`}>{flow.active ? "Active" : "Paused"}</span>
-      <span data-history-version={historyVersion} className="ml-auto flex items-center gap-1">
-        <button type="button" disabled={!history.current.past.length} onClick={undo} aria-label="Undo" title="Undo" className="rounded-lg border border-line p-2 text-ink disabled:opacity-35"><svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h9a7 7 0 0 1 0 14h-1"/></svg></button>
-        <button type="button" disabled={!history.current.future.length} onClick={redo} aria-label="Redo" title="Redo" className="rounded-lg border border-line p-2 text-ink disabled:opacity-35"><svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="m15 14 5-5-5-5"/><path d="M20 9h-9a7 7 0 0 0 0 14h1"/></svg></button>
+      <span className="ml-auto flex items-center gap-1">
+        <button type="button" disabled={historyState.past === 0} onClick={undo} aria-label="Undo" title="Undo" className="rounded-lg border border-line p-2 text-ink disabled:opacity-35"><svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h9a7 7 0 0 1 0 14h-1"/></svg></button>
+        <button type="button" disabled={historyState.future === 0} onClick={redo} aria-label="Redo" title="Redo" className="rounded-lg border border-line p-2 text-ink disabled:opacity-35"><svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="m15 14 5-5-5-5"/><path d="M20 9h-9a7 7 0 0 0 0 14h1"/></svg></button>
       </span>
       <button type="button" disabled={saving} onClick={() => void save(flow.active)} className="rounded-full border border-line px-4 py-2 text-sm font-medium disabled:opacity-50">Save</button>
       <button type="button" disabled={saving} onClick={testWorkflow} className="rounded-full border border-line px-4 py-2 text-sm font-medium disabled:opacity-50">Test workflow</button>

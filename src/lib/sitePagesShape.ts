@@ -38,7 +38,7 @@ export const RESERVED_PATH_PREFIXES = [
   "/console", "/courses", "/forgot-password", "/guide", "/login", "/newsletter", "/oauth", "/preview",
   "/privacy-policy", "/refund-policy", "/reset-password", "/resources/prompt-skill-library",
   "/reviews", "/signup", "/terms", "/tools", "/unsubscribe", "/verify", "/verify-email", "/webinars",
-  "/sitemap.xml", "/robots.txt", "/favicon.ico", "/icon.png", "/apple-icon.png", "/badges", "/images", "/console-assets",
+  "/sitemap.xml", "/robots.txt", "/favicon.ico", "/icon.png", "/apple-icon.png", "/icon.tsx", "/apple-icon.tsx", "/badges", "/images", "/console-assets",
 ];
 
 /** "About Us!" -> "/about-us"; "/Services/Web Design/" -> "/services/web-design". */

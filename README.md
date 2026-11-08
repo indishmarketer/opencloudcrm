@@ -53,8 +53,9 @@ Let AI agents (Claude Code, Codex, Antigravity, OpenCode, etc.) do the whole thi
    > Compose service from it (`create_service`, `compose` mode), in
    > whichever project/server I confirm if more than one exists.
    >
-   > Generate a strong random `DB_PASSWORD` and `SESSION_SECRET`, ask me
-   > for the email to use as `ADMIN_EMAIL`, and set all three as
+   > Generate strong random `DB_PASSWORD`, `SESSION_SECRET`, and
+   > `CRON_SECRET` values, ask me for the email to use as `ADMIN_EMAIL`
+   > and the public site URL to use as `SITE_URL`, and set all five as
    > environment variables on the service.
    >
    > Deploy it, then check the logs: confirm the migration step finished
@@ -81,10 +82,12 @@ Let AI agents (Claude Code, Codex, Antigravity, OpenCode, etc.) do the whole thi
 2. Fill in the environment variables it asks for -- at minimum:
    - `DB_PASSWORD` -- any strong password
    - `SESSION_SECRET` -- a long random string
+   - `CRON_SECRET` -- a separate long random string used by the scheduler
+   - `SITE_URL` -- the public site origin, such as `https://your-domain.com`
    - `ADMIN_EMAIL` -- your email; whoever logs in with this address becomes
      the console owner
-3. Deploy. Coolify creates two resources (the app and Postgres) and starts
-   both -- each has a real health check (`docker-compose.yml`), so Coolify
+3. Deploy. Coolify creates three resources (the app, scheduler, and Postgres) and starts
+   them -- the app and database have health checks (`docker-compose.yml`), so Coolify
    can tell you when the app is actually ready to serve requests, not just
    that the container started.
 4. Visit your domain, then `/console/login`, and sign in with
@@ -136,7 +139,7 @@ cp .env.example .env   # fill in DB_PASSWORD, SESSION_SECRET, ADMIN_EMAIL
 docker compose up -d
 ```
 
-Same two resources, same prebuilt image, same result.
+The app, scheduler, and database use the same prebuilt image and Compose configuration.
 
 **Or hand it to an AI agent** with shell access to your server:
 
@@ -149,9 +152,9 @@ Same two resources, same prebuilt image, same result.
 > alongside it -- do not build the app from source on this server; the
 > prebuilt image exists specifically so nothing has to build there.
 >
-> Generate a strong random `DB_PASSWORD` and `SESSION_SECRET`. Ask me for
+> Generate strong random `DB_PASSWORD`, `SESSION_SECRET`, and `CRON_SECRET` values. Ask me for
 > the email to use as `ADMIN_EMAIL` (whoever logs in with it becomes the
-> console owner) and my domain if I have one. Clone the repo, write the
+> console owner) and the public site URL. Set that as `SITE_URL`. Clone the repo, write the
 > variables to a `.env` file next to `docker-compose.yml`, and run
 > `docker compose up -d`.
 >
@@ -198,10 +201,21 @@ shows what's pending without running anything.
 
 ## Configuration
 
-`.env.example` documents every variable. `DATABASE_URL`, `SESSION_SECRET`,
-and `ADMIN_EMAIL` are the only ones required to get a usable deployment;
+`.env.example` documents every variable. Compose requires `DB_PASSWORD`,
+`SESSION_SECRET`, `ADMIN_EMAIL`, `CRON_SECRET`, and `SITE_URL`; it builds `DATABASE_URL`
+from the database service. A standalone image requires `DATABASE_URL` instead
+of `DB_PASSWORD`;
 everything else is optional and documented inline where it matters (e.g.
 outbound email is required for console login, since that's a magic link).
+
+The Compose scheduler calls reminder routes every minute, email and outbound
+webhook dispatch every five minutes, and maintenance daily. Set
+`BACKUP_ENABLED=true` after configuring R2 backup storage, and
+`CALCOM_ENABLED=true` after configuring Cal.com to enable those daily jobs.
+If you run only the Docker image without Compose, arrange equivalent POST
+requests to `/api/cron/*` with `Authorization: Bearer <CRON_SECRET>`.
+Before sending mail, set `EMAIL_FROM` to an address verified by your email
+provider and enter your business address in Console → Site Settings.
 
 ## Admin & API access
 

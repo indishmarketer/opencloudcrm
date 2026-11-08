@@ -38,11 +38,12 @@ export async function GET() {
     readSiteIdentity().catch(() => {});
     __warmPublishedPage("/").catch(() => {});
     if (!warmedOnce) {
-      warmedOnce = true;
       try {
         revalidatePath("/", "layout");
+        revalidatePath("/sitemap.xml");
+        warmedOnce = true;
       } catch {
-        // Outside a request context: nothing cached to clear yet.
+        // Retry on the next health check if cache invalidation was unavailable.
       }
     }
     return NextResponse.json({ status: "ok" });

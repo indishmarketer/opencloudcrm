@@ -27,6 +27,7 @@ export async function POST(req: Request) {
   }
 
   revalidatePath("/", "layout");
+  revalidatePath("/sitemap.xml");
   const url = `${SITE_URL}/blog/${slug}`;
   const [cache, indexing] = await Promise.all([
     purgeCloudflareCache().catch(() => ({ ok: false, message: "Cache purge failed." })),

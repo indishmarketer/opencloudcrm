@@ -3,4 +3,11 @@ node_modules
 .git
 ghost-export
 .env.deploy.local
+.env*
+!.env.example
+Instruction.md
+VIDEO_EXPERIENCE*.md
+AGENTS.md
+video/
+.agent-memory/
 *.log

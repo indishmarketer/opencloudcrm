@@ -74,6 +74,7 @@ export async function POST(req: NextRequest) {
     let user: { id: number; email: string } | undefined;
     for (let attempt = 0; attempt < 3 && !user; attempt++) {
       const username = await generateUniqueUsername(name || email);
+      await client.query("SAVEPOINT signup_username_attempt");
       try {
         const result = await client.query(
           // email_verified_at stays NULL until they click the link in the email
@@ -84,7 +85,10 @@ export async function POST(req: NextRequest) {
           [email, passwordHash, name || null, interested_in || null, username, updates_opt_in === true, whatsappOptIn]
         );
         user = result.rows[0];
+        await client.query("RELEASE SAVEPOINT signup_username_attempt");
       } catch (err) {
+        await client.query("ROLLBACK TO SAVEPOINT signup_username_attempt");
+        await client.query("RELEASE SAVEPOINT signup_username_attempt");
         const isUsernameConflict =
           err instanceof Error && "code" in err && (err as { code?: string }).code === "23505" &&
           "constraint" in err && String((err as { constraint?: string }).constraint || "").includes("username");
@@ -110,6 +114,7 @@ export async function POST(req: NextRequest) {
 
     // Track referral if ref was supplied
     if (ref && typeof ref === "string") {
+      await client.query("SAVEPOINT signup_referral_attempt");
       try {
         const referrerRes = await client.query("SELECT id FROM users WHERE LOWER(username) = LOWER($1)", [ref.trim()]);
         if (referrerRes.rows.length > 0) {
@@ -123,7 +128,10 @@ export async function POST(req: NextRequest) {
             await client.query("UPDATE users SET community_points = community_points + 10 WHERE id = $1", [referrerId]);
           }
         }
+        await client.query("RELEASE SAVEPOINT signup_referral_attempt");
       } catch (e) {
+        await client.query("ROLLBACK TO SAVEPOINT signup_referral_attempt");
+        await client.query("RELEASE SAVEPOINT signup_referral_attempt");
         console.error("Referral tracking error (ignoring if table/col does not exist yet):", e);
       }
     }

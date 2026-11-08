@@ -39,7 +39,9 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 30s
+      # Initial migrations run before the server starts. Give a new database
+      # enough time without delaying a healthy app's first successful check.
+      start_period: 180s
     environment:
       # Required -- see README.md's Deployment section.
       DATABASE_URL: postgres://opencloudcrm:${DB_PASSWORD:?set a DB_PASSWORD}@db:5432/opencloudcrm
@@ -79,7 +81,7 @@ services:
       # prebuilt image -- see .env.example.) ---
       NEXT_PUBLIC_SITE_NAME: ${NEXT_PUBLIC_SITE_NAME:-}
       NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-}
-      SITE_URL: ${SITE_URL:-}
+      SITE_URL: ${SITE_URL:?set your public site URL, such as https://example.com}
       NEXT_PUBLIC_ASSET_DOMAIN: ${NEXT_PUBLIC_ASSET_DOMAIN:-}
       ASSET_DOMAIN: ${ASSET_DOMAIN:-}
 
@@ -164,7 +166,7 @@ services:
 
       # --- Misc / security ---
       CONSOLE_MFA: ${CONSOLE_MFA:-}
-      CRON_SECRET: ${CRON_SECRET:-}
+      CRON_SECRET: ${CRON_SECRET:?set a long random CRON_SECRET for scheduled jobs}
       WEBHOOK_SHARED_SECRET: ${WEBHOOK_SHARED_SECRET:-}
       CLOUDFLARE_ZONE_ID: ${CLOUDFLARE_ZONE_ID:-}
       CLOUDFLARE_ZONE_TOKEN: ${CLOUDFLARE_ZONE_TOKEN:-}
@@ -183,6 +185,19 @@ services:
       POSTGRES_DB: opencloudcrm
     volumes:
       - db-data:/var/lib/postgresql/data
+
+  scheduler:
+    image: ghcr.io/indishmarketer/opencloudcrm:latest
+    pull_policy: always
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+    command: ["sh", "/app/scripts/cron/scheduler.sh"]
+    environment:
+      CRON_SECRET: ${CRON_SECRET:?set a long random CRON_SECRET for scheduled jobs}
+      BACKUP_ENABLED: ${BACKUP_ENABLED:-false}
+      CALCOM_ENABLED: ${CALCOM_ENABLED:-false}
 
 volumes:
   db-data:

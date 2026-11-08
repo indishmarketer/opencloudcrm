@@ -1,18 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import BrandSelect from "@/components/BrandSelect";
 import RichTextEditor from "@/components/RichTextEditor";
 import { useConfirm } from "@/components/ConfirmDialog";
-import { emailAt } from "@/lib/liveSiteUrl";
-
-const FROM_ADDRESSES = [
-  { value: emailAt("me"), label: `${emailAt("me")} (notifies you)` },
-  { value: emailAt("academy"), label: emailAt("academy") },
-  { value: emailAt("support"), label: emailAt("support") },
-  { value: emailAt("reach"), label: emailAt("reach") },
-];
 
 const CATEGORY_LABELS: Record<string, string> = {
   security: "Account & security",
@@ -40,10 +32,14 @@ export type EmailTemplateRow = {
   deletable: boolean;
 };
 
-function TemplateEditor({ tpl }: { tpl: EmailTemplateRow }) {
+function TemplateEditor({ tpl, siteHost }: { tpl: EmailTemplateRow; siteHost: string }) {
+  const fromAddresses = ["me", "academy", "support", "reach"].map((local) => ({
+    value: `${local}@${siteHost}`,
+    label: `${local}@${siteHost}${local === "me" ? " (notifies you)" : ""}`,
+  }));
   const [subject, setSubject] = useState(tpl.subject);
   const [bodyHtml, setBodyHtml] = useState(tpl.body_html);
-  const [fromEmail, setFromEmail] = useState(tpl.from_email);
+  const [fromEmail, setFromEmail] = useState(/@example\.com$/i.test(tpl.from_email) ? `support@${siteHost}` : tpl.from_email);
   const [trackOpens, setTrackOpens] = useState(tpl.track_opens);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -92,7 +88,7 @@ function TemplateEditor({ tpl }: { tpl: EmailTemplateRow }) {
               setFromEmail(v);
               setDirty(true);
             }}
-            options={FROM_ADDRESSES}
+            options={fromAddresses}
             compact
           />
         </div>
@@ -177,7 +173,7 @@ function sortedCategories(templates: EmailTemplateRow[]): string[] {
   return [...seen].sort((a, b) => (CATEGORY_LABELS[a] || a).localeCompare(CATEGORY_LABELS[b] || b));
 }
 
-export default function ConsoleEmailTemplates({ templates }: { templates: EmailTemplateRow[] }) {
+export default function ConsoleEmailTemplates({ templates, siteHost }: { templates: EmailTemplateRow[]; siteHost: string }) {
   const router = useRouter();
   const { confirm, dialog } = useConfirm();
   const [openKey, setOpenKey] = useState<string | null>(null);
@@ -188,10 +184,7 @@ export default function ConsoleEmailTemplates({ templates }: { templates: EmailT
 
   const categoryOptions = useMemo(() => sortedCategories(templates), [templates]);
 
-  useEffect(() => {
-    if (categoryOptions.length && !categoryOptions.includes(category)) setCategory(categoryOptions[0]);
-    else if (!categoryOptions.length) setCategory("");
-  }, [categoryOptions, category]);
+  const selectedCategory = categoryOptions.includes(category) ? category : categoryOptions[0] || "";
 
   async function removeTemplate(template: EmailTemplateRow) {
     const ok = await confirm({
@@ -223,11 +216,11 @@ export default function ConsoleEmailTemplates({ templates }: { templates: EmailT
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return templates.filter((t) => {
-      if (t.category !== category) return false;
+      if (t.category !== selectedCategory) return false;
       if (!q) return true;
       return t.label.toLowerCase().includes(q) || t.description.toLowerCase().includes(q) || t.key.toLowerCase().includes(q);
     });
-  }, [templates, search, category]);
+  }, [templates, search, selectedCategory]);
 
   return (
     <div>
@@ -243,9 +236,9 @@ export default function ConsoleEmailTemplates({ templates }: { templates: EmailT
             key={c}
             type="button"
             onClick={() => setCategory(c)}
-            aria-current={category === c ? "page" : undefined}
+            aria-current={selectedCategory === c ? "page" : undefined}
             className={`-mb-px shrink-0 whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
-              category === c ? "border-ink text-ink" : "border-transparent text-ink-soft hover:text-ink"
+              selectedCategory === c ? "border-ink text-ink" : "border-transparent text-ink-soft hover:text-ink"
             }`}
           >
             {CATEGORY_LABELS[c] || c} ({categoryCounts.get(c) || 0})
@@ -309,7 +302,7 @@ export default function ConsoleEmailTemplates({ templates }: { templates: EmailT
                   <p className="text-xs text-ink-soft">Required by a site feature; cannot be deleted.</p>
                 )}
               </div>
-              {isOpen && <TemplateEditor tpl={tpl} />}
+              {isOpen && <TemplateEditor tpl={tpl} siteHost={siteHost} />}
             </div>
           );
         })}

@@ -11,6 +11,8 @@ import { createPriceQuote } from "@/lib/priceQuote";
 import { getDirectoryListingPrice, formatListingPrice } from "@/lib/directoryListingPrice";
 import { getRazorpayKeyId } from "@/lib/razorpay";
 import { getPaypalClientId } from "@/lib/paypal";
+import { SITE_URL } from "@/lib/liveSiteUrl";
+import { getSiteIdentity, resolveSiteName } from "@/lib/siteIdentity";
 
 export const metadata = { title: "My tools" };
 
@@ -42,6 +44,7 @@ export default async function MyToolsPage({ searchParams }: { searchParams: Prom
     getCheckoutRegion(session.userId),
   ]);
   const listingPrice = await getDirectoryListingPrice();
+  const siteName = resolveSiteName(await getSiteIdentity());
   const pricing = listingPrice.prices;
   const priceLabel = formatListingPrice(listingPrice.usd, "USD");
   const razorpayKeyId = getRazorpayKeyId();
@@ -189,7 +192,7 @@ export default async function MyToolsPage({ searchParams }: { searchParams: Prom
                       )}
                     </p>
                     {!t.backlink_verified_at && (
-                      <DirectoryBadgeSnippet categorySlug={t.category_slug} slug={t.slug} toolName={t.name} />
+                      <DirectoryBadgeSnippet categorySlug={t.category_slug} slug={t.slug} toolName={t.name} siteOrigin={SITE_URL} siteName={siteName} />
                     )}
                   </div>
                 )}

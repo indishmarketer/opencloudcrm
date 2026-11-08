@@ -69,7 +69,7 @@ export function parsePositiveId(value: string): number | null {
 export function normalizeCourseVideoRef(
   videoType: "youtube" | "r2",
   videoRef: string | null | undefined,
-  _courseId: number,
+  courseId: number,
   existingRef?: string | null,
 ): { value: string | null } | { error: string } {
   if (!videoRef?.trim()) return { value: null };
@@ -78,7 +78,7 @@ export function normalizeCourseVideoRef(
     return videoId ? { value: videoId } : { error: "Enter a valid YouTube video ID or URL." };
   }
   const value = videoRef.trim();
-  if (value !== existingRef && !/^courses\/\d+\/videos\/[A-Za-z0-9._-]+$/.test(value)) {
+  if (value !== existingRef && !new RegExp(`^courses/${courseId}/videos/[A-Za-z0-9._-]+$`).test(value)) {
     return { error: "Select a video from the course media library." };
   }
   return { value };

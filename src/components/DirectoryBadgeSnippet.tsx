@@ -1,8 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { SITE_ORIGIN } from "@/lib/directoryFields";
-import { SITE_NAME } from "@/config/brand";
 
 /**
  * The snippet a free listing has to put on their own site, with a copy
@@ -18,20 +16,25 @@ export default function DirectoryBadgeSnippet({
   categorySlug,
   slug,
   toolName,
+  siteOrigin,
+  siteName,
 }: {
   categorySlug: string;
   slug: string;
   toolName: string;
+  siteOrigin: string;
+  siteName: string;
 }) {
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [copied, setCopied] = useState(false);
 
-  const listingUrl = `${SITE_ORIGIN}/tools/${categorySlug}/${slug}`;
-  const badgeUrl = `${SITE_ORIGIN}/badges/featured-on-indish-marketer-${theme}.svg`;
+  const listingUrl = `${siteOrigin}/tools/${categorySlug}/${slug}`;
+  const badgeUrl = `${siteOrigin}/api/directory/badge?theme=${theme}`;
+  const htmlAttribute = (value: string) => value.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const snippet =
-    `<a href="${listingUrl}" target="_blank" rel="noopener">\n` +
-    `  <img src="${badgeUrl}"\n` +
-    `       alt="${toolName} is featured on ${SITE_NAME}" width="200" height="56" />\n` +
+    `<a href="${htmlAttribute(listingUrl)}" target="_blank" rel="noopener">\n` +
+    `  <img src="${htmlAttribute(badgeUrl)}"\n` +
+    `       alt="${htmlAttribute(`${toolName} is featured on ${siteName}`)}" width="200" height="56" />\n` +
     `</a>`;
 
   async function copy() {
@@ -72,7 +75,7 @@ export default function DirectoryBadgeSnippet({
 
       <div className="mt-3 flex items-center justify-center rounded-lg border border-line bg-paper p-3">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={badgeUrl} alt={`${toolName} is featured on ${SITE_NAME}`} width={200} height={56} />
+        <img src={badgeUrl} alt={`${toolName} is featured on ${siteName}`} width={200} height={56} />
       </div>
 
       <pre className="mt-3 overflow-x-auto rounded-lg border border-line bg-paper p-3 text-[11px] leading-5 text-ink-soft">

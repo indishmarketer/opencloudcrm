@@ -62,6 +62,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 # see the entrypoint below and scripts/migrate.mjs.
 COPY --from=builder --chown=nextjs:nodejs /app/scripts/migrate.mjs ./scripts/migrate.mjs
 COPY --from=builder --chown=nextjs:nodejs /app/scripts/migrations ./scripts/migrations
+COPY --from=builder --chown=nextjs:nodejs /app/scripts/cron ./scripts/cron
 
 USER nextjs
 EXPOSE 3000

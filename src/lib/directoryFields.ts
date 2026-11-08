@@ -1,11 +1,5 @@
 // Shared by server routes and client forms, so no server imports here.
 
-/** Canonical public origin. Re-exported from src/config/brand.ts (which has
- * no server-only imports either) rather than directoryBacklink.ts, because
- * the badge snippet is a client component and that file pulls in node:dns
- * through the safe fetcher. */
-export { SITE_URL as SITE_ORIGIN } from "@/config/brand";
-
 export const PRICING_TYPES = ["free", "freemium", "paid", "free_api", "paid_api"] as const;
 
 export const PRICING_OPTIONS = [

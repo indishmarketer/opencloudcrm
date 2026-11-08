@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
-import { spawn } from "node:child_process";
+import pg from "pg";
 
 const require = createRequire(import.meta.url);
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -13,59 +13,36 @@ const reportOption = argv.find((arg) => arg.startsWith("--report="));
 const reportPath = reportOption ? path.resolve(root, reportOption.slice(9)) : null;
 const currentYear = new Date().getUTCFullYear();
 
-// Post content lives in Postgres now, not a committed JSON file. There's no
-// DATABASE_URL available on the machine this runs on (it's only set in
-// Coolify) -- same SSH + `docker exec psql` bridge scripts/db-mcp/server.mjs
-// uses, reading the same local .env.deploy.local for VPS/DB connection info.
-function loadDeployEnv() {
-  const text = fs.readFileSync(path.join(root, ".env.deploy.local"), "utf8");
-  const result = {};
-  for (const rawLine of text.split(/\r?\n/)) {
-    const line = rawLine.trim();
-    if (!line || line.startsWith("#")) continue;
-    const match = line.match(/^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/);
-    if (!match) continue;
-    let value = match[2].trim();
-    if (
-      value.length >= 2 &&
-      ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'")))
-    ) {
-      value = value.slice(1, -1);
-    }
-    result[match[1]] = value;
+// Use the same database configuration as `npm run migrate`. Nothing in this
+// public command depends on a particular host, container name, or SSH key.
+function databaseUrl() {
+  if (process.env.DATABASE_URL) return process.env.DATABASE_URL;
+  for (const filename of [".env.local", ".env"]) {
+    const filePath = path.join(root, filename);
+    if (!fs.existsSync(filePath)) continue;
+    const line = fs.readFileSync(filePath, "utf8").split(/\r?\n/).find((value) => /^DATABASE_URL=/.test(value.trim()));
+    if (line) return line.trim().slice("DATABASE_URL=".length).replace(/^(["'])(.*)\1$/, "$2");
   }
-  return result;
+  throw new Error("DATABASE_URL is required for the SEO audit. Set it in the environment, .env.local, or .env.");
 }
 
 async function fetchBlogPosts() {
-  const env = loadDeployEnv();
-  const target = `${env.VPS_USER || "root"}@${env.VPS_HOST}`;
-  const dbContainer = env.DB_CONTAINER || "uyhip84xfrin58w0nevu6bsa";
-  const dbName = env.DB_NAME || "im_website";
-  const dbUser = env.DB_USER || "im_app";
   const sql = `
     SELECT COALESCE(json_agg(json_build_object(
       'id', id, 'slug', slug, 'title', title, 'html', html, 'excerpt', excerpt,
       'feature_image', feature_image, 'og_image', og_image, 'meta_title', meta_title,
       'meta_description', meta_description, 'category', category, 'author_slug', author_slug,
       'status', status, 'published_at', published_at
-    )), '[]'::json)::text FROM blog_posts;
+    )), '[]'::json) AS posts FROM blog_posts;
   `;
-  const stdout = await new Promise((resolve, reject) => {
-    const child = spawn(
-      "ssh",
-      ["-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=no", target,
-       `docker exec -i ${dbContainer} psql -U ${dbUser} -d ${dbName} -At -v ON_ERROR_STOP=1`],
-      { windowsHide: true, stdio: ["pipe", "pipe", "pipe"] }
-    );
-    let out = "", err = "";
-    child.stdout.on("data", (chunk) => (out += chunk.toString()));
-    child.stderr.on("data", (chunk) => (err += chunk.toString()));
-    child.on("error", reject);
-    child.on("close", (code) => (code === 0 ? resolve(out) : reject(new Error(err || `exit code ${code}`))));
-    child.stdin.end(sql);
-  });
-  return JSON.parse(stdout.trim());
+  const client = new pg.Client({ connectionString: databaseUrl() });
+  await client.connect();
+  try {
+    const result = await client.query(sql);
+    return result.rows[0]?.posts || [];
+  } finally {
+    await client.end();
+  }
 }
 
 const posts = await fetchBlogPosts();

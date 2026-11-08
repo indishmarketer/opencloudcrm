@@ -9,6 +9,8 @@ import { sendViaBrevo } from "@/lib/brevoEmail";
 import { SITE_NAME } from "@/config/brand";
 import { SITE_URL } from "@/lib/liveSiteUrl";
 import { getReplyToEmail } from "@/lib/businessProfile";
+import { getBusiness } from "@/lib/businessProfile";
+import { escapeHtml } from "@/lib/escapeHtml";
 
 const EMAIL_DOMAIN = new URL(SITE_URL).hostname.replace(/^www\./, "");
 
@@ -33,11 +35,12 @@ export function isEmailProviderConfigured(): boolean {
   return resolveProvider() !== null;
 }
 
-function withFooter(html: string, unsubscribeUrl: string): string {
+function withFooter(html: string, unsubscribeUrl: string, businessName: string, postalAddress: string): string {
+  const addressLine = postalAddress ? ` &middot; ${escapeHtml(postalAddress)}` : "";
   return `${html}
 <hr style="margin-top:32px;border:none;border-top:1px solid #e2e2e0;">
 <p style="margin-top:16px;font-size:12px;color:#4b4b4b;line-height:1.5;">
-  ${SITE_NAME} &middot; Near Tender Care School, Kench&apos;s Trace, Shillong, Meghalaya 793004, India<br>
+  ${escapeHtml(businessName)}${addressLine}<br>
   <a href="${unsubscribeUrl}" style="color:#4b4b4b;">Unsubscribe</a>
 </p>`;
 }
@@ -153,7 +156,10 @@ export async function sendEmail({
   // info@indishmarketer.com is a receive-only inbox (the owner's real
   // forwarding target), never an automated "From" identity -- support@ is
   // the safe fallback if a call site somehow omits `from`.
-  const sender = from || process.env.EMAIL_FROM || `support@${EMAIL_DOMAIN}`;
+  const configuredSender = from && !/@example\.com$/i.test(from) ? from : undefined;
+  const defaultSender = process.env.EMAIL_FROM && !/@example\.com$/i.test(process.env.EMAIL_FROM)
+    ? process.env.EMAIL_FROM : undefined;
+  const sender = configuredSender || defaultSender || `support@${EMAIL_DOMAIN}`;
   const resolvedCategory = category || "system";
   const resolvedTemplateKey = templateKey || null;
   const normalizedTo = to.trim().toLowerCase();
@@ -212,7 +218,13 @@ export async function sendEmail({
   const oneClickUnsubscribeUrl = `${SITE_URL}/api/unsubscribe?token=${unsubscribeToken}`;
 
   let outgoingHtml = trackClicks === false ? html : await trackLinks(html, deliveryId);
-  outgoingHtml = withFooter(outgoingHtml, unsubscribeUrl);
+  const business = await getBusiness();
+  const postalAddress = business.addressShort || [
+    business.address.line1, business.address.line2, business.address.city,
+    business.address.region || business.address.state, business.address.postalCode,
+    business.address.country,
+  ].filter(Boolean).join(", ");
+  outgoingHtml = withFooter(outgoingHtml, unsubscribeUrl, business.brand || SITE_NAME, postalAddress);
   if (trackOpens !== false) {
     const openToken = await createEmailOpenToken({
       deliveryId,

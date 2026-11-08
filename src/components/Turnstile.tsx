@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 declare global {
   interface Window {
@@ -37,11 +37,11 @@ export default function Turnstile({
   const ref = useRef<HTMLDivElement>(null);
   const rendered = useRef(false);
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
-  const [siteKey, setSiteKey] = useState<string | undefined>(undefined);
-
-  useEffect(() => {
-    setSiteKey(window.__TURNSTILE_SITE_KEY__ || undefined);
-  }, []);
+  const siteKey = useSyncExternalStore(
+    () => () => {},
+    () => window.__TURNSTILE_SITE_KEY__ || undefined,
+    () => undefined,
+  );
 
   useEffect(() => {
     if (!siteKey) return;

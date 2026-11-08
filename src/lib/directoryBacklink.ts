@@ -1,6 +1,5 @@
 import { fetchSafeHtml } from "@/lib/siteMetadata";
-import { SITE_ORIGIN } from "@/lib/directoryFields";
-import { SITE_HOSTNAME } from "@/lib/liveSiteUrl";
+import { SITE_URL as SITE_ORIGIN, SITE_HOSTNAME } from "@/lib/liveSiteUrl";
 
 /**
  * The free tier's condition: the submitter puts our badge on their own site
