@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Image from "next/image";
+import SafeImage from "@/components/SafeImage";
 import { useConfirm } from "@/components/ConfirmDialog";
 import BrandSelect from "@/components/BrandSelect";
 import { SOCIAL_PLATFORMS } from "@/components/SocialIcon";
@@ -163,7 +163,7 @@ export default function ConsoleBlogAuthors() {
             <div className="flex items-center gap-4">
               {form.avatar_url ? (
                 <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full border border-line">
-                  <Image src={form.avatar_url} alt="Avatar preview" fill className="object-cover" />
+                  <SafeImage src={form.avatar_url} alt="Avatar preview" fill className="object-cover" />
                 </div>
               ) : (
                 <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border border-line bg-paper-soft text-xs text-ink-soft">
@@ -277,7 +277,7 @@ export default function ConsoleBlogAuthors() {
           <div key={a.id} className="flex items-center gap-3 rounded-xl border border-line bg-paper p-3">
             {a.avatar_url ? (
               <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full">
-                <Image src={a.avatar_url} alt={a.name} fill className="object-cover" />
+                <SafeImage src={a.avatar_url} alt={a.name} fill className="object-cover" />
               </div>
             ) : (
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-paper-soft text-xs text-ink-soft">

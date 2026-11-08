@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import Image from "next/image";
+import SafeImage from "@/components/SafeImage";
 import Turnstile from "@/components/Turnstile";
 
 type GuideSummary = {
@@ -147,7 +147,7 @@ export default function GuidePopup({
         {guide.coverImageUrl && (
           <div className="flex shrink-0 items-center justify-center border-b border-line bg-paper-soft p-6 sm:w-[280px] sm:border-b-0 sm:border-r">
             <div className="relative aspect-[3/4] w-28 overflow-hidden rounded-lg border border-line/60 bg-ink shadow-xl sm:w-44">
-              <Image
+              <SafeImage
                 src={guide.coverImageUrl}
                 alt={guide.title}
                 fill

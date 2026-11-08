@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import Image from "next/image";
+import SafeImage from "@/components/SafeImage";
 import { useRouter } from "next/navigation";
 import BrandSelect from "@/components/BrandSelect";
 import RichTextEditor from "@/components/RichTextEditor";
@@ -418,7 +418,7 @@ export default function ConsoleBlogEditor({
                 {form.featureImage && (
                   <div className="group relative mb-5 overflow-hidden rounded-2xl border border-line bg-paper-soft">
                     <button type="button" onClick={() => setSettingsOpen(true)} className="block w-full" aria-label="Change featured image in Post settings">
-                      <Image src={resolveImage(form.featureImage) || form.featureImage} alt={form.featureImageAlt || form.title || "Featured image"} width={1600} height={900} className="max-h-[420px] w-full object-contain" />
+                      <SafeImage src={resolveImage(form.featureImage) || form.featureImage} alt={form.featureImageAlt || form.title || "Featured image"} width={1600} height={900} className="max-h-[420px] w-full object-contain" />
                     </button>
                     <button
                       type="button"
@@ -493,7 +493,7 @@ export default function ConsoleBlogEditor({
                 <div className="mt-1.5 rounded-lg border border-dashed border-line p-3">
                   <button type="button" onClick={() => featureFileRef.current?.click()} disabled={uploading === "feature"} className="flex w-full items-center gap-3 text-left disabled:opacity-50">
                     {form.featureImage ? (
-                      <Image src={resolveImage(form.featureImage) || form.featureImage} alt={form.title ? `${form.title} featured image preview` : "Featured image preview"} width={72} height={52} className="h-[52px] w-[72px] shrink-0 rounded-md border border-line object-cover" />
+                      <SafeImage src={resolveImage(form.featureImage) || form.featureImage} alt={form.title ? `${form.title} featured image preview` : "Featured image preview"} width={72} height={52} className="h-[52px] w-[72px] shrink-0 rounded-md border border-line object-cover" />
                     ) : (
                       <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-paper-soft">
                         <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.7"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9" r="1.5"/><path d="m4 17 5-5 4 4 3-3 4 4"/></svg>
@@ -518,7 +518,7 @@ export default function ConsoleBlogEditor({
                 <div className="mt-1.5 rounded-lg border border-dashed border-line p-3">
                   <button type="button" onClick={() => ogFileRef.current?.click()} disabled={uploading === "og"} className="flex w-full items-center gap-3 text-left disabled:opacity-50">
                     {form.ogImage ? (
-                      <Image src={resolveImage(form.ogImage) || form.ogImage} alt={form.title ? `${form.title} social share image preview` : "Social share image preview"} width={72} height={52} className="h-[52px] w-[72px] shrink-0 rounded-md border border-line object-cover" />
+                      <SafeImage src={resolveImage(form.ogImage) || form.ogImage} alt={form.title ? `${form.title} social share image preview` : "Social share image preview"} width={72} height={52} className="h-[52px] w-[72px] shrink-0 rounded-md border border-line object-cover" />
                     ) : (
                       <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-paper-soft">
                         <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.7"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9" r="1.5"/><path d="m4 17 5-5 4 4 3-3 4 4"/></svg>

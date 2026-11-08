@@ -1,5 +1,5 @@
 import Link from "next/link";
-import Image from "next/image";
+import SafeImage from "@/components/SafeImage";
 import { getBlogCategories } from "@/lib/blogCategories";
 import { resolveImage } from "@/lib/images";
 import { getRelatedPostsForTool } from "@/lib/relatedBlogPosts";
@@ -30,7 +30,7 @@ export default async function RelatedBlogPosts({
             >
               {img && (
                 <div className="relative aspect-[1200/650] w-full overflow-hidden rounded-xl border border-ink/15 bg-paper-soft">
-                  <Image
+                  <SafeImage
                     src={img}
                     alt={post.title}
                     fill

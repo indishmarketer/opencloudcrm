@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
+import SafeImage from "@/components/SafeImage";
 import Link from "next/link";
 import { pickSignupOffer, type SignupOffer } from "@/lib/signupOffers";
 
@@ -23,7 +23,7 @@ export default function InlineSignupCta() {
   return (
     <div className="mt-6 flex flex-col overflow-hidden rounded-2xl border border-line sm:flex-row">
       <div className="relative h-36 w-full shrink-0 sm:h-auto sm:w-48">
-        <Image src={offer.image} alt="" fill sizes="(min-width: 640px) 192px, 100vw" className="object-cover" />
+        <SafeImage src={offer.image} alt="" fill sizes="(min-width: 640px) 192px, 100vw" className="object-cover" />
       </div>
       <div className="flex flex-1 flex-col justify-center p-5">
         <p className="font-display text-base font-semibold">{offer.headline}</p>

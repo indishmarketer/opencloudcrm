@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import Image from "next/image";
+import SafeImage from "@/components/SafeImage";
 import BrandSelect from "@/components/BrandSelect";
 import { useConfirm } from "@/components/ConfirmDialog";
 import ConsoleDirectoryReview from "@/components/ConsoleDirectoryReview";
@@ -377,7 +377,7 @@ export default function ConsoleDirectoryTools() {
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             {form.logo_url && (
-              <Image src={form.logo_url} alt={`${form.name || "Tool"} logo`} width={40} height={40} className="h-10 w-10 rounded-md border border-line" />
+              <SafeImage src={form.logo_url} alt={`${form.name || "Tool"} logo`} width={40} height={40} className="h-10 w-10 rounded-md border border-line" />
             )}
             <input
               placeholder="tool-domain.com"
@@ -418,7 +418,7 @@ export default function ConsoleDirectoryTools() {
           <div className="mt-3 flex flex-wrap gap-3">
             {screenshots.map((s, i) => (
               <div key={s} className="relative w-40">
-                <Image src={s} alt={alts[s] || `${form.name || "Tool"} screenshot ${i + 1}`} width={160} height={90} className="h-[90px] w-40 rounded-md border border-line object-cover object-top" />
+                <SafeImage src={s} alt={alts[s] || `${form.name || "Tool"} screenshot ${i + 1}`} width={160} height={90} className="h-[90px] w-40 rounded-md border border-line object-cover object-top" />
                 <input
                   placeholder="Alt text"
                   value={alts[s] || ""}
@@ -512,7 +512,7 @@ export default function ConsoleDirectoryTools() {
         {shown.map((t) => (
           <div key={t.id} className="flex items-center gap-3 rounded-xl border border-line bg-paper p-3">
             {t.logo_url ? (
-              <Image src={t.logo_url} alt={`${t.name} logo`} width={36} height={36} className="h-9 w-9 shrink-0 rounded-md border border-line" />
+              <SafeImage src={t.logo_url} alt={`${t.name} logo`} width={36} height={36} className="h-9 w-9 shrink-0 rounded-md border border-line" />
             ) : (
               <div className="h-9 w-9 shrink-0 rounded-md border border-line bg-paper-soft" />
             )}

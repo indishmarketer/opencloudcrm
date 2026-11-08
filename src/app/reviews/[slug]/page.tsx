@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Image from "next/image";
+import SafeImage from "@/components/SafeImage";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCuratedReviewers } from "@/lib/curatedReviews";
@@ -168,7 +168,7 @@ export default async function ReviewerPage({
                 rel="noreferrer"
                 className="relative aspect-[9/16] overflow-hidden rounded-2xl border border-line bg-paper-soft"
               >
-                <Image
+                <SafeImage
                   src={src}
                   alt={`${review.name} screenshot`}
                   fill

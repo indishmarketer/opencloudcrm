@@ -1,5 +1,5 @@
 import Link from "next/link";
-import Image from "next/image";
+import SafeImage from "@/components/SafeImage";
 import type { Author } from "@/data/authors";
 
 export default function AuthorByline({
@@ -13,7 +13,7 @@ export default function AuthorByline({
     <Link href={`/author/${author.slug}`} className="group flex items-center gap-3">
       {author.avatar ? (
         <div className="relative h-10 w-10 overflow-hidden rounded-full">
-          <Image src={author.avatar} alt={author.name} fill className="object-cover" />
+          <SafeImage src={author.avatar} alt={author.name} fill className="object-cover" />
         </div>
       ) : (
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-ink text-sm font-semibold text-paper">

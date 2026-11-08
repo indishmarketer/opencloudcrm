@@ -1,5 +1,5 @@
 import Link from "next/link";
-import Image from "next/image";
+import SafeImage from "@/components/SafeImage";
 import { getBlogCategories } from "@/lib/blogCategories";
 import { resolveImage } from "@/lib/images";
 import { getAuthorViewBySlug, getDefaultAuthorView } from "@/lib/blogAuthors";
@@ -124,7 +124,7 @@ export default async function BlogPostArticle({ post, indexEntry, preview = fals
       </div>
       {img && (
         <div className="relative mt-10 aspect-[1200/650] w-full overflow-hidden rounded-xl border border-ink/15 bg-paper-soft">
-          <Image src={img} alt={post.feature_image_alt || post.title} fill className="object-contain" priority />
+          <SafeImage src={img} alt={post.feature_image_alt || post.title} fill className="object-contain" priority />
         </div>
       )}
       {hasArchivedYear && (

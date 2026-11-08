@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Image from "next/image";
+import SafeImage from "@/components/SafeImage";
 import { notFound } from "next/navigation";
 import { getLeadMagnetBySlug } from "@/lib/leadMagnets";
 import GuidePopup from "@/components/GuidePopup";
@@ -35,7 +35,7 @@ export default async function GuidePage({
       {guide.cover_image_url && (
         <div className="flex justify-center rounded-3xl border border-line bg-paper-soft p-6 sm:p-10">
           <div className="relative aspect-square w-full max-w-sm overflow-hidden rounded-2xl shadow-2xl sm:max-w-md">
-            <Image
+            <SafeImage
               src={guide.cover_image_url}
               alt={`${guide.title} 3D book cover`}
               fill

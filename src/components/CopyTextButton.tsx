@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
+import SafeImage from "@/components/SafeImage";
 import Link from "next/link";
 import { pickSignupOffer, type SignupOffer } from "@/lib/signupOffers";
 
@@ -49,7 +49,7 @@ export default function CopyTextButton({
             onClick={(e) => e.stopPropagation()}
           >
             <div className="relative aspect-video w-full">
-              <Image src={offer.image} alt="" fill sizes="384px" className="object-cover" />
+              <SafeImage src={offer.image} alt="" fill sizes="384px" className="object-cover" />
               <button
                 type="button"
                 onClick={() => setOffer(null)}

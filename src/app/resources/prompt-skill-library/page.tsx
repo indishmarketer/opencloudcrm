@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Image from "next/image";
+import SafeImage from "@/components/SafeImage";
 import Link from "next/link";
 import { pool, buildSafe } from "@/lib/db";
 import { serializeJsonLd } from "@/lib/jsonLd";
@@ -152,7 +152,7 @@ export default async function PromptSkillLibraryLandingPage() {
             </div>
           </div>
           <div className="relative mx-auto aspect-[900/680] w-full overflow-hidden rounded-3xl">
-            <Image
+            <SafeImage
               src={HERO_IMAGE}
               alt="Three stacked cards labeled Images, Video, and Agents, representing the library's categories"
               fill
@@ -178,7 +178,7 @@ export default async function PromptSkillLibraryLandingPage() {
               <div key={c.slug} className="overflow-hidden rounded-2xl border border-line">
                 {meta && (
                   <div className="relative aspect-[4/3] w-full">
-                    <Image
+                    <SafeImage
                       src={meta.image}
                       alt={`Icon representing the ${c.name} category`}
                       fill

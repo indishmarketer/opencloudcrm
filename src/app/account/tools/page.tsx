@@ -1,5 +1,5 @@
 import Link from "next/link";
-import Image from "next/image";
+import SafeImage from "@/components/SafeImage";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { pool } from "@/lib/db";
@@ -86,7 +86,7 @@ export default async function MyToolsPage({ searchParams }: { searchParams: Prom
           <div key={t.id} className="rounded-2xl border border-line p-5">
             <div className="flex items-start gap-3">
               {t.logo_url ? (
-                <Image src={t.logo_url} alt={`${t.name} logo`} width={44} height={44} className="h-11 w-11 shrink-0 rounded-lg border border-line" />
+                <SafeImage src={t.logo_url} alt={`${t.name} logo`} width={44} height={44} className="h-11 w-11 shrink-0 rounded-lg border border-line" />
               ) : (
                 <div className="h-11 w-11 shrink-0 rounded-lg border border-line bg-paper-soft" />
               )}

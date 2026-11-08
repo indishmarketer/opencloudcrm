@@ -1,5 +1,5 @@
 import Link from "next/link";
-import Image from "next/image";
+import SafeImage from "@/components/SafeImage";
 
 const PRICING_LABELS: Record<string, string> = {
   free: "Free",
@@ -31,7 +31,7 @@ export default function DirectoryToolCard({ tool }: { tool: DirectoryToolCardDat
     >
       <div className="flex items-start gap-3">
         {tool.logo_url ? (
-          <Image
+          <SafeImage
             src={tool.logo_url}
             alt={`${tool.name} logo`}
             width={48}

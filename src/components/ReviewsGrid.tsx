@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
+import SafeImage from "@/components/SafeImage";
 import Stars from "@/components/Stars";
 import type { Reviewer } from "@/data/reviews";
 
@@ -79,7 +79,7 @@ export default function ReviewsGrid({
             <div className="mt-6 flex items-center gap-3">
               {r.avatar ? (
                 <div className="relative h-11 w-11 overflow-hidden rounded-full">
-                  <Image src={r.avatar} alt={r.name} fill className="object-cover" />
+                  <SafeImage src={r.avatar} alt={r.name} fill className="object-cover" />
                 </div>
               ) : (
                 <div className="flex h-11 w-11 items-center justify-center rounded-full bg-ink text-sm font-semibold text-paper">

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Image from "next/image";
+import SafeImage from "@/components/SafeImage";
 import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { pool } from "@/lib/db";
@@ -118,7 +118,7 @@ export default async function BookMeetingPage({ params, searchParams }: Props) {
       <div className="rounded-2xl border border-line bg-paper p-6 shadow-sm">
         <Link href={`/author/${HOST.slug}`} className="group mb-4 flex items-center gap-3">
           {HOST.avatar && (
-            <Image
+            <SafeImage
               src={HOST.avatar}
               alt={`${HOST.name}, host of this call`}
               width={48}

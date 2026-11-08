@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Image from "next/image";
+import SafeImage from "@/components/SafeImage";
 import { EDITABLE_FIELDS, PRICING_OPTIONS, STATUS_LABELS } from "@/lib/directoryFields";
 
 type Category = { id: number; name: string };
@@ -156,7 +156,7 @@ export default function ConsoleDirectoryReview({
             <div key={t.id} className="rounded-xl border border-line p-4">
               <div className="flex items-start gap-3">
                 {t.logo_url ? (
-                  <Image src={t.logo_url} alt={`${t.name} logo`} width={40} height={40} className="h-10 w-10 shrink-0 rounded-md border border-line" />
+                  <SafeImage src={t.logo_url} alt={`${t.name} logo`} width={40} height={40} className="h-10 w-10 shrink-0 rounded-md border border-line" />
                 ) : (
                   <div className="h-10 w-10 shrink-0 rounded-md border border-line bg-paper-soft" />
                 )}
@@ -188,7 +188,7 @@ export default function ConsoleDirectoryReview({
                     <div className="mt-2 flex flex-wrap gap-2">
                       {t.screenshots.map((s, i) => (
                         <a key={s} href={s} target="_blank" rel="noopener noreferrer">
-                          <Image src={s} alt={`${t.name} screenshot ${i + 1}`} width={96} height={64} className="h-16 w-24 rounded-md border border-line object-cover" />
+                          <SafeImage src={s} alt={`${t.name} screenshot ${i + 1}`} width={96} height={64} className="h-16 w-24 rounded-md border border-line object-cover" />
                         </a>
                       ))}
                     </div>
@@ -253,7 +253,7 @@ export default function ConsoleDirectoryReview({
                       <div className="mt-1 flex flex-wrap gap-2">
                         {(value as string[]).map((s, i) => (
                           <a key={s} href={s} target="_blank" rel="noopener noreferrer">
-                            <Image src={s} alt={`${e.name} proposed screenshot ${i + 1}`} width={96} height={64} className="h-16 w-24 rounded-md border border-line object-cover" />
+                            <SafeImage src={s} alt={`${e.name} proposed screenshot ${i + 1}`} width={96} height={64} className="h-16 w-24 rounded-md border border-line object-cover" />
                           </a>
                         ))}
                       </div>

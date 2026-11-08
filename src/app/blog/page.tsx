@@ -1,5 +1,5 @@
 import Link from "next/link";
-import Image from "next/image";
+import SafeImage from "@/components/SafeImage";
 import type { Metadata } from "next";
 import { getPublicPosts } from "@/lib/blogPosts";
 import { getBlogCategories } from "@/lib/blogCategories";
@@ -86,7 +86,7 @@ export default async function BlogIndex({
             >
               {img && (
                 <div className="relative aspect-[1200/650] w-full overflow-hidden rounded-xl border border-ink/15 bg-paper-soft">
-                  <Image
+                  <SafeImage
                     src={img}
                     alt={post.title}
                     fill

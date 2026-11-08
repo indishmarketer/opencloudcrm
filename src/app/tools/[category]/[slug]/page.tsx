@@ -1,5 +1,5 @@
 import Link from "next/link";
-import Image from "next/image";
+import SafeImage from "@/components/SafeImage";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getPublishedToolBySlug, listPublishedTools } from "@/lib/directory";
@@ -106,7 +106,7 @@ export default async function DirectoryToolPage({
         <section className="rounded-3xl bg-ink p-6 text-paper sm:p-8">
           <div className="flex items-start gap-4">
             {tool.logo_url ? (
-              <Image
+              <SafeImage
                 src={tool.logo_url}
                 alt={`${tool.name} logo`}
                 width={72}
@@ -188,7 +188,7 @@ export default async function DirectoryToolPage({
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
           {tool.screenshots.map((s, i) => (
             <div key={s} className="relative aspect-video overflow-hidden rounded-2xl border border-line bg-paper-soft">
-              <Image src={s} alt={screenshotAlt(tool.name, s, tool.screenshot_alts, i)} fill sizes="(min-width: 640px) 384px, 100vw" className="object-cover object-top" />
+              <SafeImage src={s} alt={screenshotAlt(tool.name, s, tool.screenshot_alts, i)} fill sizes="(min-width: 640px) 384px, 100vw" className="object-cover object-top" />
             </div>
           ))}
           </div>

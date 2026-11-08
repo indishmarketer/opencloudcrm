@@ -1,4 +1,4 @@
-import Image from "next/image";
+import SafeImage from "@/components/SafeImage";
 
 export default function WebinarArtwork({
   title,
@@ -17,7 +17,7 @@ export default function WebinarArtwork({
   return (
     <div className="relative aspect-video overflow-hidden rounded-2xl border border-line bg-ink">
       {imageUrl ? (
-        <Image src={imageUrl} alt={`${title} webinar cover`} fill priority={priority} sizes={sizes} className="object-cover" />
+        <SafeImage src={imageUrl} alt={`${title} webinar cover`} fill priority={priority} sizes={sizes} className="object-cover" />
       ) : (
         <div className="absolute inset-0 flex flex-col justify-between overflow-hidden p-6 text-paper">
           <div className="absolute -right-20 -top-20 h-56 w-56 rounded-full border border-paper/15" />

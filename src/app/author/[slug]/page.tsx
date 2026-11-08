@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Image from "next/image";
+import SafeImage from "@/components/SafeImage";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { listActiveAuthorSlugs, getAuthorViewBySlug } from "@/lib/blogAuthors";
@@ -75,7 +75,7 @@ export default async function AuthorPage({
       <div className="flex flex-col items-start gap-6 sm:flex-row sm:items-center">
         {author.avatar ? (
           <div className="relative h-20 w-20 overflow-hidden rounded-full">
-            <Image src={author.avatar} alt={author.name} fill className="object-cover" />
+            <SafeImage src={author.avatar} alt={author.name} fill className="object-cover" />
           </div>
         ) : (
           <div className="flex h-20 w-20 items-center justify-center rounded-full bg-ink text-2xl font-semibold text-paper">

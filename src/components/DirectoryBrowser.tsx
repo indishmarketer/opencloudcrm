@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import Image from "next/image";
+import SafeImage from "@/components/SafeImage";
 import Link from "next/link";
 import DirectoryToolCard, { type DirectoryToolCardData } from "@/components/DirectoryToolCard";
 import BrandSelect from "@/components/BrandSelect";
@@ -214,7 +214,7 @@ export default function DirectoryBrowser({
                   key={`${tool.slug}-${index}`}
                   className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-paper/15 bg-paper/10 p-2"
                 >
-                  <Image
+                  <SafeImage
                     src={tool.logo_url}
                     alt=""
                     width={40}

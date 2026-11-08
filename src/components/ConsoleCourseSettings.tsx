@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
+import SafeImage from "@/components/SafeImage";
 import { useConfirm } from "@/components/ConfirmDialog";
 import MediaLibraryPicker from "@/components/MediaLibraryPicker";
 import BrandSelect from "@/components/BrandSelect";
@@ -208,7 +208,7 @@ export default function ConsoleCourseSettings({
             <label className="text-xs font-medium text-ink-soft mb-1 block">Course cover</label>
             {coverCanPreview && form.cover_image_url && (
               <div className="relative mb-3 aspect-[1200/650] overflow-hidden rounded-xl border border-line">
-                <Image src={form.cover_image_url} alt={`${form.title} course cover`} fill className="object-cover" />
+                <SafeImage src={form.cover_image_url} alt={`${form.title} course cover`} fill className="object-cover" />
               </div>
             )}
             <input

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Pagination from "@/components/Pagination";
-import Image from "next/image";
+import SafeImage from "@/components/SafeImage";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getPublicPosts } from "@/lib/blogPosts";
@@ -90,7 +90,7 @@ export default async function BlogCategoryPage({
       </p>
 
       <div className="relative mt-6 aspect-[1200/650] w-full max-w-2xl overflow-hidden rounded-xl border border-ink/15 bg-paper-soft">
-        {category.image && <Image src={category.image} alt={category.image_alt || category.name} fill className="object-contain" priority />}
+        {category.image && <SafeImage src={category.image} alt={category.image_alt || category.name} fill className="object-contain" priority />}
       </div>
 
       <h1 className="mt-8 font-display text-4xl font-semibold">{category.name}</h1>
@@ -107,7 +107,7 @@ export default async function BlogCategoryPage({
             >
               {img && (
                 <div className="relative aspect-[1200/650] w-full overflow-hidden rounded-xl border border-ink/15 bg-paper-soft">
-                  <Image
+                  <SafeImage
                     src={img}
                     alt={post.title}
                     fill

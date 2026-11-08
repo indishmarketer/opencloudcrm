@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import Image from "next/image";
+import SafeImage from "@/components/SafeImage";
 import { useRouter } from "next/navigation";
 import BrandSelect from "@/components/BrandSelect";
 import { PRICING_OPTIONS } from "@/lib/directoryFields";
@@ -129,7 +129,7 @@ export default function ToolOwnerForm({ tool, categories }: { tool: OwnerTool; c
         <div className="mt-2 flex flex-wrap gap-2">
           {screenshots.map((s, i) => (
             <div key={s} className="relative">
-              <Image src={s} alt={`${name || "Tool"} screenshot ${i + 1}`} width={64} height={64} className="h-16 w-16 rounded-md border border-line object-cover" />
+              <SafeImage src={s} alt={`${name || "Tool"} screenshot ${i + 1}`} width={64} height={64} className="h-16 w-16 rounded-md border border-line object-cover" />
               <button
                 type="button"
                 aria-label={`Remove screenshot ${i + 1}`}

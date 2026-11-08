@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import Image from "next/image";
+import SafeImage from "@/components/SafeImage";
 import NewsletterSignupForm from "@/components/NewsletterSignupForm";
 import { getPublicPosts } from "@/lib/blogPosts";
 import { buildSafe } from "@/lib/db";
@@ -169,7 +169,7 @@ export default async function NewsletterPage() {
             </Link>
           </div>
           <div className="relative mx-auto mt-6 aspect-[900/760] w-full max-w-md md:mt-0">
-            <Image
+            <SafeImage
               src={assetUrl("newsletter/newsletter-hero-v2.png")}
               alt="An illustration of an open envelope with a newsletter card inside, with callouts for AI tools and tutorials, make money online, programming tips, and productivity and growth"
               fill
@@ -245,7 +245,7 @@ export default async function NewsletterPage() {
                 >
                   {img && (
                     <div className="relative aspect-[1200/650] w-full overflow-hidden border-b border-line bg-paper-soft">
-                      <Image
+                      <SafeImage
                         src={img}
                         alt={post.title}
                         fill

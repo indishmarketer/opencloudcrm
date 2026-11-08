@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
+import SafeImage from "@/components/SafeImage";
 import Turnstile from "@/components/Turnstile";
 import BrandSelect from "@/components/BrandSelect";
 import DirectoryListingCheckout from "@/components/DirectoryListingCheckout";
@@ -860,7 +860,7 @@ export default function ToolSubmitForm({
         <div className="mt-3 flex flex-wrap gap-2">
           {screenshots.map((s, i) => (
             <div key={s} className="relative">
-              <Image
+              <SafeImage
                 src={s}
                 alt={`${draft.name || "Tool"} screenshot ${i + 1}`}
                 width={64}

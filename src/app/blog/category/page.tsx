@@ -1,5 +1,5 @@
 import Link from "next/link";
-import Image from "next/image";
+import SafeImage from "@/components/SafeImage";
 import type { Metadata } from "next";
 import { getBlogCategories } from "@/lib/blogCategories";
 import { getPublicPosts } from "@/lib/blogPosts";
@@ -55,7 +55,7 @@ export default async function BlogCategoryIndex() {
             className="group flex flex-col overflow-hidden rounded-2xl border border-line"
           >
             <div className="relative aspect-[1200/650] w-full overflow-hidden rounded-xl border border-ink/15 bg-paper-soft">
-              {c.image && <Image
+              {c.image && <SafeImage
                 src={c.image}
                 alt={c.image_alt || c.name}
                 fill
