@@ -6,7 +6,7 @@ import { getEmailTemplate, applyTemplateVars } from "@/lib/emailTemplates";
 import { firstNameOf } from "@/lib/emailAutomation";
 import { escapeHtml } from "@/lib/escapeHtml";
 import { checkRateLimit, privateRateLimitKey } from "@/lib/rateLimit";
-import { SITE_URL } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 import { z } from "zod";
 
 const ResendSchema = z.object({

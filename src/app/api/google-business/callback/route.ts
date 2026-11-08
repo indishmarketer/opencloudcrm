@@ -4,7 +4,7 @@ import { getAdminSessionEmail } from "@/lib/auth";
 import { pool, withTransaction } from "@/lib/db";
 import { discoverGoogleBusinessLocations, exchangeGoogleBusinessCode, GOOGLE_BUSINESS_SCOPE } from "@/lib/googleBusiness";
 import { encryptCredential } from "@/lib/secureCredential";
-import { SITE_URL } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 
 export async function GET(req: NextRequest) {
   const adminEmail = await getAdminSessionEmail();

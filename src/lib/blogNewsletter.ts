@@ -2,7 +2,7 @@ import sanitizeHtml from "sanitize-html";
 import { sanitizeBlogHtml } from "@/lib/sanitizeBlogHtml";
 import { resolveImage } from "@/lib/images";
 import { escapeHtml } from "@/lib/escapeHtml";
-import { SITE_URL } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 // Enough for a Substack/Medium-style teaser, not the whole article --
 // whole paragraphs only, never cut mid-sentence.
 const PREVIEW_MIN_WORDS = 120;

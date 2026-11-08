@@ -5,7 +5,7 @@ import { pool } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
 import { cleanTestRecipient } from "@/lib/testRecipient";
 import { applyVars, firstNameOf } from "@/lib/emailAutomation";
-import { SITE_URL, emailAt } from "@/config/brand";
+import { SITE_URL, emailAt } from "@/lib/liveSiteUrl";
 
 /** Sends whatever is CURRENTLY in the editor (not the saved DB row) as a
  * real test email to the admin's own address, so a draft can be checked

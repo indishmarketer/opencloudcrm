@@ -1,5 +1,5 @@
 import { pool } from "@/lib/db";
-import { emailAt } from "@/config/brand";
+import { emailAt } from "@/lib/liveSiteUrl";
 
 export type EmailTemplate = {
   key: string;

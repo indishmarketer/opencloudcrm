@@ -10,7 +10,7 @@ import { sendMeetingConfirmation, sendMeetingOwnerNotification } from "@/lib/mee
 import { bookingDataFromCalcom, getMeetingTypeBySlug, isValidDateTime, isValidTimeZone } from "@/lib/meetingUtils";
 import { consumeRateLimit } from "@/lib/rateLimit";
 import { normalizeCountry } from "@/lib/countries";
-import { SITE_URL } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 import { emitWebhookEvent } from "@/lib/webhookEvents";
 import { hasActiveWorkflowActionForEvent } from "@/lib/workflows";
 

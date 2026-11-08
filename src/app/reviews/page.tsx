@@ -5,7 +5,8 @@ import ReviewSubmitForm from "@/components/ReviewSubmitForm";
 import { getSession } from "@/lib/auth";
 import { pool } from "@/lib/db";
 import { serializeJsonLd } from "@/lib/jsonLd";
-import { SITE_NAME, SITE_URL } from "@/config/brand";
+import { SITE_NAME } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 import { BuiltInPage, builtInPageMetadata } from "@/components/pageBlocks/SitePageView";
 
 export async function generateMetadata(): Promise<Metadata> {

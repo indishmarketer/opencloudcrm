@@ -3,7 +3,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { pool } from "@/lib/db";
 import { serializeJsonLd } from "@/lib/jsonLd";
-import { SITE_NAME, SITE_URL } from "@/config/brand";
+import { SITE_NAME } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 import { BuiltInPage, builtInPageMetadata } from "@/components/pageBlocks/SitePageView";
 import { isKnownImageHost } from "@/lib/liveImageHost";
 

@@ -1,4 +1,4 @@
-import { SITE_URL } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 
 // Feature images still live on the Ghost instance until migrated to R2.
 // Swap GHOST_ORIGIN -> the asset CDN domain once migration runs.

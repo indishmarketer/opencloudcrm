@@ -13,7 +13,8 @@ import { canWatchWebinar, type Webinar } from "@/lib/webinars";
 import { upcomingWebinarSessions, type WebinarScheduleRule } from "@/lib/webinarSchedule";
 import { formatWebinarSessionWindow } from "@/lib/webinarReminders";
 import { webinarSessionState } from "@/lib/webinarSession";
-import { SITE_NAME, SITE_URL, OG_LOCALE } from "@/config/brand";
+import { SITE_NAME, OG_LOCALE } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 
 type Props = {
   params: Promise<{ slug: string }>;

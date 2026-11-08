@@ -10,7 +10,8 @@ import LikeButton from "@/components/community/LikeButton";
 import LevelBadge from "@/components/community/LevelBadge";
 import BannedNotice from "@/components/community/BannedNotice";
 import { serializeJsonLd } from "@/lib/jsonLd";
-import { SITE_NAME, SITE_URL, OG_LOCALE } from "@/config/brand";
+import { SITE_NAME, OG_LOCALE } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 
 export async function generateMetadata({ params }: { params: Promise<{ postId: string }> }) {
   const { postId } = await params;

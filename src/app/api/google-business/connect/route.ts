@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { getAdminSessionEmail } from "@/lib/auth";
 import { pool } from "@/lib/db";
 import { googleBusinessAuthorizationUrl, googleBusinessConfigured } from "@/lib/googleBusiness";
-import { SITE_URL } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 
 export async function GET() {
   const adminEmail = await getAdminSessionEmail();

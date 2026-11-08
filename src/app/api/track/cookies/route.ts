@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { GA4_COOKIE_NAMES } from "@/lib/ga4Server";
-import { SITE_URL } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 
 /** Re-issues the GA4 and Meta cookies from our own server. Safari (ITP)
  * caps cookies that scripts write to 7 days (1 day after an ad click), but

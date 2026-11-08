@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { SITE_URL, SITE_NAME } from "@/config/brand";
+import { SITE_NAME } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 import { API_SCOPES } from "@/lib/apiScopes";
 
 export const dynamic = "force-static";

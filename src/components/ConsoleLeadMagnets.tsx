@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import ConsoleModal from "@/components/ConsoleModal";
 import { useConfirm } from "@/components/ConfirmDialog";
-import { SITE_HOSTNAME } from "@/config/brand";
+import { SITE_HOSTNAME } from "@/lib/liveSiteUrl";
 
 type Guide = {
   id: number;

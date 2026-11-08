@@ -4,7 +4,7 @@ import { applyTemplateVars, getEmailTemplate } from "@/lib/emailTemplates";
 import { calVideoUrl } from "@/lib/calcom";
 import { buildIcsInvite, icsAttachment } from "@/lib/ics";
 import { createMeetingManageToken } from "@/lib/meetingManageToken";
-import { SITE_URL, SITE_HOSTNAME, emailAt } from "@/config/brand";
+import { SITE_URL, SITE_HOSTNAME, emailAt } from "@/lib/liveSiteUrl";
 
 // Owner's own timezone (confirmed against the connected Cal.com account's
 // own settings) -- every owner-facing notification shows the meeting time

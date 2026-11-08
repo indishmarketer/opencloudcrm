@@ -13,7 +13,7 @@ import { checkRateLimit, privateRateLimitKey } from "@/lib/rateLimit";
 import { ensureContact } from "@/lib/contacts";
 import { normalizeCountry } from "@/lib/countries";
 import { isPhoneRequired } from "@/lib/phoneRequirement";
-import { SITE_URL } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 import { z } from "zod";
 
 const SignupSchema = z.object({

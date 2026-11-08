@@ -4,7 +4,7 @@ import { isConsoleOwner } from "@/lib/consoleAdmins";
 import { sendEmail } from "@/lib/email";
 import { cleanTestRecipient } from "@/lib/testRecipient";
 import { applyMessageVariables, contactMessageValues } from "@/lib/messageVariables";
-import { emailAt } from "@/config/brand";
+import { emailAt } from "@/lib/liveSiteUrl";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const adminSessionEmail = await getAdminSessionEmail();

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { SITE_NAME, SITE_URL } from "@/config/brand";
+import { SITE_NAME } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 import { getBusiness } from "@/lib/businessProfile";
 import LegalContactList from "@/components/LegalContactList";
 import { FEATURES } from "@/config/features";

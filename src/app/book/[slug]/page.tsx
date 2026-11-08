@@ -10,7 +10,8 @@ import { createMeetingManageToken } from "@/lib/meetingManageToken";
 import { notFound } from "next/navigation";
 import { getDefaultAuthorView } from "@/lib/blogAuthors";
 import { getReviewStats } from "@/lib/reviewStats";
-import { SITE_NAME, SITE_URL, OG_LOCALE, OG_ASSET_VERSION, assetUrl } from "@/config/brand";
+import { SITE_NAME, OG_LOCALE, OG_ASSET_VERSION, assetUrl } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 
 // A fresh install's unconfigured placeholder has no photo -- fall back to
 // the sitewide default OG image (same one layout.tsx uses) for

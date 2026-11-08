@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { getSiteIdentity } from "@/lib/siteIdentity";
-import { SITE_URL } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 
 // A real image file (icon.png) can't branch on the console-configured
 // favicon, and Next.js always places a static icon/favicon file ahead of

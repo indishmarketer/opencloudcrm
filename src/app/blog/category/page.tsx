@@ -5,7 +5,8 @@ import { getBlogCategories } from "@/lib/blogCategories";
 import { getPublicPosts } from "@/lib/blogPosts";
 import { buildSafe } from "@/lib/db";
 import { serializeJsonLd } from "@/lib/jsonLd";
-import { SITE_NAME, SITE_URL } from "@/config/brand";
+import { SITE_NAME } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 
 export const metadata: Metadata = {
   title: "Blog Categories",

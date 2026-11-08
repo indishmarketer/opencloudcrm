@@ -3,7 +3,7 @@ import { escapeHtml } from "@/lib/escapeHtml";
 import { ensureContact } from "@/lib/contacts";
 import { buildSegmentPredicate } from "@/lib/contactSegments";
 import { contactMessageValues } from "@/lib/messageVariables";
-import { SITE_URL } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 import { emitWebhookEvent } from "@/lib/webhookEvents";
 
 export const EMAIL_TRIGGERS = [

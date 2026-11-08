@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { pool } from "@/lib/db";
-import { SITE_NAME, emailAt } from "@/config/brand";
+import { SITE_NAME } from "@/config/brand";
+import { emailAt } from "@/lib/liveSiteUrl";
 import {
   BUSINESS_PROFILE_KEY,
   EMPTY_BUSINESS_PROFILE,

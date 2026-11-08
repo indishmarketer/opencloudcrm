@@ -5,7 +5,7 @@ import { listCategoriesWithCounts, listPublishedTools } from "@/lib/directory";
 import { heroLogoWindow } from "@/lib/directoryHero";
 import { getDirectoryListingPrice, formatListingPrice } from "@/lib/directoryListingPrice";
 import DirectoryBrowser from "@/components/DirectoryBrowser";
-import { SITE_URL } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 import { BuiltInPage, builtInPageMetadata } from "@/components/pageBlocks/SitePageView";
 
 const baseMetadata: Metadata = {

@@ -1,6 +1,6 @@
 import { pool } from "@/lib/db";
 import SupportThreads from "@/components/SupportThreads";
-import { emailAt } from "@/config/brand";
+import { emailAt } from "@/lib/liveSiteUrl";
 
 export default async function ConsoleSupportPage() {
   const [submissions, replies, replyTemplate] = await Promise.all([

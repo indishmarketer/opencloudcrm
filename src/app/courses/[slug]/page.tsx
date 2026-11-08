@@ -15,7 +15,8 @@ import { createPriceQuote } from "@/lib/priceQuote";
 import ViewContentTracked from "@/components/ViewContentTracked";
 import { formatCoursePrice, getCoursePrices } from "@/lib/currency";
 import { serializeJsonLd } from "@/lib/jsonLd";
-import { SITE_NAME, OG_LOCALE, SITE_URL } from "@/config/brand";
+import { SITE_NAME, OG_LOCALE } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 import { isKnownImageHost } from "@/lib/liveImageHost";
 
 export async function generateMetadata({

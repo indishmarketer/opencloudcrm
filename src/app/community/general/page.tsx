@@ -19,7 +19,8 @@ import SpaceSwitcher from "@/components/community/SpaceSwitcher";
 import CommunitySidebar from "@/components/community/CommunitySidebar";
 import CommunityHero from "@/components/community/CommunityHero";
 import BannedNotice from "@/components/community/BannedNotice";
-import { SITE_NAME, SITE_URL } from "@/config/brand";
+import { SITE_NAME } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 
 export const metadata = {
   title: "Community",

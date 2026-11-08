@@ -1,6 +1,6 @@
 import { pool } from "@/lib/db";
 import { decryptCredential, encryptCredential } from "@/lib/secureCredential";
-import { SITE_URL } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 
 const SCOPE = "https://www.googleapis.com/auth/business.manage";
 

@@ -1,5 +1,5 @@
 import { getPublicPosts } from "@/lib/blogPosts";
-import { SITE_URL as BASE_URL } from "@/config/brand";
+import { SITE_URL as BASE_URL } from "@/lib/liveSiteUrl";
 
 import { pool } from "./db";
 

@@ -3,7 +3,8 @@ import SafeImage from "@/components/SafeImage";
 import Link from "next/link";
 import { pool, buildSafe } from "@/lib/db";
 import { serializeJsonLd } from "@/lib/jsonLd";
-import { SITE_NAME, SITE_URL, OG_LOCALE, assetUrl } from "@/config/brand";
+import { SITE_NAME, OG_LOCALE, assetUrl } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 
 const HERO_IMAGE = assetUrl("2026/09/prompt-library-hero.webp");
 

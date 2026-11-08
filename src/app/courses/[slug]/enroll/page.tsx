@@ -8,7 +8,7 @@ import { getEmailTemplate, applyTemplateVars } from "@/lib/emailTemplates";
 import { triggerEmailFlow, firstNameOf } from "@/lib/emailAutomation";
 import { emitWebhookEvent } from "@/lib/webhookEvents";
 import { escapeHtml } from "@/lib/escapeHtml";
-import { SITE_URL } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 
 export const metadata = { title: "Enrolling…", robots: { index: false, follow: false } };
 

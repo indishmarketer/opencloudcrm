@@ -7,7 +7,8 @@ import { getPublicPosts } from "@/lib/blogPosts";
 import { getBlogCategories } from "@/lib/blogCategories";
 import { resolveImage } from "@/lib/images";
 import { serializeJsonLd } from "@/lib/jsonLd";
-import { SITE_NAME, OG_LOCALE, SITE_URL as BASE_URL } from "@/config/brand";
+import { SITE_NAME, OG_LOCALE } from "@/config/brand";
+import { SITE_URL as BASE_URL } from "@/lib/liveSiteUrl";
 
 export const dynamic = "force-dynamic";
 export const dynamicParams = true;

@@ -10,7 +10,7 @@ import { ensureContact, normalizeContactEmail } from "@/lib/contacts";
 import { generateUniqueUsername } from "@/lib/community";
 import { getAttributionFromRequest } from "@/lib/attribution";
 import { normalizeCountry } from "@/lib/countries";
-import { SITE_URL } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 
 const secret = () => new TextEncoder().encode(getSessionSecret());
 

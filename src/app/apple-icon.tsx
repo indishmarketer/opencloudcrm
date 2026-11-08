@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { getSiteIdentity } from "@/lib/siteIdentity";
-import { SITE_URL } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 
 // See icon.tsx for why this has to be code-generated rather than a static
 // apple-icon.png -- same reasoning, same Console -> Site identity ->

@@ -15,7 +15,8 @@ import { sanitizeBlogHtml } from "@/lib/sanitizeBlogHtml";
 import { buildTableOfContents } from "@/lib/tableOfContents";
 import AuthorSocialLinks from "@/components/SocialIcon";
 import type { BlogIndexEntry, BlogSource } from "@/lib/blogPosts";
-import { SITE_NAME, SITE_URL } from "@/config/brand";
+import { SITE_NAME } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 
 export type FullPost = {
   id: string;

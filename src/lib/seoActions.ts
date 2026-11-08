@@ -1,6 +1,6 @@
 import { google } from "googleapis";
 import { pool } from "@/lib/db";
-import { SITE_URL } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 
 export async function purgeCloudflareCache(): Promise<{ ok: boolean; message: string }> {
   const token = process.env.CLOUDFLARE_ZONE_TOKEN;

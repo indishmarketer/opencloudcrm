@@ -3,7 +3,7 @@ import { applyTemplateVars, getEmailTemplate } from "@/lib/emailTemplates";
 import { escapeHtml } from "@/lib/escapeHtml";
 import { buildIcsInvite, icsAttachment } from "@/lib/ics";
 import { formatWebinarSessionWindow, webinarDurationLabel, type WebinarEmailType } from "@/lib/webinarReminders";
-import { SITE_URL, SITE_HOSTNAME, emailAt } from "@/config/brand";
+import { SITE_URL, SITE_HOSTNAME, emailAt } from "@/lib/liveSiteUrl";
 
 const ORGANIZER_EMAIL = process.env.ADMIN_EMAIL || emailAt("support");
 

@@ -9,7 +9,7 @@ import { pool } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
 import { ensureContact } from "@/lib/contacts";
 import { escapeHtml } from "@/lib/escapeHtml";
-import { SITE_URL } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 
 const RequestSchema = z.object({
   guideId: z.coerce.number().int().positive(),

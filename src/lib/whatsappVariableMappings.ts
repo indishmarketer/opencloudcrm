@@ -1,7 +1,7 @@
 import { pool } from "@/lib/db";
 import { getPublicPosts } from "@/lib/blogPosts";
 import { calVideoUrl } from "@/lib/calcom";
-import { SITE_URL, emailAt } from "@/config/brand";
+import { SITE_URL, emailAt } from "@/lib/liveSiteUrl";
 
 export type WhatsAppVariableMapping = {
   position: number;

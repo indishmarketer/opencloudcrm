@@ -14,7 +14,7 @@ import { getAttributionFromRequest } from "@/lib/attribution";
 import { consumeRateLimit, privateRateLimitKey } from "@/lib/rateLimit";
 import { ensureContact } from "@/lib/contacts";
 import { normalizeCountry } from "@/lib/countries";
-import { SITE_URL } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 
 const RegisterGuestSchema = z.object({
   webinarId: z.coerce.number().int().positive(),

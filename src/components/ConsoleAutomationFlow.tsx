@@ -7,7 +7,7 @@ import BrandSelect from "@/components/BrandSelect";
 import RichTextEditor from "@/components/RichTextEditor";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { EMAIL_FLOW_VARIABLES } from "@/lib/messageVariables";
-import { emailAt } from "@/config/brand";
+import { emailAt } from "@/lib/liveSiteUrl";
 import type { EmailContentTemplate } from "@/lib/emailContentTemplates";
 
 const TRIGGERS: Record<string, string> = {

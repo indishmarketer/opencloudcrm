@@ -4,7 +4,8 @@ import WebinarArtwork from "@/components/WebinarArtwork";
 import { serializeJsonLd } from "@/lib/jsonLd";
 import { listPublishedWebinars } from "@/lib/webinars";
 import { buildSafe } from "@/lib/db";
-import { SITE_NAME, SITE_URL, assetUrl } from "@/config/brand";
+import { SITE_NAME, assetUrl } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 import { BuiltInPage, builtInPageMetadata } from "@/components/pageBlocks/SitePageView";
 
 const OG_IMAGE = assetUrl("brand/og-default.png");

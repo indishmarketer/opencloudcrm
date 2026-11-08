@@ -5,7 +5,7 @@ import { sendEmailWithRetry } from "@/lib/emailOutbox";
 import { getEmailTemplate, applyTemplateVars } from "@/lib/emailTemplates";
 import { firstNameOf } from "@/lib/emailAutomation";
 import { escapeHtml } from "@/lib/escapeHtml";
-import { SITE_URL } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const isAdmin = await getAdminSession();

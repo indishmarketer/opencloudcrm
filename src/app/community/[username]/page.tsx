@@ -9,7 +9,8 @@ import { pool } from "@/lib/db";
 import { getPublicPosts } from "@/lib/blogPosts";
 import ProfileTabs from "@/components/community/ProfileTabs";
 import { serializeJsonLd } from "@/lib/jsonLd";
-import { SITE_NAME, SITE_URL, OG_LOCALE } from "@/config/brand";
+import { SITE_NAME, OG_LOCALE } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 import { resolveDefaultAuthorSlug } from "@/lib/blogAuthors";
 
 export async function generateMetadata({ params }: { params: Promise<{ username: string }> }) {

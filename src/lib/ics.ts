@@ -1,4 +1,5 @@
-import { SITE_NAME, SITE_URL } from "@/config/brand";
+import { SITE_NAME } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 
 const EMAIL_DOMAIN = new URL(SITE_URL).hostname.replace(/^www\./, "");
 

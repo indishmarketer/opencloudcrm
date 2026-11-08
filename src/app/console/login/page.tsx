@@ -2,7 +2,7 @@
 
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { SITE_HOSTNAME } from "@/config/brand";
+import { SITE_HOSTNAME } from "@/lib/liveSiteUrl";
 
 function LoginForm() {
   const searchParams = useSearchParams();

@@ -10,7 +10,7 @@ import { grantCoursePurchase } from "@/lib/coursePurchaseGrant";
 import { resolvePurchase } from "@/lib/paymentOrders";
 import { fetchRazorpayOrder, getRazorpayKeyId, notesValue } from "@/lib/razorpay";
 import { getDirectoryListingOrder, settleDirectoryListingPayment } from "@/lib/directoryListingPayments";
-import { emailAt } from "@/config/brand";
+import { emailAt } from "@/lib/liveSiteUrl";
 import { emitWebhookEvent } from "@/lib/webhookEvents";
 import { pool } from "@/lib/db";
 

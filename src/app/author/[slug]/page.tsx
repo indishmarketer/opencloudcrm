@@ -6,7 +6,7 @@ import { listActiveAuthorSlugs, getAuthorViewBySlug, resolveDefaultAuthorSlug } 
 import { buildSafe } from "@/lib/db";
 import { getPublicPosts } from "@/lib/blogPosts";
 import { serializeJsonLd } from "@/lib/jsonLd";
-import { SITE_URL } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 import AuthorSocialLinks from "@/components/SocialIcon";
 
 const PER_PAGE = 12;

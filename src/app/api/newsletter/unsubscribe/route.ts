@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { pool } from "@/lib/db";
 import { verifyUnsubscribeToken } from "@/lib/newsletterUnsubscribe";
 import { emitWebhookEvent } from "@/lib/webhookEvents";
-import { SITE_URL } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 
 export async function POST(req: NextRequest) {
   const form = await req.formData();

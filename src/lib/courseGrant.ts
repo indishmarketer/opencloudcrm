@@ -8,7 +8,7 @@ import { firstNameOf } from "@/lib/emailAutomation";
 import { escapeHtml } from "@/lib/escapeHtml";
 import { generateUniqueUsername } from "@/lib/community";
 import { normalizeContactEmail } from "@/lib/contacts";
-import { SITE_URL } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 
 type Account = { id: number; email: string; name: string | null; verified: boolean; created: boolean };
 

@@ -5,7 +5,7 @@
  * src/lib/email.ts) so it must never appear as a From. Lives in its own
  * module so the picker in the console and the route that validates the
  * choice read the same list. */
-import { SITE_URL } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 
 const EMAIL_DOMAIN = new URL(SITE_URL).hostname.replace(/^www\./, "");
 

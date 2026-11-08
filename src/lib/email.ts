@@ -6,7 +6,8 @@ import { ensureContact } from "@/lib/contacts";
 import { wrapEmailHtml } from "@/lib/emailShell";
 import { sendViaSes } from "@/lib/sesEmail";
 import { sendViaBrevo } from "@/lib/brevoEmail";
-import { SITE_URL, SITE_NAME } from "@/config/brand";
+import { SITE_NAME } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 import { getReplyToEmail } from "@/lib/businessProfile";
 
 const EMAIL_DOMAIN = new URL(SITE_URL).hostname.replace(/^www\./, "");

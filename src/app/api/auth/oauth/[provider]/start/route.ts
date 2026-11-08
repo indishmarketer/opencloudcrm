@@ -4,7 +4,7 @@ import { randomUUID } from "crypto";
 import { getSessionSecret, safeRedirectPath } from "@/lib/auth";
 import { isSsoProvider, buildAuthorizeUrl } from "@/lib/sso";
 import { checkRateLimit } from "@/lib/rateLimit";
-import { SITE_URL } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 
 const secret = () => new TextEncoder().encode(getSessionSecret());
 

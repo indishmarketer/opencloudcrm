@@ -4,7 +4,8 @@ import { resolveImage } from "@/lib/images";
 import { getPublicPost, getPublicPosts, getPostBySlug } from "@/lib/blogPosts";
 import { buildSafe } from "@/lib/db";
 import BlogPostArticle, { type FullPost } from "@/components/BlogPostArticle";
-import { SITE_NAME, SITE_URL, OG_LOCALE } from "@/config/brand";
+import { SITE_NAME, OG_LOCALE } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 
 function toFullPost(row: NonNullable<Awaited<ReturnType<typeof getPostBySlug>>>): FullPost {
   return {

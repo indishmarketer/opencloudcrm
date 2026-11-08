@@ -6,7 +6,8 @@ import { getBlogCategories } from "@/lib/blogCategories";
 import { resolveImage } from "@/lib/images";
 import CategorySelect from "@/components/CategorySelect";
 import { serializeJsonLd } from "@/lib/jsonLd";
-import { SITE_NAME, SITE_URL as BASE_URL } from "@/config/brand";
+import { SITE_NAME } from "@/config/brand";
+import { SITE_URL as BASE_URL } from "@/lib/liveSiteUrl";
 import { BuiltInPage, builtInPageMetadata } from "@/components/pageBlocks/SitePageView";
 
 import Pagination from "@/components/Pagination";

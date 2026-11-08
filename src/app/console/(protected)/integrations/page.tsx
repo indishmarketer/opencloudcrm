@@ -3,7 +3,7 @@ import ConsoleIntegrations from "@/components/ConsoleIntegrations";
 import ConsoleWebhooks from "@/components/ConsoleWebhooks";
 import ClearInboundWebhookEventsButton from "@/components/ClearInboundWebhookEventsButton";
 import Link from "next/link";
-import { SITE_URL } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 
 const EVENTS_PAGE_SIZE = 20;
 

@@ -2,7 +2,8 @@ import { Agent, request as undiciRequest, type Dispatcher } from "undici";
 import { signWebhookBody } from "@/lib/webhookSigning";
 import { validateOutboundWebhookUrl } from "@/lib/webhookUrlValidation";
 import { classifyHttpStatus, type DeliveryOutcome } from "@/lib/webhookRetry";
-import { SITE_NAME, SITE_URL } from "@/config/brand";
+import { SITE_NAME } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 
 const MAX_RESPONSE_BYTES = 16 * 1024;
 const DEFAULT_TIMEOUT_MS = 10_000;

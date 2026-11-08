@@ -16,3 +16,10 @@ import { SITE_URL as FROZEN_SITE_URL } from "@/config/brand";
  * "use client" file; those still need config/brand's NEXT_PUBLIC_SITE_URL,
  * since only that one is available in the browser at all. */
 export const SITE_URL = process.env.SITE_URL || FROZEN_SITE_URL;
+
+export const SITE_HOSTNAME = new URL(SITE_URL).hostname.replace(/^www\./, "");
+
+/** Live counterpart to config/brand's emailAt() -- see its own comment. */
+export function emailAt(local: string): string {
+  return `${local}@${SITE_HOSTNAME}`;
+}

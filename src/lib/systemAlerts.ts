@@ -1,7 +1,7 @@
 import { pool } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
 import { escapeHtml } from "@/lib/escapeHtml";
-import { SITE_URL, SITE_HOSTNAME, emailAt } from "@/config/brand";
+import { SITE_URL, SITE_HOSTNAME, emailAt } from "@/lib/liveSiteUrl";
 
 export type AlertSeverity = "info" | "warning" | "critical";
 

@@ -10,7 +10,7 @@ import { sendGa4Purchase, gaCookiesFrom } from "@/lib/ga4Server";
 import { markOrderPaid } from "@/lib/paymentOrders";
 import { sendTransactionalWhatsApp } from "@/lib/whatsappTransactional";
 import { ensureContact } from "@/lib/contacts";
-import { SITE_URL } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 
 export type PaymentMethod = "razorpay" | "paypal";
 

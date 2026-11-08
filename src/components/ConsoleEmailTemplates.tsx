@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import BrandSelect from "@/components/BrandSelect";
 import RichTextEditor from "@/components/RichTextEditor";
 import { useConfirm } from "@/components/ConfirmDialog";
-import { emailAt } from "@/config/brand";
+import { emailAt } from "@/lib/liveSiteUrl";
 
 const FROM_ADDRESSES = [
   { value: emailAt("me"), label: `${emailAt("me")} (notifies you)` },

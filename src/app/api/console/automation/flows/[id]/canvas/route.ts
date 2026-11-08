@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAdminSession } from "@/lib/auth";
 import { pool, withTransaction } from "@/lib/db";
 import { EMAIL_TRIGGERS } from "@/lib/emailAutomation";
-import { emailAt } from "@/config/brand";
+import { emailAt } from "@/lib/liveSiteUrl";
 
 type RouteContext = { params: Promise<{ id: string }> };
 

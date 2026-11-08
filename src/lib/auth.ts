@@ -4,7 +4,7 @@ import { randomUUID } from "crypto";
 import { isAuthorizedConsoleEmail } from "@/lib/consoleAdmins";
 import { pool } from "@/lib/db";
 import { getSessionSecret } from "@/lib/sessionSecret";
-import { SITE_URL } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 import { requestOrigin } from "@/lib/requestOrigin";
 
 const SESSION_COOKIE = "im_session";

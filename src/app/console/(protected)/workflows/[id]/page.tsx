@@ -8,7 +8,7 @@ import { listEmailTemplates } from "@/lib/emailTemplates";
 import { listContentTemplates } from "@/lib/emailContentTemplates";
 import { listWhatsAppTemplates } from "@/lib/whatsappTemplates";
 import { templateBody, templateVariables } from "@/lib/whatsappTemplateShape";
-import { emailAt } from "@/config/brand";
+import { emailAt } from "@/lib/liveSiteUrl";
 import { getAdminSessionEmail } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";

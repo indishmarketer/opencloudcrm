@@ -1,7 +1,8 @@
 import dns from "node:dns";
 import ipaddr from "ipaddr.js";
 import { Agent, request } from "undici";
-import { SITE_NAME, SITE_URL } from "@/config/brand";
+import { SITE_NAME } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 
 const BOT_USER_AGENT = `${SITE_NAME.replace(/\s+/g, "")}Bot/1.0 (+${SITE_URL}/tools)`;
 

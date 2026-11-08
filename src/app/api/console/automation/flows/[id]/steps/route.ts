@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminSession } from "@/lib/auth";
 import { pool } from "@/lib/db";
-import { emailAt } from "@/config/brand";
+import { emailAt } from "@/lib/liveSiteUrl";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const isAdmin = await getAdminSession();

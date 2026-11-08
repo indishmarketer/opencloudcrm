@@ -7,7 +7,7 @@ import { startEmailChange } from "@/lib/accountContact";
 import { sendEmail } from "@/lib/email";
 import { escapeHtml } from "@/lib/escapeHtml";
 import { applyTemplateVars, getEmailTemplate } from "@/lib/emailTemplates";
-import { SITE_URL } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 
 const Schema = z.object({ email: z.string().trim().toLowerCase().email().max(320) }).strict();
 

@@ -1,4 +1,5 @@
-import { SITE_URL, SITE_HOSTNAME, ASSET_DOMAIN } from "@/config/brand";
+import { ASSET_DOMAIN } from "@/config/brand";
+import { SITE_URL, SITE_HOSTNAME } from "@/lib/liveSiteUrl";
 
 /** First embedded image URL in a body, if any -- for list-view thumbnails. */
 export function firstImageUrl(text: string): string | null {

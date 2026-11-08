@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { pool } from "@/lib/db";
 import { verifyEmailClickToken } from "@/lib/emailOpenTracking";
 import { BURST_WINDOW_SECONDS, classifyEmailClick } from "@/lib/emailClickFilter";
-import { SITE_URL as FALLBACK } from "@/config/brand";
+import { SITE_URL as FALLBACK } from "@/lib/liveSiteUrl";
 
 async function handle(req: NextRequest) {
   const tracking = await verifyEmailClickToken(req.nextUrl.searchParams.get("t") || "");

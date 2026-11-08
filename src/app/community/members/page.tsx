@@ -3,7 +3,8 @@ import { listMembers } from "@/lib/community";
 import Avatar from "@/components/community/Avatar";
 import LevelBadge from "@/components/community/LevelBadge";
 import { serializeJsonLd } from "@/lib/jsonLd";
-import { SITE_NAME, SITE_URL } from "@/config/brand";
+import { SITE_NAME } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 
 export const dynamic = "force-dynamic";
 

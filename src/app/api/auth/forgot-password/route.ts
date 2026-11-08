@@ -7,7 +7,7 @@ import { sendEmail } from "@/lib/email";
 import { getEmailTemplate, applyTemplateVars } from "@/lib/emailTemplates";
 import { firstNameOf } from "@/lib/emailAutomation";
 import { escapeHtml } from "@/lib/escapeHtml";
-import { SITE_URL } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 import { z } from "zod";
 
 const ForgotSchema = z.object({

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { pool } from "@/lib/db";
 import { verifyNewsletterTrackingToken } from "@/lib/newsletterTracking";
-import { SITE_URL } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 
 export async function GET(req: NextRequest) {
   const tracking = await verifyNewsletterTrackingToken(

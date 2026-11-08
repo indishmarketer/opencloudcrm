@@ -7,7 +7,7 @@ import { triggerEmailFlow, firstNameOf } from "@/lib/emailAutomation";
 import { emitWebhookEvent } from "@/lib/webhookEvents";
 import { confirmContactDeliverable, confirmContactSubscribed } from "@/lib/contacts";
 import { recordWhatsAppOptIn } from "@/lib/whatsappContacts";
-import { SITE_URL } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 
 /** Opening the emailed link only shows a confirm button. Mail security
  * scanners fetch links before people click them, and a GET that used the

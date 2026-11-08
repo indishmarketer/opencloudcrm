@@ -4,7 +4,7 @@ import { pool } from "@/lib/db";
 import { getCourseBySlug, getUserEnrollment, tierSatisfies } from "@/lib/courses";
 import { firstNameOf, triggerEmailFlow } from "@/lib/emailAutomation";
 import { emitWebhookEvent } from "@/lib/webhookEvents";
-import { SITE_URL } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 
 export async function POST(
   req: NextRequest,

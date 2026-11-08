@@ -1,5 +1,5 @@
 import ConsoleApiTokens from "@/components/ConsoleApiTokens";
-import { SITE_URL } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 
 export default function ConsoleApiTokensPage() {
   return (

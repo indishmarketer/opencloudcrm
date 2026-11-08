@@ -2,7 +2,7 @@ import { cache } from "react";
 import { createHmac, timingSafeEqual } from "crypto";
 import { pool } from "@/lib/db";
 import { getSessionSecret } from "@/lib/sessionSecret";
-import { SITE_URL } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 
 /** The listing shape used by every public surface (blog lists, sitemap,
  * search, related posts, nav) -- a subset of the full `blog_posts` row. */

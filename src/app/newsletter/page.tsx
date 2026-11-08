@@ -5,7 +5,8 @@ import NewsletterSignupForm from "@/components/NewsletterSignupForm";
 import { getPublicPosts } from "@/lib/blogPosts";
 import { buildSafe } from "@/lib/db";
 import { resolveImage } from "@/lib/images";
-import { SITE_NAME, SITE_URL, OG_LOCALE, assetUrl } from "@/config/brand";
+import { SITE_NAME, OG_LOCALE, assetUrl } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 import { BuiltInPage, builtInPageMetadata } from "@/components/pageBlocks/SitePageView";
 
 const OG_IMAGE = assetUrl("newsletter/og-newsletter.png");

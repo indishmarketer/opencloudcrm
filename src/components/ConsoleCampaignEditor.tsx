@@ -9,7 +9,7 @@ import ScheduleDateTimeModal from "@/components/ScheduleDateTimeModal";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { CONTACT_MESSAGE_VARIABLES } from "@/lib/messageVariables";
 import { formatIndiaDateTime } from "@/lib/indiaTime";
-import { emailAt } from "@/config/brand";
+import { emailAt } from "@/lib/liveSiteUrl";
 import type { EmailContentTemplate } from "@/lib/emailContentTemplates";
 
 const FROM_ADDRESSES = [

@@ -1,7 +1,7 @@
 import { pool } from "@/lib/db";
 import { getEmailTemplate, applyTemplateVars } from "@/lib/emailTemplates";
 import { escapeHtml } from "@/lib/escapeHtml";
-import { SITE_URL } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 
 export type ConsoleAdmin = { id: number; email: string; invited_by: string | null; created_at: string };
 

@@ -6,7 +6,7 @@ import { getEmailTemplate, applyTemplateVars } from "@/lib/emailTemplates";
 import { triggerEmailFlow, firstNameOf } from "@/lib/emailAutomation";
 import { escapeHtml } from "@/lib/escapeHtml";
 import { emitWebhookEvent } from "@/lib/webhookEvents";
-import { SITE_URL } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const isAdmin = await getAdminSession();

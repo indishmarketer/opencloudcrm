@@ -5,7 +5,8 @@ import { sendEmail } from "@/lib/email";
 import { cleanTestRecipient } from "@/lib/testRecipient";
 import { pool } from "@/lib/db";
 import { applyTemplateVars } from "@/lib/emailTemplates";
-import { SITE_URL, SITE_NAME } from "@/config/brand";
+import { SITE_NAME } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 
 const EMAIL_DOMAIN = new URL(SITE_URL).hostname.replace(/^www\./, "");
 

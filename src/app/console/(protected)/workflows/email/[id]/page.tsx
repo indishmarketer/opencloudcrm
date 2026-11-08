@@ -3,7 +3,7 @@ import ConsoleWorkflowCanvasFrame from "@/components/ConsoleWorkflowCanvasFrame"
 import LegacyEmailWorkflowCanvas from "@/components/LegacyEmailWorkflowCanvas";
 import { pool } from "@/lib/db";
 import { EMAIL_TRIGGERS } from "@/lib/emailAutomation";
-import { emailAt } from "@/config/brand";
+import { emailAt } from "@/lib/liveSiteUrl";
 import { listEmailTemplates } from "@/lib/emailTemplates";
 import { listContentTemplates } from "@/lib/emailContentTemplates";
 import { EMAIL_FLOW_VARIABLES, TEMPLATE_VARIABLES } from "@/lib/messageVariables";

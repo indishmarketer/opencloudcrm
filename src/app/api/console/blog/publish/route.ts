@@ -3,7 +3,7 @@ import { revalidatePath } from "next/cache";
 import { pool } from "@/lib/db";
 import { getAdminSessionEmail } from "@/lib/auth";
 import { purgeCloudflareCache, submitUrlsForIndexing } from "@/lib/seoActions";
-import { SITE_URL } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 
 /** Publishes a draft: from now on it shows on its page, the blog lists, the
  * sitemap and search, dated now. Then refreshes every cached page, clears

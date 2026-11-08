@@ -1,6 +1,6 @@
 import { google } from "googleapis";
 import { pool } from "@/lib/db";
-import { SITE_URL, SITE_HOSTNAME } from "@/config/brand";
+import { SITE_URL, SITE_HOSTNAME } from "@/lib/liveSiteUrl";
 
 function getGoogleAuth(scopes: string[]) {
   const raw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
