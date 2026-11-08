@@ -353,7 +353,14 @@ export function RowBlock({
   renderColumn?: (column: PageBlock[], columnIndex: number) => React.ReactNode;
 }) {
   const items = Array.isArray(props.items) ? (props.items as PageBlock[][]) : [];
-  if (!items.some((column) => column.length > 0)) return null;
+  // Editor mode is signalled by renderColumn being passed at all (the
+  // public site's call site never passes one -- see PageBlocks.tsx). A
+  // freshly-dropped row's columns are empty until the owner adds
+  // something, and the editor still needs to render each column's
+  // "+ Add element" control in that state; only the public site should
+  // hide a row that has nothing in it yet.
+  const isEditor = Boolean(renderColumn);
+  if (!isEditor && !items.some((column) => column.length > 0)) return null;
   const columns = ROW_COLUMNS[str(props, "columns")] ?? ROW_COLUMNS["2"];
   const gap = ROW_GAP[str(props, "gap")] ?? ROW_GAP.md;
   const renderCol = renderColumn ?? ((column: PageBlock[]) => column.map((block) => <NestedElement key={block.id} block={block} />));
@@ -361,7 +368,10 @@ export function RowBlock({
     <Section props={props}>
       <div className={`grid ${gap} ${columns}`}>
         {items.map((column, i) => (
-          <div key={i} className="flex flex-col gap-4">
+          <div
+            key={i}
+            className={`flex flex-col gap-4 ${isEditor && column.length === 0 ? "min-h-16 rounded-lg border border-dashed border-line p-2" : ""}`}
+          >
             {renderCol(column, i)}
           </div>
         ))}
