@@ -49,11 +49,20 @@ export async function POST(req: NextRequest) {
 
     const tpl = await getEmailTemplate("magic-link-login");
     const vars = { link };
+    // This template's from_email seeds to a *@example.com placeholder
+    // (migrations 001/032/066) that's never a real, deliverable sender for
+    // ANY deployment -- and this is the one email a fresh self-host needs
+    // before anyone can log in to customize it via Console -> Email ->
+    // Templates. Fall back to sendEmail's own EMAIL_FROM/SITE_URL-derived
+    // default instead of forcing that placeholder through, so console
+    // login works out of the box on every self-host. An admin who already
+    // changed this template's sender to something real keeps it.
+    const isPlaceholderSender = /@example\.com$/i.test(tpl.from_email);
     await sendEmail({
       to: normalized,
       subject: applyTemplateVars(tpl.subject, vars),
       html: applyTemplateVars(tpl.body_html, vars),
-      from: tpl.from_email,
+      from: isPlaceholderSender ? undefined : tpl.from_email,
       critical: tpl.critical,
       templateKey: tpl.key,
       category: "fixed",
