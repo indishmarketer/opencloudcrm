@@ -105,6 +105,22 @@ with volumes checked) and deploy fresh instead. If you have `DATABASE_URL`
 for that database, `npm run migrate:status` tells you exactly what's
 pending (or not) before you redeploy, rather than guessing.
 
+**Pointing a Coolify app at a database you already have** (blue-green
+testing an existing deployment, migrating from a different build method,
+etc.), instead of the Docker Compose path above: create a standalone
+application (**New Resource -> Docker Image**, `ghcr.io/indishmarketer/
+opencloudcrm:latest`) rather than a Compose service, and set its
+`DATABASE_URL` to the existing database's connection string. This path
+has no built-in health check the way `docker-compose.yml`'s does --
+Coolify shows `running:unknown` instead of `running:healthy`, which
+doesn't mean anything is actually wrong, just that Coolify isn't
+checking. Set one manually on the application (Health Checks tab, or
+via the API/MCP): path `/api/health`, method `GET`, expected status
+`200`. There's no way to make Coolify do this automatically for every
+future app created this way -- it's a per-application setting, not a
+platform default, so it needs setting again each time this pattern is
+used.
+
 ### Any other Docker host (a VPS, Railway, Render, Fly...)
 
 **Manually:**
