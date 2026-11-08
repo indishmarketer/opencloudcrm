@@ -6,15 +6,26 @@ import { getEmailTemplate, applyTemplateVars } from "@/lib/emailTemplates";
 import { checkRateLimit, privateRateLimitKey } from "@/lib/rateLimit";
 import { SITE_URL } from "@/config/brand";
 
+/** Overridable so a self-hoster stuck testing deliverability (SES/Brevo
+ * setup, DNS, etc.) can raise these temporarily instead of waiting out the
+ * window or editing the rate_limits table directly -- see MAGIC_LINK_*_RATE_LIMIT
+ * in .env.example. Unset/invalid falls back to the original fixed limits. */
+function rateLimitEnv(name: string, fallback: number): number {
+  const raw = Number(process.env[name]);
+  return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : fallback;
+}
+
 export async function POST(req: NextRequest) {
   const ip = req.headers.get("cf-connecting-ip") || "unknown";
-  if (!(await checkRateLimit(`magic-link:${ip}`, 5, 10 * 60 * 1000))) {
+  const ipLimit = rateLimitEnv("MAGIC_LINK_IP_RATE_LIMIT", 5);
+  if (!(await checkRateLimit(`magic-link:${ip}`, ipLimit, 10 * 60 * 1000))) {
     return NextResponse.json({ error: "Too many requests. Try again later." }, { status: 429 });
   }
 
   const { email } = await req.json();
   const normalized = typeof email === "string" ? email.trim().toLowerCase() : "";
-  if (normalized && !(await checkRateLimit(`magic-link-email:${privateRateLimitKey(normalized)}`, 3, 60 * 60 * 1000))) {
+  const emailLimit = rateLimitEnv("MAGIC_LINK_EMAIL_RATE_LIMIT", 3);
+  if (normalized && !(await checkRateLimit(`magic-link-email:${privateRateLimitKey(normalized)}`, emailLimit, 60 * 60 * 1000))) {
     return NextResponse.json({ ok: true });
   }
 
