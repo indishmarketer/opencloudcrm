@@ -1,4 +1,4 @@
-import { headers } from "next/headers";
+import { ASSET_DOMAIN, SITE_URL } from "@/config/brand";
 
 /** next/image only optimizes hosts listed in next.config.ts's
  * images.remotePatterns and 400s on any other -- and that config, like
@@ -10,32 +10,28 @@ import { headers } from "next/headers";
  * image (course covers, trainer avatars, uploaded content) 400s from
  * /_next/image with no visible error beyond a missing picture.
  *
- * There's no per-request hook into Next's image-optimization route the
- * way middleware/proxy provides for headers, so the fix is the same one
- * src/components/pageBlocks/BlockImage.tsx already uses for page-builder
- * content: skip Next's optimizer (render a plain <img> instead, via the
- * `unoptimized` prop) for any host that isn't a known safe one.
- * ASSET_DOMAIN (not NEXT_PUBLIC_ASSET_DOMAIN) is read live for the same
- * reason as src/proxy.ts's CSP fix -- Next.js inlines every
- * NEXT_PUBLIC_* reference into the compiled bundle at build time, which
- * would freeze this check exactly the same way remotePatterns itself is
- * frozen.
- *
- * Call getLiveImageHosts() once per request/page (it needs headers(),
- * which is async) and pass the result into isKnownImageHost() for each
- * individual <Image>, rather than awaiting per-image -- cheaper, and
- * avoids async work inside a .map() over a list of images. */
-export async function getLiveImageHosts(): Promise<Set<string>> {
-  const h = await headers();
-  const requestHost = (h.get("host") || "").split(":")[0];
-  const assetDomain = process.env.ASSET_DOMAIN || "images.example.com";
-  return new Set([assetDomain, requestHost, "i.ytimg.com"]);
-}
+ * Unlike the CSP fix, this one deliberately checks against the SAME
+ * frozen NEXT_PUBLIC_ASSET_DOMAIN/NEXT_PUBLIC_SITE_URL values
+ * remotePatterns itself was built from (matching the existing pattern in
+ * src/components/pageBlocks/BlockImage.tsx), not a live env var -- the
+ * two configs are frozen *together*, at the same build, so checking
+ * against the frozen value and the frozen allowlist always agree:
+ *   - generic published image: both frozen to images.example.com, so a
+ *     real image's host never matches -> unoptimized, safely bypassing
+ *     the broken allowlist.
+ *   - a self-built image with the real NEXT_PUBLIC_ASSET_DOMAIN set
+ *     correctly: both get the real value baked in together, so a real
+ *     image's host DOES match -> Next's optimizer actually runs.
+ * Checking against a live env var instead (what this file originally
+ * did) breaks exactly the case that matters: it would recognize the
+ * real host as "known" and send it through the optimizer anyway, which
+ * still 400s because remotePatterns didn't get the memo. */
+const OPTIMIZABLE_HOSTS = new Set([ASSET_DOMAIN, new URL(SITE_URL).hostname, "i.ytimg.com"]);
 
-export function isKnownImageHost(src: string, knownHosts: Set<string>): boolean {
+export function isKnownImageHost(src: string): boolean {
   if (src.startsWith("/")) return true;
   try {
-    return knownHosts.has(new URL(src).hostname);
+    return OPTIMIZABLE_HOSTS.has(new URL(src).hostname);
   } catch {
     return false;
   }

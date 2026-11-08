@@ -16,7 +16,7 @@ import ViewContentTracked from "@/components/ViewContentTracked";
 import { formatCoursePrice, getCoursePrices } from "@/lib/currency";
 import { serializeJsonLd } from "@/lib/jsonLd";
 import { SITE_NAME, OG_LOCALE, SITE_URL } from "@/config/brand";
-import { getLiveImageHosts, isKnownImageHost } from "@/lib/liveImageHost";
+import { isKnownImageHost } from "@/lib/liveImageHost";
 
 export async function generateMetadata({
   params,
@@ -53,7 +53,6 @@ export default async function CourseLandingPage({ params }: { params: Promise<{ 
   
   if (!course || (!course.published && !isAdmin)) notFound();
 
-  const knownImageHosts = await getLiveImageHosts();
   const [modules, ownerProfile, siteIdentity] = await Promise.all([
     getCourseCurriculum(course.id),
     getSiteOwnerProfile(),
@@ -132,7 +131,7 @@ export default async function CourseLandingPage({ params }: { params: Promise<{ 
             alt={course.title}
             fill
             priority
-            unoptimized={!isKnownImageHost(course.cover_image_url, knownImageHosts)}
+            unoptimized={!isKnownImageHost(course.cover_image_url)}
             className="object-cover"
           />
         </div>
@@ -183,7 +182,7 @@ export default async function CourseLandingPage({ params }: { params: Promise<{ 
                 src={trainer.avatar}
                 alt={trainer.name}
                 fill
-                unoptimized={!isKnownImageHost(trainer.avatar, knownImageHosts)}
+                unoptimized={!isKnownImageHost(trainer.avatar)}
                 className="object-cover"
               />
             </div>
