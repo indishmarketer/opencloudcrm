@@ -10,7 +10,6 @@ import Analytics from "@/components/Analytics";
 import EarlyBirdBanner from "@/components/EarlyBirdBanner";
 import { serializeJsonLd } from "@/lib/jsonLd";
 import {
-  SITE_URL,
   OG_LOCALE,
   OG_ASSET_VERSION,
   assetUrl,
@@ -20,6 +19,7 @@ import {
   COLOR_INK_SOFT,
   COLOR_LINE,
 } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 import { getBusiness, type ResolvedBusiness } from "@/lib/businessProfile";
 import { getSiteChrome } from "@/lib/siteChrome";
 import { getSiteIdentity, resolveSiteName } from "@/lib/siteIdentity";

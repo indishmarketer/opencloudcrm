@@ -9,8 +9,8 @@ import {
   COLOR_PAPER,
   COLOR_PAPER_SOFT,
   SITE_NAME,
-  SITE_URL,
 } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 
 /** What an API/MCP client needs in order to design a page section from
  * scratch and still have it look like it belongs to this site.
