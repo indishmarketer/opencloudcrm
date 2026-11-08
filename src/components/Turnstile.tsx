@@ -16,10 +16,14 @@ declare global {
       ) => string;
       reset: (widgetId?: string) => void;
     };
+    /** Set by the root layout from the live (non-NEXT_PUBLIC_, so never
+     * frozen into the build) TURNSTILE_SITE_KEY env var -- see
+     * src/app/layout.tsx. Read here (not at module scope) so the
+     * server-rendered pass and the client's first paint agree: both see
+     * it as unset until this effect runs, avoiding a hydration mismatch. */
+    __TURNSTILE_SITE_KEY__?: string;
   }
 }
-
-const SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
 export default function Turnstile({
   onToken,
@@ -33,15 +37,20 @@ export default function Turnstile({
   const ref = useRef<HTMLDivElement>(null);
   const rendered = useRef(false);
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
+  const [siteKey, setSiteKey] = useState<string | undefined>(undefined);
 
   useEffect(() => {
-    if (!SITE_KEY) return;
+    setSiteKey(window.__TURNSTILE_SITE_KEY__ || undefined);
+  }, []);
+
+  useEffect(() => {
+    if (!siteKey) return;
 
     function render() {
       if (!window.turnstile || !ref.current || rendered.current) return;
       rendered.current = true;
       window.turnstile.render(ref.current, {
-        sitekey: SITE_KEY!,
+        sitekey: siteKey!,
         callback: (t) => {
           setState("ready");
           onToken(t);
@@ -73,9 +82,9 @@ export default function Turnstile({
         existing.addEventListener("load", render);
       }
     }
-  }, [onToken]);
+  }, [siteKey, onToken]);
 
-  if (!SITE_KEY) return null;
+  if (!siteKey) return null;
   return (
     <div>
       <div ref={ref} />

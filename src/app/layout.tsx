@@ -170,6 +170,20 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <style>{siteThemeCss(theme)}</style>
       </head>
       <body className="flex min-h-full flex-col overflow-x-hidden bg-paper text-ink">
+        {/* TURNSTILE_SITE_KEY is a bare (non-NEXT_PUBLIC_) env var, read
+            live here on every request and handed to the browser this way
+            instead -- a NEXT_PUBLIC_ var would freeze to empty at CI build
+            time on this generic self-host image (same bug class as
+            everything else this project fixed), which is exactly what was
+            happening: the widget never rendered, so no form ever produced
+            a token, so every captcha-gated submission (login, signup,
+            contact, newsletter, reviews, directory, webinar registration)
+            failed server-side verification. See src/components/
+            Turnstile.tsx, which reads this on mount. */}
+        <script
+          id="turnstile-config"
+          dangerouslySetInnerHTML={{ __html: `window.__TURNSTILE_SITE_KEY__ = ${JSON.stringify(process.env.TURNSTILE_SITE_KEY || "")};` }}
+        />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: serializeJsonLd(orgJsonLd) }}
