@@ -10,19 +10,33 @@ import {
 
 export type { SiteIdentity } from "@/lib/siteIdentityShape";
 
+declare global {
+  // eslint-disable-next-line no-var
+  var _lastKnownGoodSiteIdentity: SiteIdentity | undefined;
+}
+
 /** Server-only. Never throws: a missing table (migrations not run yet) or a
- * DB hiccup during `next build` falls back to an empty identity, so a page
- * render is never broken by the site's branding. */
+ * DB hiccup falls back to the last successfully read identity for this
+ * process, not straight to the compiled-in placeholder -- a rolling deploy
+ * briefly runs the old and new containers against the same DB, and a single
+ * flaky query on the fresh container would otherwise flash the generic
+ * default (e.g. "My Business") until the old container is torn down. Only a
+ * container that has NEVER had a successful read (a truly fresh install)
+ * falls all the way back to empty. */
 export async function readSiteIdentity(): Promise<SiteIdentity> {
   try {
     const result = await pool.query<{ value: string }>("SELECT value FROM site_settings WHERE key = $1", [
       SITE_IDENTITY_KEY,
     ]);
-    if (result.rows[0]) return normalizeSiteIdentity(JSON.parse(result.rows[0].value));
+    if (result.rows[0]) {
+      const identity = normalizeSiteIdentity(JSON.parse(result.rows[0].value));
+      global._lastKnownGoodSiteIdentity = identity;
+      return identity;
+    }
   } catch (error) {
     console.error("site identity: could not read from site_settings, using defaults.", error);
   }
-  return { ...EMPTY_SITE_IDENTITY };
+  return global._lastKnownGoodSiteIdentity ? { ...global._lastKnownGoodSiteIdentity } : { ...EMPTY_SITE_IDENTITY };
 }
 
 /** Deduplicated per request, so the layout, nav and footer can all ask. */
