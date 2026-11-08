@@ -3,7 +3,7 @@ import { pool } from "@/lib/db";
 import { getPublicPosts } from "@/lib/blogPosts";
 import { getBlogCategories } from "@/lib/blogCategories";
 import { getCuratedReviewers } from "@/lib/curatedReviews";
-import { authors } from "@/data/authors";
+import { listDiscoverableAuthors } from "@/lib/blogAuthors";
 import { PUBLIC_SITE_PAGES, rankSearchResults, type SearchResult } from "@/lib/publicSitePages";
 import { listPublishedPageEntries } from "@/lib/sitePages";
 import { BUILT_IN_PATHS } from "@/lib/defaultPages";
@@ -108,7 +108,7 @@ export async function GET(request: Request) {
     ...(await getPublicPosts()).map((post) => ({ type: "blog", title: post.title, desc: post.excerpt || null, url: `/blog/${post.slug}` })),
     ...(await getBlogCategories()).map((category) => ({ type: "blog", title: category.name, desc: category.description || null, url: `/blog/category/${category.slug}` })),
     ...(await getCuratedReviewers()).map((reviewer) => ({ type: "review", title: `${reviewer.name} review`, desc: reviewer.bio, url: `/reviews/${reviewer.slug}` })),
-    ...Object.values(authors).map((author) => ({ type: "author", title: author.name, desc: author.bio, url: `/author/${author.slug}` })),
+    ...(await listDiscoverableAuthors()).map((author) => ({ type: "author", title: author.name, desc: author.bio, url: `/author/${author.slug}` })),
   ];
 
   return NextResponse.json({ results: rankSearchResults([...databaseResults, ...staticContent], query) });

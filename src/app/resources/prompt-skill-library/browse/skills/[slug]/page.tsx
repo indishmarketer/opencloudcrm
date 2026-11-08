@@ -6,7 +6,7 @@ import DownloadSkillButton from "@/components/DownloadSkillButton";
 import LibraryBackLink from "@/components/LibraryBackLink";
 import InlineSignupCta from "@/components/InlineSignupCta";
 import { serializeJsonLd } from "@/lib/jsonLd";
-import { authors, defaultAuthorSlug } from "@/data/authors";
+import { getDefaultAuthorView } from "@/lib/blogAuthors";
 import { SITE_NAME, SITE_URL } from "@/lib/siteMeta";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
@@ -34,7 +34,7 @@ export default async function SkillDetailPage({ params }: { params: Promise<{ sl
   const skill = result.rows[0];
   if (!skill) notFound();
 
-  const author = authors[defaultAuthorSlug];
+  const author = await getDefaultAuthorView();
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "TechArticle",

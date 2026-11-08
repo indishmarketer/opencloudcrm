@@ -98,6 +98,23 @@ export async function getDefaultAuthorView(): Promise<Author> {
   return view || staticAuthors[defaultAuthorSlug];
 }
 
+/** Every author that should be discoverable (sitemap, site search): active
+ * DB-configured authors, plus the static placeholder for any slug that
+ * isn't one of them -- so a fresh install's unconfigured default page is
+ * still a listed, findable page rather than silently absent. */
+export async function listDiscoverableAuthors(): Promise<Author[]> {
+  let dbAuthors: Author[] = [];
+  try {
+    const result = await pool.query(`SELECT * FROM blog_authors WHERE is_active = true`);
+    dbAuthors = result.rows.map(toAuthorView);
+  } catch {
+    // fall through to static only
+  }
+  const seen = new Set(dbAuthors.map((a) => a.slug));
+  const fallback = Object.values(staticAuthors).filter((a) => !seen.has(a.slug));
+  return [...dbAuthors, ...fallback];
+}
+
 async function uniqueSlug(name: string, excludeId?: number): Promise<string> {
   const base = slugify(name) || "author";
   let candidate = base;

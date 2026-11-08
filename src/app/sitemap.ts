@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 import { getPublicPosts } from "@/lib/blogPosts";
 import { getBlogCategories } from "@/lib/blogCategories";
 import { getCuratedReviewers } from "@/lib/curatedReviews";
-import { authors } from "@/data/authors";
+import { listDiscoverableAuthors } from "@/lib/blogAuthors";
 import { pool } from "@/lib/db";
 import { PUBLIC_SITE_PAGES } from "@/lib/publicSitePages";
 import { listPublishedPageEntries } from "@/lib/sitePages";
@@ -68,7 +68,7 @@ async function buildSitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.4,
   }));
 
-  const authorRoutes: MetadataRoute.Sitemap = Object.values(authors).map((a) => ({
+  const authorRoutes: MetadataRoute.Sitemap = (await listDiscoverableAuthors()).map((a) => ({
     url: `${BASE_URL}/author/${a.slug}`,
     changeFrequency: "monthly",
     priority: 0.4,

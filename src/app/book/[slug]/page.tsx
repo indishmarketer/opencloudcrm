@@ -8,16 +8,17 @@ import { serializeJsonLd } from "@/lib/jsonLd";
 import { calVideoUrl } from "@/lib/calcom";
 import { createMeetingManageToken } from "@/lib/meetingManageToken";
 import { notFound } from "next/navigation";
-import { authors, defaultAuthorSlug } from "@/data/authors";
+import { getDefaultAuthorView } from "@/lib/blogAuthors";
 import { getReviewStats } from "@/lib/reviewStats";
 import { SITE_NAME, SITE_URL, OG_LOCALE, OG_ASSET_VERSION, assetUrl } from "@/config/brand";
 
-const HOST = authors[defaultAuthorSlug];
-// authors.ts's generic placeholder has no photo for a fresh install --
-// fall back to the sitewide default OG image (same one layout.tsx uses)
-// for social-preview metadata only; the in-page host badge below omits
-// the photo entirely rather than showing a logo as if it were a face.
-const HOST_SOCIAL_IMAGE = HOST.avatar || `${assetUrl("brand/og-default.png")}?v=${OG_ASSET_VERSION}`;
+// A fresh install's unconfigured placeholder has no photo -- fall back to
+// the sitewide default OG image (same one layout.tsx uses) for
+// social-preview metadata only; the in-page host badge omits the photo
+// entirely rather than showing a logo as if it were a face.
+function hostSocialImage(avatar: string | null): string {
+  return avatar || `${assetUrl("brand/og-default.png")}?v=${OG_ASSET_VERSION}`;
+}
 
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> };
 
@@ -27,12 +28,14 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
   const result = await pool.query("SELECT name, description FROM meeting_types WHERE slug = $1 AND active = true", [slug]);
   const meetingType = result.rows[0];
   if (!meetingType) return {};
+  const host = await getDefaultAuthorView();
+  const hostImage = hostSocialImage(host.avatar);
   return {
     title: `Book: ${meetingType.name}`,
     description: meetingType.description || undefined,
     alternates: { canonical: `/book/${slug}` },
-    openGraph: { title: meetingType.name, description: meetingType.description || undefined, url: `/book/${slug}`, siteName: SITE_NAME, locale: OG_LOCALE, images: [{ url: HOST_SOCIAL_IMAGE }] },
-    twitter: { card: "summary_large_image", title: meetingType.name, description: meetingType.description || undefined, images: [HOST_SOCIAL_IMAGE] },
+    openGraph: { title: meetingType.name, description: meetingType.description || undefined, url: `/book/${slug}`, siteName: SITE_NAME, locale: OG_LOCALE, images: [{ url: hostImage }] },
+    twitter: { card: "summary_large_image", title: meetingType.name, description: meetingType.description || undefined, images: [hostImage] },
     // The post-booking success state (?success=true&bookingId=N) is a
     // private per-booking confirmation, not a page anyone should find
     // through search -- noindex it specifically, while the plain
@@ -89,6 +92,7 @@ export default async function BookMeetingPage({ params, searchParams }: Props) {
   }
 
   const reviewStats = await getReviewStats();
+  const host = await getDefaultAuthorView();
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -116,17 +120,17 @@ export default async function BookMeetingPage({ params, searchParams }: Props) {
     <main className="mx-auto max-w-3xl px-4 py-12">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
       <div className="rounded-2xl border border-line bg-paper p-6 shadow-sm">
-        <Link href={`/author/${HOST.slug}`} className="group mb-4 flex items-center gap-3">
-          {HOST.avatar && (
+        <Link href={`/author/${host.slug}`} className="group mb-4 flex items-center gap-3">
+          {host.avatar && (
             <SafeImage
-              src={HOST.avatar}
-              alt={`${HOST.name}, host of this call`}
+              src={host.avatar}
+              alt={`${host.name}, host of this call`}
               width={48}
               height={48}
               className="h-12 w-12 rounded-full object-cover"
             />
           )}
-          <span className="text-sm font-medium text-ink-soft group-hover:text-ink group-hover:underline">with {HOST.name}</span>
+          <span className="text-sm font-medium text-ink-soft group-hover:text-ink group-hover:underline">with {host.name}</span>
         </Link>
         <h1 className="mb-2 font-display text-3xl font-semibold">{meetingType.name}</h1>
         {meetingType.description && (
