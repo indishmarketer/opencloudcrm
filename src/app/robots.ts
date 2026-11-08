@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { SITE_URL } from "@/config/brand";
+import { SITE_URL } from "@/lib/liveSiteUrl";
 import { getCrawlSettings } from "@/lib/siteCrawlSettings";
 
 export default async function robots(): Promise<MetadataRoute.Robots> {

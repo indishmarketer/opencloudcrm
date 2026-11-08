@@ -7,7 +7,7 @@ import { pool } from "@/lib/db";
 import { PUBLIC_SITE_PAGES } from "@/lib/publicSitePages";
 import { listPublishedPageEntries } from "@/lib/sitePages";
 import { BUILT_IN_PATHS } from "@/lib/defaultPages";
-import { SITE_URL as BASE_URL } from "@/config/brand";
+import { SITE_URL as BASE_URL } from "@/lib/liveSiteUrl";
 import { buildSafe } from "@/lib/db";
 import { getCrawlSettings } from "@/lib/siteCrawlSettings";
 
