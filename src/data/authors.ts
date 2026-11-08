@@ -7,19 +7,21 @@ export type Author = {
   social: { label: string; url: string }[];
 };
 
+// Generic placeholder -- not a real person. Fresh installs have no
+// blog_authors row yet (console → blog → authors creates one), so this
+// is the fallback every un-configured author link/byline/sitemap entry
+// resolves to until someone sets up a real one. Previously this was the
+// project maintainer's own name, bio, photo, and social links, which
+// every self-hosted deployment inherited unchanged.
 export const authors: Record<string, Author> = {
-  "shubho-dey": {
-    slug: "shubho-dey",
-    name: "Shubho Dey",
-    role: "Founder, Indish Marketer",
-    bio: "Shubho runs Indish Marketer, building automation and AI agent systems for coaches, consultants, and service providers. He writes about the tools and workflows he builds and uses himself.",
-    avatar: "https://images.indishmarketer.com/author/shubho-dey.webp",
-    social: [
-      { label: "X", url: "https://x.com/indishmarketer" },
-      { label: "LinkedIn", url: "https://www.linkedin.com/in/indishmarketer/" },
-      { label: "YouTube", url: "https://youtube.com/@indishmarketer" },
-    ],
+  "site-owner": {
+    slug: "site-owner",
+    name: "Site Owner",
+    role: "Site Owner",
+    bio: "Set this up from Console -> Blog -> Authors.",
+    avatar: null,
+    social: [],
   },
 };
 
-export const defaultAuthorSlug = "shubho-dey";
+export const defaultAuthorSlug = "site-owner";

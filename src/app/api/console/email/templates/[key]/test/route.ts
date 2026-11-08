@@ -33,7 +33,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ key
   const template = await pool.query("SELECT allowed_vars FROM email_templates WHERE key = $1", [key]);
   if (!template.rows[0]) return NextResponse.json({ error: "Template not found." }, { status: 404 });
   const sampleValues: Record<string, string> = {
-    first_name: "Shubho", code: "123456", reset_url: `${SITE_URL}/reset-password`,
+    first_name: "Jordan", code: "123456", reset_url: `${SITE_URL}/reset-password`,
     verify_url: SITE_URL, link: `${SITE_URL}/console`,
     login_url: `${SITE_URL}/console`, invited_by: SITE_NAME,
     applicant_email: toEmail, topics: "AI tools and marketing", sample_block: "<p>Sample article attached.</p>",

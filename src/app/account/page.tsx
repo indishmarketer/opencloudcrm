@@ -14,6 +14,7 @@ import { initialsOf } from "@/lib/initials";
 import { countryName as countryNameOf } from "@/lib/countries";
 import { getPublicPosts } from "@/lib/blogPosts";
 import { SITE_NAME } from "@/config/brand";
+import { defaultAuthorSlug } from "@/data/authors";
 
 export const metadata = { title: "Your account" };
 
@@ -104,9 +105,9 @@ export default async function AccountPage({
     pool.query<{ slug: string }>(
       `SELECT ba.slug FROM blog_authors ba
        LEFT JOIN author_applications aa ON (aa.blog_author_id = ba.id OR ba.application_id = aa.id)
-       WHERE (aa.user_id = $1 OR ($2 AND ba.slug = 'shubho-dey')) AND ba.is_active = true
+       WHERE (aa.user_id = $1 OR ($2 AND ba.slug = $3)) AND ba.is_active = true
        LIMIT 1`,
-      [session.userId, isOwner],
+      [session.userId, isOwner, defaultAuthorSlug],
     ),
   ]);
   const myPosts = postCount.rows[0]?.n ?? 0;

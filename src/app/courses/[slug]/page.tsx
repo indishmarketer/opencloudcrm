@@ -8,7 +8,7 @@ import { getAdminSession, getSession } from "@/lib/auth";
 import { pool } from "@/lib/db";
 import { getCourseBySlug, getCourseCurriculum, getUserEnrollment } from "@/lib/courses";
 import { getSiteOwnerProfile } from "@/lib/community";
-import { authors } from "@/data/authors";
+import { getSiteIdentity, resolveSiteName } from "@/lib/siteIdentity";
 import UnlockProModal from "@/components/UnlockProModal";
 import { checkoutOffer, getCheckoutRegion, accountPhone } from "@/lib/checkoutRegion";
 import { createPriceQuote } from "@/lib/priceQuote";
@@ -54,15 +54,27 @@ export default async function CourseLandingPage({ params }: { params: Promise<{ 
   if (!course || (!course.published && !isAdmin)) notFound();
 
   const knownImageHosts = await getLiveImageHosts();
-  const [modules, ownerProfile] = await Promise.all([
+  const [modules, ownerProfile, siteIdentity] = await Promise.all([
     getCourseCurriculum(course.id),
     getSiteOwnerProfile(),
+    getSiteIdentity(),
   ]);
   const enrollment = session ? await getUserEnrollment(session.userId, course.id) : null;
   const userName = session
     ? (await pool.query("SELECT name FROM users WHERE id = $1", [session.userId])).rows[0]?.name || session.email
     : null;
-  const trainer = authors["shubho-dey"];
+  // There's no per-deployment "trainer" record -- show whoever this
+  // deployment's console owner (ADMIN_EMAIL) actually is, with a generic
+  // fallback (never another deployment's real name/photo/social links)
+  // when they haven't filled in a community profile yet. Was previously
+  // hardcoded to the project maintainer's own identity from src/data/
+  // authors.ts, which every fresh self-host inherited unchanged.
+  const trainer = {
+    name: ownerProfile?.name || resolveSiteName(siteIdentity),
+    role: "Course Instructor",
+    avatar: ownerProfile?.avatar_url || null,
+    url: ownerProfile?.username ? `/community/${ownerProfile.username}` : null,
+  };
   const [postsIndex, blogCategories] = await Promise.all([getPublicPosts(), getBlogCategories()]);
 
   const totalLessons = modules.reduce((sum, m) => sum + m.lessons.length, 0);
@@ -85,9 +97,11 @@ export default async function CourseLandingPage({ params }: { params: Promise<{ 
     image: course.cover_image_url || undefined,
     inLanguage: "en",
     provider: { "@id": `${SITE_URL}/#organization` },
-    ...(trainer
-      ? { instructor: { "@type": "Person", name: trainer.name, url: `${SITE_URL}/author/shubho-dey` } }
-      : {}),
+    instructor: {
+      "@type": "Person",
+      name: trainer.name,
+      ...(trainer.url ? { url: `${SITE_URL}${trainer.url}` } : {}),
+    },
     hasCourseInstance: {
       "@type": "CourseInstance",
       courseMode: "online",
@@ -157,30 +171,28 @@ export default async function CourseLandingPage({ params }: { params: Promise<{ 
           </span>
         </div>
 
-        {trainer && (
-          <Link
-            href={ownerProfile?.username ? `/community/${ownerProfile.username}` : "#"}
-            className={`mt-12 flex items-center gap-4 rounded-2xl border border-line bg-paper p-6 ${
-              ownerProfile?.username ? "transition-colors hover:border-ink" : "pointer-events-none"
-            }`}
-          >
-            {trainer.avatar && (
-              <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-full">
-                <Image
-                  src={trainer.avatar}
-                  alt={trainer.name}
-                  fill
-                  unoptimized={!isKnownImageHost(trainer.avatar, knownImageHosts)}
-                  className="object-cover"
-                />
-              </div>
-            )}
-            <div>
-              <p className="font-medium">{trainer.name}</p>
-              <p className="text-sm text-ink-soft">{trainer.role}</p>
+        <Link
+          href={trainer.url || "#"}
+          className={`mt-12 flex items-center gap-4 rounded-2xl border border-line bg-paper p-6 ${
+            trainer.url ? "transition-colors hover:border-ink" : "pointer-events-none"
+          }`}
+        >
+          {trainer.avatar && (
+            <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-full">
+              <Image
+                src={trainer.avatar}
+                alt={trainer.name}
+                fill
+                unoptimized={!isKnownImageHost(trainer.avatar, knownImageHosts)}
+                className="object-cover"
+              />
             </div>
-          </Link>
-        )}
+          )}
+          <div>
+            <p className="font-medium">{trainer.name}</p>
+            <p className="text-sm text-ink-soft">{trainer.role}</p>
+          </div>
+        </Link>
 
         <div className="mt-16">
           <h2 className="font-display text-2xl font-semibold">Curriculum</h2>

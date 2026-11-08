@@ -70,11 +70,11 @@ export async function listWhatsAppVariableSources(): Promise<WhatsAppVariableSou
   ]);
 
   const sampleContact = sampleContactRes.rows[0];
-  const sampleFullName = (sampleContact?.name || "Shubho Dey").trim();
+  const sampleFullName = (sampleContact?.name || "Jordan Smith").trim();
   const sampleParts = sampleFullName.split(/\s+/).filter(Boolean);
-  const sampleFirstName = sampleParts[0] || "Shubho";
-  const sampleLastName = sampleParts.slice(1).join(" ") || "Dey";
-  const sampleEmail = sampleContact?.email || emailAt("shubho");
+  const sampleFirstName = sampleParts[0] || "Jordan";
+  const sampleLastName = sampleParts.slice(1).join(" ") || "Smith";
+  const sampleEmail = sampleContact?.email || emailAt("sample");
   const samplePhone = sampleContact?.phone || "+919876543210";
   const sampleCountry = sampleContact?.country || "India";
 

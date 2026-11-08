@@ -10,10 +10,14 @@ import { createMeetingManageToken } from "@/lib/meetingManageToken";
 import { notFound } from "next/navigation";
 import { authors, defaultAuthorSlug } from "@/data/authors";
 import { getReviewStats } from "@/lib/reviewStats";
-import { SITE_NAME, SITE_URL, OG_LOCALE, assetUrl } from "@/config/brand";
+import { SITE_NAME, SITE_URL, OG_LOCALE, OG_ASSET_VERSION, assetUrl } from "@/config/brand";
 
 const HOST = authors[defaultAuthorSlug];
-const HOST_AVATAR_URL = assetUrl("meetings/shubhodeep-avatar.webp");
+// authors.ts's generic placeholder has no photo for a fresh install --
+// fall back to the sitewide default OG image (same one layout.tsx uses)
+// for social-preview metadata only; the in-page host badge below omits
+// the photo entirely rather than showing a logo as if it were a face.
+const HOST_SOCIAL_IMAGE = HOST.avatar || `${assetUrl("brand/og-default.png")}?v=${OG_ASSET_VERSION}`;
 
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> };
 
@@ -27,8 +31,8 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
     title: `Book: ${meetingType.name}`,
     description: meetingType.description || undefined,
     alternates: { canonical: `/book/${slug}` },
-    openGraph: { title: meetingType.name, description: meetingType.description || undefined, url: `/book/${slug}`, siteName: SITE_NAME, locale: OG_LOCALE, images: [{ url: HOST_AVATAR_URL }] },
-    twitter: { card: "summary_large_image", title: meetingType.name, description: meetingType.description || undefined, images: [HOST_AVATAR_URL] },
+    openGraph: { title: meetingType.name, description: meetingType.description || undefined, url: `/book/${slug}`, siteName: SITE_NAME, locale: OG_LOCALE, images: [{ url: HOST_SOCIAL_IMAGE }] },
+    twitter: { card: "summary_large_image", title: meetingType.name, description: meetingType.description || undefined, images: [HOST_SOCIAL_IMAGE] },
     // The post-booking success state (?success=true&bookingId=N) is a
     // private per-booking confirmation, not a page anyone should find
     // through search -- noindex it specifically, while the plain
@@ -113,13 +117,15 @@ export default async function BookMeetingPage({ params, searchParams }: Props) {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
       <div className="rounded-2xl border border-line bg-paper p-6 shadow-sm">
         <Link href={`/author/${HOST.slug}`} className="group mb-4 flex items-center gap-3">
-          <Image
-            src={HOST_AVATAR_URL}
-            alt={`${HOST.name}, host of this call`}
-            width={48}
-            height={48}
-            className="h-12 w-12 rounded-full object-cover"
-          />
+          {HOST.avatar && (
+            <Image
+              src={HOST.avatar}
+              alt={`${HOST.name}, host of this call`}
+              width={48}
+              height={48}
+              className="h-12 w-12 rounded-full object-cover"
+            />
+          )}
           <span className="text-sm font-medium text-ink-soft group-hover:text-ink group-hover:underline">with {HOST.name}</span>
         </Link>
         <h1 className="mb-2 font-display text-3xl font-semibold">{meetingType.name}</h1>

@@ -10,6 +10,7 @@ import { getPublicPosts } from "@/lib/blogPosts";
 import ProfileTabs from "@/components/community/ProfileTabs";
 import { serializeJsonLd } from "@/lib/jsonLd";
 import { SITE_NAME, SITE_URL, OG_LOCALE } from "@/config/brand";
+import { defaultAuthorSlug } from "@/data/authors";
 
 export async function generateMetadata({ params }: { params: Promise<{ username: string }> }) {
   const { username } = await params;
@@ -142,7 +143,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <p className="text-xs text-ink-soft">{postsIndex.length} posts total</p>
-        <Link href="/author/shubho-dey" className="text-xs font-medium underline hover:text-ink">
+        <Link href={`/author/${defaultAuthorSlug}`} className="text-xs font-medium underline hover:text-ink">
           See all
         </Link>
       </div>

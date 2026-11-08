@@ -10,6 +10,30 @@ import { SITE_NAME } from "@/config/brand";
 
 const SITE_NAME_INITIALS = SITE_NAME.split(/\s+/).map((word) => word[0]).join("").toUpperCase().slice(0, 3);
 
+/** No admin "display name" is stored anywhere -- console login is just
+ * ADMIN_EMAIL + a magic link, no profile. Derive something readable from
+ * the one thing we do have (the logged-in email) instead of a fixed
+ * placeholder: every self-hoster otherwise saw the project maintainer's
+ * own name/initials here, next to their own real email. */
+function nameFromEmail(email: string): string {
+  const local = email.split("@")[0] || email;
+  const words = local.split(/[._-]+/).filter(Boolean);
+  if (!words.length) return email;
+  return words.map((w) => w[0].toUpperCase() + w.slice(1)).join(" ");
+}
+
+function initialsFromEmail(email: string): string {
+  const name = nameFromEmail(email);
+  const initials = name
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+  return initials || "?";
+}
+
 type NavGroup = { title: string; links: { href: string; label: string; badge?: number }[] };
 
 export default function ConsoleSidebar({
@@ -110,10 +134,10 @@ export default function ConsoleSidebar({
           <div className="flex flex-col items-center gap-2">
             <div
               className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ink font-display text-xs font-bold text-paper select-none"
-              title="Shubho Dey"
-              aria-label="Shubho Dey"
+              title={nameFromEmail(displayEmail)}
+              aria-label={nameFromEmail(displayEmail)}
             >
-              SD
+              {initialsFromEmail(displayEmail)}
             </div>
             <ConsoleLogoutButton compact />
           </div>
@@ -124,11 +148,11 @@ export default function ConsoleSidebar({
                 className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ink font-display text-xs font-bold text-paper select-none"
                 aria-hidden="true"
               >
-                SD
+                {initialsFromEmail(displayEmail)}
               </div>
               <div className="flex min-w-0 flex-1 flex-col">
                 <span className="truncate text-xs font-semibold text-ink leading-tight">
-                  Shubho Dey
+                  {nameFromEmail(displayEmail)}
                 </span>
                 <div className="mt-0.5 flex items-center gap-1.5 text-ink-soft">
                   <span
