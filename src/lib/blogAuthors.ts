@@ -42,17 +42,21 @@ export async function listBlogAuthors(): Promise<BlogAuthor[]> {
   return result.rows;
 }
 
-// The blog itself (author/[slug], the byline on every post) is public,
-// SEO-relevant, and must never break because of a DB hiccup -- these two
-// reads fall back to the pre-existing hardcoded author so the site keeps
-// working exactly as it did before this table existed.
+// listActiveAuthorSlugs/getAuthorViewBySlug feed a public, SEO-relevant
+// page (author/[slug]) and generateStaticParams, and must never fail a
+// build or a request over a DB hiccup -- but "the DB is unreachable right
+// now" (fall back to the static placeholder so something still renders)
+// is a different case from "the DB answered: no such active author"
+// (a real 404, not neutral placeholder copy pretending to be a real
+// profile). Mixing the two used to mean /author/site-owner was always a
+// live, empty, indexable page on every deployment, configured or not.
 export async function listActiveAuthorSlugs(): Promise<string[]> {
   try {
     const result = await pool.query(`SELECT slug FROM blog_authors WHERE is_active = true`);
-    const slugs = new Set(result.rows.map((r) => r.slug as string));
-    Object.keys(staticAuthors).forEach((s) => slugs.add(s));
-    return Array.from(slugs);
+    return result.rows.map((r) => r.slug as string);
   } catch {
+    // DB unreachable (e.g. `next build` with no DB yet) -- the static
+    // placeholder keeps generateStaticParams from failing the build.
     return Object.keys(staticAuthors);
   }
 }
@@ -60,11 +64,11 @@ export async function listActiveAuthorSlugs(): Promise<string[]> {
 export async function getAuthorViewBySlug(slug: string): Promise<Author | null> {
   try {
     const result = await pool.query(`SELECT * FROM blog_authors WHERE slug = $1 AND is_active = true`, [slug]);
-    if (result.rows[0]) return toAuthorView(result.rows[0]);
+    return result.rows[0] ? toAuthorView(result.rows[0]) : null;
   } catch {
-    // fall through to static
+    // DB unreachable -- same build-time safety net as above.
+    return staticAuthors[slug] || null;
   }
-  return staticAuthors[slug] || null;
 }
 
 /** The slug every post without an explicit author falls back to.
@@ -99,20 +103,17 @@ export async function getDefaultAuthorView(): Promise<Author> {
 }
 
 /** Every author that should be discoverable (sitemap, site search): active
- * DB-configured authors, plus the static placeholder for any slug that
- * isn't one of them -- so a fresh install's unconfigured default page is
- * still a listed, findable page rather than silently absent. */
+ * DB-configured authors only -- an unconfigured install has no real author
+ * page to find, so nothing is listed until one exists (same reasoning as
+ * getAuthorViewBySlug: the static placeholder is a build-time safety net,
+ * never content real visitors or crawlers should be pointed at). */
 export async function listDiscoverableAuthors(): Promise<Author[]> {
-  let dbAuthors: Author[] = [];
   try {
     const result = await pool.query(`SELECT * FROM blog_authors WHERE is_active = true`);
-    dbAuthors = result.rows.map(toAuthorView);
+    return result.rows.map(toAuthorView);
   } catch {
-    // fall through to static only
+    return [];
   }
-  const seen = new Set(dbAuthors.map((a) => a.slug));
-  const fallback = Object.values(staticAuthors).filter((a) => !seen.has(a.slug));
-  return [...dbAuthors, ...fallback];
 }
 
 async function uniqueSlug(name: string, excludeId?: number): Promise<string> {
