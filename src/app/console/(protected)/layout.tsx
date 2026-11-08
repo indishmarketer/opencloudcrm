@@ -4,6 +4,7 @@ import { isConsoleOwner } from "@/lib/consoleAdmins";
 import ConsoleFrame from "@/components/ConsoleFrame";
 import { pool } from "@/lib/db";
 import { FEATURES } from "@/config/features";
+import { getSiteIdentity, resolveSiteName } from "@/lib/siteIdentity";
 
 // Every WhatsApp console page already renders a full "not connected yet"
 // block with zero config -- there's nothing to discover by leaving the
@@ -79,6 +80,14 @@ export default async function ProtectedConsoleLayout({
   const email = await getAdminSessionEmail();
   if (!email) redirect("/console/login");
   const isOwner = isConsoleOwner(email);
+  // ConsoleFrame/ConsoleSidebar are client components, so they can't call
+  // getSiteIdentity() (a DB query) themselves -- fetched here and passed
+  // down instead of using the imported SITE_NAME constant directly, which
+  // is frozen to brand.ts's "My Business" default at image-build time on
+  // the project's generic self-host image (same class of bug as the CSP
+  // and image-optimizer fixes elsewhere -- this one's just in the
+  // console's own UI chrome, not a public page).
+  const siteName = resolveSiteName(await getSiteIdentity());
   // Unread, not open. The badge answers "is there anything I have not
   // looked at", so it has to go quiet once he has read everything, even
   // while items stay on the list waiting to be dealt with. Counting open
@@ -104,5 +113,5 @@ export default async function ProtectedConsoleLayout({
 
   // One focused viewport for post editing; all other console routes retain
   // the normal sidebar, mobile navigation, and page-scrolling layout.
-  return <ConsoleFrame groups={navGroups} email={email} isOwner={isOwner}>{children}</ConsoleFrame>;
+  return <ConsoleFrame groups={navGroups} email={email} isOwner={isOwner} siteName={siteName}>{children}</ConsoleFrame>;
 }

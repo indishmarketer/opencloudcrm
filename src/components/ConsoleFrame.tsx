@@ -6,7 +6,6 @@ import ConsoleLogoutButton from "@/components/ConsoleLogoutButton";
 import ConsoleMobileNav from "@/components/ConsoleMobileNav";
 import ConsoleSearch from "@/components/ConsoleSearch";
 import ConsoleSidebar from "@/components/ConsoleSidebar";
-import { SITE_NAME } from "@/config/brand";
 
 type NavGroup = { title: string; links: { href: string; label: string; badge?: number }[] };
 
@@ -15,11 +14,13 @@ export default function ConsoleFrame({
   groups,
   email,
   isOwner,
+  siteName,
 }: {
   children: React.ReactNode;
   groups: NavGroup[];
   email: string;
   isOwner: boolean;
+  siteName: string;
 }) {
   const pathname = usePathname();
   const isBlogEditor = pathname === "/console/blog/new" || pathname.startsWith("/console/blog/edit/");
@@ -41,11 +42,11 @@ export default function ConsoleFrame({
 
   return (
     <div className="flex min-h-[100dvh] md:fixed md:inset-0 md:min-h-0 md:overflow-hidden">
-      <ConsoleSidebar groups={groups} email={email} isOwner={isOwner} />
+      <ConsoleSidebar groups={groups} email={email} isOwner={isOwner} siteName={siteName} />
       <div className="relative min-w-0 flex-1 max-md:overflow-x-clip md:h-full md:min-h-0 md:overflow-y-auto">
         <div className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-line bg-paper px-4 py-3 md:hidden">
           <Link href="/console" className="truncate font-display text-base font-semibold tracking-tight">
-            {SITE_NAME}
+            {siteName}
           </Link>
           <div className="flex shrink-0 items-center gap-2">
             <ConsoleSearch compact groups={groups} />

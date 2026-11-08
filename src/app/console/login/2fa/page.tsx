@@ -4,20 +4,21 @@ import { getPendingMfaEmail } from "@/lib/auth";
 import { getMfaStatus, getOrCreateEnrollmentSecret } from "@/lib/consoleMfa";
 import { otpauthUri } from "@/lib/totp";
 import ConsoleMfaForm from "@/components/ConsoleMfaForm";
-import { SITE_NAME } from "@/config/brand";
+import { getSiteIdentity, resolveSiteName } from "@/lib/siteIdentity";
 
 export const dynamic = "force-dynamic";
 
 export default async function ConsoleTwoStepPage() {
   const email = await getPendingMfaEmail();
   if (!email) redirect("/console/login?error=expired");
+  const siteName = resolveSiteName(await getSiteIdentity());
 
   const status = await getMfaStatus(email);
   if (status.enabled) {
     return (
       <div className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-6">
         <h1 className="font-display text-2xl font-semibold">Enter your code</h1>
-        <p className="mt-3 text-sm text-ink-soft">Open your authenticator app and enter the 6-digit code for {SITE_NAME} Console.</p>
+        <p className="mt-3 text-sm text-ink-soft">Open your authenticator app and enter the 6-digit code for {siteName} Console.</p>
         <ConsoleMfaForm mode="verify" />
       </div>
     );
@@ -39,7 +40,7 @@ export default async function ConsoleTwoStepPage() {
         <li>2. In the app, add an account and scan this code.</li>
       </ol>
       {/* eslint-disable-next-line @next/next/no-img-element -- generated data URI, not a remote image */}
-      <img src={qr} alt={`QR code to add ${SITE_NAME} Console to your authenticator app`} width={220} height={220} className="mt-4 self-center rounded-xl border border-line" />
+      <img src={qr} alt={`QR code to add ${siteName} Console to your authenticator app`} width={220} height={220} className="mt-4 self-center rounded-xl border border-line" />
       <p className="mt-3 text-center text-xs text-ink-soft">
         Can&apos;t scan? Enter this key instead:
         <br />

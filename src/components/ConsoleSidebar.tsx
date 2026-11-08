@@ -6,9 +6,10 @@ import { usePathname } from "next/navigation";
 import ConsoleLogoutButton from "@/components/ConsoleLogoutButton";
 import ConsoleNavIcon from "@/components/ConsoleNavIcon";
 import ConsoleSearch from "@/components/ConsoleSearch";
-import { SITE_NAME } from "@/config/brand";
 
-const SITE_NAME_INITIALS = SITE_NAME.split(/\s+/).map((word) => word[0]).join("").toUpperCase().slice(0, 3);
+function siteNameInitials(siteName: string): string {
+  return siteName.split(/\s+/).map((word) => word[0]).join("").toUpperCase().slice(0, 3);
+}
 
 /** No admin "display name" is stored anywhere -- console login is just
  * ADMIN_EMAIL + a magic link, no profile. Derive something readable from
@@ -40,10 +41,12 @@ export default function ConsoleSidebar({
   groups,
   email,
   isOwner,
+  siteName,
 }: {
   groups: NavGroup[];
   email: string;
   isOwner: boolean;
+  siteName: string;
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const [showEmail, setShowEmail] = useState(false);
@@ -61,8 +64,8 @@ export default function ConsoleSidebar({
       }`}
     >
       <div className={`flex shrink-0 items-center pt-6 ${collapsed ? "flex-col gap-3" : "justify-between px-2"}`}>
-        <Link href="/console" aria-label={`${SITE_NAME} console overview`} className="whitespace-nowrap font-display text-lg font-semibold tracking-tight">
-          {collapsed ? SITE_NAME_INITIALS : SITE_NAME}
+        <Link href="/console" aria-label={`${siteName} console overview`} className="whitespace-nowrap font-display text-lg font-semibold tracking-tight">
+          {collapsed ? siteNameInitials(siteName) : siteName}
         </Link>
         <button
           type="button"
