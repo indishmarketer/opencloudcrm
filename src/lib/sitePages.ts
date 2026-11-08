@@ -136,25 +136,56 @@ function ensureStarterPagesOnce(): Promise<void> {
   return starterCheck;
 }
 
+declare global {
+  // eslint-disable-next-line no-var
+  var _lastKnownGoodPages: Map<string, PageSnapshot & { id: number | null }> | undefined;
+}
+function lastKnownGoodPages(): Map<string, PageSnapshot & { id: number | null }> {
+  if (!global._lastKnownGoodPages) global._lastKnownGoodPages = new Map();
+  return global._lastKnownGoodPages;
+}
+
 /** What visitors should see at `path`: the published snapshot, or for a
  * built-in route that was never edited, its code defaults. null means
- * "no page here" (404). Never throws -- a DB failure during `next build`
- * renders built-in defaults rather than failing the build. */
-export const getPublishedPage = cache(async (path: string): Promise<(PageSnapshot & { id: number | null }) | null> => {
+ * "no page here" (404). Never throws.
+ *
+ * A DB read failure falls back to the last published snapshot this process
+ * has actually served for `path`, not straight to the neutral starter copy
+ * -- a rolling deploy briefly runs the old and new container against the
+ * same DB, and a single flaky query on the fresh container would otherwise
+ * get ISR-cached and served to real visitors until the next revalidation.
+ * Only a path this process has never successfully read (a fresh container
+ * that hasn't been warmed yet, or `next build` with no DB at all) falls all
+ * the way back to the built-in/starter default. */
+async function readPublishedPage(path: string): Promise<(PageSnapshot & { id: number | null }) | null> {
   try {
     await ensureStarterPagesOnce();
     const result = await pool.query<Row>(`SELECT ${COLUMNS} FROM site_pages WHERE kind = 'page' AND path = $1`, [path]);
     const row = result.rows[0];
-    if (row && row.status === "published" && row.published) return { ...row.published, id: Number(row.id) };
+    if (row && row.status === "published" && row.published) {
+      const snapshot = { ...row.published, id: Number(row.id) };
+      lastKnownGoodPages().set(path, snapshot);
+      return snapshot;
+    }
     if (row && !BUILT_IN_PATHS.has(path)) return null;
   } catch (error) {
     console.error(`site pages: could not load ${path}, falling back to defaults.`, error);
+    const cached = lastKnownGoodPages().get(path);
+    if (cached) return cached;
   }
   const builtIn = getBuiltInDefault(path);
   if (builtIn) return { ...snapshotOf(builtIn), id: null };
   const starter = STARTER_PAGES.find((p) => p.path === path);
   return starter && path === "/" ? { ...snapshotOf(starter), id: null } : null;
-});
+}
+
+export const getPublishedPage = cache(readPublishedPage);
+
+/** Exported only so the health check can warm this process's last-known-good
+ * cache for the homepage before Coolify routes real traffic to it -- not for
+ * general use (callers should use getPublishedPage, which is deduplicated
+ * per request). */
+export const __warmPublishedPage = readPublishedPage;
 
 /** Published page-builder snapshot for a course or tool, if one is live. */
 export async function getPublishedEntityPage(kind: "course" | "tool", refId: string | number): Promise<PageSnapshot | null> {
