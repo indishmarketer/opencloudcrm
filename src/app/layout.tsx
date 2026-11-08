@@ -23,6 +23,7 @@ import { SITE_URL } from "@/lib/liveSiteUrl";
 import { getBusiness, type ResolvedBusiness } from "@/lib/businessProfile";
 import { getSiteChrome } from "@/lib/siteChrome";
 import { getSiteIdentity, resolveSiteName } from "@/lib/siteIdentity";
+import { getPublishedPage } from "@/lib/sitePages";
 
 // Inter is used for both --font-display and --font-body -- owner wants one
 // font sitewide, not a display/body pairing. Two separate next/font
@@ -148,7 +149,16 @@ const websiteJsonLd = (siteName: string) => ({
 });
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const [business, chrome, identity] = await Promise.all([getBusiness(), getSiteChrome(), getSiteIdentity()]);
+  const [business, chrome, identity, homepage] = await Promise.all([
+    getBusiness(),
+    getSiteChrome(),
+    getSiteIdentity(),
+    getPublishedPage("/"),
+  ]);
+  // getPublishedPage("/") is request-deduplicated (see sitePages.ts's
+  // `cache()` wrapper) so this doesn't add a second DB round trip beyond
+  // the one page.tsx already makes for the same request.
+  const siteIsLive = Boolean(homepage);
   const siteName = resolveSiteName(identity);
   const orgJsonLd = buildOrgJsonLd(business, Object.values(chrome.socials).filter((v): v is string => Boolean(v)), siteName, identity.logoUrl);
   return (
@@ -172,12 +182,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: serializeJsonLd(websiteJsonLd(siteName)) }}
         />
-        <PublicSiteOnly><Nav /></PublicSiteOnly>
+        <PublicSiteOnly suppressOnHome={!siteIsLive}><Nav /></PublicSiteOnly>
         <main className="flex-1">{children}</main>
-        <PublicSiteOnly><Footer /></PublicSiteOnly>
+        <PublicSiteOnly suppressOnHome={!siteIsLive}><Footer /></PublicSiteOnly>
         {/* Sitewide early-bird promo, temporary -- remove this one line
             (and optionally the component file) to take it down. */}
-        <PublicSiteOnly><EarlyBirdBanner /></PublicSiteOnly>
+        <PublicSiteOnly suppressOnHome={!siteIsLive}><EarlyBirdBanner /></PublicSiteOnly>
         <Suspense fallback={null}>
           <Analytics />
         </Suspense>
