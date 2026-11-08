@@ -10,7 +10,7 @@ import { getPublicPosts } from "@/lib/blogPosts";
 import ProfileTabs from "@/components/community/ProfileTabs";
 import { serializeJsonLd } from "@/lib/jsonLd";
 import { SITE_NAME, SITE_URL, OG_LOCALE } from "@/config/brand";
-import { defaultAuthorSlug } from "@/data/authors";
+import { resolveDefaultAuthorSlug } from "@/lib/blogAuthors";
 
 export async function generateMetadata({ params }: { params: Promise<{ username: string }> }) {
   const { username } = await params;
@@ -65,14 +65,15 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
   // connection and query for a list that was then thrown away. Sentry's N+1
   // detector picked this page up (IM-WEBSITE-9) off a crawler walking member
   // profiles, which is exactly the traffic that pays for it.
-  const [postsIndex, createdCourses] = isSiteOwner
+  const [postsIndex, createdCourses, defaultAuthorSlug] = isSiteOwner
     ? await Promise.all([
         getPublicPosts(),
         pool
           .query("SELECT slug, title FROM courses WHERE published = true ORDER BY created_at DESC")
           .then((result) => result.rows),
+        resolveDefaultAuthorSlug(),
       ])
-    : [[], []];
+    : [[], [], ""];
   const recentPosts = postsIndex.slice(0, 10);
 
   const communityTab = (

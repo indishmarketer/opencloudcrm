@@ -14,7 +14,7 @@ import { initialsOf } from "@/lib/initials";
 import { countryName as countryNameOf } from "@/lib/countries";
 import { getPublicPosts } from "@/lib/blogPosts";
 import { SITE_NAME } from "@/config/brand";
-import { defaultAuthorSlug } from "@/data/authors";
+import { resolveDefaultAuthorSlug } from "@/lib/blogAuthors";
 
 export const metadata = { title: "Your account" };
 
@@ -102,12 +102,14 @@ export default async function AccountPage({
       "SELECT count(*)::int AS n FROM meeting_bookings WHERE user_id = $1 OR lower(attendee_email) = lower($2)",
       [session.userId, session.email],
     ),
-    pool.query<{ slug: string }>(
-      `SELECT ba.slug FROM blog_authors ba
-       LEFT JOIN author_applications aa ON (aa.blog_author_id = ba.id OR ba.application_id = aa.id)
-       WHERE (aa.user_id = $1 OR ($2 AND ba.slug = $3)) AND ba.is_active = true
-       LIMIT 1`,
-      [session.userId, isOwner, defaultAuthorSlug],
+    resolveDefaultAuthorSlug().then((defaultSlug) =>
+      pool.query<{ slug: string }>(
+        `SELECT ba.slug FROM blog_authors ba
+         LEFT JOIN author_applications aa ON (aa.blog_author_id = ba.id OR ba.application_id = aa.id)
+         WHERE (aa.user_id = $1 OR ($2 AND ba.slug = $3)) AND ba.is_active = true
+         LIMIT 1`,
+        [session.userId, isOwner, defaultSlug],
+      )
     ),
   ]);
   const myPosts = postCount.rows[0]?.n ?? 0;

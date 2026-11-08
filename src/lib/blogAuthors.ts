@@ -67,8 +67,34 @@ export async function getAuthorViewBySlug(slug: string): Promise<Author | null> 
   return staticAuthors[slug] || null;
 }
 
+/** The slug every post without an explicit author falls back to.
+ *
+ * `defaultAuthorSlug` (from data/authors.ts) is a fixed, neutral string
+ * ("site-owner") so the public repo ships with no one's real identity --
+ * but the console's "Add an author" form generates its slug from whatever
+ * name is typed (see blogAuthors.createBlogAuthor -> uniqueSlug), which is
+ * essentially never "site-owner". A self-hoster who fills that form out
+ * exactly as instructed still never sees it picked up by their own
+ * unassigned posts: this resolves to the DB row for the fixed slug if one
+ * exists, else the earliest-created active author (the common case: the
+ * one person running the blog), else the fixed slug unchanged (fresh
+ * install, nothing configured yet). */
+export async function resolveDefaultAuthorSlug(): Promise<string> {
+  try {
+    const exact = await pool.query(`SELECT 1 FROM blog_authors WHERE slug = $1 AND is_active = true`, [defaultAuthorSlug]);
+    if (exact.rowCount) return defaultAuthorSlug;
+    const earliest = await pool.query<{ slug: string }>(
+      `SELECT slug FROM blog_authors WHERE is_active = true ORDER BY created_at ASC LIMIT 1`
+    );
+    if (earliest.rows[0]) return earliest.rows[0].slug;
+  } catch {
+    // fall through to the fixed default
+  }
+  return defaultAuthorSlug;
+}
+
 export async function getDefaultAuthorView(): Promise<Author> {
-  const view = await getAuthorViewBySlug(defaultAuthorSlug);
+  const view = await getAuthorViewBySlug(await resolveDefaultAuthorSlug());
   return view || staticAuthors[defaultAuthorSlug];
 }
 

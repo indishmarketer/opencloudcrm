@@ -2,11 +2,10 @@ import type { Metadata } from "next";
 import SafeImage from "@/components/SafeImage";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { listActiveAuthorSlugs, getAuthorViewBySlug } from "@/lib/blogAuthors";
+import { listActiveAuthorSlugs, getAuthorViewBySlug, resolveDefaultAuthorSlug } from "@/lib/blogAuthors";
 import { buildSafe } from "@/lib/db";
 import { getPublicPosts } from "@/lib/blogPosts";
 import { serializeJsonLd } from "@/lib/jsonLd";
-import { defaultAuthorSlug } from "@/data/authors";
 import { SITE_URL } from "@/config/brand";
 import AuthorSocialLinks from "@/components/SocialIcon";
 
@@ -59,7 +58,8 @@ export default async function AuthorPage({
   };
 
   // Posts without an author field belong to the default author.
-  const postsIndex = (await getPublicPosts()).filter((p) => (p.author || defaultAuthorSlug) === author.slug);
+  const resolvedDefaultSlug = await resolveDefaultAuthorSlug();
+  const postsIndex = (await getPublicPosts()).filter((p) => (p.author || resolvedDefaultSlug) === author.slug);
   const page = Math.max(1, parseInt(pageParam || "1", 10) || 1);
   const totalPages = Math.max(1, Math.ceil(postsIndex.length / PER_PAGE));
   const currentPage = Math.min(page, totalPages);
@@ -95,7 +95,7 @@ export default async function AuthorPage({
 
       {author.social.length > 0 && (
         <div className="mt-6">
-          <AuthorSocialLinks links={author.social} authorName={author.name} nofollow={author.slug !== defaultAuthorSlug} />
+          <AuthorSocialLinks links={author.social} authorName={author.name} nofollow={author.slug !== resolvedDefaultSlug} />
         </div>
       )}
 
