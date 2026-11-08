@@ -4,7 +4,7 @@ import { isAuthorizedConsoleEmail } from "@/lib/consoleAdmins";
 import { sendEmail, isEmailProviderConfigured } from "@/lib/email";
 import { getEmailTemplate, applyTemplateVars } from "@/lib/emailTemplates";
 import { checkRateLimit, privateRateLimitKey } from "@/lib/rateLimit";
-import { SITE_URL } from "@/config/brand";
+import { requestOrigin } from "@/lib/requestOrigin";
 
 /** Overridable so a self-hoster stuck testing deliverability (SES/Brevo
  * setup, DNS, etc.) can raise these temporarily instead of waiting out the
@@ -18,30 +18,22 @@ function rateLimitEnv(name: string, fallback: number): number {
 export async function POST(req: NextRequest) {
   const ip = req.headers.get("cf-connecting-ip") || "unknown";
   const ipLimit = rateLimitEnv("MAGIC_LINK_IP_RATE_LIMIT", 5);
-  const ipOk = await checkRateLimit(`magic-link:${ip}`, ipLimit, 10 * 60 * 1000);
-  // TEMP DEBUG -- remove once the silent-send issue is confirmed fixed.
-  console.log(`[MAGIC-LINK-DEBUG] ip=${ip} ipLimit=${ipLimit} ipOk=${ipOk}`);
-  if (!ipOk) {
+  if (!(await checkRateLimit(`magic-link:${ip}`, ipLimit, 10 * 60 * 1000))) {
     return NextResponse.json({ error: "Too many requests. Try again later." }, { status: 429 });
   }
 
   const { email } = await req.json();
   const normalized = typeof email === "string" ? email.trim().toLowerCase() : "";
   const emailLimit = rateLimitEnv("MAGIC_LINK_EMAIL_RATE_LIMIT", 3);
-  const emailOk = await checkRateLimit(`magic-link-email:${privateRateLimitKey(normalized)}`, emailLimit, 60 * 60 * 1000);
-  console.log(`[MAGIC-LINK-DEBUG] normalized=${normalized} emailLimit=${emailLimit} emailOk=${emailOk}`);
-  if (normalized && !emailOk) {
+  if (normalized && !(await checkRateLimit(`magic-link-email:${privateRateLimitKey(normalized)}`, emailLimit, 60 * 60 * 1000))) {
     return NextResponse.json({ ok: true });
   }
 
-  const authorized = normalized ? await isAuthorizedConsoleEmail(normalized) : false;
-  console.log(`[MAGIC-LINK-DEBUG] authorized=${authorized}`);
-
   // Always return the same generic response, whether or not the email is
   // authorized, so this endpoint can't be used to enumerate admin emails.
-  if (normalized && authorized) {
+  if (normalized && (await isAuthorizedConsoleEmail(normalized))) {
     const token = await createMagicLinkToken(normalized);
-    const link = `${SITE_URL}/api/console/verify?token=${token}`;
+    const link = `${requestOrigin(req)}/api/console/verify?token=${token}`;
 
     // No SES or Brevo configured yet: this is most likely a fresh deploy
     // with nobody able to log in at all otherwise (console login IS the
@@ -77,8 +69,7 @@ export async function POST(req: NextRequest) {
     // login works out of the box on every self-host. An admin who already
     // changed this template's sender to something real keeps it.
     const isPlaceholderSender = /@example\.com$/i.test(tpl.from_email);
-    console.log(`[MAGIC-LINK-DEBUG] tpl.from_email=${tpl.from_email} isPlaceholderSender=${isPlaceholderSender} EMAIL_FROM=${process.env.EMAIL_FROM}`);
-    const result = await sendEmail({
+    await sendEmail({
       to: normalized,
       subject: applyTemplateVars(tpl.subject, vars),
       html: applyTemplateVars(tpl.body_html, vars),
@@ -88,7 +79,6 @@ export async function POST(req: NextRequest) {
       category: "fixed",
       trackOpens: tpl.track_opens,
     });
-    console.log(`[MAGIC-LINK-DEBUG] sendEmail result=${JSON.stringify(result)}`);
   }
 
   return NextResponse.json({ ok: true });

@@ -20,6 +20,14 @@
 services:
   app:
     image: ghcr.io/indishmarketer/opencloudcrm:latest
+    # Without this, "docker compose up" (what Coolify's redeploy/instant
+    # deploy runs) only pulls :latest when nothing with that tag is cached
+    # locally yet -- every later redeploy silently keeps running whatever
+    # was first pulled, even after a new image publishes, with no error
+    # surfaced anywhere. Confirmed on a live deployment: three straight
+    # "successful" redeploys after real code fixes, container recreated
+    # fresh each time, old image's behavior every time.
+    pull_policy: always
     restart: unless-stopped
     depends_on:
       db:
