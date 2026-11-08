@@ -73,11 +73,13 @@ services:
       # --- Brand (NEXT_PUBLIC_* only take effect in an image you build
       # yourself -- inlined at build time, which this prebuilt image
       # skips, into next.config.ts's own output as well as the app code.
-      # Harmless to set anyway. ASSET_DOMAIN below (no NEXT_PUBLIC_
-      # prefix, so never inlined) is what actually controls image loading
-      # on this prebuilt image -- see .env.example.) ---
+      # Harmless to set anyway. ASSET_DOMAIN and SITE_URL below (no
+      # NEXT_PUBLIC_ prefix, so never inlined) are what actually control
+      # image loading and canonical/OG/JSON-LD/sitemap/email URLs on this
+      # prebuilt image -- see .env.example.) ---
       NEXT_PUBLIC_SITE_NAME: ${NEXT_PUBLIC_SITE_NAME:-}
       NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-}
+      SITE_URL: ${SITE_URL:-}
       NEXT_PUBLIC_ASSET_DOMAIN: ${NEXT_PUBLIC_ASSET_DOMAIN:-}
       ASSET_DOMAIN: ${ASSET_DOMAIN:-}
 
