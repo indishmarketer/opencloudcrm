@@ -5,6 +5,7 @@ import { pool } from "@/lib/db";
 import { serializeJsonLd } from "@/lib/jsonLd";
 import { SITE_NAME, SITE_URL } from "@/config/brand";
 import { BuiltInPage, builtInPageMetadata } from "@/components/pageBlocks/SitePageView";
+import { getLiveImageHosts, isKnownImageHost } from "@/lib/liveImageHost";
 
 export async function generateMetadata(): Promise<Metadata> {
   return builtInPageMetadata("/courses", {
@@ -17,6 +18,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export const dynamic = "force-dynamic";
 
 export default async function CoursesIndexPage() {
+  const knownImageHosts = await getLiveImageHosts();
   const result = await pool.query(
     `SELECT c.slug, c.title, c.subtitle, c.cover_image_url,
        EXISTS(SELECT 1 FROM course_modules m WHERE m.course_id = c.id AND m.tier = 'free') AS has_free,
@@ -69,6 +71,7 @@ export default async function CoursesIndexPage() {
                   fill
                   sizes="(min-width: 640px) 50vw, 100vw"
                   preload={index === 0}
+                  unoptimized={!isKnownImageHost(c.cover_image_url, knownImageHosts)}
                   className="object-cover transition-transform group-hover:scale-[1.02]"
                 />
               </div>

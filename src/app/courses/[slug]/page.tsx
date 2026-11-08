@@ -16,6 +16,7 @@ import ViewContentTracked from "@/components/ViewContentTracked";
 import { formatCoursePrice, getCoursePrices } from "@/lib/currency";
 import { serializeJsonLd } from "@/lib/jsonLd";
 import { SITE_NAME, OG_LOCALE, SITE_URL } from "@/config/brand";
+import { getLiveImageHosts, isKnownImageHost } from "@/lib/liveImageHost";
 
 export async function generateMetadata({
   params,
@@ -52,6 +53,7 @@ export default async function CourseLandingPage({ params }: { params: Promise<{ 
   
   if (!course || (!course.published && !isAdmin)) notFound();
 
+  const knownImageHosts = await getLiveImageHosts();
   const [modules, ownerProfile] = await Promise.all([
     getCourseCurriculum(course.id),
     getSiteOwnerProfile(),
@@ -111,7 +113,14 @@ export default async function CourseLandingPage({ params }: { params: Promise<{ 
 
       {course.cover_image_url && (
         <div className="relative aspect-[1200/650] w-full overflow-hidden border-b border-line">
-          <Image src={course.cover_image_url} alt={course.title} fill priority className="object-cover" />
+          <Image
+            src={course.cover_image_url}
+            alt={course.title}
+            fill
+            priority
+            unoptimized={!isKnownImageHost(course.cover_image_url, knownImageHosts)}
+            className="object-cover"
+          />
         </div>
       )}
 
@@ -157,7 +166,13 @@ export default async function CourseLandingPage({ params }: { params: Promise<{ 
           >
             {trainer.avatar && (
               <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-full">
-                <Image src={trainer.avatar} alt={trainer.name} fill className="object-cover" />
+                <Image
+                  src={trainer.avatar}
+                  alt={trainer.name}
+                  fill
+                  unoptimized={!isKnownImageHost(trainer.avatar, knownImageHosts)}
+                  className="object-cover"
+                />
               </div>
             )}
             <div>
