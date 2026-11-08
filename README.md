@@ -87,13 +87,24 @@ Let AI agents (Claude Code, Codex, Antigravity, OpenCode, etc.) do the whole thi
    - `ADMIN_EMAIL` -- your email; whoever logs in with this address becomes
      the console owner
 3. Deploy. Coolify creates three resources (the app, scheduler, and Postgres) and starts
-   them -- the app and database have health checks (`docker-compose.yml`), so Coolify
+   them -- all three have health checks (`docker-compose.yml`), so Coolify
    can tell you when the app is actually ready to serve requests, not just
    that the container started.
 4. Visit your domain, then `/console/login`, and sign in with
    `ADMIN_EMAIL`. The homepage shows "not live yet" until you publish your
    first page from `/console/pages` -- that's expected, not a failed
    deploy.
+
+**Availability during updates:** Docker Compose recreates the app container
+when its image changes. Coolify does not perform a rolling update for Compose
+services, so the site can briefly become unavailable during a redeploy even
+when every health check is configured correctly. The status may show Starting
+or Degraded until the new app is ready. For a site that must stay available
+during updates, run the web app as a standalone Docker Image application with
+a separate persistent Postgres database, no fixed host port or container name,
+and a `/api/health` check. Coolify can then start the new app beside the old
+one and switch traffic after the new app becomes healthy. Keep the scheduler
+separate so it does not determine the web app's rollout.
 
 
 **Already have this running and just want to update it?** 
@@ -117,16 +128,12 @@ testing an existing deployment, migrating from a different build method,
 etc.), instead of the Docker Compose path above: create a standalone
 application (**New Resource -> Docker Image**, `ghcr.io/indishmarketer/
 opencloudcrm:latest`) rather than a Compose service, and set its
-`DATABASE_URL` to the existing database's connection string. This path
-has no built-in health check the way `docker-compose.yml`'s does --
-Coolify shows `running:unknown` instead of `running:healthy`, which
-doesn't mean anything is actually wrong, just that Coolify isn't
-checking. Set one manually on the application (Health Checks tab, or
-via the API/MCP): path `/api/health`, method `GET`, expected status
-`200`. There's no way to make Coolify do this automatically for every
-future app created this way -- it's a per-application setting, not a
-platform default, so it needs setting again each time this pattern is
-used.
+`DATABASE_URL` to the existing database's connection string. The image
+includes a `/api/health` check. Confirm Coolify detects it and shows
+`running:healthy`; if it does not, set an HTTP check on the application
+(Health Checks tab, API, or MCP): path `/api/health`, method `GET`, expected
+status `200`. Do not set a fixed host port or container name when you need
+Coolify's rolling updates.
 
 ### Any other Docker host (a VPS, Railway, Render, Fly...)
 

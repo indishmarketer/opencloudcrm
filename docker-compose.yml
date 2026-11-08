@@ -190,6 +190,12 @@ services:
     image: ghcr.io/indishmarketer/opencloudcrm:latest
     pull_policy: always
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "sh", "/app/scripts/cron/healthcheck.sh"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     depends_on:
       app:
         condition: service_healthy

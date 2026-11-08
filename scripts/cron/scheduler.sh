@@ -9,6 +9,7 @@ fi
 call_job() {
   route="$1"
   timeout="${2:-55}"
+  touch /tmp/opencloudcrm-scheduler-heartbeat
   if ! curl --fail --silent --show-error --max-time "${timeout}" -X POST \
     -H "Authorization: Bearer ${CRON_SECRET}" \
     "http://app:3000/api/cron/${route}" >/dev/null; then
@@ -19,6 +20,7 @@ call_job() {
 minute=0
 while :; do
   started_at="$(date +%s)"
+  touch /tmp/opencloudcrm-scheduler-heartbeat
   # The reminder queries decide whether anything is due, so a short cadence
   # does not send duplicate reminders. Their database claims are unique.
   call_job meeting-reminders

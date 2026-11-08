@@ -69,6 +69,11 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
+# Docker Image applications can use this readiness check for rolling updates.
+# The Compose scheduler overrides it with its own loop health check.
+HEALTHCHECK --interval=10s --timeout=5s --start-period=180s --retries=5 \
+  CMD curl -fsS http://127.0.0.1:3000/api/health >/dev/null || exit 1
+
 # Fresh deployments (a new Coolify app pointed at a brand-new Postgres
 # database) start with zero tables. Running the migration runner on every
 # boot -- it's a no-op once everything is applied -- is what makes a
