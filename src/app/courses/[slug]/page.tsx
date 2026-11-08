@@ -18,6 +18,7 @@ import { serializeJsonLd } from "@/lib/jsonLd";
 import { SITE_NAME, OG_LOCALE } from "@/config/brand";
 import { SITE_URL } from "@/lib/liveSiteUrl";
 import { isKnownImageHost } from "@/lib/liveImageHost";
+import { requirePageGroupEnabled } from "@/lib/pageGroupToggles";
 
 export async function generateMetadata({
   params,
@@ -47,6 +48,7 @@ export async function generateMetadata({
 }
 
 export default async function CourseLandingPage({ params }: { params: Promise<{ slug: string }> }) {
+  await requirePageGroupEnabled("courses");
   const { slug } = await params;
   const course = await getCourseBySlug(slug);
   const session = await getSession();

@@ -7,6 +7,7 @@ import { getDirectoryListingPrice, formatListingPrice } from "@/lib/directoryLis
 import DirectoryBrowser from "@/components/DirectoryBrowser";
 import { SITE_URL } from "@/lib/liveSiteUrl";
 import { BuiltInPage, builtInPageMetadata } from "@/components/pageBlocks/SitePageView";
+import { getPageGroupToggles, requirePageGroupEnabled } from "@/lib/pageGroupToggles";
 
 const baseMetadata: Metadata = {
   title: "Tools & Software Directory",
@@ -19,6 +20,7 @@ export const revalidate = 300;
 
 
 export async function generateMetadata(): Promise<Metadata> {
+  if (!(await getPageGroupToggles()).tools) return {};
   return builtInPageMetadata("/tools", baseMetadata);
 }
 
@@ -27,6 +29,7 @@ export default async function ToolsDirectoryPage({
 }: {
   searchParams: Promise<{ pricing?: string; category?: string }>;
 }) {
+  await requirePageGroupEnabled("tools");
   const { pricing, category } = await searchParams;
   const [categories, tools, listingPrice] = await Promise.all([
     listCategoriesWithCounts(),

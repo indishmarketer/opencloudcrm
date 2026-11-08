@@ -7,8 +7,10 @@ import { SITE_NAME } from "@/config/brand";
 import { SITE_URL } from "@/lib/liveSiteUrl";
 import { BuiltInPage, builtInPageMetadata } from "@/components/pageBlocks/SitePageView";
 import { isKnownImageHost } from "@/lib/liveImageHost";
+import { getPageGroupToggles, requirePageGroupEnabled } from "@/lib/pageGroupToggles";
 
 export async function generateMetadata(): Promise<Metadata> {
+  if (!(await getPageGroupToggles()).courses) return {};
   return builtInPageMetadata("/courses", {
     title: "Courses",
     description: `Courses from ${SITE_NAME}.`,
@@ -19,6 +21,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export const dynamic = "force-dynamic";
 
 export default async function CoursesIndexPage() {
+  await requirePageGroupEnabled("courses");
   const result = await pool.query(
     `SELECT c.slug, c.title, c.subtitle, c.cover_image_url,
        EXISTS(SELECT 1 FROM course_modules m WHERE m.course_id = c.id AND m.tier = 'free') AS has_free,

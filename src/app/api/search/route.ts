@@ -8,6 +8,8 @@ import { PUBLIC_SITE_PAGES, rankSearchResults, type SearchResult } from "@/lib/p
 import { listPublishedPageEntries } from "@/lib/sitePages";
 import { BUILT_IN_PATHS } from "@/lib/defaultPages";
 import { consumeRateLimit } from "@/lib/rateLimit";
+import { getPageGroupToggles } from "@/lib/pageGroupToggles";
+import { isPathDisabled } from "@/lib/pageGroupTogglesShape";
 import { z } from "zod";
 
 const QUERY_LIMIT = 12;
@@ -111,5 +113,7 @@ export async function GET(request: Request) {
     ...(await listDiscoverableAuthors()).map((author) => ({ type: "author", title: author.name, desc: author.bio, url: `/author/${author.slug}` })),
   ];
 
-  return NextResponse.json({ results: rankSearchResults([...databaseResults, ...staticContent], query) });
+  const toggles = await getPageGroupToggles();
+  const allResults = [...databaseResults, ...staticContent].filter((r) => !isPathDisabled(r.url, toggles));
+  return NextResponse.json({ results: rankSearchResults(allResults, query) });
 }

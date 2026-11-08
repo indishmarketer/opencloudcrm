@@ -7,6 +7,7 @@ import { buildSafe } from "@/lib/db";
 import { SITE_NAME, assetUrl } from "@/config/brand";
 import { SITE_URL } from "@/lib/liveSiteUrl";
 import { BuiltInPage, builtInPageMetadata } from "@/components/pageBlocks/SitePageView";
+import { getPageGroupToggles, requirePageGroupEnabled } from "@/lib/pageGroupToggles";
 
 const OG_IMAGE = assetUrl("brand/og-default.png");
 
@@ -35,10 +36,12 @@ function durationLabel(seconds: number | null): string {
 
 
 export async function generateMetadata(): Promise<Metadata> {
+  if (!(await getPageGroupToggles()).webinars) return {};
   return builtInPageMetadata("/webinars", baseMetadata);
 }
 
 export default async function WebinarsListingPage() {
+  await requirePageGroupEnabled("webinars");
   // See the build-phase note on buildSafe (src/lib/db.ts).
   const webinars = await buildSafe(listPublishedWebinars, []);
   const jsonLd = {

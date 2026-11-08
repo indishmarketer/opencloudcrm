@@ -10,6 +10,8 @@ import { BUILT_IN_PATHS } from "@/lib/defaultPages";
 import { SITE_URL as BASE_URL } from "@/lib/liveSiteUrl";
 import { buildSafe } from "@/lib/db";
 import { getCrawlSettings } from "@/lib/siteCrawlSettings";
+import { getPageGroupToggles } from "@/lib/pageGroupToggles";
+import { isPathDisabled } from "@/lib/pageGroupTogglesShape";
 
 export const revalidate = 3600; // Revalidate every hour to keep in sync with DB
 
@@ -23,6 +25,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 }
 
 async function buildSitemap(): Promise<MetadataRoute.Sitemap> {
+  const toggles = await getPageGroupToggles();
   const staticRoutes: MetadataRoute.Sitemap = PUBLIC_SITE_PAGES
     .filter((p) => !p.noindex)
     .map(({ url, changeFrequency, priority }) => ({
@@ -172,7 +175,7 @@ async function buildSitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.5,
   }));
 
-  return [
+  const allRoutes: MetadataRoute.Sitemap = [
     ...extraRoutes,
     ...builderRoutes,
     ...staticRoutes,
@@ -192,4 +195,10 @@ async function buildSitemap(): Promise<MetadataRoute.Sitemap> {
     ...skillRoutes,
     ...guideRoutes,
   ];
+
+  // Single filter point for every route above, rather than gating each
+  // query individually: a page group turned off (console -> site settings
+  // -> page groups) drops out of the sitemap here no matter which list it
+  // came from.
+  return allRoutes.filter((route) => !isPathDisabled(route.url.slice(BASE_URL.length) || "/", toggles));
 }

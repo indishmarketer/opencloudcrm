@@ -3,12 +3,14 @@ import { pool } from "@/lib/db";
 import { verifyMeetingManageToken } from "@/lib/meetingManageToken";
 import { calVideoUrl } from "@/lib/calcom";
 import ManageBookingWidget from "@/components/ManageBookingWidget";
+import { requirePageGroupEnabled } from "@/lib/pageGroupToggles";
 
 export const metadata: Metadata = { robots: { index: false, follow: false } };
 
 type Props = { params: Promise<{ token: string }> };
 
 export default async function ManageBookingPage({ params }: Props) {
+  await requirePageGroupEnabled("meetings");
   const { token } = await params;
   const bookingId = await verifyMeetingManageToken(token);
 

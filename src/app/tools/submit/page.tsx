@@ -11,6 +11,7 @@ import { getRazorpayKeyId } from "@/lib/razorpay";
 import { getPaypalClientId } from "@/lib/paypal";
 import { getDirectoryListingPrice, formatListingPrice } from "@/lib/directoryListingPrice";
 import DirectoryListingInProgress, { type InProgressListing } from "@/components/DirectoryListingInProgress";
+import { requirePageGroupEnabled } from "@/lib/pageGroupToggles";
 
 const TITLE = `Submit Your Tool to the ${SITE_NAME} Directory`;
 
@@ -62,6 +63,7 @@ const faq = (price: string) => [
 ];
 
 export default async function SubmitToolPage() {
+  await requirePageGroupEnabled("tools");
   const [session, categories, listingPrice] = await Promise.all([
     getSession(),
     listCategoriesWithCounts(),

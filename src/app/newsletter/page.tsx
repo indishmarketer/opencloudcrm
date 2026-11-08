@@ -8,6 +8,7 @@ import { resolveImage } from "@/lib/images";
 import { SITE_NAME, OG_LOCALE, assetUrl } from "@/config/brand";
 import { SITE_URL } from "@/lib/liveSiteUrl";
 import { BuiltInPage, builtInPageMetadata } from "@/components/pageBlocks/SitePageView";
+import { getPageGroupToggles, requirePageGroupEnabled } from "@/lib/pageGroupToggles";
 
 const OG_IMAGE = assetUrl("newsletter/og-newsletter.png");
 
@@ -139,10 +140,12 @@ const topics = [
 
 
 export async function generateMetadata(): Promise<Metadata> {
+  if (!(await getPageGroupToggles()).newsletter) return {};
   return builtInPageMetadata("/newsletter", baseMetadata);
 }
 
 export default async function NewsletterPage() {
+  await requirePageGroupEnabled("newsletter");
   // See the build-phase note on buildSafe (src/lib/db.ts).
   const recentPosts = await buildSafe(async () => (await getPublicPosts()).slice(0, 3), []);
   return (

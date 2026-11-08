@@ -7,6 +7,7 @@ import { pool, buildSafe } from "@/lib/db";
 import Stars from "@/components/Stars";
 import { serializeJsonLd } from "@/lib/jsonLd";
 import { SITE_NAME } from "@/config/brand";
+import { requirePageGroupEnabled } from "@/lib/pageGroupToggles";
 
 type ReviewDetail = {
   name: string;
@@ -90,6 +91,7 @@ export default async function ReviewerPage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
+  await requirePageGroupEnabled("reviews");
   const { slug } = await params;
   const review = await getReviewDetail(slug);
   if (!review) notFound();

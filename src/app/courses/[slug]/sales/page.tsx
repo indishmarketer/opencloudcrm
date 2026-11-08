@@ -11,6 +11,7 @@ import { getCoursePrices } from "@/lib/currency";
 import PageBlocks from "@/components/pageBlocks/PageBlocks";
 import UnlockProModal from "@/components/UnlockProModal";
 import { SITE_NAME } from "@/config/brand";
+import { requirePageGroupEnabled } from "@/lib/pageGroupToggles";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -30,6 +31,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function CourseSalesPage({ params }: Props) {
+  await requirePageGroupEnabled("courses");
   const { slug } = await params;
   const course = await getCourseBySlug(slug);
   if (!course?.published) notFound();

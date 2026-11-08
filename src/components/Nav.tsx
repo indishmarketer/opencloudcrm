@@ -2,8 +2,9 @@ import { pool, buildSafe } from "@/lib/db";
 import NavClient from "@/components/NavClient";
 import { getPublicPosts } from "@/lib/blogPosts";
 import { getBlogCategories } from "@/lib/blogCategories";
-import { getSiteChrome } from "@/lib/siteChrome";
+import { getPublicSiteChrome } from "@/lib/siteChrome";
 import { getSiteIdentity, resolveSiteName } from "@/lib/siteIdentity";
+import { getPageGroupToggles } from "@/lib/pageGroupToggles";
 
 /** The 3 categories behind the most recently published posts, in that
  * order (postsIndex is already newest-first) -- not the 3 newest post
@@ -26,11 +27,16 @@ async function latestBlogCategories() {
 // here fails every single page's build, not just one route -- see the
 // buildSafe note in src/lib/db.ts.
 export default async function Nav() {
+  const toggles = await getPageGroupToggles();
   const [courses, webinars, categories, chrome, identity] = await Promise.all([
-    buildSafe(async () => (await pool.query("SELECT slug, title FROM courses WHERE published = true ORDER BY created_at DESC LIMIT 3")).rows, []),
-    buildSafe(async () => (await pool.query("SELECT slug, title FROM webinars WHERE status = 'published' ORDER BY created_at DESC LIMIT 3")).rows, []),
+    toggles.courses
+      ? buildSafe(async () => (await pool.query("SELECT slug, title FROM courses WHERE published = true ORDER BY created_at DESC LIMIT 3")).rows, [])
+      : Promise.resolve([]),
+    toggles.webinars
+      ? buildSafe(async () => (await pool.query("SELECT slug, title FROM webinars WHERE status = 'published' ORDER BY created_at DESC LIMIT 3")).rows, [])
+      : Promise.resolve([]),
     buildSafe(() => latestBlogCategories(), []),
-    getSiteChrome(),
+    getPublicSiteChrome(),
     getSiteIdentity(),
   ]);
 
@@ -44,6 +50,8 @@ export default async function Nav() {
       ctaHref={chrome.header.ctaHref}
       siteName={resolveSiteName(identity)}
       logoUrl={identity.logoUrl}
+      showCourses={toggles.courses}
+      showWebinars={toggles.webinars}
     />
   );
 }

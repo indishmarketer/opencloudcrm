@@ -6,9 +6,11 @@ import ConsoleSiteSettings, { type SiteSettings } from "@/components/ConsoleSite
 import ConsoleBusinessProfile from "@/components/ConsoleBusinessProfile";
 import ConsoleNavigationEditor from "@/components/ConsoleNavigationEditor";
 import ConsoleSiteIdentity from "@/components/ConsoleSiteIdentity";
+import ConsolePageGroupToggles from "@/components/ConsolePageGroupToggles";
 import { readStoredBusinessProfile } from "@/lib/businessProfile";
 import { readSiteChrome } from "@/lib/siteChrome";
 import { readSiteIdentity } from "@/lib/siteIdentity";
+import { getPageGroupToggles } from "@/lib/pageGroupToggles";
 import { getPageLinkOptions } from "@/lib/pageLinkOptions";
 import { SITE_NAME } from "@/config/brand";
 
@@ -28,6 +30,7 @@ const TABS = [
   { key: "identity", href: "/console/site-settings?tab=identity", label: "Site identity" },
   { key: "business", href: "/console/site-settings?tab=business", label: "Business details" },
   { key: "navigation", href: "/console/site-settings?tab=navigation", label: "Menu & footer" },
+  { key: "pageGroups", href: "/console/site-settings?tab=pageGroups", label: "Page groups" },
 ] as const;
 
 export default async function ConsoleSiteSettingsPage({
@@ -39,7 +42,10 @@ export default async function ConsoleSiteSettingsPage({
   if (!isAdmin) redirect("/console/login");
 
   const sp = await searchParams;
-  const tab = sp.tab === "identity" || sp.tab === "business" || sp.tab === "navigation" ? sp.tab : "promo";
+  const tab =
+    sp.tab === "identity" || sp.tab === "business" || sp.tab === "navigation" || sp.tab === "pageGroups"
+      ? sp.tab
+      : "promo";
 
   const settings = { ...DEFAULT_SETTINGS };
   let initialError = "";
@@ -54,11 +60,12 @@ export default async function ConsoleSiteSettingsPage({
     initialError = "Site settings could not be loaded. Confirm migration 036 has run, then retry.";
   }
 
-  const [business, { chrome }, identity, linkOptions] = await Promise.all([
+  const [business, { chrome }, identity, linkOptions, pageGroupToggles] = await Promise.all([
     readStoredBusinessProfile(),
     readSiteChrome(),
     readSiteIdentity(),
     getPageLinkOptions(),
+    getPageGroupToggles(),
   ]);
 
   return (
@@ -92,6 +99,8 @@ export default async function ConsoleSiteSettingsPage({
           <ConsoleBusinessProfile initialProfile={business.profile} source={business.source} siteName={SITE_NAME} />
         ) : tab === "navigation" ? (
           <ConsoleNavigationEditor initial={chrome} linkOptions={linkOptions} />
+        ) : tab === "pageGroups" ? (
+          <ConsolePageGroupToggles initialToggles={pageGroupToggles} />
         ) : (
           <ConsoleSiteSettings initialSettings={settings} initialError={initialError} />
         )}

@@ -92,6 +92,8 @@ export default function NavClient({
   ctaHref,
   siteName,
   logoUrl,
+  showCourses = true,
+  showWebinars = true,
 }: {
   courses: TeaserItem[];
   webinars: TeaserItem[];
@@ -101,7 +103,16 @@ export default function NavClient({
   ctaHref: string;
   siteName: string;
   logoUrl: string;
+  showCourses?: boolean;
+  showWebinars?: boolean;
 }) {
+  // The "resources" mega-panel (Courses/Blog/Webinars/Free resources) only
+  // ever appears in the unsaved default chrome (see DEFAULT_SITE_CHROME) --
+  // once nav is customized from the console it's a plain dropdown, already
+  // filtered by getPublicSiteChrome. This column count still has to react
+  // to the toggles directly since Courses/Webinars here are hardcoded
+  // panel columns, not chrome links.
+  const resourceColumnCount = 2 + (showCourses ? 1 : 0) + (showWebinars ? 1 : 0);
   const [open, setOpen] = useState(false);
   const [menu, setMenu] = useState<number | null>(null);
   const [authMenuOpen, setAuthMenuOpen] = useState(false);
@@ -258,10 +269,13 @@ export default function NavClient({
          * (off-center) trigger button, so it anchors to the centered header
          * row instead. Dropdowns are narrow and stay under their button. */}
         {menu !== null && items[menu]?.type === "resources" && (
-          <div className="absolute left-1/2 top-full mt-2 grid w-[960px] max-w-[calc(100vw-2rem)] grid-cols-4 -translate-x-1/2 divide-x divide-line rounded-2xl border border-line bg-paper shadow-lg">
-            <LearnColumn title="Courses" allHref="/courses" allLabel="View all courses" items={courses} itemHref={(slug) => `/courses/${slug}`} />
+          <div
+            className="absolute left-1/2 top-full mt-2 max-w-[calc(100vw-2rem)] -translate-x-1/2 divide-x divide-line rounded-2xl border border-line bg-paper shadow-lg"
+            style={{ display: "grid", width: `${resourceColumnCount * 240}px`, gridTemplateColumns: `repeat(${resourceColumnCount}, minmax(0, 1fr))` }}
+          >
+            {showCourses && <LearnColumn title="Courses" allHref="/courses" allLabel="View all courses" items={courses} itemHref={(slug) => `/courses/${slug}`} />}
             <LearnColumn title="Blog" allHref="/blog" allLabel="View all posts" items={categories} itemHref={(slug) => `/blog/category/${slug}`} />
-            <LearnColumn title="Webinars" allHref="/webinars" allLabel="View all webinars" items={webinars} itemHref={(slug) => `/webinars/${slug}`} />
+            {showWebinars && <LearnColumn title="Webinars" allHref="/webinars" allLabel="View all webinars" items={webinars} itemHref={(slug) => `/webinars/${slug}`} />}
             <LearnColumn title="Free Resources" allHref="/resources" allLabel="View all resources" items={freeResourcesItems} itemHref={freeResourcesHref} />
           </div>
         )}
@@ -398,6 +412,8 @@ export default function NavClient({
                 <li key={i} className={i > 0 ? "mt-1 border-t border-line pt-1" : ""}>
                   <p className="px-1 py-2.5 text-sm font-medium text-ink">{item.label}</p>
                   <div className="pl-1">
+                    {showCourses && (
+                    <>
                     <button
                       type="button"
                       onClick={() => toggleMobile("learn-courses")}
@@ -428,6 +444,8 @@ export default function NavClient({
                           className="border-t border-line px-1 py-2 pt-3 text-sm font-medium text-ink"
                         />
                       </div>
+                    )}
+                    </>
                     )}
 
                     <button
@@ -462,6 +480,8 @@ export default function NavClient({
                       </div>
                     )}
 
+                    {showWebinars && (
+                    <>
                     <button
                       type="button"
                       onClick={() => toggleMobile("learn-webinars")}
@@ -492,6 +512,8 @@ export default function NavClient({
                           className="border-t border-line px-1 py-2 pt-3 text-sm font-medium text-ink"
                         />
                       </div>
+                    )}
+                    </>
                     )}
 
                     <button

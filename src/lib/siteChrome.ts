@@ -5,7 +5,10 @@ import {
   SITE_CHROME_KEY,
   normalizeSiteChrome,
   type SiteChrome,
+  type HeaderItem,
 } from "@/lib/siteChromeShape";
+import { getPageGroupToggles } from "@/lib/pageGroupToggles";
+import { isPathDisabled, type PageGroupToggles } from "@/lib/pageGroupTogglesShape";
 
 export type { SiteChrome } from "@/lib/siteChromeShape";
 
@@ -33,6 +36,44 @@ export async function readSiteChrome(): Promise<{ chrome: SiteChrome; saved: boo
 }
 
 export const getSiteChrome = cache(async (): Promise<SiteChrome> => (await readSiteChrome()).chrome);
+
+function filterHeaderItem(item: HeaderItem, toggles: PageGroupToggles): HeaderItem | null {
+  if (item.type === "link") return isPathDisabled(item.href, toggles) ? null : item;
+  if (item.type === "dropdown") {
+    const columns = item.columns
+      .map((col) => ({ ...col, links: col.links.filter((l) => !isPathDisabled(l.href, toggles)) }))
+      .filter((col) => col.links.length);
+    return columns.length ? { ...item, columns } : null;
+  }
+  // "resources" only ever appears in the unsaved default chrome (see
+  // DEFAULT_SITE_CHROME); NavClient itself gates its Courses/Webinars
+  // columns using the toggles it's given directly.
+  return item;
+}
+
+/** getSiteChrome(), with any header/footer link whose page group is
+ * turned off removed -- what Nav.tsx and Footer.tsx should render.
+ * getSiteChrome() itself stays unfiltered for the console's own
+ * navigation editor, which must always show and let the owner edit every
+ * saved link regardless of toggle state. */
+export const getPublicSiteChrome = cache(async (): Promise<SiteChrome> => {
+  const [chrome, toggles] = await Promise.all([getSiteChrome(), getPageGroupToggles()]);
+  return {
+    ...chrome,
+    header: {
+      ...chrome.header,
+      items: chrome.header.items
+        .map((item) => filterHeaderItem(item, toggles))
+        .filter((item): item is HeaderItem => item !== null),
+    },
+    footer: {
+      ...chrome.footer,
+      columns: chrome.footer.columns
+        .map((col) => ({ ...col, links: col.links.filter((l) => !isPathDisabled(l.href, toggles)) }))
+        .filter((col) => col.links.length),
+    },
+  };
+});
 
 export async function saveSiteChrome(chrome: SiteChrome): Promise<void> {
   await pool.query(

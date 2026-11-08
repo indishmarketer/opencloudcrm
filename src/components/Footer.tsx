@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getBusiness } from "@/lib/businessProfile";
-import { getSiteChrome } from "@/lib/siteChrome";
+import { getPublicSiteChrome } from "@/lib/siteChrome";
 import { getSiteIdentity, resolveSiteName } from "@/lib/siteIdentity";
 import type { SocialPlatform } from "@/lib/siteChromeShape";
 
@@ -25,7 +25,7 @@ function ContactIcon({ d }: { d: string }) {
 }
 
 export default async function Footer() {
-  const [business, chrome, identity] = await Promise.all([getBusiness(), getSiteChrome(), getSiteIdentity()]);
+  const [business, chrome, identity] = await Promise.all([getBusiness(), getPublicSiteChrome(), getSiteIdentity()]);
   const siteName = resolveSiteName(identity);
   const columns = chrome.footer.columns;
   const socials = (Object.entries(chrome.socials) as [SocialPlatform, string][])

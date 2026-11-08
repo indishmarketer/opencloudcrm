@@ -5,10 +5,12 @@ import { getSession } from "@/lib/auth";
 import { isConsoleOwner } from "@/lib/consoleAdmins";
 import { pool } from "@/lib/db";
 import { canWatchWebinar, type Webinar } from "@/lib/webinars";
+import { requirePageGroupEnabled } from "@/lib/pageGroupToggles";
 
 export const metadata: Metadata = { title: "Webinar room", robots: { index: false, follow: false } };
 
 export default async function WebinarRoomPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ preview?: string }> }) {
+  await requirePageGroupEnabled("webinars");
   const { slug } = await params;
   const session = await getSession();
   if (!session) redirect(`/login?redirect=${encodeURIComponent(`/webinars/${slug}/room`)}`);
