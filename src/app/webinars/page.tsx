@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import WebinarArtwork from "@/components/WebinarArtwork";
 import { serializeJsonLd } from "@/lib/jsonLd";
 import { listPublishedWebinars } from "@/lib/webinars";
@@ -7,24 +8,24 @@ import { buildSafe } from "@/lib/db";
 import { SITE_NAME, assetUrl } from "@/config/brand";
 import { SITE_URL } from "@/lib/liveSiteUrl";
 import { BuiltInPage, builtInPageMetadata } from "@/components/pageBlocks/SitePageView";
-import { getPageGroupToggles, requirePageGroupEnabled } from "@/lib/pageGroupToggles";
+import { getPublishedPage } from "@/lib/sitePages";
 
 const OG_IMAGE = assetUrl("brand/og-default.png");
 
 const baseMetadata: Metadata = {
-  title: "Free On-Demand Marketing Webinars",
-  description: "Watch practical, on-demand sessions about AI agents, automation, content, and growth. Learn at your own pace and put each system to work.",
+  title: "Webinars",
+  description: `Watch on-demand sessions from ${SITE_NAME}, at your own pace.`,
   alternates: { canonical: "/webinars" },
   openGraph: {
-    title: `On-Demand Marketing Webinars | ${SITE_NAME}`,
-    description: "Practical sessions for marketers, coaches, and consultants, available when you are.",
+    title: `Webinars | ${SITE_NAME}`,
+    description: `On-demand sessions from ${SITE_NAME}.`,
     url: "/webinars",
     images: [OG_IMAGE],
   },
   twitter: {
     card: "summary_large_image",
-    title: `On-Demand Marketing Webinars | ${SITE_NAME}`,
-    description: "Practical sessions for marketers, coaches, and consultants, available when you are.",
+    title: `Webinars | ${SITE_NAME}`,
+    description: `On-demand sessions from ${SITE_NAME}.`,
     images: [OG_IMAGE],
   },
 };
@@ -36,20 +37,20 @@ function durationLabel(seconds: number | null): string {
 
 
 export async function generateMetadata(): Promise<Metadata> {
-  if (!(await getPageGroupToggles()).webinars) return {};
+  if (!(await getPublishedPage("/webinars"))) return {};
   return builtInPageMetadata("/webinars", baseMetadata);
 }
 
 export default async function WebinarsListingPage() {
-  await requirePageGroupEnabled("webinars");
+  if (!(await getPublishedPage("/webinars"))) notFound();
   // See the build-phase note on buildSafe (src/lib/db.ts).
   const webinars = await buildSafe(listPublishedWebinars, []);
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
-    name: "On-Demand Marketing Webinars",
+    name: "Webinars",
     url: `${SITE_URL}/webinars`,
-    description: `Practical on-demand sessions from ${SITE_NAME}.`,
+    description: `On-demand sessions from ${SITE_NAME}.`,
     mainEntity: {
       "@type": "ItemList",
       itemListElement: webinars.map((webinar, index) => ({
@@ -65,24 +66,10 @@ export default async function WebinarsListingPage() {
     <BuiltInPage path="/webinars">
     <div className="bg-paper">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
-      <section className="border-b border-line">
-        <div className="mx-auto max-w-6xl px-6 py-16 sm:py-20">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-soft">Learn on your schedule</p>
-          <h1 className="mt-4 max-w-3xl font-display text-4xl font-semibold leading-[1.05] tracking-tight sm:text-6xl">
-            Practical marketing systems, explained clearly.
-          </h1>
-          <p className="mt-6 max-w-2xl text-base leading-7 text-ink-soft sm:text-lg">
-            Watch focused sessions on AI, automation, content, and growth. No calendar juggling. Start when you&apos;re ready and revisit whenever you need.
-          </p>
-        </div>
-      </section>
 
       <section className="mx-auto max-w-6xl px-6 py-12 sm:py-16" aria-labelledby="webinar-library-heading">
         <div className="flex items-end justify-between gap-6">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-ink-soft">Webinar library</p>
-            <h2 id="webinar-library-heading" className="mt-2 font-display text-2xl font-semibold sm:text-3xl">Choose a session</h2>
-          </div>
+          <h2 id="webinar-library-heading" className="font-display text-2xl font-semibold sm:text-3xl sr-only">Webinars</h2>
           {webinars.length > 0 && <p className="text-sm text-ink-soft">{webinars.length} session{webinars.length === 1 ? "" : "s"}</p>}
         </div>
 

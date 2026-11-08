@@ -11,8 +11,7 @@ import { SITE_NAME, OG_LOCALE } from "@/config/brand";
 import { SITE_URL } from "@/lib/liveSiteUrl";
 import { metaFromDescription, parseDescription, screenshotAlt } from "@/lib/directoryFields";
 import PageBlocks from "@/components/pageBlocks/PageBlocks";
-import { getPublishedEntityBlocks } from "@/lib/sitePages";
-import { requirePageGroupEnabled } from "@/lib/pageGroupToggles";
+import { getPublishedEntityBlocks, getPublishedPage } from "@/lib/sitePages";
 
 export const revalidate = 300;
 
@@ -62,7 +61,7 @@ export default async function DirectoryToolPage({
 }: {
   params: Promise<{ category: string; slug: string }>;
 }) {
-  await requirePageGroupEnabled("tools");
+  if (!(await getPublishedPage("/tools"))) notFound();
   const { category: categorySlug, slug } = await params;
   const tool = await getPublishedToolBySlug(slug);
   if (!tool || tool.category_slug !== categorySlug) notFound();

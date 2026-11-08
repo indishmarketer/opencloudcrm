@@ -6,7 +6,6 @@ import { getBusiness } from "@/lib/businessProfile";
 import LegalContactList from "@/components/LegalContactList";
 import { FEATURES } from "@/config/features";
 import { BuiltInPage, builtInPageMetadata } from "@/components/pageBlocks/SitePageView";
-import { getPageGroupToggles, requirePageGroupEnabled } from "@/lib/pageGroupToggles";
 
 const SITE_DOMAIN = new URL(SITE_URL).hostname.replace(/^www\./, "");
 
@@ -22,12 +21,10 @@ async function baseMetadata(): Promise<Metadata> {
 
 
 export async function generateMetadata(): Promise<Metadata> {
-  if (!(await getPageGroupToggles()).refundPolicy) return {};
   return builtInPageMetadata("/refund-policy", await baseMetadata());
 }
 
 export default async function RefundPolicyPage() {
-  await requirePageGroupEnabled("refundPolicy");
   const business = await getBusiness();
   const LEGAL = business.legal;
   const refundMethods = [

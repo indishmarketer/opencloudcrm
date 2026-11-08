@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { pool } from "@/lib/db";
 import { listCategoriesWithCounts } from "@/lib/directory";
@@ -11,7 +12,7 @@ import { getRazorpayKeyId } from "@/lib/razorpay";
 import { getPaypalClientId } from "@/lib/paypal";
 import { getDirectoryListingPrice, formatListingPrice } from "@/lib/directoryListingPrice";
 import DirectoryListingInProgress, { type InProgressListing } from "@/components/DirectoryListingInProgress";
-import { requirePageGroupEnabled } from "@/lib/pageGroupToggles";
+import { getPublishedPage } from "@/lib/sitePages";
 
 const TITLE = `Submit Your Tool to the ${SITE_NAME} Directory`;
 
@@ -63,7 +64,7 @@ const faq = (price: string) => [
 ];
 
 export default async function SubmitToolPage() {
-  await requirePageGroupEnabled("tools");
+  if (!(await getPublishedPage("/tools"))) notFound();
   const [session, categories, listingPrice] = await Promise.all([
     getSession(),
     listCategoriesWithCounts(),

@@ -262,7 +262,7 @@ export default function ConsolePageEditor({
 
   const isPage = page.kind === "page";
   const isHome = page.path === "/";
-  const canGoOffline = isPage && !isHome && !page.builtIn;
+  const canGoOffline = isPage && !isHome;
   const hasBuiltInBlock = blocks.some((b) => b.type === "builtIn");
 
   const update = useCallback(

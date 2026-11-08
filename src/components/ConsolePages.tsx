@@ -111,13 +111,7 @@ function NewPageModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-export default function ConsolePages({
-  rows,
-  activeTab = "custom",
-}: {
-  rows: PageRow[];
-  activeTab?: "custom" | "builtin";
-}) {
+export default function ConsolePages({ rows }: { rows: PageRow[] }) {
   const router = useRouter();
   const { confirm, dialog } = useConfirm();
   const [creating, setCreating] = useState(false);
@@ -233,9 +227,7 @@ export default function ConsolePages({
     }
   }
 
-  const custom = rows.filter((r) => !r.builtIn);
-  const builtIn = rows.filter((r) => r.builtIn);
-  const currentList = activeTab === "builtin" ? builtIn : custom;
+  const currentList = rows;
 
   const totalPages = Math.max(1, Math.ceil(currentList.length / pageSize));
   const activePage = Math.min(Math.max(1, page), totalPages);
@@ -261,7 +253,7 @@ export default function ConsolePages({
                 <p className="text-xs text-ink-soft">{row.path}</p>
               </td>
               <td className="hidden px-4 py-3 sm:table-cell">
-                {row.builtInDefault ? <span className="text-xs text-ink-soft">Default</span> : <StatusBadge row={row} />}
+                <StatusBadge row={row} />
               </td>
               <td className="px-4 py-3 text-right">
                 <div className="flex flex-wrap items-center justify-end gap-2">
@@ -319,40 +311,33 @@ export default function ConsolePages({
     <div className="space-y-6">
       {creating && <NewPageModal onClose={() => setCreating(false)} />}
 
-      {activeTab === "custom" ? (
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="max-w-2xl text-sm text-ink-soft">
-            Every page is a stack of sections you can edit, reorder, add or delete. Changes stay private until you publish.
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={exportFile} className={button}>
-              Export
-            </button>
-            <button type="button" onClick={() => fileRef.current?.click()} className={button}>
-              Import
-            </button>
-            <input
-              ref={fileRef}
-              type="file"
-              accept="application/json,.json"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) void importFile(file);
-                e.target.value = "";
-              }}
-            />
-            <button type="button" onClick={() => setCreating(true)} className={primaryButton}>
-              + New page
-            </button>
-          </div>
-        </div>
-      ) : (
-        <p className="text-sm text-ink-soft">
-          These pages have their own content (the course list, the directory, policy text). Add sections around it, edit
-          the heading, or remove it and build the page yourself. &ldquo;Reset to default&rdquo; undoes everything.
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="max-w-2xl text-sm text-ink-soft">
+          Every page is a stack of sections you can edit, reorder, add or delete. Changes stay private until you publish.
         </p>
-      )}
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={exportFile} className={button}>
+            Export
+          </button>
+          <button type="button" onClick={() => fileRef.current?.click()} className={button}>
+            Import
+          </button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) void importFile(file);
+              e.target.value = "";
+            }}
+          />
+          <button type="button" onClick={() => setCreating(true)} className={primaryButton}>
+            + New page
+          </button>
+        </div>
+      </div>
 
       {(message || error) && (
         <div className="space-y-1 text-sm">
@@ -362,9 +347,7 @@ export default function ConsolePages({
       )}
 
       {currentList.length === 0 ? (
-        <p className="text-sm text-ink-soft">
-          {activeTab === "custom" ? "No pages yet." : "No built-in pages."}
-        </p>
+        <p className="text-sm text-ink-soft">No pages yet.</p>
       ) : (
         <>
           {renderTable(paginatedList)}

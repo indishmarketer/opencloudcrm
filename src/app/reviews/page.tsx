@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { getCuratedReviewers } from "@/lib/curatedReviews";
 import ReviewsGrid, { type SubmittedReview } from "@/components/ReviewsGrid";
 import ReviewSubmitForm from "@/components/ReviewSubmitForm";
@@ -8,10 +9,10 @@ import { serializeJsonLd } from "@/lib/jsonLd";
 import { SITE_NAME } from "@/config/brand";
 import { SITE_URL } from "@/lib/liveSiteUrl";
 import { BuiltInPage, builtInPageMetadata } from "@/components/pageBlocks/SitePageView";
-import { getPageGroupToggles, requirePageGroupEnabled } from "@/lib/pageGroupToggles";
+import { getPublishedPage } from "@/lib/sitePages";
 
 export async function generateMetadata(): Promise<Metadata> {
-  if (!(await getPageGroupToggles()).reviews) return {};
+  if (!(await getPublishedPage("/reviews"))) return {};
   return builtInPageMetadata("/reviews", {
     title: "Reviews",
     description: `Reviews of ${SITE_NAME} from customers: written, video, and screenshots.`,
@@ -19,7 +20,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function ReviewsPage() {
-  await requirePageGroupEnabled("reviews");
+  if (!(await getPublishedPage("/reviews"))) notFound();
   const session = await getSession();
   let reviewerName: string | undefined;
   if (session) {

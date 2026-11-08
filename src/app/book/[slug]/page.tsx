@@ -12,7 +12,6 @@ import { getDefaultAuthorView } from "@/lib/blogAuthors";
 import { getReviewStats } from "@/lib/reviewStats";
 import { SITE_NAME, OG_LOCALE, OG_ASSET_VERSION, assetUrl } from "@/config/brand";
 import { SITE_URL } from "@/lib/liveSiteUrl";
-import { getPageGroupToggles, requirePageGroupEnabled } from "@/lib/pageGroupToggles";
 
 // A fresh install's unconfigured placeholder has no photo -- fall back to
 // the sitewide default OG image (same one layout.tsx uses) for
@@ -25,7 +24,6 @@ function hostSocialImage(avatar: string | null): string {
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> };
 
 export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
-  if (!(await getPageGroupToggles()).meetings) return {};
   const { slug } = await params;
   const search = await searchParams;
   const result = await pool.query("SELECT name, description FROM meeting_types WHERE slug = $1 AND active = true", [slug]);
@@ -48,7 +46,6 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
 }
 
 export default async function BookMeetingPage({ params, searchParams }: Props) {
-  await requirePageGroupEnabled("meetings");
   const { slug } = await params;
   const search = await searchParams;
   const bookingConfirmed = search.success === "true";

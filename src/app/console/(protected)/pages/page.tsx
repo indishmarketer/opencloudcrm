@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getAdminSession } from "@/lib/auth";
 import { listPagesWithBuiltIns } from "@/lib/sitePages";
@@ -22,6 +21,10 @@ async function loadPages() {
       builtInDefault: false,
       updatedAt: p.updatedAt,
     })),
+    // A built-in route nobody has opened yet: shown as "Live" with its
+    // code-default content, same as if someone had edited it and
+    // published without changing anything -- opening "Edit" is what
+    // creates the real row.
     ...untouchedBuiltIns.map((p) => ({
       id: null,
       path: p.path,
@@ -43,7 +46,6 @@ export default async function ConsolePagesPage({ searchParams }: { searchParams:
   if (sp.tab === "navigation") {
     redirect("/console/site-settings?tab=navigation");
   }
-  const tab = sp.tab === "builtin" ? "builtin" : "custom";
 
   const rows = await loadPages().catch((error) => {
     console.error("[console pages]", error);
@@ -54,35 +56,18 @@ export default async function ConsolePagesPage({ searchParams }: { searchParams:
     <div className="max-w-5xl space-y-6">
       <div>
         <h1 className="text-2xl font-semibold sm:text-3xl text-ink">Pages</h1>
-        <div className="mt-6 flex flex-wrap gap-1 border-b border-line text-sm" role="tablist">
-          <Link
-            href="/console/pages"
-            role="tab"
-            aria-selected={tab === "custom"}
-            className={`-mb-px whitespace-nowrap border-b-2 px-4 py-2 font-medium transition-colors ${
-              tab === "custom" ? "border-ink text-ink" : "border-transparent text-ink-soft hover:text-ink"
-            }`}
-          >
-            Your pages
-          </Link>
-          <Link
-            href="/console/pages?tab=builtin"
-            role="tab"
-            aria-selected={tab === "builtin"}
-            className={`-mb-px whitespace-nowrap border-b-2 px-4 py-2 font-medium transition-colors ${
-              tab === "builtin" ? "border-ink text-ink" : "border-transparent text-ink-soft hover:text-ink"
-            }`}
-          >
-            Built-in pages
-          </Link>
-        </div>
+        <p className="mt-2 max-w-2xl text-sm text-ink-soft">
+          Every page on the site -- edit its content, publish, take it offline, or delete it. Pages like Courses,
+          Webinars, Reviews, Tools directory and Newsletter have their own data (a course list, a review feed...)
+          behind them, so their address can&apos;t move, but everything else about them is yours to edit or remove.
+        </p>
       </div>
       {!rows ? (
         <p className="rounded-xl bg-amber-50 p-4 text-sm text-amber-900">
           Pages couldn&apos;t be loaded. If you just upgraded, run the database migrations (<code>npm run migrate</code>) and reload.
         </p>
       ) : (
-        <ConsolePages key={tab} rows={rows} activeTab={tab} />
+        <ConsolePages rows={rows} />
       )}
     </div>
   );

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { serializeJsonLd } from "@/lib/jsonLd";
 import { listCategoriesWithCounts, listPublishedTools } from "@/lib/directory";
 import { heroLogoWindow } from "@/lib/directoryHero";
@@ -7,7 +8,7 @@ import { getDirectoryListingPrice, formatListingPrice } from "@/lib/directoryLis
 import DirectoryBrowser from "@/components/DirectoryBrowser";
 import { SITE_URL } from "@/lib/liveSiteUrl";
 import { BuiltInPage, builtInPageMetadata } from "@/components/pageBlocks/SitePageView";
-import { getPageGroupToggles, requirePageGroupEnabled } from "@/lib/pageGroupToggles";
+import { getPublishedPage } from "@/lib/sitePages";
 
 const baseMetadata: Metadata = {
   title: "Tools & Software Directory",
@@ -20,7 +21,7 @@ export const revalidate = 300;
 
 
 export async function generateMetadata(): Promise<Metadata> {
-  if (!(await getPageGroupToggles()).tools) return {};
+  if (!(await getPublishedPage("/tools"))) return {};
   return builtInPageMetadata("/tools", baseMetadata);
 }
 
@@ -29,7 +30,7 @@ export default async function ToolsDirectoryPage({
 }: {
   searchParams: Promise<{ pricing?: string; category?: string }>;
 }) {
-  await requirePageGroupEnabled("tools");
+  if (!(await getPublishedPage("/tools"))) notFound();
   const { pricing, category } = await searchParams;
   const [categories, tools, listingPrice] = await Promise.all([
     listCategoriesWithCounts(),

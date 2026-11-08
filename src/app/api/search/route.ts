@@ -5,14 +5,22 @@ import { getBlogCategories } from "@/lib/blogCategories";
 import { getCuratedReviewers } from "@/lib/curatedReviews";
 import { listDiscoverableAuthors } from "@/lib/blogAuthors";
 import { PUBLIC_SITE_PAGES, rankSearchResults, type SearchResult } from "@/lib/publicSitePages";
-import { listPublishedPageEntries } from "@/lib/sitePages";
+import { listPublishedPageEntries, getPublishedPage } from "@/lib/sitePages";
 import { BUILT_IN_PATHS } from "@/lib/defaultPages";
 import { consumeRateLimit } from "@/lib/rateLimit";
-import { getPageGroupToggles } from "@/lib/pageGroupToggles";
-import { isPathDisabled } from "@/lib/pageGroupTogglesShape";
 import { z } from "zod";
 
 const QUERY_LIMIT = 12;
+
+/** Built-in routes with their own page-builder row -- a search result
+ * under one of these is hidden whenever the owner has taken that page
+ * offline, same as any other unpublished page's results would be. */
+const MANAGED_PAGE_PREFIXES = ["/courses", "/webinars", "/reviews", "/tools", "/newsletter"];
+
+async function offlineManagedPrefixes(): Promise<string[]> {
+  const checks = await Promise.all(MANAGED_PAGE_PREFIXES.map(async (p) => ((await getPublishedPage(p)) ? null : p)));
+  return checks.filter((p): p is string => p !== null);
+}
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -113,7 +121,11 @@ export async function GET(request: Request) {
     ...(await listDiscoverableAuthors()).map((author) => ({ type: "author", title: author.name, desc: author.bio, url: `/author/${author.slug}` })),
   ];
 
-  const toggles = await getPageGroupToggles();
-  const allResults = [...databaseResults, ...staticContent].filter((r) => !isPathDisabled(r.url, toggles));
+  const offlinePrefixes = await offlineManagedPrefixes();
+  const allResults = offlinePrefixes.length
+    ? [...databaseResults, ...staticContent].filter(
+        (r) => !offlinePrefixes.some((p) => r.url === p || r.url.startsWith(`${p}/`))
+      )
+    : [...databaseResults, ...staticContent];
   return NextResponse.json({ results: rankSearchResults(allResults, query) });
 }

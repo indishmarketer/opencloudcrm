@@ -4,14 +4,13 @@ import { notFound } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { pool } from "@/lib/db";
 import { getCourseBySlug, getCourseCurriculum, getUserEnrollment } from "@/lib/courses";
-import { getPublishedEntityPage } from "@/lib/sitePages";
+import { getPublishedEntityPage, getPublishedPage } from "@/lib/sitePages";
 import { getCheckoutRegion, checkoutOffer, accountPhone } from "@/lib/checkoutRegion";
 import { createPriceQuote } from "@/lib/priceQuote";
 import { getCoursePrices } from "@/lib/currency";
 import PageBlocks from "@/components/pageBlocks/PageBlocks";
 import UnlockProModal from "@/components/UnlockProModal";
 import { SITE_NAME } from "@/config/brand";
-import { requirePageGroupEnabled } from "@/lib/pageGroupToggles";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -31,7 +30,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function CourseSalesPage({ params }: Props) {
-  await requirePageGroupEnabled("courses");
+  if (!(await getPublishedPage("/courses"))) notFound();
   const { slug } = await params;
   const course = await getCourseBySlug(slug);
   if (!course?.published) notFound();

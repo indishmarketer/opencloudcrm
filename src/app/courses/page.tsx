@@ -1,16 +1,17 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { pool } from "@/lib/db";
 import { serializeJsonLd } from "@/lib/jsonLd";
 import { SITE_NAME } from "@/config/brand";
 import { SITE_URL } from "@/lib/liveSiteUrl";
 import { BuiltInPage, builtInPageMetadata } from "@/components/pageBlocks/SitePageView";
 import { isKnownImageHost } from "@/lib/liveImageHost";
-import { getPageGroupToggles, requirePageGroupEnabled } from "@/lib/pageGroupToggles";
+import { getPublishedPage } from "@/lib/sitePages";
 
 export async function generateMetadata(): Promise<Metadata> {
-  if (!(await getPageGroupToggles()).courses) return {};
+  if (!(await getPublishedPage("/courses"))) return {};
   return builtInPageMetadata("/courses", {
     title: "Courses",
     description: `Courses from ${SITE_NAME}.`,
@@ -21,7 +22,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export const dynamic = "force-dynamic";
 
 export default async function CoursesIndexPage() {
-  await requirePageGroupEnabled("courses");
+  if (!(await getPublishedPage("/courses"))) notFound();
   const result = await pool.query(
     `SELECT c.slug, c.title, c.subtitle, c.cover_image_url,
        EXISTS(SELECT 1 FROM course_modules m WHERE m.course_id = c.id AND m.tier = 'free') AS has_free,

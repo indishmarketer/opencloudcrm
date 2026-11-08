@@ -9,12 +9,12 @@ import { triggerEmailFlow, firstNameOf } from "@/lib/emailAutomation";
 import { emitWebhookEvent } from "@/lib/webhookEvents";
 import { escapeHtml } from "@/lib/escapeHtml";
 import { SITE_URL } from "@/lib/liveSiteUrl";
-import { requirePageGroupEnabled } from "@/lib/pageGroupToggles";
+import { getPublishedPage } from "@/lib/sitePages";
 
 export const metadata = { title: "Enrolling…", robots: { index: false, follow: false } };
 
 export default async function CourseEnrollPage({ params }: { params: Promise<{ slug: string }> }) {
-  await requirePageGroupEnabled("courses");
+  if (!(await getPublishedPage("/courses"))) notFound();
   const { slug } = await params;
   const session = await getSession();
   if (!session) redirect(`/signup?redirect=${encodeURIComponent(`/courses/${slug}/enroll`)}`);

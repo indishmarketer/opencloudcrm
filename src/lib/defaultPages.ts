@@ -217,9 +217,39 @@ export const BUILT_IN_PAGES: DefaultPage[] = [
       block("reviews-cta", "cta", { heading: "Ready to become our next success story?", text: "", buttonLabel: "Get in touch", buttonHref: "/contact", secondaryLabel: "", secondaryHref: "", style: "card" }),
     ],
   }),
-  page("/tools", "Tools directory", { metaTitle: "Tools & Software Directory", blocks: builtInOnly("tools-directory") }),
-  page("/webinars", "Webinars", { metaTitle: "Webinars", blocks: builtInOnly("webinars-list") }),
-  page("/newsletter", "Newsletter", { metaTitle: "Newsletter", blocks: builtInOnly("newsletter-page") }),
+  page("/tools", "Tools directory", {
+    metaTitle: "Tools & Software Directory",
+    blocks: [
+      block("tools-header", "pageHeader", { eyebrow: "", heading: "Tools directory", text: "A curated directory of useful tools.", align: "left", spacing: "compact" }),
+      block("tools-directory", "builtIn"),
+    ],
+  }),
+  page("/webinars", "Webinars", {
+    metaTitle: "Webinars",
+    blocks: [
+      block("webinars-header", "pageHeader", { eyebrow: "", heading: "Webinars", text: "Watch sessions at your own pace.", align: "left", spacing: "compact" }),
+      block("webinars-list", "builtIn"),
+    ],
+  }),
+  page("/newsletter", "Newsletter", {
+    metaTitle: "Newsletter",
+    blocks: [
+      block("newsletter-header", "pageHeader", { eyebrow: "", heading: "Newsletter", text: "Get updates in your inbox.", align: "left", spacing: "compact" }),
+      block("newsletter-benefits", "cards", {
+        heading: "",
+        text: "",
+        columns: "4",
+        style: "outline",
+        items: [
+          card("Actionable tips", "No fluff. Just practical insights you can use."),
+          card("Save time", "The best tools, workflows and strategies, curated for you."),
+          card("Real-world examples", "Lessons from real work, not just theory."),
+          card("Completely free", "No spam. Unsubscribe anytime."),
+        ],
+      }),
+      block("newsletter-page", "builtIn"),
+    ],
+  }),
   page("/terms", "Terms and Conditions", { metaTitle: "Terms and Conditions", blocks: builtInOnly("terms-text") }),
   page("/privacy-policy", "Privacy Policy", { metaTitle: "Privacy Policy", blocks: builtInOnly("privacy-text") }),
   page("/refund-policy", "Refund Policy", { metaTitle: "Cancellation & Refund Policy", blocks: builtInOnly("refund-text") }),

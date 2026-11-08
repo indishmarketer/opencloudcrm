@@ -15,7 +15,7 @@ import { formatWebinarSessionWindow } from "@/lib/webinarReminders";
 import { webinarSessionState } from "@/lib/webinarSession";
 import { SITE_NAME, OG_LOCALE } from "@/config/brand";
 import { SITE_URL } from "@/lib/liveSiteUrl";
-import { requirePageGroupEnabled } from "@/lib/pageGroupToggles";
+import { getPublishedPage } from "@/lib/sitePages";
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -59,7 +59,7 @@ function durationLabel(seconds: number | null): string {
 }
 
 export default async function WebinarDetailPage({ params, searchParams }: Props) {
-  await requirePageGroupEnabled("webinars");
+  if (!(await getPublishedPage("/webinars"))) notFound();
   const webinar = await loadWebinar((await params).slug);
   if (!webinar) notFound();
   const session = await getSession();

@@ -146,8 +146,10 @@ function lastKnownGoodPages(): Map<string, PageSnapshot & { id: number | null }>
 }
 
 /** What visitors should see at `path`: the published snapshot, or for a
- * built-in route that was never edited, its code defaults. null means
- * "no page here" (404). Never throws.
+ * built-in route that has never had a row created for it at all, its code
+ * defaults. null means "no page here" (404) -- including a built-in route
+ * someone has deliberately taken offline (unpublishPage), not just a
+ * custom page. Never throws.
  *
  * A DB read failure falls back to the last published snapshot this process
  * has actually served for `path`, not straight to the neutral starter copy
@@ -167,7 +169,11 @@ async function readPublishedPage(path: string): Promise<(PageSnapshot & { id: nu
       lastKnownGoodPages().set(path, snapshot);
       return snapshot;
     }
-    if (row && !BUILT_IN_PATHS.has(path)) return null;
+    // A row exists but isn't published -- offline, whether it's a custom
+    // page or a built-in one someone deliberately unpublished. Only the
+    // total absence of a row (a built-in route nobody has touched yet)
+    // falls through to the code default below.
+    if (row) return null;
   } catch (error) {
     console.error(`site pages: could not load ${path}, falling back to defaults.`, error);
     const cached = lastKnownGoodPages().get(path);
@@ -355,13 +361,16 @@ export async function publishPage(id: number, actor: string): Promise<SitePage> 
   return page;
 }
 
-/** Takes a custom page offline (404) without deleting it. Built-in pages
- * and the homepage can't be offline -- reset or edit them instead. */
+/** Takes a page offline (404) without deleting it -- including a built-in
+ * page (courses, webinars, reviews, tools directory, newsletter...): the
+ * owner decides whether their site needs that section at all, same as any
+ * other page. Only the homepage can't go offline (see NotLiveYet/"/" --
+ * it has its own dedicated empty state instead). */
 export async function unpublishPage(id: number, actor: string): Promise<SitePage> {
   const current = await getPageById(id);
   if (!current) throw new PageError("Page not found.", 404);
-  if (current.kind === "page" && (UNDELETABLE_PATHS.has(current.path || "") || BUILT_IN_PATHS.has(current.path || ""))) {
-    throw new PageError("This page is always live. Edit it, or reset it to the default.");
+  if (current.kind === "page" && UNDELETABLE_PATHS.has(current.path || "")) {
+    throw new PageError("The homepage can't go offline. Edit it instead.");
   }
   await pool.query(`UPDATE site_pages SET status = 'draft', updated_at = now(), updated_by = $2 WHERE id = $1`, [id, actor]);
   revalidatePublic(current);

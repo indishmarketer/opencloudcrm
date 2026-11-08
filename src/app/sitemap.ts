@@ -10,8 +10,17 @@ import { BUILT_IN_PATHS } from "@/lib/defaultPages";
 import { SITE_URL as BASE_URL } from "@/lib/liveSiteUrl";
 import { buildSafe } from "@/lib/db";
 import { getCrawlSettings } from "@/lib/siteCrawlSettings";
-import { getPageGroupToggles } from "@/lib/pageGroupToggles";
-import { isPathDisabled } from "@/lib/pageGroupTogglesShape";
+import { getPublishedPage } from "@/lib/sitePages";
+
+/** Built-in routes with their own page-builder row -- excluded from the
+ * sitemap (the hub and everything under it) whenever the owner has taken
+ * that page offline. */
+const MANAGED_PAGE_PREFIXES = ["/courses", "/webinars", "/reviews", "/tools", "/newsletter"];
+
+async function offlineManagedPrefixes(): Promise<string[]> {
+  const checks = await Promise.all(MANAGED_PAGE_PREFIXES.map(async (p) => ((await getPublishedPage(p)) ? null : p)));
+  return checks.filter((p): p is string => p !== null);
+}
 
 export const revalidate = 3600; // Revalidate every hour to keep in sync with DB
 
@@ -25,7 +34,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 }
 
 async function buildSitemap(): Promise<MetadataRoute.Sitemap> {
-  const toggles = await getPageGroupToggles();
+  const offlinePrefixes = await offlineManagedPrefixes();
   const staticRoutes: MetadataRoute.Sitemap = PUBLIC_SITE_PAGES
     .filter((p) => !p.noindex)
     .map(({ url, changeFrequency, priority }) => ({
@@ -197,8 +206,11 @@ async function buildSitemap(): Promise<MetadataRoute.Sitemap> {
   ];
 
   // Single filter point for every route above, rather than gating each
-  // query individually: a page group turned off (console -> site settings
-  // -> page groups) drops out of the sitemap here no matter which list it
-  // came from.
-  return allRoutes.filter((route) => !isPathDisabled(route.url.slice(BASE_URL.length) || "/", toggles));
+  // query individually: a managed page taken offline from Console -> Pages
+  // drops out of the sitemap here, no matter which list above it came from.
+  if (!offlinePrefixes.length) return allRoutes;
+  return allRoutes.filter((route) => {
+    const path = route.url.slice(BASE_URL.length) || "/";
+    return !offlinePrefixes.some((p) => path === p || path.startsWith(`${p}/`));
+  });
 }

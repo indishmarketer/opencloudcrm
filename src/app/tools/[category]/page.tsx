@@ -7,7 +7,7 @@ import { SITE_URL } from "@/lib/liveSiteUrl";
 import { listCategories, listPublishedTools } from "@/lib/directory";
 import DirectoryToolCard from "@/components/DirectoryToolCard";
 import SubmitToolCta from "@/components/SubmitToolCta";
-import { requirePageGroupEnabled } from "@/lib/pageGroupToggles";
+import { getPublishedPage } from "@/lib/sitePages";
 
 export const revalidate = 300;
 
@@ -45,7 +45,7 @@ export default async function DirectoryCategoryPage({
   params: Promise<{ category: string }>;
   searchParams: Promise<{ subcategory?: string }>;
 }) {
-  await requirePageGroupEnabled("tools");
+  if (!(await getPublishedPage("/tools"))) notFound();
   const { category: slug } = await params;
   const { subcategory: activeSubcategory } = await searchParams;
   const category = await getCategory(slug);
