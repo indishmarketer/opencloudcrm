@@ -1,7 +1,6 @@
 import crypto from "node:crypto";
 import { htmlToText } from "@/lib/htmlToText";
 import { SESv2Client, SendEmailCommand, GetAccountCommand } from "@aws-sdk/client-sesv2";
-import { SITE_NAME } from "@/config/brand";
 
 // The SESv2 "Simple" content type has no way to set custom headers, so
 // List-Unsubscribe (required for every non-critical send, see email.ts)
@@ -50,14 +49,13 @@ function chunkBase64(b64: string): string {
 // Shown as the sender name in every inbox. It has to be in BOTH the raw
 // From header and SESv2's FromEmailAddress: with only the bare address in
 // FromEmailAddress, Gmail showed just "support" instead of the name.
-const FROM_NAME = SITE_NAME;
-
-function fromWithName(address: string): string {
-  return `${FROM_NAME} <${headerSafe(address)}>`;
+function fromWithName(address: string, fromName: string): string {
+  return `${headerSafe(fromName)} <${headerSafe(address)}>`;
 }
 
 function buildRawMessage(opts: {
   from: string;
+  fromName: string;
   to: string;
   subject: string;
   html: string;
@@ -67,7 +65,7 @@ function buildRawMessage(opts: {
   attachments?: { name: string; content: string }[];
 }): Buffer {
   const headers = [
-    `From: ${fromWithName(opts.from)}`,
+    `From: ${fromWithName(opts.from, opts.fromName)}`,
     `To: ${headerSafe(opts.to)}`,
     `Reply-To: ${headerSafe(opts.replyTo)}`,
     `Subject: ${encodeHeaderValue(opts.subject)}`,
@@ -111,6 +109,7 @@ export async function sendViaSes(opts: {
   subject: string;
   html: string;
   from: string;
+  fromName: string;
   replyTo: string;
   listUnsubscribe: string;
   listUnsubscribePost: string;
@@ -123,7 +122,7 @@ export async function sendViaSes(opts: {
   try {
     const result = await client.send(
       new SendEmailCommand({
-        FromEmailAddress: fromWithName(opts.from),
+        FromEmailAddress: fromWithName(opts.from, opts.fromName),
         Destination: { ToAddresses: [opts.to] },
         Content: { Raw: { Data: raw } },
       })

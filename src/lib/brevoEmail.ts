@@ -1,5 +1,4 @@
 import { htmlToText } from "@/lib/htmlToText";
-import { SITE_NAME } from "@/config/brand";
 
 // Second supported email provider, alongside Amazon SES (sesEmail.ts) --
 // same send interface, so email.ts can pick either one without the rest
@@ -25,6 +24,7 @@ export async function sendViaBrevo(opts: {
   subject: string;
   html: string;
   from: string;
+  fromName: string;
   replyTo: string;
   listUnsubscribe: string;
   listUnsubscribePost: string;
@@ -34,7 +34,7 @@ export async function sendViaBrevo(opts: {
   if (!apiKey) return { ok: false, error: "Brevo API key not configured" };
 
   const body = {
-    sender: { name: SITE_NAME, email: headerSafe(opts.from) },
+    sender: { name: headerSafe(opts.fromName), email: headerSafe(opts.from) },
     to: [{ email: headerSafe(opts.to) }],
     replyTo: { email: headerSafe(opts.replyTo) },
     subject: headerSafe(opts.subject),

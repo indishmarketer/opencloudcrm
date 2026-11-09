@@ -244,6 +244,7 @@ export async function sendEmail({
     subject,
     html: outgoingHtml,
     from: sender,
+    fromName: business.brand || SITE_NAME,
     replyTo: replyTo || (await getReplyToEmail()),
     listUnsubscribe: oneClickUnsubscribeUrl,
     listUnsubscribePost: "List-Unsubscribe=One-Click",
