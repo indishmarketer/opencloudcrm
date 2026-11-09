@@ -7,7 +7,7 @@ deployment still has to wait for the first container to become ready.
 
 For a **fresh installation**, `node deployment/coolify/create.mjs` automates
 the two-resource layout below. See the required variables in the
-[README](../README.md#coolify). This command creates one database and one web
+[README](../README.md#coolify-two-resources-zero-downtime-updates). This command creates one database and one web
 application, then places scheduled tasks on the web application. It does not
 migrate an existing Compose site or its database.
 
