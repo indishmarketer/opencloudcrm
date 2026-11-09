@@ -630,15 +630,15 @@ export function NestedElement({
     case "tabs":
       return <TabsBlock props={props} nested />;
     case "map":
-      return <MapBlock props={props} nested />;
+      return <MapBlock props={props} nested editorEmpty={editorEmpty} />;
     case "embed":
-      return <EmbedBlock props={props} nested />;
+      return <EmbedBlock props={props} nested editorEmpty={editorEmpty} />;
     case "breadcrumbs":
       return <BreadcrumbsBlock props={props} nested />;
     case "audio":
-      return <AudioBlock props={props} nested />;
+      return <AudioBlock props={props} nested editorEmpty={editorEmpty} />;
     case "logo":
-      return <LogoBlock props={props} nested />;
+      return <LogoBlock props={props} nested editorEmpty={editorEmpty} />;
     default:
       return null;
   }
@@ -1706,16 +1706,24 @@ export function TabsBlock({ props, nested = false }: { props: Props; nested?: bo
   if (!items.length) return null;
   const name = `tabs-${simpleHash(items.map((i) => str(i, "label")).join("|"))}`;
   const css = items
-    .map((_, i) => `#${name}-${i}:checked ~ .${name}-panels .${name}-panel:nth-of-type(${i + 1}) { display: block; }`)
+    .map(
+      (_, i) =>
+        `#${name}-${i}:checked ~ .${name}-panels .${name}-panel:nth-of-type(${i + 1}) { display: block; }\n` +
+        `#${name}-${i}:checked ~ .${name}-tabs label:nth-of-type(${i + 1}) { color: #0a0a0a; border-color: #0a0a0a; }`
+    )
     .join("\n");
   const content = (
     <div>
       {items.map((_, i) => (
-        <input key={i} type="radio" name={name} id={`${name}-${i}`} defaultChecked={i === 0} className="peer/tab" />
+        <input key={i} type="radio" name={name} id={`${name}-${i}`} defaultChecked={i === 0} className="sr-only" />
       ))}
-      <div className="flex flex-wrap gap-1 border-b border-line">
+      <div className={`${name}-tabs flex flex-wrap gap-1 border-b border-line`}>
         {items.map((item, i) => (
-          <label key={i} htmlFor={`${name}-${i}`} className="cursor-pointer rounded-t-lg px-4 py-2 text-sm font-medium text-ink-soft hover:text-ink">
+          <label
+            key={i}
+            htmlFor={`${name}-${i}`}
+            className="cursor-pointer rounded-t-lg border-b-2 border-transparent px-4 py-2 text-sm font-medium text-ink-soft hover:text-ink"
+          >
             {str(item, "label")}
           </label>
         ))}
@@ -1736,9 +1744,18 @@ export function TabsBlock({ props, nested = false }: { props: Props; nested?: bo
   );
 }
 
-export function MapBlock({ props, nested = false }: { props: Props; nested?: boolean }) {
+export function MapBlock({ props, nested = false, editorEmpty = false }: { props: Props; nested?: boolean; editorEmpty?: boolean }) {
   const address = str(props, "address");
-  if (!address) return null;
+  if (!address) {
+    if (!editorEmpty) return null;
+    const placeholder = <EmptyBlockPlaceholder text="Add an address in the panel on the right" />;
+    if (nested) return <RichBox props={props}>{placeholder}</RichBox>;
+    return (
+      <RichSection props={props} widthDefault={896}>
+        {placeholder}
+      </RichSection>
+    );
+  }
   const content = (
     <div className="relative aspect-video w-full overflow-hidden rounded-2xl">
       <iframe
@@ -1757,9 +1774,18 @@ export function MapBlock({ props, nested = false }: { props: Props; nested?: boo
   );
 }
 
-export function EmbedBlock({ props, nested = false }: { props: Props; nested?: boolean }) {
+export function EmbedBlock({ props, nested = false, editorEmpty = false }: { props: Props; nested?: boolean; editorEmpty?: boolean }) {
   const code = str(props, "code");
-  if (!code) return null;
+  if (!code) {
+    if (!editorEmpty) return null;
+    const placeholder = <EmptyBlockPlaceholder text="Paste embed code in the panel on the right" />;
+    if (nested) return <RichBox props={props}>{placeholder}</RichBox>;
+    return (
+      <RichSection props={props} widthDefault={896}>
+        {placeholder}
+      </RichSection>
+    );
+  }
   const content = <div dangerouslySetInnerHTML={{ __html: code }} />;
   if (nested) return <RichBox props={props}>{content}</RichBox>;
   return (
@@ -1803,9 +1829,18 @@ export function BreadcrumbsBlock({ props, nested = false }: { props: Props; nest
   );
 }
 
-export function AudioBlock({ props, nested = false }: { props: Props; nested?: boolean }) {
+export function AudioBlock({ props, nested = false, editorEmpty = false }: { props: Props; nested?: boolean; editorEmpty?: boolean }) {
   const url = str(props, "url");
-  if (!url) return null;
+  if (!url) {
+    if (!editorEmpty) return null;
+    const placeholder = <EmptyBlockPlaceholder text="Add an audio file URL in the panel on the right" />;
+    if (nested) return <RichBox props={props}>{placeholder}</RichBox>;
+    return (
+      <RichSection props={props} widthDefault={480}>
+        {placeholder}
+      </RichSection>
+    );
+  }
   const content = (
     <figure>
       {/* eslint-disable-next-line jsx-a11y/media-has-caption -- a raw audio file URL carries no caption track to attach */}
@@ -1821,9 +1856,18 @@ export function AudioBlock({ props, nested = false }: { props: Props; nested?: b
   );
 }
 
-export function LogoBlock({ props, nested = false }: { props: Props; nested?: boolean }) {
+export function LogoBlock({ props, nested = false, editorEmpty = false }: { props: Props; nested?: boolean; editorEmpty?: boolean }) {
   const image = str(props, "image");
-  if (!image) return null;
+  if (!image) {
+    if (!editorEmpty) return null;
+    const placeholder = <EmptyBlockPlaceholder text="Click to add a logo image" />;
+    if (nested) return <RichBox props={props}>{placeholder}</RichBox>;
+    return (
+      <RichSection props={props} widthDefault={160}>
+        {placeholder}
+      </RichSection>
+    );
+  }
   const href = str(props, "href");
   const figure = (
     <div className="relative h-16 w-full">

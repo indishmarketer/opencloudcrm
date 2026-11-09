@@ -176,15 +176,15 @@ export function renderLiveBlock(
     case "tabs":
       return <TabsBlock props={props} />;
     case "map":
-      return <MapBlock props={props} />;
+      return <MapBlock props={props} editorEmpty />;
     case "embed":
-      return <EmbedBlock props={props} />;
+      return <EmbedBlock props={props} editorEmpty />;
     case "breadcrumbs":
       return <BreadcrumbsBlock props={props} />;
     case "audio":
-      return <AudioBlock props={props} />;
+      return <AudioBlock props={props} editorEmpty />;
     case "logo":
-      return <LogoBlock props={props} />;
+      return <LogoBlock props={props} editorEmpty />;
     case "builtIn":
       return (
         <div className="border-y border-dashed border-line bg-paper-soft px-6 py-10 text-center text-sm text-ink-soft">
