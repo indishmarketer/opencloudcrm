@@ -125,7 +125,13 @@ export default function ConsoleModal({
               onClick={onClose}
               aria-label={`Close ${title}`}
               title="Close"
-              className="rounded-full p-2 text-ink-soft transition-colors hover:bg-paper-soft hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink"
+              // pointer-events-auto!: this modal isn't portaled, so one
+              // opened from inside a page-editor row's "+ Add element"
+              // flow is still a DOM descendant of that row's INERT
+              // wrapper (`[&_button]:pointer-events-none`) -- a modal's
+              // own close button must always be clickable regardless of
+              // what triggered it open.
+              className="pointer-events-auto! rounded-full p-2 text-ink-soft transition-colors hover:bg-paper-soft hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink"
             >
               <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={1.8}>
                 <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />

@@ -54,7 +54,14 @@ export default function BlockTypePicker({
                     type="button"
                     onClick={() => onPick(def.type)}
                     title={blockSummary(def)}
-                    className="group flex min-h-[72px] flex-col items-center justify-center gap-1.5 rounded-xl border border-line bg-paper px-2 py-3 text-center transition-colors hover:border-ink hover:bg-paper-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink"
+                    // pointer-events-auto! (not a redundant default): this
+                    // modal (ConsoleModal) renders inline in the DOM, not
+                    // via a portal, so when opened from "+ Add element"
+                    // inside a Columns row it's still a CSS descendant of
+                    // that row's INERT wrapper -- confirmed live, every
+                    // tile here had pointer-events: none without this,
+                    // same failure as the row's own chrome.
+                    className="pointer-events-auto! group flex min-h-[72px] flex-col items-center justify-center gap-1.5 rounded-xl border border-line bg-paper px-2 py-3 text-center transition-colors hover:border-ink hover:bg-paper-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink"
                   >
                     <BlockIcon type={iconKeyFor(def.type)} className="h-5 w-5 text-ink-soft transition-colors group-hover:text-ink" />
                     <span className="text-[11px] font-medium leading-tight text-ink">{def.label}</span>
