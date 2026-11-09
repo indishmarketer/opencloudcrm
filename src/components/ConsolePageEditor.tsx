@@ -28,8 +28,11 @@ import type { NodePath } from "@/lib/htmlTree";
 import {
   BLOCK_DEFS,
   blockSummary,
+  convertBlockToElements,
   createBlock,
+  createInsertedBlock,
   getBlockDef,
+  hasElementTemplate,
   newBlockId,
   styleFields,
   type PageBlock,
@@ -162,6 +165,7 @@ function SettingsPanel({
   linkOptions,
   onDuplicate,
   onDelete,
+  onConvertToElements,
   internal,
   htmlTree,
 }: {
@@ -175,6 +179,11 @@ function SettingsPanel({
   linkOptions: string[];
   onDuplicate?: () => void;
   onDelete: () => void;
+  /** Offered only for a block type with a decomposed-elements version
+   * (Hero today) -- replaces it in place with that version, built from
+   * its current content, so each piece becomes individually selectable
+   * and inline-editable instead of one block edited via this form. */
+  onConvertToElements?: () => void;
   internal?: boolean;
   /** Present only for a "custom" section, which is the one block type
    * whose content is a document rather than a handful of fields -- so it
@@ -209,6 +218,18 @@ function SettingsPanel({
           </div>
         )}
       </div>
+
+      {onConvertToElements && (
+        <div className="rounded-xl border border-dashed border-line bg-paper-soft p-3">
+          <p className="text-xs text-ink-soft">
+            This is one fixed block, edited only here in the sidebar. Convert it to break it into a headline, text, buttons and
+            image you can each click and edit directly on the canvas.
+          </p>
+          <button type="button" onClick={onConvertToElements} className={`${button} mt-2 px-3 py-1.5 text-xs`}>
+            Convert to individual elements
+          </button>
+        </div>
+      )}
 
       {styleFieldsList.length > 0 && (
         <div className="flex gap-1 rounded-full bg-paper-soft p-1 text-sm font-medium">
@@ -401,7 +422,7 @@ export default function ConsolePageEditor({
   }, [save, undo, redo]);
 
   function addBlock(type: string) {
-    const block = createBlock(type);
+    const block = createInsertedBlock(type);
     const index = selection && selection.path.length === 1 ? blocks.findIndex((b) => b.id === selection.path[0]) + 1 : blocks.length;
     update([...blocks.slice(0, index), block, ...blocks.slice(index)]);
     selectBlock({ path: [block.id] });
@@ -429,6 +450,25 @@ export default function ConsolePageEditor({
     const index = blocks.findIndex((b) => b.id === block.id) + 1;
     update([...blocks.slice(0, index), copy, ...blocks.slice(index)]);
     selectBlock({ path: [copy.id] });
+  }
+
+  /** Opt-in upgrade: replaces a block like the old atomic Hero with its
+   * decomposed-elements version, seeded from its current content, in
+   * place at the same position. Never automatic -- see createBlock.ts's
+   * convertBlockToElements doc comment. */
+  async function convertToElements(block: PageBlock) {
+    const label = getBlockDef(block.type)?.label || "section";
+    const ok = await confirm({
+      message: `Convert this ${label.toLowerCase()} into individual elements you can select and edit directly on the canvas? This replaces it with a Columns section built from its current content.`,
+      confirmLabel: "Convert",
+    });
+    if (!ok) return;
+    const next = convertBlockToElements(block);
+    if (!next) return;
+    const index = blocks.findIndex((b) => b.id === block.id);
+    if (index < 0) return;
+    update([...blocks.slice(0, index), next, ...blocks.slice(index + 1)]);
+    selectBlock({ path: [next.id] });
   }
 
   /** The move-up/down fallback for the Mobile canvas, where @dnd-kit's
@@ -582,7 +622,7 @@ export default function ConsolePageEditor({
 
     if (data?.kind === "palette" && data.blockType) {
       const index = over.id === "canvas-end" ? blocks.length : Math.max(0, blocks.findIndex((b) => b.id === over.id));
-      const block = createBlock(data.blockType);
+      const block = createInsertedBlock(data.blockType);
       update([...blocks.slice(0, index), block, ...blocks.slice(index)]);
       selectBlock({ path: [block.id] });
       return;
@@ -613,6 +653,7 @@ export default function ConsolePageEditor({
         onChangeProps: (next: Record<string, unknown>) => updateElementProps(selection!.path[0], selectedElementId!, next),
         onDelete: () => void removeElementFromRow(selection!.path[0], selectedElementId!),
         canDuplicate: false,
+        onConvertToElements: undefined,
       }
     : selectedTopBlock
       ? {
@@ -623,6 +664,7 @@ export default function ConsolePageEditor({
             update(blocks.map((b) => (b.id === selectedTopBlock.id ? { ...b, props: selectedTopBlock.type === "row" ? resizeRowItems(next) : next } : b))),
           onDelete: () => void removeBlock(selectedTopBlock),
           canDuplicate: !getBlockDef(selectedTopBlock.type)?.internal,
+          onConvertToElements: hasElementTemplate(selectedTopBlock.type) ? () => void convertToElements(selectedTopBlock) : undefined,
         }
       : null;
 
@@ -990,6 +1032,7 @@ export default function ConsolePageEditor({
                   linkOptions={linkOptions}
                   onDuplicate={settingsTarget.canDuplicate ? () => selectedTopBlock && duplicateBlock(selectedTopBlock) : undefined}
                   onDelete={settingsTarget.onDelete}
+                  onConvertToElements={settingsTarget.onConvertToElements}
                   internal={Boolean(settingsTarget.def.internal)}
                   htmlTree={htmlTree}
                 />

@@ -14,6 +14,7 @@
  * the browser. */
 
 import { safeHref, SOCIAL_PLATFORMS } from "@/lib/siteChromeShape";
+import { escapeHtml } from "@/lib/escapeHtml";
 
 export type FieldKind = "text" | "textarea" | "richtext" | "link" | "image" | "select" | "iconPicker" | "number" | "toggle" | "list" | "color" | "code" | "datetime";
 
@@ -692,6 +693,99 @@ export function createBlock(type: string): PageBlock {
   const def = getBlockDef(type);
   if (!def) throw new Error(`Unknown block type "${type}".`);
   return { id: newBlockId(), type, props: structuredClone({ ...sectionDefaults(def), ...def.defaults }) };
+}
+
+/** Builds a Hero out of ordinary elements instead of the bespoke `hero`
+ * block: a heading, optional eyebrow/body text and up to two buttons on
+ * one side, an image on the other -- every piece individually selectable,
+ * stylable and inline-editable on the canvas the moment it's dropped,
+ * through the exact same Row > Column > Element machinery as anything
+ * else, rather than one block only editable through its own sidebar form.
+ * Optionally seeded from an existing atomic Hero's props (see
+ * convertBlockToElements) so converting one keeps its content. Loses the
+ * bespoke dark-theme gradient/image-glow HeroView renders -- `background:
+ * "dark"` (the same dark-section look any block's Style tab offers) gets
+ * close, not identical; the trade is real per-piece editability instead
+ * of a fixed, more polished band. */
+function createHeroElements(source: Record<string, unknown> = {}): PageBlock {
+  const str = (key: string, fallback = ""): string => (typeof source[key] === "string" ? (source[key] as string) : fallback);
+  const eyebrow = str("eyebrow");
+  const heading = str("heading", "Your headline goes here");
+  const text = str("text");
+  const primaryLabel = str("primaryLabel", "Get in touch");
+  const primaryHref = str("primaryHref", "/contact");
+  const secondaryLabel = str("secondaryLabel");
+  const secondaryHref = str("secondaryHref");
+  const image = str("image");
+  const imageAlt = str("imageAlt");
+
+  const left: PageBlock[] = [];
+  if (eyebrow) {
+    const el = createBlock("heading");
+    left.push({ ...el, props: { ...el.props, text: eyebrow, level: "h4", fontSize: "sm", fontWeight: "semibold" } });
+  }
+  const headingEl = createBlock("heading");
+  left.push({ ...headingEl, props: { ...headingEl.props, text: heading, level: "h2" } });
+  if (text) {
+    const el = createBlock("richText");
+    left.push({ ...el, props: { ...el.props, html: `<p>${escapeHtml(text)}</p>` } });
+  }
+  if (primaryLabel && primaryHref) {
+    const el = createBlock("button");
+    left.push({ ...el, props: { ...el.props, label: primaryLabel, href: primaryHref, style: "primary" } });
+  }
+  if (secondaryLabel && secondaryHref) {
+    const el = createBlock("button");
+    left.push({ ...el, props: { ...el.props, label: secondaryLabel, href: secondaryHref, style: "outline" } });
+  }
+
+  const right: PageBlock[] = [];
+  if (image) {
+    const el = createBlock("image");
+    right.push({ ...el, props: { ...el.props, image, alt: imageAlt, size: "contained" } });
+  }
+
+  const row = createBlock("row");
+  return { ...row, props: { ...row.props, columns: "2", gap: "lg", background: "dark", items: [left, right] } };
+}
+
+/** Which "Add section" palette entries insert a decomposed element tree
+ * instead of their own atomic block type -- see createInsertedBlock().
+ * Hero is first; more composite presets join this list as they're
+ * rebuilt on the new primitives (see the page-editor rebuild plan). The
+ * atomic type itself stays fully defined and rendered for whatever's
+ * already stored on existing pages -- this only changes what picking it
+ * from the palette creates from now on. */
+const DECOMPOSED_TEMPLATES: Record<string, (source?: Record<string, unknown>) => PageBlock> = {
+  hero: createHeroElements,
+};
+
+/** What picking `type` from the Add-section palette actually inserts --
+ * createBlock()'s plain atomic block, or, for a type in
+ * DECOMPOSED_TEMPLATES, a pre-built tree of ordinary elements instead.
+ * Only the console editor's insertion points call this; createBlock()
+ * itself (normalizeBlock, the MCP/API create/update tools) is untouched,
+ * so a script or API client asking for a plain "hero" still gets exactly
+ * that. */
+export function createInsertedBlock(type: string): PageBlock {
+  return DECOMPOSED_TEMPLATES[type]?.() ?? createBlock(type);
+}
+
+/** Whether `type` has a decomposed-elements version to offer a "Convert
+ * to individual elements" action for -- see convertBlockToElements(). */
+export function hasElementTemplate(type: string): boolean {
+  return type in DECOMPOSED_TEMPLATES;
+}
+
+/** Replaces one existing block in place with its decomposed-elements
+ * version, seeded from its current props so nothing already written is
+ * lost -- the opt-in upgrade path for a page that already has the old
+ * atomic block (see the page-editor rebuild plan's non-negotiable
+ * constraint: nothing auto-converts a stored block, ever). Returns
+ * `null` if `type` has no decomposed template to convert to. */
+export function convertBlockToElements(block: PageBlock): PageBlock | null {
+  const build = DECOMPOSED_TEMPLATES[block.type];
+  return build ? build(block.props) : null;
 }
 
 const MAX_BLOCKS = 60;
