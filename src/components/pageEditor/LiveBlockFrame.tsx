@@ -110,17 +110,17 @@ export function renderLiveBlock(
     case "split":
       return <SplitBlock props={props} />;
     case "image":
-      return <ImageBlock props={props} editableText={inlineEdit} />;
+      return <ImageBlock props={props} editableText={inlineEdit} editorEmpty />;
     case "video":
-      return <VideoBlock props={props} editableText={inlineEdit} />;
+      return <VideoBlock props={props} editableText={inlineEdit} editorEmpty />;
     case "cta":
       return <CtaBlock props={props} />;
     case "custom":
-      return <CustomBlock props={props} blockId={block.id} editing={editing} />;
+      return <CustomBlock props={props} blockId={block.id} editing={editing} editorEmpty />;
     case "customCode":
       return <CustomCodeBlock props={props} />;
     case "countdown":
-      return <CountdownBlock props={props} />;
+      return <CountdownBlock props={props} editorEmpty />;
     case "socialIcons":
       return <SocialIconsBlock props={props} />;
     case "faq":
@@ -445,7 +445,7 @@ export function NestedElementFrame({
         </>
       }
     >
-      <NestedElement block={block} editableText={inlineEdit} />
+      <NestedElement block={block} editableText={inlineEdit} editorEmpty />
     </SelectableNode>
   );
 }

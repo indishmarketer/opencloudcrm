@@ -572,7 +572,17 @@ const ROW_COLUMNS: Record<string, string> = { "2": "md:grid-cols-2", "3": "sm:gr
  * Exported so the editor canvas's own column renderer (which adds
  * select/hover overlays and an "add element" control) can reuse it instead
  * of re-implementing the switch. */
-export function NestedElement({ block, editableText }: { block: PageBlock; editableText?: InlineEdit }) {
+export function NestedElement({
+  block,
+  editableText,
+  editorEmpty = false,
+}: {
+  block: PageBlock;
+  editableText?: InlineEdit;
+  /** See EmptyBlockPlaceholder's doc comment -- only the editor's own
+   * NestedElementFrame call site passes this. */
+  editorEmpty?: boolean;
+}) {
   const props = block.props as Props;
   switch (block.type) {
     case "richText":
@@ -580,9 +590,9 @@ export function NestedElement({ block, editableText }: { block: PageBlock; edita
     case "heading":
       return <HeadingBlock props={props} nested editableText={editableText} />;
     case "image":
-      return <ImageBlock props={props} nested editableText={editableText} />;
+      return <ImageBlock props={props} nested editableText={editableText} editorEmpty={editorEmpty} />;
     case "video":
-      return <VideoBlock props={props} nested editableText={editableText} />;
+      return <VideoBlock props={props} nested editableText={editableText} editorEmpty={editorEmpty} />;
     case "button":
       return <ButtonBlock props={props} nested editableText={editableText} />;
     case "icon":
@@ -590,7 +600,7 @@ export function NestedElement({ block, editableText }: { block: PageBlock; edita
     case "customCode":
       return <CustomCodeBlock props={props} nested />;
     case "countdown":
-      return <CountdownBlock props={props} nested />;
+      return <CountdownBlock props={props} nested editorEmpty={editorEmpty} />;
     case "socialIcons":
       return <SocialIconsBlock props={props} nested />;
     case "spacer":
@@ -792,9 +802,42 @@ export function SplitBlock({ props }: { props: Props }) {
   );
 }
 
-export function ImageBlock({ props, nested = false, editableText }: { props: Props; nested?: boolean; editableText?: InlineEdit }) {
+/** A freshly-added Image/Video/Countdown/Custom-design block has no
+ * content yet, and the real render for each returns null until it does --
+ * right for the public site (no empty band on a live page), wrong for the
+ * editor canvas, where that null makes the block invisible and so
+ * impossible to click, select or configure. `editorEmpty` opts a call site
+ * into this placeholder instead; only the editor's own call sites pass it. */
+function EmptyBlockPlaceholder({ text }: { text: string }) {
+  return (
+    <div className="flex min-h-[96px] items-center justify-center rounded-xl border border-dashed border-line bg-paper-soft px-6 py-8 text-center text-sm text-ink-soft">
+      {text}
+    </div>
+  );
+}
+
+export function ImageBlock({
+  props,
+  nested = false,
+  editableText,
+  editorEmpty = false,
+}: {
+  props: Props;
+  nested?: boolean;
+  editableText?: InlineEdit;
+  editorEmpty?: boolean;
+}) {
   const image = str(props, "image");
-  if (!image) return null;
+  if (!image) {
+    if (!editorEmpty) return null;
+    const placeholder = <EmptyBlockPlaceholder text="Click to add an image" />;
+    if (nested) return <RichBox props={props}>{placeholder}</RichBox>;
+    return (
+      <RichSection props={props} widthDefault={896}>
+        {placeholder}
+      </RichSection>
+    );
+  }
   const full = str(props, "size") === "full";
   const t = richTextStyle(props);
   const figure = (
@@ -824,9 +867,28 @@ function embedUrl(url: string): string | null {
   return vimeo ? `https://player.vimeo.com/video/${vimeo[1]}` : null;
 }
 
-export function VideoBlock({ props, nested = false, editableText }: { props: Props; nested?: boolean; editableText?: InlineEdit }) {
+export function VideoBlock({
+  props,
+  nested = false,
+  editableText,
+  editorEmpty = false,
+}: {
+  props: Props;
+  nested?: boolean;
+  editableText?: InlineEdit;
+  editorEmpty?: boolean;
+}) {
   const src = embedUrl(str(props, "url"));
-  if (!src) return null;
+  if (!src) {
+    if (!editorEmpty) return null;
+    const placeholder = <EmptyBlockPlaceholder text="Paste a YouTube or Vimeo link" />;
+    if (nested) return <RichBox props={props}>{placeholder}</RichBox>;
+    return (
+      <RichSection props={props} widthDefault={896}>
+        {placeholder}
+      </RichSection>
+    );
+  }
   const t = richTextStyle(props);
   const figure = (
     <figure>
@@ -863,9 +925,18 @@ export function CustomCodeBlock({ props, nested = false }: { props: Props; neste
   return <Section props={props}>{content}</Section>;
 }
 
-export function CountdownBlock({ props, nested = false }: { props: Props; nested?: boolean }) {
+export function CountdownBlock({ props, nested = false, editorEmpty = false }: { props: Props; nested?: boolean; editorEmpty?: boolean }) {
   const target = str(props, "target");
-  if (!target) return null;
+  if (!target) {
+    if (!editorEmpty) return null;
+    const placeholder = <EmptyBlockPlaceholder text="Set a countdown date in the panel on the right" />;
+    if (nested) return <RichBox props={props}>{placeholder}</RichBox>;
+    return (
+      <RichSection props={props} widthDefault={672}>
+        {placeholder}
+      </RichSection>
+    );
+  }
   const t = richTextStyle(props);
   const content = (
     <div className="flex flex-col items-center gap-6">

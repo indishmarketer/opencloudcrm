@@ -84,10 +84,16 @@ export default function CustomBlock({
   props,
   blockId,
   editing,
+  editorEmpty = false,
 }: {
   props: Props;
   blockId: string;
   editing?: CustomBlockEditing;
+  /** A freshly-added block has no html/css yet, and this renders nothing
+   * until it does -- right for the public site, wrong for the editor
+   * canvas, where that makes the block invisible and unselectable. Only
+   * the editor's own call site (LiveBlockFrame) passes this. */
+  editorEmpty?: boolean;
 }) {
   const html = str(props, "html");
   const css = str(props, "css");
@@ -141,7 +147,16 @@ export default function CustomBlock({
     };
   }, [editing, html]);
 
-  if (!html && !css) return null;
+  if (!html && !css) {
+    if (!editorEmpty) return null;
+    return (
+      <Section props={props}>
+        <div className="flex min-h-[96px] items-center justify-center rounded-xl border border-dashed border-line bg-paper-soft px-6 py-8 text-center text-sm text-ink-soft">
+          Add your HTML and CSS in the panel on the right
+        </div>
+      </Section>
+    );
+  }
 
   const width = str(props, "width") || "site";
   const bare = props.bare === true;
