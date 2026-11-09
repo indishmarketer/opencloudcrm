@@ -21,6 +21,7 @@ import { FieldGroup, MergeTagHint } from "@/components/PageBlockFields";
 import BlockTypePicker from "@/components/pageEditor/BlockTypePicker";
 import ElementsPalette from "@/components/pageEditor/ElementsPalette";
 import { AddElementButton, NestedElementFrame, TopBlockFrame } from "@/components/pageEditor/LiveBlockFrame";
+import type { InlineEdit } from "@/components/pageBlocks/blockViews";
 import MobileCanvasPortal from "@/components/pageEditor/MobileCanvasPortal";
 import HtmlTreeEditor from "@/components/pageEditor/HtmlTreeEditor";
 import type { NodePath } from "@/lib/htmlTree";
@@ -70,6 +71,24 @@ function resizeRowItems(props: Record<string, unknown>): Record<string, unknown>
   const count = Number(props.columns) || 2;
   const items = Array.isArray(props.items) ? (props.items as PageBlock[][]) : [];
   return { ...props, items: Array.from({ length: count }, (_, i) => items[i] || []) };
+}
+
+/** Which prop a block's one editable-in-place text field actually is, for
+ * the block types blockViews.tsx knows how to render an inline input for
+ * (see InlineEdit's doc comment there). Everything else keeps editing
+ * through the sidebar form only -- either it has no single unambiguous
+ * text field (Cards, Hero...) or it isn't worth the inert/anchor-swap care
+ * inline editing needs yet (richText's HTML, Countdown's heading sharing a
+ * box with its own CTA button). */
+const INLINE_TEXT_FIELD: Record<string, string> = { heading: "text", button: "label", icon: "label", image: "caption", video: "caption" };
+
+function inlineTextEdit(block: PageBlock, selected: boolean, onChangeProps: (next: Record<string, unknown>) => void): InlineEdit | undefined {
+  const key = INLINE_TEXT_FIELD[block.type];
+  if (!selected || !key) return undefined;
+  return {
+    value: typeof block.props[key] === "string" ? (block.props[key] as string) : "",
+    onChange: (v: string) => onChangeProps({ ...block.props, [key]: v }),
+  };
 }
 
 const BackIcon = () => (
@@ -469,19 +488,23 @@ export default function ConsolePageEditor({
     // eslint-disable-next-line react/display-name -- a render-prop passed to RowBlock, not a component
     return (column: PageBlock[], columnIndex: number) => (
       <>
-        {column.map((el, i) => (
-          <NestedElementFrame
-            key={el.id}
-            block={el}
-            selected={selection?.path[0] === rowId && selection.path[1] === el.id}
-            onSelect={() => selectBlock({ path: [rowId, el.id] })}
-            onMoveUp={() => moveElementInRow(rowId, columnIndex, i, i - 1)}
-            onMoveDown={() => moveElementInRow(rowId, columnIndex, i, i + 1)}
-            onRemove={() => void removeElementFromRow(rowId, el.id)}
-            canMoveUp={i > 0}
-            canMoveDown={i < column.length - 1}
-          />
-        ))}
+        {column.map((el, i) => {
+          const elSelected = selection?.path[0] === rowId && selection.path[1] === el.id;
+          return (
+            <NestedElementFrame
+              key={el.id}
+              block={el}
+              selected={elSelected}
+              onSelect={() => selectBlock({ path: [rowId, el.id] })}
+              onMoveUp={() => moveElementInRow(rowId, columnIndex, i, i - 1)}
+              onMoveDown={() => moveElementInRow(rowId, columnIndex, i, i + 1)}
+              onRemove={() => void removeElementFromRow(rowId, el.id)}
+              canMoveUp={i > 0}
+              canMoveDown={i < column.length - 1}
+              inlineEdit={inlineTextEdit(el, elSelected, (next) => updateElementProps(rowId, el.id, next))}
+            />
+          );
+        })}
         <AddElementButton onAdd={(type) => addElementToRow(rowId, columnIndex, type)} />
       </>
     );
@@ -605,6 +628,11 @@ export default function ConsolePageEditor({
 
   const nodeEditingFor = (blockId: string) =>
     htmlTree && selectedTopBlock?.id === blockId ? { selectedPath: nodePath, onSelectPath: setNodePath } : undefined;
+
+  const topInlineEditFor = (block: PageBlock) =>
+    inlineTextEdit(block, selection?.path[0] === block.id && selection.path.length === 1, (next) =>
+      update(blocks.map((b) => (b.id === block.id ? { ...b, props: next } : b)))
+    );
 
   /** Elements mode is wired up only for the selected custom section:
    * it writes back into the same `html` prop the Code tab edits, so
@@ -900,6 +928,7 @@ export default function ConsolePageEditor({
                             canMoveUp={i > 0}
                             canMoveDown={i < blocks.length - 1}
                             editing={nodeEditingFor(block.id)}
+                            inlineEdit={topInlineEditFor(block)}
                           />
                         ))}
                       </SortableContext>
@@ -927,6 +956,7 @@ export default function ConsolePageEditor({
                       onDelete={() => void removeBlock(block)}
                       renderColumn={block.type === "row" ? renderColumnFor(block.id) : undefined}
                       editing={nodeEditingFor(block.id)}
+                      inlineEdit={topInlineEditFor(block)}
                     />
                   ))}
                 </SortableContext>

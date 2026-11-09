@@ -188,6 +188,48 @@ function textStyleAttrs(props: Props): { className: string; style: React.CSSProp
   return { className, style: textColor ? { color: textColor } : {} };
 }
 
+/** Lets the console editor's canvas edit a single text field in place
+ * (click it, type) instead of only through the sidebar form. Only ever
+ * supplied by the editor's own call sites (ConsolePageEditor.tsx,
+ * LiveBlockFrame.tsx) for whichever element is currently selected -- never
+ * by the public renderer, so an ordinary page visitor never sees this. */
+export type InlineEdit = { value: string; onChange: (v: string) => void };
+
+/** A chrome-less text input swapped in for static text while its element
+ * is selected. No classes of its own beyond layout (`w-full`, zero
+ * padding/border/background) -- it inherits font/color from whatever
+ * element it's nested inside via Tailwind preflight's `font: inherit;
+ * color: inherit` reset on form controls, so it looks exactly like the
+ * text it's replacing rather than needing every caller to repeat that
+ * element's own classes. */
+function InlineTextInput({
+  edit,
+  placeholder,
+  className,
+  autoWidth,
+}: {
+  edit: InlineEdit;
+  placeholder?: string;
+  className?: string;
+  /** For text sitting inside a shrink-to-fit box like a button or an icon
+   * label -- a plain `w-full` input there would stretch the box to its
+   * whole flex row instead of hugging the text. The HTML `size` attribute
+   * (character-count width, recomputed as you type) keeps the box sized to
+   * its content instead, same as the button/icon look like before editing. */
+  autoWidth?: boolean;
+}) {
+  return (
+    <input
+      type="text"
+      value={edit.value}
+      onChange={(e) => edit.onChange(e.target.value)}
+      placeholder={placeholder}
+      size={autoWidth ? Math.max((edit.value || placeholder || "").length, 4) : undefined}
+      className={`border-none bg-transparent p-0 outline-none ${autoWidth ? "" : "w-full"} ${className || ""}`.trim()}
+    />
+  );
+}
+
 function SectionHeading({ heading, text, link }: { heading: string; text?: string; link?: { href: string; label: string } }) {
   if (!heading && !text) return null;
   return (
@@ -340,16 +382,16 @@ export function RichTextBlock({ props, nested = false }: { props: Props; nested?
   );
 }
 
-export function HeadingBlock({ props, nested = false }: { props: Props; nested?: boolean }) {
+export function HeadingBlock({ props, nested = false, editableText }: { props: Props; nested?: boolean; editableText?: InlineEdit }) {
   const text = str(props, "text");
-  if (!text) return null;
+  if (!text && !editableText) return null;
   const level = str(props, "level");
   const Heading = (level === "h3" ? "h3" : level === "h4" ? "h4" : "h2") as "h2" | "h3" | "h4";
   const baseSize = level === "h3" ? "text-2xl" : level === "h4" ? "text-xl" : "text-3xl";
   const t = textStyleAttrs(props);
   const el = (
     <Heading className={`font-display font-semibold ${baseSize} ${t.className}`.trim()} style={t.style}>
-      {text}
+      {editableText ? <InlineTextInput edit={editableText} placeholder="Heading text" /> : text}
     </Heading>
   );
   if (nested) return <ElementBox props={props}>{el}</ElementBox>;
@@ -360,10 +402,10 @@ export function HeadingBlock({ props, nested = false }: { props: Props; nested?:
   );
 }
 
-export function ButtonBlock({ props, nested = false }: { props: Props; nested?: boolean }) {
+export function ButtonBlock({ props, nested = false, editableText }: { props: Props; nested?: boolean; editableText?: InlineEdit }) {
   const label = str(props, "label");
   const href = str(props, "href");
-  if (!label || !href) return null;
+  if ((!label || !href) && !editableText) return null;
   // "align" (this block's own content field) positions the button within
   // its box -- left/center/right -- a different concern from the Style
   // tab's textAlign, which would only affect how the label's own text
@@ -371,9 +413,18 @@ export function ButtonBlock({ props, nested = false }: { props: Props; nested?: 
   const alignClass = str(props, "align") === "center" ? "justify-center" : str(props, "align") === "right" ? "justify-end" : "justify-start";
   const buttonClass = str(props, "style") === "outline" ? BUTTON_OUTLINE : BUTTON_DARK;
   const t = textStyleAttrs(props);
+  // While editing the label in place, this renders as a plain <span>, not
+  // a real <a>/<Link> -- clicking into the text to edit it must never
+  // navigate away, href or not.
   const el = (
     <div className={`flex ${alignClass}`}>
-      <ButtonLink href={href} label={label} className={`${buttonClass} ${t.className}`.trim()} style={t.style} />
+      {editableText ? (
+        <span className={`${buttonClass} ${t.className}`.trim()} style={t.style}>
+          <InlineTextInput edit={editableText} placeholder="Button text" className="text-center" autoWidth />
+        </span>
+      ) : (
+        <ButtonLink href={href} label={label} className={`${buttonClass} ${t.className}`.trim()} style={t.style} />
+      )}
     </div>
   );
   if (nested) return <ElementBox props={props}>{el}</ElementBox>;
@@ -384,7 +435,7 @@ export function ButtonBlock({ props, nested = false }: { props: Props; nested?: 
   );
 }
 
-export function IconBlock({ props, nested = false }: { props: Props; nested?: boolean }) {
+export function IconBlock({ props, nested = false, editableText }: { props: Props; nested?: boolean; editableText?: InlineEdit }) {
   const Glyph = ICON_COMPONENTS[str(props, "icon")] ?? Star;
   const label = str(props, "label");
   const href = str(props, "href");
@@ -393,12 +444,20 @@ export function IconBlock({ props, nested = false }: { props: Props; nested?: bo
   const inner = (
     <span className={`inline-flex flex-col items-center gap-2 text-center ${t.className}`.trim()} style={t.style}>
       <Glyph className={size} strokeWidth={1.75} aria-hidden={label ? "true" : undefined} />
-      {label && <span className="text-sm font-medium">{label}</span>}
+      {editableText ? (
+        <InlineTextInput edit={editableText} placeholder="Label (optional)" className="text-center text-sm font-medium" autoWidth />
+      ) : (
+        label && <span className="text-sm font-medium">{label}</span>
+      )}
     </span>
   );
+  // Never a real link while the label is being edited in place -- same
+  // reasoning as ButtonBlock above.
   const external = /^https?:\/\//.test(href);
   const el =
-    href ? (
+    editableText ? (
+      inner
+    ) : href ? (
       external ? (
         <a href={href} target="_blank" rel="noreferrer" className="inline-flex">
           {inner}
@@ -429,21 +488,21 @@ const ROW_COLUMNS: Record<string, string> = { "2": "md:grid-cols-2", "3": "sm:gr
  * Exported so the editor canvas's own column renderer (which adds
  * select/hover overlays and an "add element" control) can reuse it instead
  * of re-implementing the switch. */
-export function NestedElement({ block }: { block: PageBlock }) {
+export function NestedElement({ block, editableText }: { block: PageBlock; editableText?: InlineEdit }) {
   const props = block.props as Props;
   switch (block.type) {
     case "richText":
       return <RichTextBlock props={props} nested />;
     case "heading":
-      return <HeadingBlock props={props} nested />;
+      return <HeadingBlock props={props} nested editableText={editableText} />;
     case "image":
-      return <ImageBlock props={props} nested />;
+      return <ImageBlock props={props} nested editableText={editableText} />;
     case "video":
-      return <VideoBlock props={props} nested />;
+      return <VideoBlock props={props} nested editableText={editableText} />;
     case "button":
-      return <ButtonBlock props={props} nested />;
+      return <ButtonBlock props={props} nested editableText={editableText} />;
     case "icon":
-      return <IconBlock props={props} nested />;
+      return <IconBlock props={props} nested editableText={editableText} />;
     case "customCode":
       return <CustomCodeBlock props={props} nested />;
     case "countdown":
@@ -615,7 +674,7 @@ export function SplitBlock({ props }: { props: Props }) {
   );
 }
 
-export function ImageBlock({ props, nested = false }: { props: Props; nested?: boolean }) {
+export function ImageBlock({ props, nested = false, editableText }: { props: Props; nested?: boolean; editableText?: InlineEdit }) {
   const image = str(props, "image");
   if (!image) return null;
   const full = str(props, "size") === "full";
@@ -625,9 +684,9 @@ export function ImageBlock({ props, nested = false }: { props: Props; nested?: b
       <div className="relative aspect-[1200/650] w-full overflow-hidden rounded-2xl">
         <BlockImage src={image} alt={str(props, "alt")} sizes={nested ? "(min-width: 768px) 33vw, 100vw" : full ? "(min-width: 1152px) 1152px, 100vw" : "(min-width: 896px) 896px, 100vw"} className="object-cover" />
       </div>
-      {str(props, "caption") && (
+      {(str(props, "caption") || editableText) && (
         <figcaption className={`mt-3 text-center text-sm text-ink-soft ${t.className}`.trim()} style={t.style}>
-          {str(props, "caption")}
+          {editableText ? <InlineTextInput edit={editableText} placeholder="Caption" /> : str(props, "caption")}
         </figcaption>
       )}
     </figure>
@@ -647,7 +706,7 @@ function embedUrl(url: string): string | null {
   return vimeo ? `https://player.vimeo.com/video/${vimeo[1]}` : null;
 }
 
-export function VideoBlock({ props, nested = false }: { props: Props; nested?: boolean }) {
+export function VideoBlock({ props, nested = false, editableText }: { props: Props; nested?: boolean; editableText?: InlineEdit }) {
   const src = embedUrl(str(props, "url"));
   if (!src) return null;
   const t = textStyleAttrs(props);
@@ -663,9 +722,9 @@ export function VideoBlock({ props, nested = false }: { props: Props; nested?: b
           loading="lazy"
         />
       </div>
-      {str(props, "caption") && (
+      {(str(props, "caption") || editableText) && (
         <figcaption className={`mt-3 text-center text-sm text-ink-soft ${t.className}`.trim()} style={t.style}>
-          {str(props, "caption")}
+          {editableText ? <InlineTextInput edit={editableText} placeholder="Caption" /> : str(props, "caption")}
         </figcaption>
       )}
     </figure>

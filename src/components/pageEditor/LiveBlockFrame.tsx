@@ -37,6 +37,7 @@ import {
   StatsBlock,
   VideoBlock,
   WorkflowDemoBlock,
+  type InlineEdit,
   type Props,
 } from "@/components/pageBlocks/blockViews";
 import BlockTypePicker from "@/components/pageEditor/BlockTypePicker";
@@ -64,7 +65,11 @@ export function renderLiveBlock(
   renderColumn?: RenderColumn,
   /** Only for a "custom" block, and only from the canvas: makes clicking
    * an element inside it select that element in Elements mode. */
-  editing?: CustomBlockEditing
+  editing?: CustomBlockEditing,
+  /** Only for the block currently selected, and only for a type that has
+   * one unambiguous text field worth editing in place -- see InlineEdit's
+   * own doc comment in blockViews.tsx. */
+  inlineEdit?: InlineEdit
 ): React.ReactNode {
   const props = block.props as Props;
   const business = liveData.business;
@@ -76,11 +81,11 @@ export function renderLiveBlock(
     case "richText":
       return <RichTextBlock props={props} />;
     case "heading":
-      return <HeadingBlock props={props} />;
+      return <HeadingBlock props={props} editableText={inlineEdit} />;
     case "button":
-      return <ButtonBlock props={props} />;
+      return <ButtonBlock props={props} editableText={inlineEdit} />;
     case "icon":
-      return <IconBlock props={props} />;
+      return <IconBlock props={props} editableText={inlineEdit} />;
     case "row":
       return <RowBlock props={props} renderColumn={renderColumn} />;
     case "cards":
@@ -88,9 +93,9 @@ export function renderLiveBlock(
     case "split":
       return <SplitBlock props={props} />;
     case "image":
-      return <ImageBlock props={props} />;
+      return <ImageBlock props={props} editableText={inlineEdit} />;
     case "video":
-      return <VideoBlock props={props} />;
+      return <VideoBlock props={props} editableText={inlineEdit} />;
     case "cta":
       return <CtaBlock props={props} />;
     case "custom":
@@ -255,6 +260,7 @@ export function TopBlockFrame({
   canMoveUp,
   canMoveDown,
   editing,
+  inlineEdit,
 }: {
   block: PageBlock;
   liveData: PageEditorLiveData;
@@ -265,6 +271,9 @@ export function TopBlockFrame({
   renderColumn?: RenderColumn;
   /** Passed for the selected "custom" block while Elements mode is open. */
   editing?: CustomBlockEditing;
+  /** Passed for the selected block when its type has one text field worth
+   * editing in place -- see InlineEdit's doc comment in blockViews.tsx. */
+  inlineEdit?: InlineEdit;
   /** False inside MobileCanvasPortal: dragging can't work there (see its
    * own note), so move-up/down buttons take the drag handle's place. */
   interactive?: boolean;
@@ -281,7 +290,7 @@ export function TopBlockFrame({
       selected={selected}
       onSelect={onSelect}
       label={def?.label || block.type}
-      inert={!editing}
+      inert={!editing && !inlineEdit}
       dragProps={{ ref: setNodeRef, style: { transform: CSS.Transform.toString(transform), transition } }}
       isDragging={isDragging}
       actions={
@@ -319,7 +328,7 @@ export function TopBlockFrame({
         </>
       }
     >
-      {renderLiveBlock(block, liveData, renderColumn, editing)}
+      {renderLiveBlock(block, liveData, renderColumn, editing, inlineEdit)}
     </SelectableNode>
   );
 }
@@ -337,6 +346,7 @@ export function NestedElementFrame({
   onRemove,
   canMoveUp,
   canMoveDown,
+  inlineEdit,
 }: {
   block: PageBlock;
   selected: boolean;
@@ -346,6 +356,10 @@ export function NestedElementFrame({
   onRemove: () => void;
   canMoveUp: boolean;
   canMoveDown: boolean;
+  /** Passed for the selected element when its type has one text field
+   * worth editing in place -- see InlineEdit's doc comment in
+   * blockViews.tsx. */
+  inlineEdit?: InlineEdit;
 }) {
   const def = getBlockDef(block.type);
   return (
@@ -354,6 +368,7 @@ export function NestedElementFrame({
       selected={selected}
       onSelect={onSelect}
       label={def?.label || block.type}
+      inert={!inlineEdit}
       actions={
         <>
           <button type="button" disabled={!canMoveUp} onClick={stop(onMoveUp)} aria-label="Move up" className={toolbarButton}>
@@ -368,7 +383,7 @@ export function NestedElementFrame({
         </>
       }
     >
-      <NestedElement block={block} />
+      <NestedElement block={block} editableText={inlineEdit} />
     </SelectableNode>
   );
 }
