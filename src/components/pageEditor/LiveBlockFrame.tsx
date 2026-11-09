@@ -215,7 +215,18 @@ const DeleteIcon = () => (
   </svg>
 );
 
-const toolbarButton = "rounded-md p-1 text-ink-soft hover:bg-paper-soft hover:text-ink disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-ink-soft";
+// pointer-events-auto! (Tailwind v4's `!` *suffix*) forces every toolbar
+// button clickable regardless of an ancestor's INERT wrapper -- a nested
+// element's own actions render inside SelectableNode's non-inert sibling
+// div, but that whole structure still sits inside whatever TOP-LEVEL
+// block (a row) wraps it, and INERT's `[&_button]:pointer-events-none`
+// is a descendant selector: it matches a button at any depth below an
+// inert ancestor, it doesn't stop at the first un-inert wrapper in
+// between. Confirmed live: without this, a nested element's move/delete
+// buttons rendered but did nothing when clicked, same failure as
+// AddElementButton's.
+const toolbarButton =
+  "pointer-events-auto! rounded-md p-1 text-ink-soft hover:bg-paper-soft hover:text-ink disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-ink-soft";
 
 /** The one selection/outline/floating-toolbar wrapper used at every depth
  * of the block tree -- a top-level section and an element nested inside a
@@ -449,7 +460,19 @@ export function AddElementButton({ onAdd }: { onAdd: (type: string) => void }) {
           e.stopPropagation();
           setOpen(true);
         }}
-        className="rounded-lg border border-dashed border-line py-2 text-xs font-medium text-ink-soft transition-colors hover:border-ink hover:text-ink"
+        // pointer-events-auto! (Tailwind v4's `!` *suffix* -- the syntax
+        // changed from v3's leading `!`) forces this past INERT
+        // (LiveBlockFrame.tsx's `[&_button]:pointer-events-none`, applied
+        // to the whole row while it's not individually selected): INERT
+        // exists so a row's own PUBLIC content (a real link, a video
+        // iframe) doesn't act like the live site while editing, but this
+        // button is editor-only chrome, not public content, and sits
+        // inside that same wrapper since it's rendered as part of the
+        // row's own children, not its own SelectableNode. Confirmed live
+        // -- without this, clicking "+ Add element" did nothing at all
+        // (the click fell through to the row behind it), for every
+        // column on every page, always.
+        className="pointer-events-auto! rounded-lg border border-dashed border-line py-2 text-xs font-medium text-ink-soft transition-colors hover:border-ink hover:text-ink"
       >
         + Add element
       </button>

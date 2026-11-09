@@ -218,7 +218,15 @@ function InlineTextInput({
       onChange={(e) => edit.onChange(e.target.value)}
       placeholder={placeholder}
       size={autoWidth ? Math.max((edit.value || placeholder || "").length, 4) : undefined}
-      className={`border-none bg-transparent p-0 outline-none ${autoWidth ? "" : "w-full"} ${className || ""}`.trim()}
+      // pointer-events-auto! forces this clickable/typable regardless of
+      // an ancestor's INERT wrapper -- for a nested element (inside a row's
+      // column), NestedElementFrame already un-inerts its OWN wrapper when
+      // this input is showing, but that wrapper still sits inside the
+      // ROW's own (separately inert) TopBlockFrame, and INERT's
+      // `[&_input]:pointer-events-none` is a descendant selector that
+      // reaches straight through an in-between un-inert div -- confirmed
+      // live, same failure mode as the toolbar buttons' in LiveBlockFrame.tsx.
+      className={`pointer-events-auto! border-none bg-transparent p-0 outline-none ${autoWidth ? "" : "w-full"} ${className || ""}`.trim()}
       // `textAlign: inherit` is NOT a redundant default: unlike plain text,
       // an <input>'s own user-agent stylesheet gives it a fixed
       // `text-align: start` that wins over whatever its ancestor's
