@@ -16,25 +16,63 @@ bugs (it's long past that state), so this is the only way they get seen.
 
 ## Deploy it
 
-You need two things: somewhere to run a Docker container, and a Postgres
-database. `docker-compose.yml` in this repo gives you both, using a
-**prebuilt image** -- nothing builds on your server, which matters: building
-this app from source needs several GB of RAM and fails silently on a small
-VPS (the build just gets killed, no error, deploy shows "failed").
+You need a web application and a PostgreSQL database. For a public Coolify
+site, create them as **two separate Coolify resources** using the setup command
+below. In normal operation, that is one web container and one database
+container. During a web update, Coolify temporarily runs **two web containers
+and one database container**, waits for the new web container's health check,
+then removes the old web container. The server needs enough spare memory for
+that temporary overlap.
 
-For a public site on Coolify, use the standalone application and database
-layout below. The Compose file is a simpler option, but it briefly replaces
-the only web container during updates and can show a 503 page.
+**A Dockerfile cannot create the database or choose a host's update policy.**
+The root `docker-compose.yml` can start the web app and database together, but
+Coolify does not roll its Compose services. Redeploying that layout can return
+503 while its only web container is replaced. This is also true of plain
+`docker compose up` on a VPS. Other platforms need their own deployment
+settings; this repository cannot force a universal zero-downtime guarantee.
+The application image is prebuilt on GitHub, so a small server does not need
+to build Next.js itself.
 
 ### Coolify
 
-**Recommended for public sites:** Use a standalone PostgreSQL database and a
-standalone Docker Image application. Coolify can start the new web container
-before removing the old one during updates. The complete setup, including
-scheduled jobs and a deployment test, is in
-[Coolify rolling deployment](docs/coolify-rolling-deployment.md). The app image
-already has a readiness check. Do not publish a fixed host port or use a fixed
-container name.
+**Recommended for a new public site:** Run the repo's
+[`deployment/coolify/create.mjs`](deployment/coolify/create.mjs) setup command.
+It creates one standalone PostgreSQL database and one standalone Docker Image
+application, connects them privately, enables the `/api/health` check, and
+adds scheduled tasks to the web app. It does **not** create a permanent second
+web application or a separate scheduler resource. It leaves host port mapping
+and fixed container naming unset, which lets Coolify overlap the old and new
+web containers during an update. It is for **fresh installs only**; do not run
+it against an existing site or database. For an existing Compose site, see the
+migration section in [Coolify rolling deployment](docs/coolify-rolling-deployment.md)
+and preserve its database before changing resources.
+
+Set these variables in your shell, then run `node deployment/coolify/create.mjs`:
+
+| Variable | Meaning |
+| --- | --- |
+| `COOLIFY_URL` | Your trusted Coolify origin, such as `https://coolify.example.com` |
+| `COOLIFY_TOKEN` | Coolify API token with resource write and deploy permissions |
+| `COOLIFY_PROJECT_UUID` | Target project UUID |
+| `COOLIFY_ENVIRONMENT_UUID` | Target environment UUID |
+| `COOLIFY_SERVER_UUID` | Target server UUID |
+| `SITE_URL` | New public site origin, such as `https://example.com` |
+| `ADMIN_EMAIL` | Console owner's email |
+
+Optional: `COOLIFY_DESTINATION_UUID` if the server has multiple destinations,
+`OPEN_CLOUD_CRM_IMAGE_TAG` to pin an image instead of `latest`, and
+`APP_ENV_FILE` for additional `KEY=value` application variables such as email
+and storage credentials. Keep that file private. The command generates the
+database password, session secret, and cron secret; it prints resource IDs but
+never secret values. Run with `--dry-run` to check inputs without creating
+anything. If setup stops halfway, use the printed IDs to inspect the resources
+in Coolify **before retrying**; a retry creates another database.
+
+The detailed manual setup and update verification are in
+[Coolify rolling deployment](docs/coolify-rolling-deployment.md). A successful
+health check makes the handoff safer, but it cannot guarantee that every
+request succeeds. Confirm a rolling update with continuous requests to the
+public URL before relying on uninterrupted updates.
 
 If you use a Coolify MCP agent, give it this prompt:
 
@@ -160,7 +198,7 @@ includes a `/api/health` check. Confirm Coolify detects it and shows
 status `200`. Do not set a fixed host port or container name when you need
 Coolify's rolling updates.
 
-### Any other Docker host (a VPS, Railway, Render, Fly...)
+### Plain Docker Compose on a VPS
 
 **Manually:**
 

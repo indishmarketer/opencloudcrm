@@ -5,6 +5,12 @@ new web image starts. Coolify can overlap containers for a standalone Docker
 Image application. It cannot do that for a Docker Compose service. A first
 deployment still has to wait for the first container to become ready.
 
+For a **fresh installation**, `node deployment/coolify/create.mjs` automates
+the two-resource layout below. See the required variables in the
+[README](../README.md#coolify). This command creates one database and one web
+application, then places scheduled tasks on the web application. It does not
+migrate an existing Compose site or its database.
+
 ## Create the resources
 
 1. Create a **PostgreSQL** database resource in Coolify, in the same server
@@ -69,7 +75,15 @@ The root [`docker-compose.yml`](../docker-compose.yml) remains a simple
 single-server setup. Coolify replaces its web container in place during
 updates, so it can briefly return 503 even though all three containers have
 health checks. Changing only the health-check interval cannot remove that
-gap. Move the web app to the standalone Application layout above to get
-Coolify's rolling update behavior. Preserve and back up the existing database
-before changing its network or storage, and verify the server can run two web
-containers during the handoff.
+gap. The fresh-install command above creates a new database, so **never run it
+against an existing production site**. To migrate, first take and verify a
+backup of the existing database. Create a standalone web application against
+that same database on a private network, without taking the existing site
+offline. Copy all application environment variables and confirm the new web
+container can serve traffic through a temporary domain. Set up its scheduled
+tasks, then switch the public domain and remove the old web app and scheduler
+from the Compose service. Keep the database and its volume throughout. Only
+remove the old service after the database has been moved to a standalone
+resource and its data has been verified. Check server capacity before the
+handoff: two web containers must fit briefly. Migration needs a site-specific
+cutover plan; editing the root Compose file alone cannot perform it.
