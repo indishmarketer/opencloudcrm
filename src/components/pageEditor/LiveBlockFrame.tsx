@@ -42,7 +42,7 @@ import {
 } from "@/components/pageBlocks/blockViews";
 import BlockTypePicker from "@/components/pageEditor/BlockTypePicker";
 
-const NESTABLE_DEFS = BLOCK_DEFS.filter((d) => d.nestable);
+const NESTABLE_DEFS = BLOCK_DEFS.filter((d) => d.nestable && !d.deprecated);
 
 // Interactive descendants (real links, buttons, form fields, video
 // iframes) would otherwise behave like the live site while editing --

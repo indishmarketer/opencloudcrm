@@ -33,11 +33,32 @@ export type FieldDef =
 
 export type BlockCategory = "Headers" | "Content" | "Media" | "Calls to action" | "Live content" | "Forms" | "Business" | "Layout" | "Custom design";
 
+/** The real axis the Add-section palette groups by -- not `category`
+ * (which is a content-topic label like "Media" or "Forms" that a primitive
+ * Image element and the pre-built Featured-on marquee both happen to
+ * share). Three genuinely different kinds of thing a page is built from:
+ *
+ * - "element": a true primitive -- select it, style it, click it on
+ *   canvas and type. No opinion baked in beyond a sane default. What an
+ *   Elementor/Webflow "widget" is.
+ * - "template": a pre-arranged starting point built FROM elements (or,
+ *   for one not yet rebuilt on the new primitives, a still-atomic
+ *   composite) -- a shortcut, not a thing you style as a whole; you pull
+ *   it apart and edit the pieces. What Elementor calls a "template."
+ * - "dynamic": pulls real data that lives elsewhere in this CRM (posts,
+ *   courses, reviews, the business profile) -- there is nothing of
+ *   "yours" on the page to decompose into elements, since the content
+ *   isn't stored in this block's own props. */
+export type PaletteGroup = "element" | "template" | "dynamic";
+
 export type BlockDef = {
   type: string;
   label: string;
   description: string;
   category: BlockCategory;
+  /** See PaletteGroup. Every non-internal, non-deprecated block needs one
+   * -- it's what the palette actually groups by. */
+  group: PaletteGroup;
   fields: FieldDef[];
   defaults: Record<string, unknown>;
   /** Only meaningful on built-in pages (courses list, legal pages...):
@@ -174,6 +195,7 @@ export const BLOCK_DEFS: BlockDef[] = [
     label: "Hero",
     description: "Big headline at the top of a page, with buttons and an optional image.",
     category: "Headers",
+    group: "template",
     fields: [
       text("eyebrow", "Small label above the headline", { max: 80 }),
       text("heading", "Headline", { max: 200 }),
@@ -210,6 +232,7 @@ export const BLOCK_DEFS: BlockDef[] = [
     label: "Page title",
     description: "A simple page title with an intro paragraph.",
     category: "Headers",
+    group: "template",
     fields: [
       text("eyebrow", "Small label above the title", { max: 80 }),
       text("heading", "Title", { max: 200 }),
@@ -223,6 +246,7 @@ export const BLOCK_DEFS: BlockDef[] = [
     label: "Text",
     description: "Formatted text: headings, paragraphs, lists, links and images.",
     category: "Content",
+    group: "element",
     fields: [{ key: "html", label: "Text", kind: "richtext" }, select("width", "Width", [["narrow", "Narrow (easy reading)"], ["wide", "Wide"]])],
     defaults: { html: "<p>Write something here.</p>", width: "narrow" },
     nestable: true,
@@ -232,7 +256,16 @@ export const BLOCK_DEFS: BlockDef[] = [
     label: "Headline",
     description: "One standalone heading, e.g. to label a row of columns.",
     category: "Content",
-    fields: [text("text", "Heading text", { max: 200 }), select("level", "Size", [["h2", "Large"], ["h3", "Medium"], ["h4", "Small"]])],
+    group: "element",
+    fields: [
+      text("text", "Heading text", { max: 200 }),
+      select(
+        "level",
+        "Heading level",
+        [["h2", "H2 -- large"], ["h3", "H3 -- medium"], ["h4", "H4 -- small"]],
+        "The semantic heading tag (matters for SEO/accessibility) and its default size. For a specific pixel size instead, use \"Text size\" in the Style tab -- that always wins over this default."
+      ),
+    ],
     defaults: { text: "A heading", level: "h2" },
     nestable: true,
   },
@@ -241,6 +274,7 @@ export const BLOCK_DEFS: BlockDef[] = [
     label: "Button",
     description: "One standalone button/link.",
     category: "Calls to action",
+    group: "element",
     fields: [
       text("label", "Button text", { max: 60 }),
       link("href", "Link"),
@@ -255,6 +289,7 @@ export const BLOCK_DEFS: BlockDef[] = [
     label: "Icon",
     description: "One standalone icon, optionally with a label and link -- e.g. a feature list item or a trust badge.",
     category: "Content",
+    group: "element",
     fields: [
       iconPicker("icon", "Icon", ICON_NAMES),
       text("label", "Label (optional)", { max: 80 }),
@@ -269,6 +304,7 @@ export const BLOCK_DEFS: BlockDef[] = [
     label: "Columns",
     description: "A row of 2-4 columns, each holding its own small elements (text, image, video, button, spacer). Build it visually in the canvas, or set props.items to an array of column arrays over the API/MCP.",
     category: "Layout",
+    group: "element",
     fields: [
       select("columns", "Columns", [["2", "2"], ["3", "3"], ["4", "4"]]),
       select("gap", "Gap between columns", [["sm", "Small"], ["md", "Medium"], ["lg", "Large"]]),
@@ -280,6 +316,7 @@ export const BLOCK_DEFS: BlockDef[] = [
     label: "Cards",
     description: "A grid of cards: services, features, products, links to other pages.",
     category: "Content",
+    group: "template",
     fields: [
       text("heading", "Section heading", { max: 160 }),
       textarea("text", "Section intro", { max: 600 }),
@@ -322,6 +359,7 @@ export const BLOCK_DEFS: BlockDef[] = [
     label: "Text and image",
     description: "Text on one side, an image on the other, with optional tags and a button.",
     category: "Content",
+    group: "template",
     fields: [
       text("eyebrow", "Small label", { max: 80 }),
       text("heading", "Heading", { max: 200 }),
@@ -341,6 +379,7 @@ export const BLOCK_DEFS: BlockDef[] = [
     label: "Image",
     description: "One image, full width or contained, with an optional caption.",
     category: "Media",
+    group: "element",
     fields: [image("image", "Image"), text("alt", "Image description (alt text)", { max: 200 }), text("caption", "Caption", { max: 200 }), select("size", "Size", [["contained", "Contained"], ["full", "Full width"]])],
     defaults: { image: "", alt: "", caption: "", size: "contained" },
     nestable: true,
@@ -350,6 +389,7 @@ export const BLOCK_DEFS: BlockDef[] = [
     label: "Video",
     description: "An embedded YouTube or Vimeo video.",
     category: "Media",
+    group: "element",
     fields: [text("url", "YouTube or Vimeo link", { max: 300, placeholder: "https://www.youtube.com/watch?v=..." }), text("caption", "Caption", { max: 200 })],
     defaults: { url: "", caption: "" },
     nestable: true,
@@ -366,6 +406,7 @@ export const BLOCK_DEFS: BlockDef[] = [
       "For images, generate_media_image makes one from a prompt and upload_media_image's svg parameter rasterizes SVG you write; inline <svg> in the HTML needs no upload at all. " +
       "Call get_design_system first, for the brand colors, fonts, CSS variables and the rest of the constraints.",
     category: "Custom design",
+    group: "element",
     fields: [
       code(
         "html",
@@ -402,6 +443,7 @@ export const BLOCK_DEFS: BlockDef[] = [
     label: "Custom HTML / code (old)",
     description: "Superseded by Custom design, which adds a scoped stylesheet, full-bleed width and working <script> tags. Kept so existing sections keep rendering; use Custom design for anything new.",
     category: "Custom design",
+    group: "element",
     fields: [code("html", "HTML / embed code", "Pasted exactly as written, unescaped -- treat this like editing the page's source code.")],
     defaults: { html: "" },
     nestable: true,
@@ -412,6 +454,7 @@ export const BLOCK_DEFS: BlockDef[] = [
     label: "Call to action",
     description: "A heading with one or two buttons, to end a page or break up a long one.",
     category: "Calls to action",
+    group: "template",
     fields: [
       text("heading", "Heading", { max: 200 }),
       textarea("text", "Text", { max: 400 }),
@@ -428,6 +471,7 @@ export const BLOCK_DEFS: BlockDef[] = [
     label: "Countdown timer",
     description: "A ticking countdown to a date and time, for a launch or a limited-time offer.",
     category: "Calls to action",
+    group: "element",
     fields: [
       text("heading", "Heading", { max: 160 }),
       datetime("target", "Count down to", "In your own local time -- shown correctly to every visitor regardless of their timezone."),
@@ -443,6 +487,7 @@ export const BLOCK_DEFS: BlockDef[] = [
     label: "FAQ",
     description: "Questions and answers. Also tells search engines it's an FAQ.",
     category: "Content",
+    group: "element",
     fields: [
       text("heading", "Heading", { max: 160 }),
       { key: "items", label: "Questions", kind: "list", itemLabel: "Question", max: 30, fields: [text("question", "Question", { max: 250 }), textarea("answer", "Answer", { max: 2000 })] },
@@ -454,6 +499,7 @@ export const BLOCK_DEFS: BlockDef[] = [
     label: "Numbers",
     description: "A row of big numbers with labels.",
     category: "Content",
+    group: "element",
     fields: [
       text("heading", "Heading", { max: 160 }),
       { key: "items", label: "Numbers", kind: "list", itemLabel: "Number", max: 8, fields: [text("value", "Number", { max: 30 }), text("label", "Label", { max: 120 })] },
@@ -465,6 +511,7 @@ export const BLOCK_DEFS: BlockDef[] = [
     label: "Latest blog posts",
     description: "Your newest published blog posts, updated automatically.",
     category: "Live content",
+    group: "dynamic",
     fields: [text("heading", "Heading", { max: 160 }), count("count", "How many"), text("linkLabel", "\"View all\" link text", { max: 60 })],
     defaults: { heading: "From the blog", count: 3, linkLabel: "View all" },
   },
@@ -473,6 +520,7 @@ export const BLOCK_DEFS: BlockDef[] = [
     label: "Latest courses",
     description: "Your newest published courses, updated automatically.",
     category: "Live content",
+    group: "dynamic",
     fields: [text("heading", "Heading", { max: 160 }), count("count", "How many"), text("linkLabel", "\"View all\" link text", { max: 60 })],
     defaults: { heading: "Latest courses", count: 3, linkLabel: "View all" },
   },
@@ -481,30 +529,46 @@ export const BLOCK_DEFS: BlockDef[] = [
     label: "Reviews",
     description: "Customer reviews from your reviews page.",
     category: "Live content",
+    group: "dynamic",
     fields: [text("heading", "Heading", { max: 160 }), count("count", "How many"), text("linkLabel", "\"View all\" link text", { max: 60 })],
     defaults: { heading: "What people are saying", count: 3, linkLabel: "View all reviews" },
   },
   {
+    // Deprecated: a fixed decorative animation specific to OpenCloudCRM's
+    // own marketing site -- not generalizable to any other self-hoster's
+    // business, and nothing about it is actually editable. Kept so any
+    // page that already has one (this product's own) keeps rendering;
+    // never offered for new pages.
     type: "workflowDemo",
     label: "Workflow animation",
     description: "The animated \"how it works\" workflow demo.",
     category: "Media",
+    group: "template",
     fields: [text("heading", "Heading", { max: 160 }), textarea("text", "Text", { max: 600 })],
     defaults: { heading: "How it works", text: "" },
+    deprecated: true,
   },
   {
+    // Deprecated: hardcoded SVGs of this product's own specific
+    // integrations, with no per-item fields at all -- "inappropriate for
+    // any other self-hoster" the same way workflowDemo is, and now fully
+    // superseded besides: an Icon element in a Columns row does exactly
+    // this, generically, with real per-item icon/label/link fields.
     type: "integrations",
     label: "Integration icons",
     description: "A grid of common app icons (email, calendar, chat, sheets...).",
     category: "Media",
+    group: "template",
     fields: [text("heading", "Heading", { max: 160 }), textarea("text", "Text", { max: 600 })],
     defaults: { heading: "Connects with your stack", text: "" },
+    deprecated: true,
   },
   {
     type: "featuredOn",
     label: "Featured on badges",
     description: "A row of \"as featured on\" badges linking to directories/launch sites that list you, with a seamless auto-scrolling marquee.",
     category: "Media",
+    group: "template",
     fields: [
       text("heading", "Heading", { max: 80 }),
       {
@@ -530,6 +594,7 @@ export const BLOCK_DEFS: BlockDef[] = [
     label: "Form",
     description: "A contact form (with email confirmation) or a newsletter signup box, in one configurable section.",
     category: "Forms",
+    group: "element",
     fields: [
       select("mode", "Type", [["contact", "Contact form (name, email, message)"], ["newsletter", "Newsletter signup (email only)"]]),
       text("heading", "Heading", { max: 160 }),
@@ -561,6 +626,7 @@ export const BLOCK_DEFS: BlockDef[] = [
     label: "Contact form",
     description: "The contact form (with email confirmation), and optionally your contact details beside it.",
     category: "Forms",
+    group: "element",
     fields: [
       text("heading", "Heading", { max: 160 }),
       textarea("text", "Intro", { max: 600 }),
@@ -580,6 +646,7 @@ export const BLOCK_DEFS: BlockDef[] = [
     label: "Newsletter signup",
     description: "An email signup box for your newsletter.",
     category: "Forms",
+    group: "element",
     fields: [text("heading", "Heading", { max: 160 }), textarea("text", "Text", { max: 400 })],
     defaults: { heading: "Get updates in your inbox", text: "" },
   },
@@ -588,6 +655,7 @@ export const BLOCK_DEFS: BlockDef[] = [
     label: "Contact details",
     description: "Your email, phone, hours and address from Site settings.",
     category: "Business",
+    group: "dynamic",
     fields: [text("heading", "Heading", { max: 160 })],
     defaults: { heading: "Contact information" },
   },
@@ -596,6 +664,7 @@ export const BLOCK_DEFS: BlockDef[] = [
     label: "Social icons",
     description: "Round icon links to your social profiles.",
     category: "Business",
+    group: "element",
     fields: [
       select("size", "Icon size", [["sm", "Small"], ["md", "Medium"], ["lg", "Large"]]),
       select("align", "Alignment", [["left", "Left"], ["center", "Center"], ["right", "Right"]]),
@@ -616,6 +685,7 @@ export const BLOCK_DEFS: BlockDef[] = [
     label: "Business details",
     description: "Owner, registration number and address from Site settings, plus any extra facts.",
     category: "Business",
+    group: "dynamic",
     fields: [
       text("heading", "Heading", { max: 160 }),
       textarea("intro", "Intro (blank shows your legal line)", { max: 600 }),
@@ -632,6 +702,7 @@ export const BLOCK_DEFS: BlockDef[] = [
     label: "Spacer",
     description: "Empty space, optionally with a dividing line.",
     category: "Layout",
+    group: "element",
     fields: [select("size", "Size", [["sm", "Small"], ["md", "Medium"], ["lg", "Large"]]), toggle("divider", "Show a line")],
     defaults: { size: "md", divider: false },
     nestable: true,
@@ -641,6 +712,7 @@ export const BLOCK_DEFS: BlockDef[] = [
     label: "Page's own content",
     description: "Where this built-in page's own content (its list, form or policy text) appears. Move it, or remove it to replace it entirely with your own sections.",
     category: "Layout",
+    group: "element",
     fields: [],
     defaults: {},
     internal: true,

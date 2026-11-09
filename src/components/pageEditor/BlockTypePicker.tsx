@@ -1,14 +1,25 @@
 "use client";
 
 import ConsoleModal from "@/components/ConsoleModal";
-import { blockSummary, type BlockCategory, type BlockDef } from "@/lib/pageBlocks";
+import { blockSummary, type BlockDef, type PaletteGroup } from "@/lib/pageBlocks";
 import BlockIcon, { iconKeyFor } from "@/components/pageEditor/blockIcons";
 
-export const CATEGORY_ORDER: BlockCategory[] = ["Headers", "Content", "Media", "Calls to action", "Forms", "Layout", "Custom design", "Live content", "Business"];
+/** The real axis the picker groups by -- see PaletteGroup's own doc
+ * comment in pageBlocks.ts for why this replaced grouping by the
+ * content-topic `category` (Headers/Media/Forms/...), which put a true
+ * primitive like Image in the same bucket as a pre-built, multi-piece
+ * composite like Featured-on, with nothing in the UI telling them apart. */
+export const GROUP_ORDER: { group: PaletteGroup; label: string; hint: string }[] = [
+  { group: "element", label: "Elements", hint: "Primitives you build with -- click and style each one yourself." },
+  { group: "template", label: "Templates", hint: "Pre-arranged starting points. Drop one, then pull it apart and edit the pieces." },
+  { group: "dynamic", label: "Dynamic content", hint: "Pulls real data from elsewhere in your CRM (posts, courses, reviews, your business profile) -- nothing here to decompose, it's live." },
+];
 
-/** A grid of block types grouped by category, used both for the top-level
- * "Add section" fallback and for adding an element inside a row's column
- * (which passes a `defs` list already filtered to `nestable: true`). */
+/** A grid of block types grouped by Elements / Templates / Dynamic
+ * content, used both for the top-level "Add section" fallback and for
+ * adding an element inside a row's column (which passes a `defs` list
+ * already filtered to `nestable: true` -- in practice always all
+ * "element", so its single group header is skipped). */
 export default function BlockTypePicker({
   title,
   defs,
@@ -20,16 +31,23 @@ export default function BlockTypePicker({
   onPick: (type: string) => void;
   onClose: () => void;
 }) {
+  const groupsPresent = new Set(defs.map((d) => d.group));
+  const showGroupHeaders = groupsPresent.size > 1;
   return (
     <ConsoleModal title={title} onClose={onClose} wide>
       <div className="space-y-6">
-        {CATEGORY_ORDER.map((category) => {
-          const items = defs.filter((d) => d.category === category);
+        {GROUP_ORDER.map(({ group, label, hint }) => {
+          const items = defs.filter((d) => d.group === group);
           if (!items.length) return null;
           return (
-            <div key={category}>
-              <p className="text-xs font-semibold uppercase tracking-wider text-ink-soft">{category}</p>
-              <div className="mt-2 grid grid-cols-2 gap-2 min-[440px]:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+            <div key={group}>
+              {showGroupHeaders && (
+                <div className="mb-2">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-ink">{label}</p>
+                  <p className="text-[11px] text-ink-soft">{hint}</p>
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-2 min-[440px]:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
                 {items.map((def) => (
                   <button
                     key={def.type}

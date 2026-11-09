@@ -179,11 +179,28 @@ function ElementBox({ props, children }: { props: Props; children: React.ReactNo
 
 /** Text alignment/size/weight/color overrides, for the simple single-text
  * element blocks where applying them unambiguously makes sense (unlike a
- * multi-part section such as Cards or Hero). */
-function textStyleAttrs(props: Props): { className: string; style: React.CSSProperties } {
-  const className = [TEXT_ALIGN[str(props, "textAlign")] ?? "", FONT_SIZE[str(props, "fontSize")] ?? "", FONT_WEIGHT[str(props, "fontWeight")] ?? ""]
-    .filter(Boolean)
-    .join(" ");
+ * multi-part section such as Cards or Hero).
+ *
+ * `defaults` is the class a caller would otherwise hard-code for that same
+ * property (Heading's level-based size, Button's `text-sm text-center`...).
+ * It's resolved here -- override-or-default, exactly one class per
+ * property -- rather than left for the caller to concatenate both and
+ * hope. Two Tailwind classes for the same CSS property (the component's
+ * own default alongside the Style tab's override) both have equal
+ * selector specificity, so whichever Tailwind happens to emit LATER in
+ * its generated stylesheet wins -- a position decided by Tailwind's own
+ * internal class order, not by where either class sits in this string.
+ * For Heading, whose only default is a font-size class, that meant a
+ * smaller Style-tab size could silently lose to the larger default every
+ * time. Resolving the winner in JS instead removes the ambiguity. */
+function textStyleAttrs(
+  props: Props,
+  defaults: { align?: string; size?: string; weight?: string } = {}
+): { className: string; style: React.CSSProperties } {
+  const align = TEXT_ALIGN[str(props, "textAlign")] || defaults.align || "";
+  const size = FONT_SIZE[str(props, "fontSize")] || defaults.size || "";
+  const weight = FONT_WEIGHT[str(props, "fontWeight")] || defaults.weight || "";
+  const className = [align, size, weight].filter(Boolean).join(" ");
   const textColor = str(props, "textColor");
   return { className, style: textColor ? { color: textColor } : {} };
 }
@@ -206,11 +223,18 @@ function InlineTextInput({
   edit,
   placeholder,
   className,
+  style,
   autoWidth,
 }: {
   edit: InlineEdit;
   placeholder?: string;
   className?: string;
+  /** Pass the same resolved style textStyleAttrs gave the static text this
+   * replaces (its color, and its size/weight when those aren't already
+   * covered by `className`) -- inheriting them from a wrapping element
+   * isn't reliable once that element's own children have their own
+   * explicit size/weight classes (see IconBlock). */
+  style?: React.CSSProperties;
   /** For text sitting inside a shrink-to-fit box like a button or an icon
    * label -- a plain `w-full` input there would stretch the box to its
    * whole flex row instead of hugging the text. The HTML `size` attribute
@@ -226,6 +250,7 @@ function InlineTextInput({
       placeholder={placeholder}
       size={autoWidth ? Math.max((edit.value || placeholder || "").length, 4) : undefined}
       className={`border-none bg-transparent p-0 outline-none ${autoWidth ? "" : "w-full"} ${className || ""}`.trim()}
+      style={style}
     />
   );
 }
@@ -247,8 +272,15 @@ function SectionHeading({ heading, text, link }: { heading: string; text?: strin
   );
 }
 
-const BUTTON_DARK = "rounded-full bg-ink px-6 py-3 text-center text-sm font-medium text-paper transition-opacity hover:opacity-80";
-const BUTTON_OUTLINE = "rounded-full border border-ink/25 px-6 py-3 text-center text-sm font-medium text-ink transition-colors hover:border-ink";
+// Split so ButtonBlock (the one place these have a real Style-tab
+// override to resolve against) can swap text-sm/text-center for an
+// override instead of leaving both present -- see textStyleAttrs's doc
+// comment. Every other caller just wants the fixed look, via the full
+// constant below with those two folded back in.
+const BUTTON_DARK_SHAPE = "rounded-full bg-ink px-6 py-3 font-medium text-paper transition-opacity hover:opacity-80";
+const BUTTON_OUTLINE_SHAPE = "rounded-full border border-ink/25 px-6 py-3 font-medium text-ink transition-colors hover:border-ink";
+const BUTTON_DARK = `${BUTTON_DARK_SHAPE} text-center text-sm`;
+const BUTTON_OUTLINE = `${BUTTON_OUTLINE_SHAPE} text-center text-sm`;
 
 function ButtonLink({ href, label, className, style }: { href: string; label: string; className: string; style?: React.CSSProperties }) {
   if (!href || !label) return null;
@@ -388,9 +420,9 @@ export function HeadingBlock({ props, nested = false, editableText }: { props: P
   const level = str(props, "level");
   const Heading = (level === "h3" ? "h3" : level === "h4" ? "h4" : "h2") as "h2" | "h3" | "h4";
   const baseSize = level === "h3" ? "text-2xl" : level === "h4" ? "text-xl" : "text-3xl";
-  const t = textStyleAttrs(props);
+  const t = textStyleAttrs(props, { size: baseSize });
   const el = (
-    <Heading className={`font-display font-semibold ${baseSize} ${t.className}`.trim()} style={t.style}>
+    <Heading className={`font-display font-semibold ${t.className}`.trim()} style={t.style}>
       {editableText ? <InlineTextInput edit={editableText} placeholder="Heading text" /> : text}
     </Heading>
   );
@@ -411,19 +443,19 @@ export function ButtonBlock({ props, nested = false, editableText }: { props: Pr
   // tab's textAlign, which would only affect how the label's own text
   // wraps inside the button and is folded into `t.className` below.
   const alignClass = str(props, "align") === "center" ? "justify-center" : str(props, "align") === "right" ? "justify-end" : "justify-start";
-  const buttonClass = str(props, "style") === "outline" ? BUTTON_OUTLINE : BUTTON_DARK;
-  const t = textStyleAttrs(props);
+  const buttonShape = str(props, "style") === "outline" ? BUTTON_OUTLINE_SHAPE : BUTTON_DARK_SHAPE;
+  const t = textStyleAttrs(props, { align: "text-center", size: "text-sm" });
   // While editing the label in place, this renders as a plain <span>, not
   // a real <a>/<Link> -- clicking into the text to edit it must never
   // navigate away, href or not.
   const el = (
     <div className={`flex ${alignClass}`}>
       {editableText ? (
-        <span className={`${buttonClass} ${t.className}`.trim()} style={t.style}>
-          <InlineTextInput edit={editableText} placeholder="Button text" className="text-center" autoWidth />
+        <span className={`${buttonShape} ${t.className}`.trim()} style={t.style}>
+          <InlineTextInput edit={editableText} placeholder="Button text" autoWidth />
         </span>
       ) : (
-        <ButtonLink href={href} label={label} className={`${buttonClass} ${t.className}`.trim()} style={t.style} />
+        <ButtonLink href={href} label={label} className={`${buttonShape} ${t.className}`.trim()} style={t.style} />
       )}
     </div>
   );
@@ -440,14 +472,24 @@ export function IconBlock({ props, nested = false, editableText }: { props: Prop
   const label = str(props, "label");
   const href = str(props, "href");
   const size = ICON_SIZE[str(props, "size")] ?? ICON_SIZE.md;
-  const t = textStyleAttrs(props);
+  // Resolved on the label itself (not a wrapping span) and used
+  // identically whether editing or not -- a hardcoded class on only one
+  // of those two render paths is how this drifted before: the static
+  // label's own "text-sm font-medium" always won over an outer
+  // wrapper's style override, while the input (no such class of its
+  // own) correctly inherited it, so the two looked different.
+  const t = textStyleAttrs(props, { align: "text-center", size: "text-sm", weight: "font-medium" });
   const inner = (
-    <span className={`inline-flex flex-col items-center gap-2 text-center ${t.className}`.trim()} style={t.style}>
+    <span className="inline-flex flex-col items-center gap-2">
       <Glyph className={size} strokeWidth={1.75} aria-hidden={label ? "true" : undefined} />
       {editableText ? (
-        <InlineTextInput edit={editableText} placeholder="Label (optional)" className="text-center text-sm font-medium" autoWidth />
+        <InlineTextInput edit={editableText} placeholder="Label (optional)" className={t.className} style={t.style} autoWidth />
       ) : (
-        label && <span className="text-sm font-medium">{label}</span>
+        label && (
+          <span className={t.className} style={t.style}>
+            {label}
+          </span>
+        )
       )}
     </span>
   );
@@ -678,14 +720,14 @@ export function ImageBlock({ props, nested = false, editableText }: { props: Pro
   const image = str(props, "image");
   if (!image) return null;
   const full = str(props, "size") === "full";
-  const t = textStyleAttrs(props);
+  const t = textStyleAttrs(props, { align: "text-center", size: "text-sm" });
   const figure = (
     <figure>
       <div className="relative aspect-[1200/650] w-full overflow-hidden rounded-2xl">
         <BlockImage src={image} alt={str(props, "alt")} sizes={nested ? "(min-width: 768px) 33vw, 100vw" : full ? "(min-width: 1152px) 1152px, 100vw" : "(min-width: 896px) 896px, 100vw"} className="object-cover" />
       </div>
       {(str(props, "caption") || editableText) && (
-        <figcaption className={`mt-3 text-center text-sm text-ink-soft ${t.className}`.trim()} style={t.style}>
+        <figcaption className={`mt-3 text-ink-soft ${t.className}`.trim()} style={t.style}>
           {editableText ? <InlineTextInput edit={editableText} placeholder="Caption" /> : str(props, "caption")}
         </figcaption>
       )}
@@ -709,7 +751,7 @@ function embedUrl(url: string): string | null {
 export function VideoBlock({ props, nested = false, editableText }: { props: Props; nested?: boolean; editableText?: InlineEdit }) {
   const src = embedUrl(str(props, "url"));
   if (!src) return null;
-  const t = textStyleAttrs(props);
+  const t = textStyleAttrs(props, { align: "text-center", size: "text-sm" });
   const figure = (
     <figure>
       <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-ink">
@@ -723,7 +765,7 @@ export function VideoBlock({ props, nested = false, editableText }: { props: Pro
         />
       </div>
       {(str(props, "caption") || editableText) && (
-        <figcaption className={`mt-3 text-center text-sm text-ink-soft ${t.className}`.trim()} style={t.style}>
+        <figcaption className={`mt-3 text-ink-soft ${t.className}`.trim()} style={t.style}>
           {editableText ? <InlineTextInput edit={editableText} placeholder="Caption" /> : str(props, "caption")}
         </figcaption>
       )}
@@ -748,11 +790,11 @@ export function CustomCodeBlock({ props, nested = false }: { props: Props; neste
 export function CountdownBlock({ props, nested = false }: { props: Props; nested?: boolean }) {
   const target = str(props, "target");
   if (!target) return null;
-  const t = textStyleAttrs(props);
+  const t = textStyleAttrs(props, { align: "text-center", size: "text-2xl sm:text-3xl", weight: "font-semibold" });
   const content = (
     <div className="flex flex-col items-center gap-6">
       {str(props, "heading") && (
-        <h2 className={`text-center font-display text-2xl font-semibold sm:text-3xl ${t.className}`.trim()} style={t.style}>
+        <h2 className={`font-display ${t.className}`.trim()} style={t.style}>
           {str(props, "heading")}
         </h2>
       )}

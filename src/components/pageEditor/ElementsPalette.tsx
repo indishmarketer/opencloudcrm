@@ -2,7 +2,7 @@
 
 import { useDraggable } from "@dnd-kit/core";
 import { blockSummary, type BlockDef } from "@/lib/pageBlocks";
-import { CATEGORY_ORDER } from "@/components/pageEditor/BlockTypePicker";
+import { GROUP_ORDER } from "@/components/pageEditor/BlockTypePicker";
 import BlockIcon, { iconKeyFor } from "@/components/pageEditor/blockIcons";
 
 function PaletteItem({ def, onPick }: { def: BlockDef; onPick: (type: string) => void }) {
@@ -33,16 +33,21 @@ function PaletteItem({ def, onPick }: { def: BlockDef; onPick: (type: string) =>
 
 /** The left rail: every section type as a small icon tile, draggable onto
  * the canvas (or click to insert after the selected section / at the
- * end) -- labeled icons, not paragraphs of description text. */
+ * end) -- labeled icons, not paragraphs of description text. Grouped by
+ * Elements / Templates / Dynamic content (see GROUP_ORDER's doc comment),
+ * not by content topic -- that's the axis that actually matters when
+ * deciding what to drop. */
 export default function ElementsPalette({ defs, onPick }: { defs: BlockDef[]; onPick: (type: string) => void }) {
   return (
     <div className="space-y-4">
-      {CATEGORY_ORDER.map((category) => {
-        const items = defs.filter((d) => d.category === category);
+      {GROUP_ORDER.map(({ group, label, hint }) => {
+        const items = defs.filter((d) => d.group === group);
         if (!items.length) return null;
         return (
-          <div key={category}>
-            <p className="px-0.5 text-[10px] font-semibold uppercase tracking-wider text-ink-soft">{category}</p>
+          <div key={group}>
+            <p className="px-0.5 text-[10px] font-semibold uppercase tracking-wider text-ink-soft" title={hint}>
+              {label}
+            </p>
             <div className="mt-1.5 grid grid-cols-2 gap-1.5">
               {items.map((def) => (
                 <PaletteItem key={def.type} def={def} onPick={onPick} />
