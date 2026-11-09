@@ -1,6 +1,6 @@
 import { cache } from "react";
 import { pool } from "@/lib/db";
-import { SITE_NAME } from "@/config/brand";
+import { getSiteIdentity, resolveSiteName } from "@/lib/siteIdentity";
 import { emailAt } from "@/lib/liveSiteUrl";
 import {
   BUSINESS_PROFILE_KEY,
@@ -40,10 +40,14 @@ export async function readStoredBusinessProfile(): Promise<StoredBusinessProfile
   return { profile: EMPTY_BUSINESS_PROFILE, source: "empty" };
 }
 
-/** Deduplicated per request, so the layout, footer and page can all ask. */
+/** Deduplicated per request, so the layout, footer and page can all ask.
+ * Falls back to the console-configured site name (not the compiled-in
+ * default) when the business's legal name is blank, so a self-hoster who
+ * only ever renamed the site in Site Settings still sees that name on
+ * emails, the footer, and legal pages instead of the generic placeholder. */
 export const getBusiness = cache(async (): Promise<ResolvedBusiness> => {
-  const { profile } = await readStoredBusinessProfile();
-  return resolveBusiness(profile, SITE_NAME);
+  const [{ profile }, identity] = await Promise.all([readStoredBusinessProfile(), getSiteIdentity()]);
+  return resolveBusiness(profile, resolveSiteName(identity));
 });
 
 export async function saveBusinessProfile(profile: BusinessProfile): Promise<void> {
