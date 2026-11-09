@@ -219,7 +219,16 @@ function InlineTextInput({
       placeholder={placeholder}
       size={autoWidth ? Math.max((edit.value || placeholder || "").length, 4) : undefined}
       className={`border-none bg-transparent p-0 outline-none ${autoWidth ? "" : "w-full"} ${className || ""}`.trim()}
-      style={style}
+      // `textAlign: inherit` is NOT a redundant default: unlike plain text,
+      // an <input>'s own user-agent stylesheet gives it a fixed
+      // `text-align: start` that wins over whatever its ancestor's
+      // text-align says, because form controls don't inherit text-align
+      // the way ordinary text does. Without forcing it back to `inherit`
+      // here, every rich element's textAlign override would work for its
+      // STATIC render and silently do nothing the moment it's selected
+      // and swapped for this input -- confirmed live, that's exactly what
+      // was happening. `...style` still lets a caller override further.
+      style={{ textAlign: "inherit", ...style }}
     />
   );
 }
