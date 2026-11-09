@@ -86,9 +86,6 @@ const MARGIN_TOP: Record<string, string> = { sm: "mt-6", lg: "mt-16" };
 const MARGIN_BOTTOM: Record<string, string> = { sm: "mb-6", lg: "mb-16" };
 const MAX_WIDTH_OVERRIDE: Record<string, string> = { narrow: "max-w-3xl", normal: "max-w-6xl", wide: "max-w-7xl", full: "max-w-none" };
 const BORDER_RADIUS: Record<string, string> = { none: "rounded-none", lg: "rounded-2xl", full: "rounded-[2.5rem]" };
-const TEXT_ALIGN: Record<string, string> = { left: "text-left", center: "text-center", right: "text-right" };
-const FONT_SIZE: Record<string, string> = { sm: "text-sm", lg: "text-lg", xl: "text-xl", "2xl": "text-2xl", "3xl": "text-3xl" };
-const FONT_WEIGHT: Record<string, string> = { normal: "font-normal", medium: "font-medium", semibold: "font-semibold", bold: "font-bold" };
 
 /** Keys must match ICON_NAMES in src/lib/pageBlocks.ts exactly -- that file
  * drives the picker options, this map is what actually resolves a chosen
@@ -177,34 +174,6 @@ function ElementBox({ props, children }: { props: Props; children: React.ReactNo
   );
 }
 
-/** Text alignment/size/weight/color overrides, for the simple single-text
- * element blocks where applying them unambiguously makes sense (unlike a
- * multi-part section such as Cards or Hero).
- *
- * `defaults` is the class a caller would otherwise hard-code for that same
- * property (Heading's level-based size, Button's `text-sm text-center`...).
- * It's resolved here -- override-or-default, exactly one class per
- * property -- rather than left for the caller to concatenate both and
- * hope. Two Tailwind classes for the same CSS property (the component's
- * own default alongside the Style tab's override) both have equal
- * selector specificity, so whichever Tailwind happens to emit LATER in
- * its generated stylesheet wins -- a position decided by Tailwind's own
- * internal class order, not by where either class sits in this string.
- * For Heading, whose only default is a font-size class, that meant a
- * smaller Style-tab size could silently lose to the larger default every
- * time. Resolving the winner in JS instead removes the ambiguity. */
-function textStyleAttrs(
-  props: Props,
-  defaults: { align?: string; size?: string; weight?: string } = {}
-): { className: string; style: React.CSSProperties } {
-  const align = TEXT_ALIGN[str(props, "textAlign")] || defaults.align || "";
-  const size = FONT_SIZE[str(props, "fontSize")] || defaults.size || "";
-  const weight = FONT_WEIGHT[str(props, "fontWeight")] || defaults.weight || "";
-  const className = [align, size, weight].filter(Boolean).join(" ");
-  const textColor = str(props, "textColor");
-  return { className, style: textColor ? { color: textColor } : {} };
-}
-
 /** Lets the console editor's canvas edit a single text field in place
  * (click it, type) instead of only through the sidebar form. Only ever
  * supplied by the editor's own call sites (ConsolePageEditor.tsx,
@@ -253,6 +222,72 @@ function InlineTextInput({
       style={style}
     />
   );
+}
+
+// --- Rich style model (styleModel: "rich" block types) ---------------
+//
+// Real numbers and real colors, applied as inline `style`, not a lookup
+// from an enum value to a literal Tailwind class. An inline style always
+// wins over a class for the same CSS property -- that's the CSS cascade,
+// not a convention this file has to maintain -- so there's no version of
+// the "which of two same-property classes does Tailwind happen to emit
+// later" bug the old STYLE_FIELDS system kept producing. Every
+// styleModel: "rich" block type (see pageBlocks.ts) renders through
+// these instead of Section/ElementBox/textStyleAttrs above, which stay
+// exactly as they are for every block type NOT on this list -- real
+// pages already published with the old enum values keep meaning what
+// they've always meant.
+const FONT_WEIGHT_CSS: Record<string, React.CSSProperties["fontWeight"]> = { normal: 400, medium: 500, semibold: 600, bold: 700 };
+
+function richBoxStyle(props: Props): React.CSSProperties {
+  const style: React.CSSProperties = {
+    paddingTop: `${num(props, "paddingY", 16)}px`,
+    paddingBottom: `${num(props, "paddingY", 16)}px`,
+    paddingLeft: `${num(props, "paddingX", 24)}px`,
+    paddingRight: `${num(props, "paddingX", 24)}px`,
+    marginTop: `${num(props, "marginTop", 0)}px`,
+    marginBottom: `${num(props, "marginBottom", 0)}px`,
+    borderRadius: `${num(props, "borderRadius", 0)}px`,
+  };
+  const bg = str(props, "backgroundColor");
+  if (bg) style.backgroundColor = bg;
+  return style;
+}
+
+function richTextStyle(props: Props): React.CSSProperties {
+  const style: React.CSSProperties = {
+    textAlign: (str(props, "textAlign") || "left") as React.CSSProperties["textAlign"],
+    fontSize: `${num(props, "fontSize", 16)}px`,
+    fontWeight: FONT_WEIGHT_CSS[str(props, "fontWeight")] ?? 400,
+  };
+  const color = str(props, "textColor");
+  if (color) style.color = color;
+  return style;
+}
+
+/** The rich-model equivalent of `Section` -- a top-level block's own
+ * band, with a real pixel max-width (0 = none/full-bleed) instead of a
+ * narrow/normal/wide/full enum. `widthDefault` is the sensible width for
+ * this element type when the user hasn't set one (e.g. a Text block
+ * reads better narrow than a full-width Image does). */
+function RichSection({ props, children, widthDefault = 720 }: { props: Props; children: React.ReactNode; widthDefault?: number }) {
+  const box = richBoxStyle(props);
+  const { paddingLeft, paddingRight, ...outer } = box;
+  const maxW = num(props, "maxWidth", 0);
+  return (
+    <section id={str(props, "anchor") || undefined} style={outer}>
+      <div style={{ maxWidth: `${maxW > 0 ? maxW : widthDefault}px`, marginLeft: "auto", marginRight: "auto", paddingLeft, paddingRight }}>
+        {children}
+      </div>
+    </section>
+  );
+}
+
+/** The rich-model equivalent of `ElementBox` -- an element nested in a
+ * row's column. No max-width centering (the column already constrains
+ * width), same as ElementBox. */
+function RichBox({ props, children }: { props: Props; children: React.ReactNode }) {
+  return <div style={richBoxStyle(props)}>{children}</div>;
 }
 
 function SectionHeading({ heading, text, link }: { heading: string; text?: string; link?: { href: string; label: string } }) {
@@ -402,15 +437,13 @@ export function PageHeaderBlock({ props }: { props: Props }) {
 }
 
 export function RichTextBlock({ props, nested = false }: { props: Props; nested?: boolean }) {
-  const t = textStyleAttrs(props);
-  const content = (
-    <div className={`page-richtext text-ink-soft ${t.className}`.trim()} style={t.style} dangerouslySetInnerHTML={{ __html: str(props, "html") }} />
-  );
-  if (nested) return <ElementBox props={props}>{content}</ElementBox>;
+  const t = richTextStyle(props);
+  const content = <div className="page-richtext" style={t} dangerouslySetInnerHTML={{ __html: str(props, "html") }} />;
+  if (nested) return <RichBox props={props}>{content}</RichBox>;
   return (
-    <Section props={props} width={str(props, "width") === "wide" ? "max-w-6xl" : "max-w-3xl"}>
+    <RichSection props={props} widthDefault={str(props, "width") === "wide" ? 1152 : 720}>
       {content}
-    </Section>
+    </RichSection>
   );
 }
 
@@ -419,18 +452,17 @@ export function HeadingBlock({ props, nested = false, editableText }: { props: P
   if (!text && !editableText) return null;
   const level = str(props, "level");
   const Heading = (level === "h3" ? "h3" : level === "h4" ? "h4" : "h2") as "h2" | "h3" | "h4";
-  const baseSize = level === "h3" ? "text-2xl" : level === "h4" ? "text-xl" : "text-3xl";
-  const t = textStyleAttrs(props, { size: baseSize });
+  const t = richTextStyle(props);
   const el = (
-    <Heading className={`font-display font-semibold ${t.className}`.trim()} style={t.style}>
+    <Heading className="font-display" style={t}>
       {editableText ? <InlineTextInput edit={editableText} placeholder="Heading text" /> : text}
     </Heading>
   );
-  if (nested) return <ElementBox props={props}>{el}</ElementBox>;
+  if (nested) return <RichBox props={props}>{el}</RichBox>;
   return (
-    <Section props={props} width="max-w-3xl">
+    <RichSection props={props} widthDefault={720}>
       {el}
-    </Section>
+    </RichSection>
   );
 }
 
@@ -440,30 +472,30 @@ export function ButtonBlock({ props, nested = false, editableText }: { props: Pr
   if ((!label || !href) && !editableText) return null;
   // "align" (this block's own content field) positions the button within
   // its box -- left/center/right -- a different concern from the Style
-  // tab's textAlign, which would only affect how the label's own text
-  // wraps inside the button and is folded into `t.className` below.
+  // tab's textAlign, which only affects how the label's own text sits
+  // inside it.
   const alignClass = str(props, "align") === "center" ? "justify-center" : str(props, "align") === "right" ? "justify-end" : "justify-start";
   const buttonShape = str(props, "style") === "outline" ? BUTTON_OUTLINE_SHAPE : BUTTON_DARK_SHAPE;
-  const t = textStyleAttrs(props, { align: "text-center", size: "text-sm" });
+  const t = richTextStyle(props);
   // While editing the label in place, this renders as a plain <span>, not
   // a real <a>/<Link> -- clicking into the text to edit it must never
   // navigate away, href or not.
   const el = (
     <div className={`flex ${alignClass}`}>
       {editableText ? (
-        <span className={`${buttonShape} ${t.className}`.trim()} style={t.style}>
+        <span className={buttonShape} style={t}>
           <InlineTextInput edit={editableText} placeholder="Button text" autoWidth />
         </span>
       ) : (
-        <ButtonLink href={href} label={label} className={`${buttonShape} ${t.className}`.trim()} style={t.style} />
+        <ButtonLink href={href} label={label} className={buttonShape} style={t} />
       )}
     </div>
   );
-  if (nested) return <ElementBox props={props}>{el}</ElementBox>;
+  if (nested) return <RichBox props={props}>{el}</RichBox>;
   return (
-    <Section props={props} width="max-w-3xl">
+    <RichSection props={props} widthDefault={720}>
       {el}
-    </Section>
+    </RichSection>
   );
 }
 
@@ -473,23 +505,15 @@ export function IconBlock({ props, nested = false, editableText }: { props: Prop
   const href = str(props, "href");
   const size = ICON_SIZE[str(props, "size")] ?? ICON_SIZE.md;
   // Resolved on the label itself (not a wrapping span) and used
-  // identically whether editing or not -- a hardcoded class on only one
-  // of those two render paths is how this drifted before: the static
-  // label's own "text-sm font-medium" always won over an outer
-  // wrapper's style override, while the input (no such class of its
-  // own) correctly inherited it, so the two looked different.
-  const t = textStyleAttrs(props, { align: "text-center", size: "text-sm", weight: "font-medium" });
+  // identically whether editing or not.
+  const t = richTextStyle(props);
   const inner = (
     <span className="inline-flex flex-col items-center gap-2">
       <Glyph className={size} strokeWidth={1.75} aria-hidden={label ? "true" : undefined} />
       {editableText ? (
-        <InlineTextInput edit={editableText} placeholder="Label (optional)" className={t.className} style={t.style} autoWidth />
+        <InlineTextInput edit={editableText} placeholder="Label (optional)" style={t} autoWidth />
       ) : (
-        label && (
-          <span className={t.className} style={t.style}>
-            {label}
-          </span>
-        )
+        label && <span style={t}>{label}</span>
       )}
     </span>
   );
@@ -513,11 +537,11 @@ export function IconBlock({ props, nested = false, editableText }: { props: Prop
       inner
     );
   const wrapped = <div className="flex justify-center">{el}</div>;
-  if (nested) return <ElementBox props={props}>{wrapped}</ElementBox>;
+  if (nested) return <RichBox props={props}>{wrapped}</RichBox>;
   return (
-    <Section props={props} width="max-w-xs">
+    <RichSection props={props} widthDefault={320}>
       {wrapped}
-    </Section>
+    </RichSection>
   );
 }
 
@@ -553,6 +577,40 @@ export function NestedElement({ block, editableText }: { block: PageBlock; edita
       return <SocialIconsBlock props={props} nested />;
     case "spacer":
       return <SpacerBlock props={props} />;
+    case "divider":
+      return <DividerBlock props={props} nested />;
+    case "list":
+      return <ListBlock props={props} nested />;
+    case "testimonial":
+      return <TestimonialBlock props={props} nested />;
+    case "rating":
+      return <RatingBlock props={props} nested />;
+    case "alert":
+      return <AlertBlock props={props} nested />;
+    case "blockquote":
+      return <BlockquoteBlock props={props} nested />;
+    case "table":
+      return <TableBlock props={props} nested />;
+    case "progress":
+      return <ProgressBlock props={props} nested />;
+    case "priceTable":
+      return <PriceTableBlock props={props} nested />;
+    case "teamMember":
+      return <TeamMemberBlock props={props} nested />;
+    case "steps":
+      return <StepsBlock props={props} nested />;
+    case "tabs":
+      return <TabsBlock props={props} nested />;
+    case "map":
+      return <MapBlock props={props} nested />;
+    case "embed":
+      return <EmbedBlock props={props} nested />;
+    case "breadcrumbs":
+      return <BreadcrumbsBlock props={props} nested />;
+    case "audio":
+      return <AudioBlock props={props} nested />;
+    case "logo":
+      return <LogoBlock props={props} nested />;
     default:
       return null;
   }
@@ -581,7 +639,7 @@ export function RowBlock({
   const gap = ROW_GAP[str(props, "gap")] ?? ROW_GAP.md;
   const renderCol = renderColumn ?? ((column: PageBlock[]) => column.map((block) => <NestedElement key={block.id} block={block} />));
   return (
-    <Section props={props}>
+    <RichSection props={props} widthDefault={1152}>
       <div className={`grid ${gap} ${columns}`}>
         {items.map((column, i) => (
           <div
@@ -592,7 +650,7 @@ export function RowBlock({
           </div>
         ))}
       </div>
-    </Section>
+    </RichSection>
   );
 }
 
@@ -720,24 +778,24 @@ export function ImageBlock({ props, nested = false, editableText }: { props: Pro
   const image = str(props, "image");
   if (!image) return null;
   const full = str(props, "size") === "full";
-  const t = textStyleAttrs(props, { align: "text-center", size: "text-sm" });
+  const t = richTextStyle(props);
   const figure = (
     <figure>
       <div className="relative aspect-[1200/650] w-full overflow-hidden rounded-2xl">
         <BlockImage src={image} alt={str(props, "alt")} sizes={nested ? "(min-width: 768px) 33vw, 100vw" : full ? "(min-width: 1152px) 1152px, 100vw" : "(min-width: 896px) 896px, 100vw"} className="object-cover" />
       </div>
       {(str(props, "caption") || editableText) && (
-        <figcaption className={`mt-3 text-ink-soft ${t.className}`.trim()} style={t.style}>
+        <figcaption className="mt-3 text-ink-soft" style={t}>
           {editableText ? <InlineTextInput edit={editableText} placeholder="Caption" /> : str(props, "caption")}
         </figcaption>
       )}
     </figure>
   );
-  if (nested) return <ElementBox props={props}>{figure}</ElementBox>;
+  if (nested) return <RichBox props={props}>{figure}</RichBox>;
   return (
-    <Section props={props} width={full ? "max-w-6xl" : "max-w-4xl"}>
+    <RichSection props={props} widthDefault={full ? 1152 : 896}>
       {figure}
-    </Section>
+    </RichSection>
   );
 }
 
@@ -751,7 +809,7 @@ function embedUrl(url: string): string | null {
 export function VideoBlock({ props, nested = false, editableText }: { props: Props; nested?: boolean; editableText?: InlineEdit }) {
   const src = embedUrl(str(props, "url"));
   if (!src) return null;
-  const t = textStyleAttrs(props, { align: "text-center", size: "text-sm" });
+  const t = richTextStyle(props);
   const figure = (
     <figure>
       <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-ink">
@@ -765,17 +823,17 @@ export function VideoBlock({ props, nested = false, editableText }: { props: Pro
         />
       </div>
       {(str(props, "caption") || editableText) && (
-        <figcaption className={`mt-3 text-ink-soft ${t.className}`.trim()} style={t.style}>
+        <figcaption className="mt-3 text-ink-soft" style={t}>
           {editableText ? <InlineTextInput edit={editableText} placeholder="Caption" /> : str(props, "caption")}
         </figcaption>
       )}
     </figure>
   );
-  if (nested) return <ElementBox props={props}>{figure}</ElementBox>;
+  if (nested) return <RichBox props={props}>{figure}</RichBox>;
   return (
-    <Section props={props} width="max-w-4xl">
+    <RichSection props={props} widthDefault={896}>
       {figure}
-    </Section>
+    </RichSection>
   );
 }
 
@@ -790,11 +848,11 @@ export function CustomCodeBlock({ props, nested = false }: { props: Props; neste
 export function CountdownBlock({ props, nested = false }: { props: Props; nested?: boolean }) {
   const target = str(props, "target");
   if (!target) return null;
-  const t = textStyleAttrs(props, { align: "text-center", size: "text-2xl sm:text-3xl", weight: "font-semibold" });
+  const t = richTextStyle(props);
   const content = (
     <div className="flex flex-col items-center gap-6">
       {str(props, "heading") && (
-        <h2 className={`font-display ${t.className}`.trim()} style={t.style}>
+        <h2 className="font-display" style={t}>
           {str(props, "heading")}
         </h2>
       )}
@@ -808,11 +866,11 @@ export function CountdownBlock({ props, nested = false }: { props: Props; nested
       )}
     </div>
   );
-  if (nested) return <ElementBox props={props}>{content}</ElementBox>;
+  if (nested) return <RichBox props={props}>{content}</RichBox>;
   return (
-    <Section props={props} width="max-w-2xl">
+    <RichSection props={props} widthDefault={672}>
       {content}
-    </Section>
+    </RichSection>
   );
 }
 
@@ -866,7 +924,7 @@ export function FaqBlock({ props }: { props: Props }) {
     mainEntity: items.map((i) => ({ "@type": "Question", name: str(i, "question"), acceptedAnswer: { "@type": "Answer", text: str(i, "answer") } })),
   };
   return (
-    <Section props={props} width="max-w-3xl">
+    <RichSection props={props} widthDefault={768}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
       {str(props, "heading") && <h2 className="mb-8 font-display text-3xl font-semibold">{str(props, "heading")}</h2>}
       <div className="divide-y divide-line border-y border-line">
@@ -880,14 +938,14 @@ export function FaqBlock({ props }: { props: Props }) {
           </details>
         ))}
       </div>
-    </Section>
+    </RichSection>
   );
 }
 
 export function StatsBlock({ props }: { props: Props }) {
   const items = list(props, "items");
   return (
-    <Section props={props}>
+    <RichSection props={props} widthDefault={1152}>
       <SectionHeading heading={str(props, "heading")} />
       <dl className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
         {items.map((item, i) => (
@@ -897,7 +955,7 @@ export function StatsBlock({ props }: { props: Props }) {
           </div>
         ))}
       </dl>
-    </Section>
+    </RichSection>
   );
 }
 
@@ -1092,11 +1150,11 @@ export function SocialIconsBlock({ props, nested = false }: { props: Props; nest
       ))}
     </div>
   );
-  if (nested) return <ElementBox props={props}>{content}</ElementBox>;
+  if (nested) return <RichBox props={props}>{content}</RichBox>;
   return (
-    <Section props={props} width="max-w-3xl">
+    <RichSection props={props} widthDefault={720}>
       {content}
-    </Section>
+    </RichSection>
   );
 }
 
@@ -1131,15 +1189,15 @@ export function ContactFormSection({ props, business }: { props: Props; business
 export function FormBlock({ props, business }: { props: Props; business: ResolvedBusiness }) {
   if (str(props, "mode") === "newsletter") {
     return (
-      <Section props={props} width="max-w-2xl">
+      <RichSection props={props} widthDefault={576}>
         <div className="text-center">
           {str(props, "heading") && <h2 className="font-display text-3xl font-semibold">{str(props, "heading")}</h2>}
           {str(props, "text") && <p className="mt-3 whitespace-pre-line text-ink-soft">{str(props, "text")}</p>}
         </div>
         <div className="mt-8">
-          <NewsletterSignupForm source="page-builder" dark={str(props, "background") === "dark"} />
+          <NewsletterSignupForm source="page-builder" dark={false} />
         </div>
-      </Section>
+      </RichSection>
     );
   }
   const details = bool(props, "showContactDetails") ? (
@@ -1151,7 +1209,7 @@ export function FormBlock({ props, business }: { props: Props; business: Resolve
     </aside>
   ) : null;
   return (
-    <Section props={props} width="max-w-5xl">
+    <RichSection props={props} widthDefault={1152}>
       <ContactFormBlock
         heading={str(props, "heading")}
         text={str(props, "text")}
@@ -1160,7 +1218,7 @@ export function FormBlock({ props, business }: { props: Props; business: Resolve
         successText={str(props, "successText")}
         aside={details}
       />
-    </Section>
+    </RichSection>
   );
 }
 
@@ -1211,5 +1269,473 @@ export function SpacerBlock({ props }: { props: Props }) {
     <div className={`mx-auto flex max-w-6xl items-center px-6 ${SPACER[str(props, "size")] ?? SPACER.md}`}>
       {bool(props, "divider") && <hr className="w-full border-line" />}
     </div>
+  );
+}
+
+// --- Rich-model element library (30+ real elements) --------------------
+
+export function DividerBlock({ props, nested = false }: { props: Props; nested?: boolean }) {
+  const content = <hr style={{ borderTopWidth: `${num(props, "thickness", 1)}px`, borderColor: str(props, "lineColor") || undefined }} className="w-full border-line" />;
+  if (nested) return <RichBox props={props}>{content}</RichBox>;
+  return (
+    <RichSection props={props} widthDefault={1152}>
+      {content}
+    </RichSection>
+  );
+}
+
+export function ListBlock({ props, nested = false }: { props: Props; nested?: boolean }) {
+  const items = list(props, "items").filter((i) => str(i, "text"));
+  if (!items.length) return null;
+  const styleKind = str(props, "style") || "bullet";
+  const Glyph = ICON_COMPONENTS[str(props, "icon")] ?? CheckCircle;
+  const t = richTextStyle(props);
+  const content =
+    styleKind === "number" ? (
+      <ol className="list-decimal space-y-2 pl-5">
+        {items.map((item, i) => (
+          <li key={i} style={t}>
+            {str(item, "text")}
+          </li>
+        ))}
+      </ol>
+    ) : styleKind === "icon" ? (
+      <ul className="space-y-2">
+        {items.map((item, i) => (
+          <li key={i} className="flex items-start gap-2.5" style={t}>
+            <Glyph className="mt-0.5 h-[1em] w-[1em] shrink-0" strokeWidth={2} />
+            <span>{str(item, "text")}</span>
+          </li>
+        ))}
+      </ul>
+    ) : (
+      <ul className="list-disc space-y-2 pl-5">
+        {items.map((item, i) => (
+          <li key={i} style={t}>
+            {str(item, "text")}
+          </li>
+        ))}
+      </ul>
+    );
+  if (nested) return <RichBox props={props}>{content}</RichBox>;
+  return (
+    <RichSection props={props} widthDefault={640}>
+      {content}
+    </RichSection>
+  );
+}
+
+export function TestimonialBlock({ props, nested = false }: { props: Props; nested?: boolean }) {
+  const quote = str(props, "quote");
+  if (!quote) return null;
+  const avatar = str(props, "avatar");
+  const t = richTextStyle(props);
+  const content = (
+    <figure className="flex flex-col items-center text-center">
+      <blockquote style={t}>&ldquo;{quote}&rdquo;</blockquote>
+      <figcaption className="mt-4 flex flex-col items-center gap-2">
+        {avatar && (
+          <div className="relative h-12 w-12 overflow-hidden rounded-full">
+            <BlockImage src={avatar} alt={str(props, "name")} sizes="48px" className="object-cover" />
+          </div>
+        )}
+        <div>
+          {str(props, "name") && <div className="font-medium text-ink">{str(props, "name")}</div>}
+          {str(props, "role") && <div className="text-sm text-ink-soft">{str(props, "role")}</div>}
+        </div>
+      </figcaption>
+    </figure>
+  );
+  if (nested) return <RichBox props={props}>{content}</RichBox>;
+  return (
+    <RichSection props={props} widthDefault={640}>
+      {content}
+    </RichSection>
+  );
+}
+
+export function RatingBlock({ props, nested = false }: { props: Props; nested?: boolean }) {
+  const value = num(props, "value", 5);
+  const t = richTextStyle(props);
+  const content = (
+    <div className="flex flex-col items-center gap-2" style={{ textAlign: t.textAlign }}>
+      <div className="flex gap-0.5 text-amber-400">
+        {Array.from({ length: 5 }, (_, i) => (
+          <Star key={i} className="h-5 w-5" strokeWidth={1.75} fill={i < value ? "currentColor" : "none"} />
+        ))}
+      </div>
+      {str(props, "label") && (
+        <span style={{ fontSize: t.fontSize, fontWeight: t.fontWeight, color: t.color }}>{str(props, "label")}</span>
+      )}
+    </div>
+  );
+  if (nested) return <RichBox props={props}>{content}</RichBox>;
+  return (
+    <RichSection props={props} widthDefault={320}>
+      {content}
+    </RichSection>
+  );
+}
+
+const ALERT_STYLE: Record<string, string> = {
+  info: "border-blue-200 bg-blue-50 text-blue-900",
+  success: "border-green-200 bg-green-50 text-green-900",
+  warning: "border-amber-200 bg-amber-50 text-amber-900",
+  error: "border-red-200 bg-red-50 text-red-900",
+};
+
+export function AlertBlock({ props, nested = false }: { props: Props; nested?: boolean }) {
+  const text = str(props, "text");
+  if (!text) return null;
+  const tone = ALERT_STYLE[str(props, "style")] ?? ALERT_STYLE.info;
+  const content = <div className={`rounded-xl border px-4 py-3 text-sm ${tone}`}>{text}</div>;
+  if (nested) return <RichBox props={props}>{content}</RichBox>;
+  return (
+    <RichSection props={props} widthDefault={768}>
+      {content}
+    </RichSection>
+  );
+}
+
+export function BlockquoteBlock({ props, nested = false }: { props: Props; nested?: boolean }) {
+  const quote = str(props, "quote");
+  if (!quote) return null;
+  const t = richTextStyle(props);
+  const content = (
+    <blockquote className="border-l-4 border-ink pl-5 font-display" style={t}>
+      {quote}
+      {str(props, "cite") && <footer className="mt-2 text-sm font-normal text-ink-soft">— {str(props, "cite")}</footer>}
+    </blockquote>
+  );
+  if (nested) return <RichBox props={props}>{content}</RichBox>;
+  return (
+    <RichSection props={props} widthDefault={640}>
+      {content}
+    </RichSection>
+  );
+}
+
+export function TableBlock({ props, nested = false }: { props: Props; nested?: boolean }) {
+  const rows = list(props, "rows")
+    .map((r) => str(r, "cells").split("|").map((c) => c.trim()))
+    .filter((r) => r.some(Boolean));
+  if (!rows.length) return null;
+  const header = str(props, "header");
+  const headerCells = header ? header.split("|").map((c) => c.trim()) : null;
+  const content = (
+    <div className="overflow-x-auto rounded-xl border border-line">
+      <table className="w-full text-left text-sm">
+        {headerCells && (
+          <thead>
+            <tr className="border-b border-line bg-paper-soft">
+              {headerCells.map((c, i) => (
+                <th key={i} className="px-4 py-2.5 font-medium text-ink">
+                  {c}
+                </th>
+              ))}
+            </tr>
+          </thead>
+        )}
+        <tbody>
+          {rows.map((r, i) => (
+            <tr key={i} className={i > 0 ? "border-t border-line" : ""}>
+              {r.map((c, j) => (
+                <td key={j} className="px-4 py-2.5 text-ink-soft">
+                  {c}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+  if (nested) return <RichBox props={props}>{content}</RichBox>;
+  return (
+    <RichSection props={props} widthDefault={896}>
+      {content}
+    </RichSection>
+  );
+}
+
+export function ProgressBlock({ props, nested = false }: { props: Props; nested?: boolean }) {
+  const items = list(props, "items").filter((i) => str(i, "label"));
+  if (!items.length) return null;
+  const content = (
+    <div className="flex flex-col gap-4">
+      {items.map((item, i) => {
+        const value = Math.min(100, Math.max(0, num(item, "value", 0)));
+        return (
+          <div key={i}>
+            <div className="mb-1.5 flex justify-between text-sm">
+              <span className="font-medium text-ink">{str(item, "label")}</span>
+              <span className="text-ink-soft">{value}%</span>
+            </div>
+            <div className="h-2 overflow-hidden rounded-full bg-paper-soft">
+              <div className="h-full rounded-full bg-ink" style={{ width: `${value}%` }} />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+  if (nested) return <RichBox props={props}>{content}</RichBox>;
+  return (
+    <RichSection props={props} widthDefault={480}>
+      {content}
+    </RichSection>
+  );
+}
+
+export function PriceTableBlock({ props, nested = false }: { props: Props; nested?: boolean }) {
+  const planName = str(props, "planName");
+  if (!planName) return null;
+  const highlighted = bool(props, "highlighted");
+  const features = list(props, "features").filter((f) => str(f, "text"));
+  const content = (
+    <div className={`rounded-2xl border p-8 text-center ${highlighted ? "border-ink shadow-lg" : "border-line"}`}>
+      <div className="font-display text-lg font-semibold">{planName}</div>
+      <div className="mt-3">
+        <span className="font-display text-4xl font-semibold">{str(props, "price")}</span>
+        {str(props, "period") && <span className="text-ink-soft">{str(props, "period")}</span>}
+      </div>
+      {features.length > 0 && (
+        <ul className="mt-6 space-y-2 text-left text-sm">
+          {features.map((f, i) => (
+            <li key={i} className="flex items-start gap-2">
+              <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-ink-soft" />
+              {str(f, "text")}
+            </li>
+          ))}
+        </ul>
+      )}
+      {str(props, "buttonLabel") && str(props, "buttonHref") && (
+        <div className="mt-6">
+          <ButtonLink href={str(props, "buttonHref")} label={str(props, "buttonLabel")} className={highlighted ? BUTTON_DARK : BUTTON_OUTLINE} />
+        </div>
+      )}
+    </div>
+  );
+  if (nested) return <RichBox props={props}>{content}</RichBox>;
+  return (
+    <RichSection props={props} widthDefault={360}>
+      {content}
+    </RichSection>
+  );
+}
+
+export function TeamMemberBlock({ props, nested = false }: { props: Props; nested?: boolean }) {
+  const name = str(props, "name");
+  if (!name) return null;
+  const photo = str(props, "photo");
+  const href = str(props, "href");
+  const t = richTextStyle(props);
+  const inner = (
+    <div className="flex flex-col items-center" style={{ textAlign: t.textAlign }}>
+      {photo && (
+        <div className="relative h-24 w-24 overflow-hidden rounded-full">
+          <BlockImage src={photo} alt={name} sizes="96px" className="object-cover" />
+        </div>
+      )}
+      <div className="mt-4 font-display font-semibold">{name}</div>
+      {str(props, "role") && <div className="text-sm text-ink-soft">{str(props, "role")}</div>}
+      {str(props, "bio") && <p className="mt-2 text-sm text-ink-soft">{str(props, "bio")}</p>}
+    </div>
+  );
+  const content = href ? (
+    <Link href={href} className="block">
+      {inner}
+    </Link>
+  ) : (
+    inner
+  );
+  if (nested) return <RichBox props={props}>{content}</RichBox>;
+  return (
+    <RichSection props={props} widthDefault={320}>
+      {content}
+    </RichSection>
+  );
+}
+
+export function StepsBlock({ props, nested = false }: { props: Props; nested?: boolean }) {
+  const items = list(props, "items").filter((i) => str(i, "title"));
+  if (!items.length) return null;
+  const content = (
+    <ol className="flex flex-col gap-6">
+      {items.map((item, i) => (
+        <li key={i} className="flex gap-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ink font-display text-sm font-semibold text-paper">
+            {i + 1}
+          </span>
+          <div>
+            <div className="font-medium text-ink">{str(item, "title")}</div>
+            {str(item, "text") && <p className="mt-1 text-sm text-ink-soft">{str(item, "text")}</p>}
+          </div>
+        </li>
+      ))}
+    </ol>
+  );
+  if (nested) return <RichBox props={props}>{content}</RichBox>;
+  return (
+    <RichSection props={props} widthDefault={640}>
+      {content}
+    </RichSection>
+  );
+}
+
+function simpleHash(s: string): string {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return Math.abs(h).toString(36);
+}
+
+/** No client-side JS: a hidden radio per tab (checked state picks which
+ * panel shows) plus a handful of plain CSS rules scoped to this block's
+ * own id prefix, injected as a `<style>` tag -- the same reasoning
+ * CustomBlock's own scoped CSS uses, just generated here instead of
+ * hand-written. `name` is derived from the tab labels so two Tabs blocks
+ * on one page don't share a radio group (and so panels stay in sync
+ * across server/editor re-renders of the same content). */
+export function TabsBlock({ props, nested = false }: { props: Props; nested?: boolean }) {
+  const items = list(props, "items").filter((i) => str(i, "label"));
+  if (!items.length) return null;
+  const name = `tabs-${simpleHash(items.map((i) => str(i, "label")).join("|"))}`;
+  const css = items
+    .map((_, i) => `#${name}-${i}:checked ~ .${name}-panels .${name}-panel:nth-of-type(${i + 1}) { display: block; }`)
+    .join("\n");
+  const content = (
+    <div>
+      {items.map((_, i) => (
+        <input key={i} type="radio" name={name} id={`${name}-${i}`} defaultChecked={i === 0} className="peer/tab" />
+      ))}
+      <div className="flex flex-wrap gap-1 border-b border-line">
+        {items.map((item, i) => (
+          <label key={i} htmlFor={`${name}-${i}`} className="cursor-pointer rounded-t-lg px-4 py-2 text-sm font-medium text-ink-soft hover:text-ink">
+            {str(item, "label")}
+          </label>
+        ))}
+      </div>
+      <div className={`${name}-panels pt-4`}>
+        {items.map((item, i) => (
+          <div key={i} className={`${name}-panel page-richtext hidden`} dangerouslySetInnerHTML={{ __html: str(item, "html") }} />
+        ))}
+      </div>
+      <style dangerouslySetInnerHTML={{ __html: css }} />
+    </div>
+  );
+  if (nested) return <RichBox props={props}>{content}</RichBox>;
+  return (
+    <RichSection props={props} widthDefault={768}>
+      {content}
+    </RichSection>
+  );
+}
+
+export function MapBlock({ props, nested = false }: { props: Props; nested?: boolean }) {
+  const address = str(props, "address");
+  if (!address) return null;
+  const content = (
+    <div className="relative aspect-video w-full overflow-hidden rounded-2xl">
+      <iframe
+        src={`https://www.google.com/maps?q=${encodeURIComponent(address)}&output=embed`}
+        title={address}
+        className="absolute inset-0 h-full w-full border-0"
+        loading="lazy"
+      />
+    </div>
+  );
+  if (nested) return <RichBox props={props}>{content}</RichBox>;
+  return (
+    <RichSection props={props} widthDefault={896}>
+      {content}
+    </RichSection>
+  );
+}
+
+export function EmbedBlock({ props, nested = false }: { props: Props; nested?: boolean }) {
+  const code = str(props, "code");
+  if (!code) return null;
+  const content = <div dangerouslySetInnerHTML={{ __html: code }} />;
+  if (nested) return <RichBox props={props}>{content}</RichBox>;
+  return (
+    <RichSection props={props} widthDefault={896}>
+      {content}
+    </RichSection>
+  );
+}
+
+export function BreadcrumbsBlock({ props, nested = false }: { props: Props; nested?: boolean }) {
+  const items = list(props, "items").filter((i) => str(i, "label"));
+  if (!items.length) return null;
+  const t = richTextStyle(props);
+  const content = (
+    <nav aria-label="Breadcrumb" style={{ fontSize: t.fontSize, color: t.color }}>
+      <ol className="flex flex-wrap items-center gap-1.5 text-ink-soft">
+        {items.map((item, i) => {
+          const href = str(item, "href");
+          const isLast = i === items.length - 1;
+          return (
+            <li key={i} className="flex items-center gap-1.5">
+              {href && !isLast ? (
+                <Link href={href} className="hover:text-ink">
+                  {str(item, "label")}
+                </Link>
+              ) : (
+                <span className={isLast ? "text-ink" : undefined}>{str(item, "label")}</span>
+              )}
+              {!isLast && <span aria-hidden="true">/</span>}
+            </li>
+          );
+        })}
+      </ol>
+    </nav>
+  );
+  if (nested) return <RichBox props={props}>{content}</RichBox>;
+  return (
+    <RichSection props={props} widthDefault={1152}>
+      {content}
+    </RichSection>
+  );
+}
+
+export function AudioBlock({ props, nested = false }: { props: Props; nested?: boolean }) {
+  const url = str(props, "url");
+  if (!url) return null;
+  const content = (
+    <figure>
+      {/* eslint-disable-next-line jsx-a11y/media-has-caption -- a raw audio file URL carries no caption track to attach */}
+      <audio controls src={url} className="w-full" />
+      {str(props, "caption") && <figcaption className="mt-2 text-center text-sm text-ink-soft">{str(props, "caption")}</figcaption>}
+    </figure>
+  );
+  if (nested) return <RichBox props={props}>{content}</RichBox>;
+  return (
+    <RichSection props={props} widthDefault={480}>
+      {content}
+    </RichSection>
+  );
+}
+
+export function LogoBlock({ props, nested = false }: { props: Props; nested?: boolean }) {
+  const image = str(props, "image");
+  if (!image) return null;
+  const href = str(props, "href");
+  const figure = (
+    <div className="relative h-16 w-full">
+      <BlockImage src={image} alt={str(props, "alt")} sizes="160px" className="object-contain" />
+    </div>
+  );
+  const content = href ? (
+    <Link href={href} className="block">
+      {figure}
+    </Link>
+  ) : (
+    figure
+  );
+  if (nested) return <RichBox props={props}>{content}</RichBox>;
+  return (
+    <RichSection props={props} widthDefault={160}>
+      {content}
+    </RichSection>
   );
 }

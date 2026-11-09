@@ -80,6 +80,16 @@ export type BlockDef = {
    * section" (new pages can't create more of them) without touching
    * hasSectionFields()/normalizeBlocks() behavior the way `internal` does. */
   deprecated?: boolean;
+  /** "rich" -- real numbers and real colors (RICH_STYLE_FIELDS), applied
+   * as inline styles that can never lose to a competing default class,
+   * instead of a handful of enum presets (STYLE_FIELDS) mapped to literal
+   * Tailwind classes. Every "element"-group type uses this; everything
+   * else (old composites already live on real pages, like `hero`/`cards`)
+   * keeps the enum system untouched -- changing what THEIR stored style
+   * values mean would silently reinterpret already-published pages'
+   * props. Omit for the enum system (the default, for exactly that
+   * backward-compat reason). */
+  styleModel?: "rich";
 };
 
 export type PageBlock = { id: string; type: string; props: Record<string, unknown> };
@@ -113,6 +123,7 @@ const iconPicker = (key: string, label: string, options: [string, string][], hel
   options: options.map(([value, optionLabel]) => ({ value, label: optionLabel })),
 });
 const count = (key: string, label: string, max = 12): FieldDef => ({ key, label, kind: "number", min: 1, max });
+const dimension = (key: string, label: string, max: number, help?: string): FieldDef => ({ key, label, kind: "number", min: 0, max, help });
 
 /** Every block gets these, appended after its own fields. */
 export const SECTION_FIELDS: FieldDef[] = [
@@ -143,6 +154,45 @@ export const STYLE_FIELDS: FieldDef[] = [
   color("textColor", "Custom text color", "Applies to simple text/button/heading sections; ignored by multi-part sections like Cards or Hero."),
 ];
 const STYLE_DEFAULTS = Object.fromEntries(STYLE_FIELDS.map((f) => [f.key, ""]));
+
+/** The style system every "element"-group block type uses (styleModel:
+ * "rich"): real numbers in real pixels and real colors, not a pick from a
+ * handful of enum presets. The renderer (blockViews.tsx's richBoxStyle/
+ * richTextStyle) applies every one of these as an inline `style` property
+ * -- inline styles always beat a class for the same CSS property, by the
+ * CSS spec, full stop, so there is no cascade-order ambiguity left to get
+ * wrong the way STYLE_FIELDS's enum-to-Tailwind-class system repeatedly
+ * did. What you set here is pixel-for-pixel what renders; nothing is
+ * "default" vs. "override" any more, so every field always has a real
+ * value, including the defaults every element type ships with. */
+export const RICH_STYLE_FIELDS: FieldDef[] = [
+  text("anchor", "Anchor id", { help: "Optional. Lets you link to this section with /page#anchor.", max: 60 }),
+  dimension("paddingY", "Padding, top/bottom (px)", 240),
+  dimension("paddingX", "Padding, left/right (px)", 240),
+  dimension("marginTop", "Space above (px)", 240),
+  dimension("marginBottom", "Space below (px)", 240),
+  dimension("borderRadius", "Corner roundness (px)", 120),
+  dimension("maxWidth", "Max content width (px) -- only applies to a top-level section, not one nested in a column. 0 = full width.", 1600),
+  color("backgroundColor", "Background color", "Leave blank for none/transparent."),
+  select("textAlign", "Text alignment", [["left", "Left"], ["center", "Center"], ["right", "Right"], ["justify", "Justify"]]),
+  dimension("fontSize", "Text size (px)", 160, "Applies to this element's own text; ignored by one with no text of its own (Image, Spacer...)."),
+  select("fontWeight", "Text weight", [["normal", "Normal"], ["medium", "Medium"], ["semibold", "Semibold"], ["bold", "Bold"]]),
+  color("textColor", "Text color", "Leave blank to inherit the page's normal text color."),
+];
+const RICH_STYLE_DEFAULTS: Record<string, unknown> = {
+  anchor: "",
+  paddingY: 16,
+  paddingX: 24,
+  marginTop: 0,
+  marginBottom: 0,
+  borderRadius: 0,
+  maxWidth: 0,
+  backgroundColor: "",
+  textAlign: "left",
+  fontSize: 16,
+  fontWeight: "normal",
+  textColor: "",
+};
 
 /** A curated subset of lucide-react's catalog, picked for marketing/CRM
  * pages. Keys here must match exactly the keys of ICON_COMPONENTS in
@@ -247,6 +297,7 @@ export const BLOCK_DEFS: BlockDef[] = [
     description: "Formatted text: headings, paragraphs, lists, links and images.",
     category: "Content",
     group: "element",
+    styleModel: "rich",
     fields: [{ key: "html", label: "Text", kind: "richtext" }, select("width", "Width", [["narrow", "Narrow (easy reading)"], ["wide", "Wide"]])],
     defaults: { html: "<p>Write something here.</p>", width: "narrow" },
     nestable: true,
@@ -257,6 +308,7 @@ export const BLOCK_DEFS: BlockDef[] = [
     description: "One standalone heading, e.g. to label a row of columns.",
     category: "Content",
     group: "element",
+    styleModel: "rich",
     fields: [
       text("text", "Heading text", { max: 200 }),
       select(
@@ -266,7 +318,7 @@ export const BLOCK_DEFS: BlockDef[] = [
         "The semantic heading tag (matters for SEO/accessibility) and its default size. For a specific pixel size instead, use \"Text size\" in the Style tab -- that always wins over this default."
       ),
     ],
-    defaults: { text: "A heading", level: "h2" },
+    defaults: { text: "A heading", level: "h2", fontSize: 32, fontWeight: "semibold" },
     nestable: true,
   },
   {
@@ -275,13 +327,14 @@ export const BLOCK_DEFS: BlockDef[] = [
     description: "One standalone button/link.",
     category: "Calls to action",
     group: "element",
+    styleModel: "rich",
     fields: [
       text("label", "Button text", { max: 60 }),
       link("href", "Link"),
       select("style", "Style", [["primary", "Filled"], ["outline", "Outlined"]]),
       select("align", "Alignment", [["left", "Left"], ["center", "Center"], ["right", "Right"]]),
     ],
-    defaults: { label: "Click here", href: "/contact", style: "primary", align: "left" },
+    defaults: { label: "Click here", href: "/contact", style: "primary", align: "left", fontSize: 14, fontWeight: "medium", textAlign: "center" },
     nestable: true,
   },
   {
@@ -290,13 +343,14 @@ export const BLOCK_DEFS: BlockDef[] = [
     description: "One standalone icon, optionally with a label and link -- e.g. a feature list item or a trust badge.",
     category: "Content",
     group: "element",
+    styleModel: "rich",
     fields: [
       iconPicker("icon", "Icon", ICON_NAMES),
       text("label", "Label (optional)", { max: 80 }),
       link("href", "Link (optional)"),
       select("size", "Size", [["sm", "Small"], ["md", "Medium"], ["lg", "Large"]]),
     ],
-    defaults: { icon: "star", label: "", href: "", size: "md" },
+    defaults: { icon: "star", label: "", href: "", size: "md", fontSize: 14, fontWeight: "medium", textAlign: "center" },
     nestable: true,
   },
   {
@@ -305,11 +359,12 @@ export const BLOCK_DEFS: BlockDef[] = [
     description: "A row of 2-4 columns, each holding its own small elements (text, image, video, button, spacer). Build it visually in the canvas, or set props.items to an array of column arrays over the API/MCP.",
     category: "Layout",
     group: "element",
+    styleModel: "rich",
     fields: [
       select("columns", "Columns", [["2", "2"], ["3", "3"], ["4", "4"]]),
       select("gap", "Gap between columns", [["sm", "Small"], ["md", "Medium"], ["lg", "Large"]]),
     ],
-    defaults: { columns: "2", gap: "md", items: [[], []] },
+    defaults: { columns: "2", gap: "md", items: [[], []], paddingY: 48, paddingX: 24 },
   },
   {
     type: "cards",
@@ -380,8 +435,9 @@ export const BLOCK_DEFS: BlockDef[] = [
     description: "One image, full width or contained, with an optional caption.",
     category: "Media",
     group: "element",
+    styleModel: "rich",
     fields: [image("image", "Image"), text("alt", "Image description (alt text)", { max: 200 }), text("caption", "Caption", { max: 200 }), select("size", "Size", [["contained", "Contained"], ["full", "Full width"]])],
-    defaults: { image: "", alt: "", caption: "", size: "contained" },
+    defaults: { image: "", alt: "", caption: "", size: "contained", textAlign: "center", fontSize: 14 },
     nestable: true,
   },
   {
@@ -390,8 +446,9 @@ export const BLOCK_DEFS: BlockDef[] = [
     description: "An embedded YouTube or Vimeo video.",
     category: "Media",
     group: "element",
+    styleModel: "rich",
     fields: [text("url", "YouTube or Vimeo link", { max: 300, placeholder: "https://www.youtube.com/watch?v=..." }), text("caption", "Caption", { max: 200 })],
-    defaults: { url: "", caption: "" },
+    defaults: { url: "", caption: "", textAlign: "center", fontSize: 14 },
     nestable: true,
   },
   {
@@ -472,6 +529,7 @@ export const BLOCK_DEFS: BlockDef[] = [
     description: "A ticking countdown to a date and time, for a launch or a limited-time offer.",
     category: "Calls to action",
     group: "element",
+    styleModel: "rich",
     fields: [
       text("heading", "Heading", { max: 160 }),
       datetime("target", "Count down to", "In your own local time -- shown correctly to every visitor regardless of their timezone."),
@@ -479,7 +537,7 @@ export const BLOCK_DEFS: BlockDef[] = [
       text("buttonLabel", "Button text (optional)", { max: 60 }),
       link("buttonHref", "Button link (optional)"),
     ],
-    defaults: { heading: "", target: "", expiredText: "We're live.", buttonLabel: "", buttonHref: "" },
+    defaults: { heading: "", target: "", expiredText: "We're live.", buttonLabel: "", buttonHref: "", textAlign: "center", fontSize: 28, fontWeight: "semibold" },
     nestable: true,
   },
   {
@@ -488,11 +546,12 @@ export const BLOCK_DEFS: BlockDef[] = [
     description: "Questions and answers. Also tells search engines it's an FAQ.",
     category: "Content",
     group: "element",
+    styleModel: "rich",
     fields: [
       text("heading", "Heading", { max: 160 }),
       { key: "items", label: "Questions", kind: "list", itemLabel: "Question", max: 30, fields: [text("question", "Question", { max: 250 }), textarea("answer", "Answer", { max: 2000 })] },
     ],
-    defaults: { heading: "Frequently asked questions", items: [{ question: "A common question?", answer: "A clear answer." }] },
+    defaults: { heading: "Frequently asked questions", items: [{ question: "A common question?", answer: "A clear answer." }], paddingY: 48, paddingX: 24 },
   },
   {
     type: "stats",
@@ -500,11 +559,12 @@ export const BLOCK_DEFS: BlockDef[] = [
     description: "A row of big numbers with labels.",
     category: "Content",
     group: "element",
+    styleModel: "rich",
     fields: [
       text("heading", "Heading", { max: 160 }),
       { key: "items", label: "Numbers", kind: "list", itemLabel: "Number", max: 8, fields: [text("value", "Number", { max: 30 }), text("label", "Label", { max: 120 })] },
     ],
-    defaults: { heading: "", items: [{ value: "100+", label: "Happy customers" }, { value: "24/7", label: "Support" }, { value: "5", label: "Years running" }] },
+    defaults: { heading: "", items: [{ value: "100+", label: "Happy customers" }, { value: "24/7", label: "Support" }, { value: "5", label: "Years running" }], paddingY: 48, paddingX: 24 },
   },
   {
     type: "latestPosts",
@@ -595,6 +655,7 @@ export const BLOCK_DEFS: BlockDef[] = [
     description: "A contact form (with email confirmation) or a newsletter signup box, in one configurable section.",
     category: "Forms",
     group: "element",
+    styleModel: "rich",
     fields: [
       select("mode", "Type", [["contact", "Contact form (name, email, message)"], ["newsletter", "Newsletter signup (email only)"]]),
       text("heading", "Heading", { max: 160 }),
@@ -614,6 +675,8 @@ export const BLOCK_DEFS: BlockDef[] = [
       detailsHeading: "Contact information",
       successHeading: "Thanks, got it.",
       successText: "We'll get back to you shortly.",
+      paddingY: 48,
+      paddingX: 24,
     },
   },
   {
@@ -665,6 +728,7 @@ export const BLOCK_DEFS: BlockDef[] = [
     description: "Round icon links to your social profiles.",
     category: "Business",
     group: "element",
+    styleModel: "rich",
     fields: [
       select("size", "Icon size", [["sm", "Small"], ["md", "Medium"], ["lg", "Large"]]),
       select("align", "Alignment", [["left", "Left"], ["center", "Center"], ["right", "Right"]]),
@@ -708,6 +772,241 @@ export const BLOCK_DEFS: BlockDef[] = [
     nestable: true,
   },
   {
+    type: "divider",
+    label: "Divider",
+    description: "A plain horizontal line, for separating content within a section.",
+    category: "Layout",
+    group: "element",
+    styleModel: "rich",
+    fields: [dimension("thickness", "Line thickness (px)", 20), color("lineColor", "Line color", "Leave blank for a neutral gray.")],
+    defaults: { thickness: 1, lineColor: "", paddingY: 8 },
+    nestable: true,
+  },
+  {
+    type: "list",
+    label: "List",
+    description: "A list of short items: bullets, numbers, or an icon per item.",
+    category: "Content",
+    group: "element",
+    styleModel: "rich",
+    fields: [
+      select("style", "Style", [["bullet", "Bullet"], ["number", "Numbered"], ["icon", "Icon"]]),
+      iconPicker("icon", "Icon (icon style only)", ICON_NAMES),
+      { key: "items", label: "Items", kind: "list", itemLabel: "Item", max: 20, fields: [text("text", "Text", { max: 200 })] },
+    ],
+    defaults: { style: "bullet", icon: "checkCircle", items: [{ text: "First item" }, { text: "Second item" }, { text: "Third item" }] },
+    nestable: true,
+  },
+  {
+    type: "testimonial",
+    label: "Testimonial",
+    description: "One customer quote, with a name, role and optional photo.",
+    category: "Content",
+    group: "element",
+    styleModel: "rich",
+    fields: [
+      textarea("quote", "Quote", { max: 600 }),
+      image("avatar", "Photo (optional)"),
+      text("name", "Name", { max: 100 }),
+      text("role", "Role / company", { max: 120 }),
+    ],
+    defaults: { quote: "This made a real difference for us.", avatar: "", name: "A happy customer", role: "", paddingY: 24, maxWidth: 640 },
+    nestable: true,
+  },
+  {
+    type: "rating",
+    label: "Star rating",
+    description: "A row of filled/empty stars out of 5, with an optional label.",
+    category: "Content",
+    group: "element",
+    styleModel: "rich",
+    fields: [{ key: "value", label: "Rating (0-5)", kind: "number", min: 0, max: 5 }, text("label", "Label (optional)", { max: 120 })],
+    defaults: { value: 5, label: "", textAlign: "center" },
+    nestable: true,
+  },
+  {
+    type: "alert",
+    label: "Alert",
+    description: "A callout box for a notice, warning or tip.",
+    category: "Content",
+    group: "element",
+    styleModel: "rich",
+    fields: [
+      select("style", "Style", [["info", "Info (blue)"], ["success", "Success (green)"], ["warning", "Warning (amber)"], ["error", "Error (red)"]]),
+      textarea("text", "Text", { max: 400 }),
+    ],
+    defaults: { style: "info", text: "Something worth calling out.", paddingY: 16 },
+    nestable: true,
+  },
+  {
+    type: "blockquote",
+    label: "Pull quote",
+    description: "One large, art-directed quote -- for an idea you want to stand out, not a customer testimonial (use Testimonial for that).",
+    category: "Content",
+    group: "element",
+    styleModel: "rich",
+    fields: [textarea("quote", "Quote", { max: 400 }), text("cite", "Attribution (optional)", { max: 120 })],
+    defaults: { quote: "A line worth making bigger than the rest of the page.", cite: "", fontSize: 24, textAlign: "center", maxWidth: 640 },
+    nestable: true,
+  },
+  {
+    type: "table",
+    label: "Table",
+    description: "A simple data table. Each row's cells are one line, separated by a vertical bar ( | ).",
+    category: "Content",
+    group: "element",
+    styleModel: "rich",
+    fields: [
+      text("header", "Header row (optional, | separated)", { max: 400, placeholder: "Plan | Price | Seats" }),
+      { key: "rows", label: "Rows", kind: "list", itemLabel: "Row", max: 20, fields: [text("cells", "Cells ( | separated)", { max: 400 })] },
+    ],
+    defaults: { header: "", rows: [{ cells: "Cell 1 | Cell 2 | Cell 3" }] },
+    nestable: true,
+  },
+  {
+    type: "progress",
+    label: "Progress bars",
+    description: "Labeled progress/skill bars.",
+    category: "Content",
+    group: "element",
+    styleModel: "rich",
+    fields: [
+      {
+        key: "items",
+        label: "Bars",
+        kind: "list",
+        itemLabel: "Bar",
+        max: 10,
+        fields: [text("label", "Label", { max: 80 }), { key: "value", label: "Percent (0-100)", kind: "number", min: 0, max: 100 }],
+      },
+    ],
+    defaults: { items: [{ label: "Example", value: 70 }], maxWidth: 480 },
+    nestable: true,
+  },
+  {
+    type: "priceTable",
+    label: "Price table",
+    description: "One pricing plan card: name, price, feature list and a button.",
+    category: "Calls to action",
+    group: "element",
+    styleModel: "rich",
+    fields: [
+      text("planName", "Plan name", { max: 60 }),
+      text("price", "Price", { max: 40 }),
+      text("period", "Billing period (optional)", { max: 40, placeholder: "/month" }),
+      { key: "features", label: "Features", kind: "list", itemLabel: "Feature", max: 12, fields: [text("text", "Text", { max: 120 })] },
+      text("buttonLabel", "Button text", { max: 60 }),
+      link("buttonHref", "Button link"),
+      toggle("highlighted", "Highlight this plan"),
+    ],
+    defaults: {
+      planName: "Pro",
+      price: "$49",
+      period: "/month",
+      features: [{ text: "Everything you need" }, { text: "Priority support" }],
+      buttonLabel: "Get started",
+      buttonHref: "/contact",
+      highlighted: false,
+      paddingY: 32,
+      maxWidth: 360,
+    },
+    nestable: true,
+  },
+  {
+    type: "teamMember",
+    label: "Team member",
+    description: "One person: photo, name, role and a short bio.",
+    category: "Content",
+    group: "element",
+    styleModel: "rich",
+    fields: [image("photo", "Photo"), text("name", "Name", { max: 100 }), text("role", "Role", { max: 120 }), textarea("bio", "Bio (optional)", { max: 400 }), link("href", "Link (optional)")],
+    defaults: { photo: "", name: "Jordan Lee", role: "Role", bio: "", href: "", maxWidth: 320, textAlign: "center" },
+    nestable: true,
+  },
+  {
+    type: "steps",
+    label: "Numbered steps",
+    description: "A step-by-step process list, each one auto-numbered.",
+    category: "Content",
+    group: "element",
+    styleModel: "rich",
+    fields: [{ key: "items", label: "Steps", kind: "list", itemLabel: "Step", max: 10, fields: [text("title", "Title", { max: 100 }), textarea("text", "Text", { max: 300 })] }],
+    defaults: { items: [{ title: "First", text: "What happens first." }, { title: "Then", text: "What happens next." }] },
+    nestable: true,
+  },
+  {
+    type: "tabs",
+    label: "Tabs",
+    description: "Switchable tabbed content.",
+    category: "Content",
+    group: "element",
+    styleModel: "rich",
+    fields: [{ key: "items", label: "Tabs", kind: "list", itemLabel: "Tab", max: 8, fields: [text("label", "Tab label", { max: 60 }), { key: "html", label: "Content", kind: "richtext" }] }],
+    defaults: {
+      items: [
+        { label: "First", html: "<p>First tab's content.</p>" },
+        { label: "Second", html: "<p>Second tab's content.</p>" },
+      ],
+      maxWidth: 768,
+    },
+    nestable: true,
+  },
+  {
+    type: "map",
+    label: "Map",
+    description: "An embedded Google Map for an address.",
+    category: "Media",
+    group: "element",
+    styleModel: "rich",
+    fields: [text("address", "Address", { max: 300 })],
+    defaults: { address: "" },
+    nestable: true,
+  },
+  {
+    type: "embed",
+    label: "Embed",
+    description: "Paste an embed snippet from a third-party tool (Calendly, Typeform, a map, a widget...). For designing your own section from scratch, use Custom design instead.",
+    category: "Content",
+    group: "element",
+    styleModel: "rich",
+    fields: [code("code", "Embed code", "Pasted exactly as written, unescaped.")],
+    defaults: { code: "" },
+    nestable: true,
+  },
+  {
+    type: "breadcrumbs",
+    label: "Breadcrumbs",
+    description: "A simple breadcrumb trail.",
+    category: "Content",
+    group: "element",
+    styleModel: "rich",
+    fields: [{ key: "items", label: "Trail", kind: "list", itemLabel: "Item", max: 6, fields: [text("label", "Label", { max: 60 }), link("href", "Link (optional for the last item)")] }],
+    defaults: { items: [{ label: "Home", href: "/" }, { label: "This page", href: "" }], paddingY: 8, fontSize: 14 },
+    nestable: true,
+  },
+  {
+    type: "audio",
+    label: "Audio",
+    description: "An embedded audio player for a direct audio file URL.",
+    category: "Media",
+    group: "element",
+    styleModel: "rich",
+    fields: [text("url", "Audio file URL", { max: 500, placeholder: "https://.../track.mp3" }), text("caption", "Caption (optional)", { max: 200 })],
+    defaults: { url: "", caption: "", maxWidth: 480 },
+    nestable: true,
+  },
+  {
+    type: "logo",
+    label: "Logo / badge",
+    description: "One small clickable image -- a partner logo, a badge, a mark. For a full-content image, use Image instead.",
+    category: "Media",
+    group: "element",
+    styleModel: "rich",
+    fields: [image("image", "Image"), text("alt", "Alt text", { max: 160 }), link("href", "Link (optional)")],
+    defaults: { image: "", alt: "", href: "", maxWidth: 160 },
+    nestable: true,
+  },
+  {
     type: "builtIn",
     label: "Page's own content",
     description: "Where this built-in page's own content (its list, form or policy text) appears. Move it, or remove it to replace it entirely with your own sections.",
@@ -730,8 +1029,20 @@ function hasSectionFields(def: BlockDef): boolean {
   return !def.internal && def.type !== "spacer";
 }
 
+/** The Style tab's own field list for a block type -- RICH_STYLE_FIELDS
+ * for styleModel: "rich" (every "element"-group type), the older
+ * SECTION_FIELDS+STYLE_FIELDS enum pair otherwise (every type already
+ * live on a published page before the rich system existed, left alone so
+ * their stored values keep meaning what they always meant). */
+function ownStyleFields(def: BlockDef): FieldDef[] {
+  return def.styleModel === "rich" ? RICH_STYLE_FIELDS : [...SECTION_FIELDS, ...STYLE_FIELDS];
+}
+function ownStyleDefaults(def: BlockDef): Record<string, unknown> {
+  return def.styleModel === "rich" ? RICH_STYLE_DEFAULTS : { ...SECTION_DEFAULTS, ...STYLE_DEFAULTS };
+}
+
 export function blockFields(def: BlockDef): FieldDef[] {
-  return hasSectionFields(def) ? [...def.fields, ...SECTION_FIELDS, ...STYLE_FIELDS] : def.fields;
+  return hasSectionFields(def) ? [...def.fields, ...ownStyleFields(def)] : def.fields;
 }
 
 /** The Style tab's fields for a block (background/spacing/anchor plus the
@@ -740,7 +1051,7 @@ export function blockFields(def: BlockDef): FieldDef[] {
  * blockFields() does for one combined list. [] when the block has neither
  * (spacer, the built-in content marker). */
 export function styleFields(def: BlockDef): FieldDef[] {
-  return hasSectionFields(def) ? [...SECTION_FIELDS, ...STYLE_FIELDS] : [];
+  return hasSectionFields(def) ? ownStyleFields(def) : [];
 }
 
 /** What the console shows for a block type. `description` is written for
@@ -757,7 +1068,7 @@ export function newBlockId(): string {
 }
 
 function sectionDefaults(def: BlockDef): Record<string, unknown> {
-  return hasSectionFields(def) ? { ...SECTION_DEFAULTS, ...STYLE_DEFAULTS } : {};
+  return hasSectionFields(def) ? ownStyleDefaults(def) : {};
 }
 
 /** A fresh block of `type` with its default props. */
@@ -775,10 +1086,10 @@ export function createBlock(type: string): PageBlock {
  * else, rather than one block only editable through its own sidebar form.
  * Optionally seeded from an existing atomic Hero's props (see
  * convertBlockToElements) so converting one keeps its content. Loses the
- * bespoke dark-theme gradient/image-glow HeroView renders -- `background:
- * "dark"` (the same dark-section look any block's Style tab offers) gets
- * close, not identical; the trade is real per-piece editability instead
- * of a fixed, more polished band. */
+ * bespoke dark-theme gradient/image-glow HeroView renders -- plain/light
+ * by default instead (see the note on the row's own props below); the
+ * trade is real per-piece editability instead of a fixed, more polished
+ * band. */
 function createHeroElements(source: Record<string, unknown> = {}): PageBlock {
   const str = (key: string, fallback = ""): string => (typeof source[key] === "string" ? (source[key] as string) : fallback);
   const eyebrow = str("eyebrow");
@@ -794,7 +1105,7 @@ function createHeroElements(source: Record<string, unknown> = {}): PageBlock {
   const left: PageBlock[] = [];
   if (eyebrow) {
     const el = createBlock("heading");
-    left.push({ ...el, props: { ...el.props, text: eyebrow, level: "h4", fontSize: "sm", fontWeight: "semibold" } });
+    left.push({ ...el, props: { ...el.props, text: eyebrow, level: "h4", fontSize: 14, fontWeight: "semibold" } });
   }
   const headingEl = createBlock("heading");
   left.push({ ...headingEl, props: { ...headingEl.props, text: heading, level: "h2" } });
@@ -818,7 +1129,13 @@ function createHeroElements(source: Record<string, unknown> = {}): PageBlock {
   }
 
   const row = createBlock("row");
-  return { ...row, props: { ...row.props, columns: "2", gap: "lg", background: "dark", items: [left, right] } };
+  // No dark background by default any more: the rich style model has no
+  // "theme" concept -- each element's own textColor is independent, so a
+  // dark row background with default (dark) text on every child would be
+  // unreadable until each one's color was set too. Plain/light by
+  // default is safe; set a background color (and each piece's text
+  // color) explicitly for a dark hero.
+  return { ...row, props: { ...row.props, columns: "2", gap: "lg", items: [left, right] } };
 }
 
 /** Which "Add section" palette entries insert a decomposed element tree

@@ -29,6 +29,23 @@ const PATHS: Record<string, string> = {
   customCode: "M8 8l-4 4 4 4 M16 8l4 4-4 4 M13 5l-2 14",
   countdown: "M12 12V7 M12 12l3.5 2 M12 3h0 M9 3h6 M5.6 6.6 4.2 5.2 M18.4 6.6l1.4-1.4 M4 14a8 8 0 1 0 16 0 8 8 0 0 0-16 0Z",
   socialIcons: "M6 12a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z M18 7.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z M18 21.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z M8.2 10.8l7.6-3.6 M8.2 13.2l7.6 3.6",
+  divider: "M4 12h4 M10 12h4 M16 12h4",
+  list: "M4 6h.01 M8 6h12 M4 12h.01 M8 12h12 M4 18h.01 M8 18h12",
+  testimonial: "M4 8a3 3 0 0 1 3-3v2a1 1 0 0 0-1 1v1h2v5H4V8Z M13 8a3 3 0 0 1 3-3v2a1 1 0 0 0-1 1v1h2v5h-4V8Z",
+  rating: "M12 3.5l1.8 3.6 4 .6-2.9 2.8.7 4-3.6-1.9-3.6 1.9.7-4-2.9-2.8 4-.6Z",
+  alert: "M12 3 2 20h20Z M12 10v4 M12 17h.01",
+  blockquote: "M6 7h5v5H7c0 2-1 3-3 3v2c3 0 5-2 5-5V7Z M14 7h5v5h-4c0 2-1 3-3 3v2c3 0 5-2 5-5V7Z",
+  table: "M3 5h18v14H3z M3 10h18 M9 5v14",
+  progress: "M4 8h16 M4 8v2H9v-2 M4 15h16 M4 15v2h13v-2",
+  priceTable: "M6 3h12v18l-6-3-6 3Z M9 11h6 M9 14h4",
+  teamMember: "M12 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z M5 20c1.5-4.5 5-6.5 7-6.5s5.5 2 7 6.5",
+  steps: "M4 6h2v2H4z M9 7h11 M4 14h2v2H4z M9 15h11",
+  tabs: "M3 6h6v3H3z M11 6h10v3H11z M3 9v9h18V9",
+  map: "M9 4 4 6v14l5-2 6 2 5-2V4l-5 2-6-2Z M9 4v14 M15 6v14",
+  embed: "M8 7 3 12l5 5 M16 7l5 5-5 5 M13 4l-2 16",
+  breadcrumbs: "M3 12h3l2-4 2 8 2-8 2 4h7",
+  audio: "M4 10v4 M8 7v10 M12 4v16 M16 7v10 M20 10v4",
+  logo: "M5 4h14v12l-7 4-7-4Z M9 9h6v4H9z",
 };
 
 const DEFAULT_PATH = "M5 5h14v14H5z";

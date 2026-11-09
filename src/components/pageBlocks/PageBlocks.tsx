@@ -6,6 +6,10 @@ import { applyMergeTags, blockFields, getBlockDef, type FieldDef, type PageBlock
 import { escapeHtml } from "@/lib/escapeHtml";
 import CustomBlock from "@/components/pageBlocks/CustomBlock";
 import {
+  AlertBlock,
+  AudioBlock,
+  BlockquoteBlock,
+  BreadcrumbsBlock,
   BusinessDetailsBlock,
   ButtonBlock,
   CardsBlock,
@@ -14,6 +18,8 @@ import {
   CountdownBlock,
   CtaBlock,
   CustomCodeBlock,
+  DividerBlock,
+  EmbedBlock,
   FaqBlock,
   FeaturedOnBlock,
   FormBlock,
@@ -24,8 +30,14 @@ import {
   IntegrationsBlock,
   LatestCoursesBlock,
   LatestPostsBlock,
+  ListBlock,
+  LogoBlock,
+  MapBlock,
   NewsletterBlock,
   PageHeaderBlock,
+  PriceTableBlock,
+  ProgressBlock,
+  RatingBlock,
   ReviewsBlock,
   RichTextBlock,
   RowBlock,
@@ -33,6 +45,11 @@ import {
   SpacerBlock,
   SplitBlock,
   StatsBlock,
+  StepsBlock,
+  TableBlock,
+  TabsBlock,
+  TeamMemberBlock,
+  TestimonialBlock,
   VideoBlock,
   WorkflowDemoBlock,
   type Props,
@@ -113,6 +130,23 @@ function renderBlock(block: PageBlock, props: Props, business: ResolvedBusiness,
     case "contactDetails": return <ContactDetailsBlock props={props} business={business} />;
     case "businessDetails": return <BusinessDetailsBlock props={props} business={business} />;
     case "spacer": return <SpacerBlock props={props} />;
+    case "divider": return <DividerBlock props={props} />;
+    case "list": return <ListBlock props={props} />;
+    case "testimonial": return <TestimonialBlock props={props} />;
+    case "rating": return <RatingBlock props={props} />;
+    case "alert": return <AlertBlock props={props} />;
+    case "blockquote": return <BlockquoteBlock props={props} />;
+    case "table": return <TableBlock props={props} />;
+    case "progress": return <ProgressBlock props={props} />;
+    case "priceTable": return <PriceTableBlock props={props} />;
+    case "teamMember": return <TeamMemberBlock props={props} />;
+    case "steps": return <StepsBlock props={props} />;
+    case "tabs": return <TabsBlock props={props} />;
+    case "map": return <MapBlock props={props} />;
+    case "embed": return <EmbedBlock props={props} />;
+    case "breadcrumbs": return <BreadcrumbsBlock props={props} />;
+    case "audio": return <AudioBlock props={props} />;
+    case "logo": return <LogoBlock props={props} />;
     case "builtIn": return builtIn ?? null;
     default: return null;
   }

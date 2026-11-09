@@ -7,6 +7,10 @@ import { BLOCK_DEFS, getBlockDef, type PageBlock } from "@/lib/pageBlocks";
 import type { PageEditorLiveData } from "@/lib/pageEditorLiveData";
 import CustomBlock, { type CustomBlockEditing } from "@/components/pageBlocks/CustomBlock";
 import {
+  AlertBlock,
+  AudioBlock,
+  BlockquoteBlock,
+  BreadcrumbsBlock,
   BusinessDetailsBlock,
   ButtonBlock,
   CardsBlock,
@@ -15,6 +19,8 @@ import {
   CountdownBlock,
   CtaBlock,
   CustomCodeBlock,
+  DividerBlock,
+  EmbedBlock,
   FaqBlock,
   FeaturedOnBlock,
   FormBlock,
@@ -25,9 +31,15 @@ import {
   IntegrationsBlock,
   LatestCoursesView,
   LatestPostsView,
+  ListBlock,
+  LogoBlock,
+  MapBlock,
   NestedElement,
   NewsletterBlock,
   PageHeaderBlock,
+  PriceTableBlock,
+  ProgressBlock,
+  RatingBlock,
   ReviewsView,
   RichTextBlock,
   RowBlock,
@@ -35,6 +47,11 @@ import {
   SpacerBlock,
   SplitBlock,
   StatsBlock,
+  StepsBlock,
+  TableBlock,
+  TabsBlock,
+  TeamMemberBlock,
+  TestimonialBlock,
   VideoBlock,
   WorkflowDemoBlock,
   type InlineEdit,
@@ -134,6 +151,40 @@ export function renderLiveBlock(
       return <BusinessDetailsBlock props={props} business={business} />;
     case "spacer":
       return <SpacerBlock props={props} />;
+    case "divider":
+      return <DividerBlock props={props} />;
+    case "list":
+      return <ListBlock props={props} />;
+    case "testimonial":
+      return <TestimonialBlock props={props} />;
+    case "rating":
+      return <RatingBlock props={props} />;
+    case "alert":
+      return <AlertBlock props={props} />;
+    case "blockquote":
+      return <BlockquoteBlock props={props} />;
+    case "table":
+      return <TableBlock props={props} />;
+    case "progress":
+      return <ProgressBlock props={props} />;
+    case "priceTable":
+      return <PriceTableBlock props={props} />;
+    case "teamMember":
+      return <TeamMemberBlock props={props} />;
+    case "steps":
+      return <StepsBlock props={props} />;
+    case "tabs":
+      return <TabsBlock props={props} />;
+    case "map":
+      return <MapBlock props={props} />;
+    case "embed":
+      return <EmbedBlock props={props} />;
+    case "breadcrumbs":
+      return <BreadcrumbsBlock props={props} />;
+    case "audio":
+      return <AudioBlock props={props} />;
+    case "logo":
+      return <LogoBlock props={props} />;
     case "builtIn":
       return (
         <div className="border-y border-dashed border-line bg-paper-soft px-6 py-10 text-center text-sm text-ink-soft">
