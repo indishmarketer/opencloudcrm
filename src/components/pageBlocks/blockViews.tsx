@@ -1,4 +1,37 @@
 import Link from "next/link";
+import {
+  Award,
+  Bell,
+  Calendar,
+  CheckCircle,
+  Clock,
+  CreditCard,
+  Download,
+  Gift,
+  Globe,
+  Heart,
+  Lightbulb,
+  Lock,
+  Mail,
+  MapPin,
+  MessageCircle,
+  Package,
+  Phone,
+  Play,
+  Rocket,
+  Settings,
+  Shield,
+  Smile,
+  Sparkles,
+  Star,
+  Target,
+  ThumbsUp,
+  TrendingUp,
+  Users,
+  Zap,
+  ArrowRight,
+  type LucideIcon,
+} from "lucide-react";
 import { extractYoutubeId } from "@/lib/youtube";
 import { serializeJsonLd } from "@/lib/jsonLd";
 import type { ResolvedBusiness } from "@/lib/businessProfile";
@@ -56,6 +89,43 @@ const BORDER_RADIUS: Record<string, string> = { none: "rounded-none", lg: "round
 const TEXT_ALIGN: Record<string, string> = { left: "text-left", center: "text-center", right: "text-right" };
 const FONT_SIZE: Record<string, string> = { sm: "text-sm", lg: "text-lg", xl: "text-xl", "2xl": "text-2xl", "3xl": "text-3xl" };
 const FONT_WEIGHT: Record<string, string> = { normal: "font-normal", medium: "font-medium", semibold: "font-semibold", bold: "font-bold" };
+
+/** Keys must match ICON_NAMES in src/lib/pageBlocks.ts exactly -- that file
+ * drives the picker options, this map is what actually resolves a chosen
+ * key to a glyph. */
+const ICON_COMPONENTS: Record<string, LucideIcon> = {
+  star: Star,
+  heart: Heart,
+  zap: Zap,
+  shield: Shield,
+  rocket: Rocket,
+  mail: Mail,
+  phone: Phone,
+  globe: Globe,
+  arrowRight: ArrowRight,
+  thumbsUp: ThumbsUp,
+  award: Award,
+  clock: Clock,
+  mapPin: MapPin,
+  users: Users,
+  trendingUp: TrendingUp,
+  lock: Lock,
+  gift: Gift,
+  sparkles: Sparkles,
+  smile: Smile,
+  messageCircle: MessageCircle,
+  calendar: Calendar,
+  download: Download,
+  play: Play,
+  checkCircle: CheckCircle,
+  target: Target,
+  lightbulb: Lightbulb,
+  package: Package,
+  creditCard: CreditCard,
+  bell: Bell,
+  settings: Settings,
+};
+const ICON_SIZE: Record<string, string> = { sm: "h-6 w-6", md: "h-8 w-8", lg: "h-12 w-12" };
 
 /** The shared outer wrapper: background, vertical spacing, anchor id, and
  * the site's standard content width, plus the Style tab's padding/margin/
@@ -135,15 +205,15 @@ function SectionHeading({ heading, text, link }: { heading: string; text?: strin
 const BUTTON_DARK = "rounded-full bg-ink px-6 py-3 text-center text-sm font-medium text-paper transition-opacity hover:opacity-80";
 const BUTTON_OUTLINE = "rounded-full border border-ink/25 px-6 py-3 text-center text-sm font-medium text-ink transition-colors hover:border-ink";
 
-function ButtonLink({ href, label, className }: { href: string; label: string; className: string }) {
+function ButtonLink({ href, label, className, style }: { href: string; label: string; className: string; style?: React.CSSProperties }) {
   if (!href || !label) return null;
   const external = /^https?:\/\//.test(href);
   return external ? (
-    <a href={href} className={className} target="_blank" rel="noreferrer">
+    <a href={href} className={className} style={style} target="_blank" rel="noreferrer">
       {label}
     </a>
   ) : (
-    <Link href={href} className={className}>
+    <Link href={href} className={className} style={style}>
       {label}
     </Link>
   );
@@ -291,18 +361,58 @@ export function ButtonBlock({ props, nested = false }: { props: Props; nested?: 
   const label = str(props, "label");
   const href = str(props, "href");
   if (!label || !href) return null;
+  // "align" (this block's own content field) positions the button within
+  // its box -- left/center/right -- a different concern from the Style
+  // tab's textAlign, which would only affect how the label's own text
+  // wraps inside the button and is folded into `t.className` below.
   const alignClass = str(props, "align") === "center" ? "justify-center" : str(props, "align") === "right" ? "justify-end" : "justify-start";
   const buttonClass = str(props, "style") === "outline" ? BUTTON_OUTLINE : BUTTON_DARK;
-  const sizeWeight = [FONT_SIZE[str(props, "fontSize")] ?? "", FONT_WEIGHT[str(props, "fontWeight")] ?? ""].filter(Boolean).join(" ");
+  const t = textStyleAttrs(props);
   const el = (
     <div className={`flex ${alignClass}`}>
-      <ButtonLink href={href} label={label} className={`${buttonClass} ${sizeWeight}`.trim()} />
+      <ButtonLink href={href} label={label} className={`${buttonClass} ${t.className}`.trim()} style={t.style} />
     </div>
   );
   if (nested) return <ElementBox props={props}>{el}</ElementBox>;
   return (
     <Section props={props} width="max-w-3xl">
       {el}
+    </Section>
+  );
+}
+
+export function IconBlock({ props, nested = false }: { props: Props; nested?: boolean }) {
+  const Glyph = ICON_COMPONENTS[str(props, "icon")] ?? Star;
+  const label = str(props, "label");
+  const href = str(props, "href");
+  const size = ICON_SIZE[str(props, "size")] ?? ICON_SIZE.md;
+  const t = textStyleAttrs(props);
+  const inner = (
+    <span className={`inline-flex flex-col items-center gap-2 text-center ${t.className}`.trim()} style={t.style}>
+      <Glyph className={size} strokeWidth={1.75} aria-hidden={label ? "true" : undefined} />
+      {label && <span className="text-sm font-medium">{label}</span>}
+    </span>
+  );
+  const external = /^https?:\/\//.test(href);
+  const el =
+    href ? (
+      external ? (
+        <a href={href} target="_blank" rel="noreferrer" className="inline-flex">
+          {inner}
+        </a>
+      ) : (
+        <Link href={href} className="inline-flex">
+          {inner}
+        </Link>
+      )
+    ) : (
+      inner
+    );
+  const wrapped = <div className="flex justify-center">{el}</div>;
+  if (nested) return <ElementBox props={props}>{wrapped}</ElementBox>;
+  return (
+    <Section props={props} width="max-w-xs">
+      {wrapped}
     </Section>
   );
 }
@@ -329,6 +439,8 @@ export function NestedElement({ block }: { block: PageBlock }) {
       return <VideoBlock props={props} nested />;
     case "button":
       return <ButtonBlock props={props} nested />;
+    case "icon":
+      return <IconBlock props={props} nested />;
     case "customCode":
       return <CustomCodeBlock props={props} nested />;
     case "countdown":
@@ -504,12 +616,17 @@ export function ImageBlock({ props, nested = false }: { props: Props; nested?: b
   const image = str(props, "image");
   if (!image) return null;
   const full = str(props, "size") === "full";
+  const t = textStyleAttrs(props);
   const figure = (
     <figure>
       <div className="relative aspect-[1200/650] w-full overflow-hidden rounded-2xl">
         <BlockImage src={image} alt={str(props, "alt")} sizes={nested ? "(min-width: 768px) 33vw, 100vw" : full ? "(min-width: 1152px) 1152px, 100vw" : "(min-width: 896px) 896px, 100vw"} className="object-cover" />
       </div>
-      {str(props, "caption") && <figcaption className="mt-3 text-center text-sm text-ink-soft">{str(props, "caption")}</figcaption>}
+      {str(props, "caption") && (
+        <figcaption className={`mt-3 text-center text-sm text-ink-soft ${t.className}`.trim()} style={t.style}>
+          {str(props, "caption")}
+        </figcaption>
+      )}
     </figure>
   );
   if (nested) return <ElementBox props={props}>{figure}</ElementBox>;
@@ -530,6 +647,7 @@ function embedUrl(url: string): string | null {
 export function VideoBlock({ props, nested = false }: { props: Props; nested?: boolean }) {
   const src = embedUrl(str(props, "url"));
   if (!src) return null;
+  const t = textStyleAttrs(props);
   const figure = (
     <figure>
       <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-ink">
@@ -542,7 +660,11 @@ export function VideoBlock({ props, nested = false }: { props: Props; nested?: b
           loading="lazy"
         />
       </div>
-      {str(props, "caption") && <figcaption className="mt-3 text-center text-sm text-ink-soft">{str(props, "caption")}</figcaption>}
+      {str(props, "caption") && (
+        <figcaption className={`mt-3 text-center text-sm text-ink-soft ${t.className}`.trim()} style={t.style}>
+          {str(props, "caption")}
+        </figcaption>
+      )}
     </figure>
   );
   if (nested) return <ElementBox props={props}>{figure}</ElementBox>;
@@ -564,9 +686,14 @@ export function CustomCodeBlock({ props, nested = false }: { props: Props; neste
 export function CountdownBlock({ props, nested = false }: { props: Props; nested?: boolean }) {
   const target = str(props, "target");
   if (!target) return null;
+  const t = textStyleAttrs(props);
   const content = (
     <div className="flex flex-col items-center gap-6">
-      {str(props, "heading") && <h2 className="text-center font-display text-2xl font-semibold sm:text-3xl">{str(props, "heading")}</h2>}
+      {str(props, "heading") && (
+        <h2 className={`text-center font-display text-2xl font-semibold sm:text-3xl ${t.className}`.trim()} style={t.style}>
+          {str(props, "heading")}
+        </h2>
+      )}
       <CountdownTimer
         target={target}
         expiredText={str(props, "expiredText")}

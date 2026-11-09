@@ -20,6 +20,7 @@ import {
   FormBlock,
   HeadingBlock,
   HeroView,
+  IconBlock,
   ImageBlock,
   IntegrationsBlock,
   LatestCoursesView,
@@ -78,6 +79,8 @@ export function renderLiveBlock(
       return <HeadingBlock props={props} />;
     case "button":
       return <ButtonBlock props={props} />;
+    case "icon":
+      return <IconBlock props={props} />;
     case "row":
       return <RowBlock props={props} renderColumn={renderColumn} />;
     case "cards":

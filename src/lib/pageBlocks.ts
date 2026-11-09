@@ -110,6 +110,43 @@ export const STYLE_FIELDS: FieldDef[] = [
 ];
 const STYLE_DEFAULTS = Object.fromEntries(STYLE_FIELDS.map((f) => [f.key, ""]));
 
+/** A curated subset of lucide-react's catalog, picked for marketing/CRM
+ * pages. Keys here must match exactly the keys of ICON_COMPONENTS in
+ * src/components/pageBlocks/blockViews.tsx -- that's where the glyphs
+ * actually live; this file only needs the names for the picker options. */
+export const ICON_NAMES: [string, string][] = [
+  ["star", "Star"],
+  ["heart", "Heart"],
+  ["zap", "Lightning"],
+  ["shield", "Shield"],
+  ["rocket", "Rocket"],
+  ["mail", "Mail"],
+  ["phone", "Phone"],
+  ["globe", "Globe"],
+  ["arrowRight", "Arrow right"],
+  ["thumbsUp", "Thumbs up"],
+  ["award", "Award"],
+  ["clock", "Clock"],
+  ["mapPin", "Location pin"],
+  ["users", "Users"],
+  ["trendingUp", "Trending up"],
+  ["lock", "Lock"],
+  ["gift", "Gift"],
+  ["sparkles", "Sparkles"],
+  ["smile", "Smile"],
+  ["messageCircle", "Message"],
+  ["calendar", "Calendar"],
+  ["download", "Download"],
+  ["play", "Play"],
+  ["checkCircle", "Check circle"],
+  ["target", "Target"],
+  ["lightbulb", "Idea"],
+  ["package", "Package"],
+  ["creditCard", "Credit card"],
+  ["bell", "Bell"],
+  ["settings", "Settings"],
+];
+
 // The "custom" block is a whole hand-designed section, not a pasted embed
 // snippet, so its three code fields get their own far larger ceilings -- an
 // art-directed section with a real stylesheet runs well past the 20k a
@@ -198,6 +235,20 @@ export const BLOCK_DEFS: BlockDef[] = [
       select("align", "Alignment", [["left", "Left"], ["center", "Center"], ["right", "Right"]]),
     ],
     defaults: { label: "Click here", href: "/contact", style: "primary", align: "left" },
+    nestable: true,
+  },
+  {
+    type: "icon",
+    label: "Icon",
+    description: "One standalone icon, optionally with a label and link -- e.g. a feature list item or a trust badge.",
+    category: "Content",
+    fields: [
+      select("icon", "Icon", ICON_NAMES),
+      text("label", "Label (optional)", { max: 80 }),
+      link("href", "Link (optional)"),
+      select("size", "Size", [["sm", "Small"], ["md", "Medium"], ["lg", "Large"]]),
+    ],
+    defaults: { icon: "star", label: "", href: "", size: "md" },
     nestable: true,
   },
   {

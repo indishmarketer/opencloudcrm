@@ -19,6 +19,7 @@ import {
   FormBlock,
   HeadingBlock,
   HeroBlock,
+  IconBlock,
   ImageBlock,
   IntegrationsBlock,
   LatestCoursesBlock,
@@ -92,6 +93,7 @@ function renderBlock(block: PageBlock, props: Props, business: ResolvedBusiness,
     case "cta": return <CtaBlock props={props} />;
     case "heading": return <HeadingBlock props={props} />;
     case "button": return <ButtonBlock props={props} />;
+    case "icon": return <IconBlock props={props} />;
     case "row": return <RowBlock props={props} />;
     case "custom": return <CustomBlock props={props} blockId={block.id} />;
     case "customCode": return <CustomCodeBlock props={props} />;

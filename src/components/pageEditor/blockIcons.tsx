@@ -8,6 +8,7 @@ const PATHS: Record<string, string> = {
   richText: "M4 6h16 M4 11h16 M4 16h10",
   heading: "M5 5v14 M19 5v14 M5 12h14",
   button: "M4 9h16a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-2a2 2 0 0 1 2-2Z M8 12h8",
+  icon: "M12 2.5l2.2 4.6 5 .7-3.6 3.5.8 5-4.4-2.4-4.4 2.4.8-5-3.6-3.5 5-.7Z",
   row: "M3 4h6v16H3z M10 4h4v16h-4z M15 4h6v16h-6z",
   cards: "M4 4h7v7H4z M13 4h7v7h-7z M4 13h7v7H4z M13 13h7v7h-7z",
   split: "M3 4h8v16H3z M13 4h8v16h-8z",
