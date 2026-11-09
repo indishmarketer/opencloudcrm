@@ -164,7 +164,11 @@ async function main() {
     await api("POST", `/applications/${encodeURIComponent(appUuid)}/envs`, {
       key,
       value,
-      is_shown_once: /(?:SECRET|PASSWORD|TOKEN|API_KEY|DATABASE_URL|PRIVATE_KEY)/.test(key),
+      // Coolify must retain DATABASE_URL on later rolling deployments. On the
+      // tested server, saving it as a shown-once build variable caused the
+      // first launch to work but the next deployment to lose the variable.
+      is_shown_once: key !== "DATABASE_URL" && /(?:SECRET|PASSWORD|TOKEN|API_KEY|PRIVATE_KEY)/.test(key),
+      ...(key === "DATABASE_URL" ? { is_runtime: true, is_buildtime: false } : {}),
     });
   }
   await api("POST", `/applications/${encodeURIComponent(appUuid)}/start`);

@@ -59,7 +59,8 @@ test("fresh Coolify setup creates one database and one rolling web app", async (
     assert.equal(apps[0].body.custom_internal_name, undefined);
     assert.equal(calls.filter((call) => call.path === "/api/v1/applications/app123/scheduled-tasks").length, 3);
     const envs = calls.filter((call) => call.path === "/api/v1/applications/app123/envs");
-    assert.equal(envs.find((call) => call.body.key === "DATABASE_URL").body.is_shown_once, true);
+    assert.equal(envs.find((call) => call.body.key === "DATABASE_URL").body.is_shown_once, false);
+    assert.equal(envs.find((call) => call.body.key === "DATABASE_URL").body.is_buildtime, false);
     assert.equal(envs.find((call) => call.body.key === "SITE_URL").body.value, "https://example.com");
   } finally {
     server.close();

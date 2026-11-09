@@ -74,7 +74,10 @@ health check makes the handoff safer, but it cannot guarantee that every
 request succeeds. Confirm a rolling update with continuous requests to the
 public URL before relying on uninterrupted updates.
 
-If you use a Coolify MCP agent, give it this prompt:
+To deploy through a Coolify MCP-capable agent instead, enable **MCP Server**
+and **API Access** in Coolify, create an API token with the needed project,
+resource, and deploy permissions, and connect your agent to
+`https://your-coolify-domain/mcp` with that token. Then give it this one prompt:
 
 > Deploy OpenCloudCRM from `ghcr.io/indishmarketer/opencloudcrm:latest`
 > using the **standalone Docker Image application** and **standalone
@@ -85,63 +88,13 @@ If you use a Coolify MCP agent, give it this prompt:
 > rolling update with continuous HTTP requests before saying updates are
 > uninterrupted.
 
-**Simpler Compose install (the site can briefly return 503 during updates):**
-
-**Deploy With AI Agents**
-
-Let AI agents (Claude Code, Codex, Antigravity, OpenCode, etc.) do the whole thing through Coolify's own MCP server.
-
-1. In Coolify (v4.5+), go to **Settings → Advanced**.
-2. Enable **MCP Server** and **API Access**.
-3. Copy your Coolify MCP server URL (`https://your-coolify-domain/mcp`).
-4. Go to **Keys & Tokens → API Tokens**.
-5. Create a new API token with **root** permissions. Keep the token secure, as it provides full access.
-6. Connect your AI agent to the MCP server using the copied URL and API token as a Bearer credential.
-
-   **For Claude Code:**
-
-   ```bash
-   claude mcp add --transport http coolify https://your-coolify-domain/mcp --header "Authorization: Bearer YOUR_TOKEN"
-   ```
-
-7. For other MCP-capable agents (Codex, Antigravity, OpenCode, etc.), add a remote MCP server using the same URL and Authorization header.
-8. Give it this prompt:
-
-   > Using the Coolify MCP tools connected to this session, deploy
-   > OpenCloudCRM (https://github.com/indishmarketer/opencloudcrm) for me.
-   >
-   > Fetch the current `docker-compose.yml` from
-   > https://raw.githubusercontent.com/indishmarketer/opencloudcrm/main/docker-compose.yml
-   > and use it exactly as-is -- don't retype or edit it. Create a Docker
-   > Compose service from it (`create_service`, `compose` mode), in
-   > whichever project/server I confirm if more than one exists.
-   >
-   > Generate strong random `DB_PASSWORD`, `SESSION_SECRET`, and
-   > `CRON_SECRET` values, ask me for the email to use as `ADMIN_EMAIL`
-   > and the public site URL to use as `SITE_URL`, and set all five as
-   > environment variables on the service.
-   >
-   > Deploy it, then check the logs: confirm the migration step finished
-   > ("Nothing pending" or a list of applied migrations) and the server
-   > started without crashing. Tell me the URL and confirm `/console/login`
-   > is reachable. The homepage itself will say "not live yet" until
-   > someone publishes a page from `/console/pages` -- that's expected on
-   > a fresh install, not a sign anything is broken.
-   >
-   > If a migration fails: a migration that already succeeded is marked
-   > done permanently on that database and will not re-run just because
-   > its file changes later, so if you retry after a fix and see the
-   > *exact same* error again, that's why -- don't keep redeploying.
-   > Delete the service (with its volumes) and deploy fresh instead.
-
-**Deploy Compose manually:**
+**Alternative: Docker Compose.** This is simpler to run, but its web container
+is replaced during updates, so a public site can briefly return 503.
 
 1. **New Resource -> Docker Compose**, point it at this repo (branch
    `main`). If Coolify gives you an empty box instead of a Git source
    option, open [`docker-compose.yml`](docker-compose.yml) and paste its
-   contents in. (If that box mangles the indentation on paste -- a known
-   editor bug in some Coolify versions -- use the AI-agent path below
-   instead; it goes through Coolify's API, not that editor.)
+   contents in.
 2. Fill in the environment variables it asks for -- at minimum:
    - `DB_PASSWORD` -- any strong password
    - `SESSION_SECRET` -- a long random string
@@ -149,54 +102,18 @@ Let AI agents (Claude Code, Codex, Antigravity, OpenCode, etc.) do the whole thi
    - `SITE_URL` -- the public site origin, such as `https://your-domain.com`
    - `ADMIN_EMAIL` -- your email; whoever logs in with this address becomes
      the console owner
-3. Deploy. Coolify creates three resources (the app, scheduler, and Postgres) and starts
-   them -- all three have health checks (`docker-compose.yml`), so Coolify
-   can tell you when the app is actually ready to serve requests, not just
-   that the container started.
+3. Deploy. Coolify starts the app, scheduler, and Postgres inside a single
+   Compose service. All three containers have health checks.
 4. Visit your domain, then `/console/login`, and sign in with
    `ADMIN_EMAIL`. The homepage shows "not live yet" until you publish your
    first page from `/console/pages` -- that's expected, not a failed
    deploy.
 
-**Availability during updates:** Docker Compose recreates the app container
-when its image changes. Coolify does not perform a rolling update for Compose
-services, so the site can briefly become unavailable during a redeploy even
-when every health check is configured correctly. The status may show Starting
-or Degraded until the new app is ready. For a site that must stay available
-during updates, run the web app as a standalone Docker Image application with
-a separate persistent Postgres database, no fixed host port or container name,
-and a `/api/health` check. Coolify can then start the new app beside the old
-one and switch traffic after the new app becomes healthy. Keep the scheduler
-separate so it does not determine the web app's rollout.
-
-
-**Already have a standalone application running and just want to update it?**
-Redeploy that application resource. Keep its database separate and leave
-host port mapping and fixed container naming disabled so Coolify can overlap
-the old and new web containers. Review migration compatibility before each
-release because both versions may run at once.
-
-**Stuck on a migration error on a brand-new (not yet real-data) deploy?**
-A migration that completes successfully is marked done permanently for
-that database -- re-deploying doesn't retry it, even after you (or a fix
-from upstream) change that file's contents. If you're debugging a failed
-first deploy, redeploying alone will not pick up a fix to an already-
-applied migration; delete the service (**Danger Zone -> Delete Service**,
-with volumes checked) and deploy fresh instead. If you have `DATABASE_URL`
-for that database, `npm run migrate:status` tells you exactly what's
-pending (or not) before you redeploy, rather than guessing.
-
-**Pointing a Coolify app at a database you already have** (blue-green
-testing an existing deployment, migrating from a different build method,
-etc.), instead of the Docker Compose path above: create a standalone
-application (**New Resource -> Docker Image**, `ghcr.io/indishmarketer/
-opencloudcrm:latest`) rather than a Compose service, and set its
-`DATABASE_URL` to the existing database's connection string. The image
-includes a `/api/health` check. Confirm Coolify detects it and shows
-`running:healthy`; if it does not, set an HTTP check on the application
-(Health Checks tab, API, or MCP): path `/api/health`, method `GET`, expected
-status `200`. Do not set a fixed host port or container name when you need
-Coolify's rolling updates.
+For updates to a standalone app, redeploy the application resource. Coolify
+keeps the old web container while the new one becomes healthy. Keep database
+migrations compatible with both versions during that overlap. For existing
+Compose sites and troubleshooting, see the
+[deployment guide](docs/coolify-rolling-deployment.md).
 
 ### Plain Docker Compose on a VPS
 
@@ -205,7 +122,8 @@ Coolify's rolling updates.
 ```bash
 git clone https://github.com/indishmarketer/opencloudcrm
 cd opencloudcrm
-cp .env.example .env   # fill in DB_PASSWORD, SESSION_SECRET, ADMIN_EMAIL
+cp .env.example .env   # add DB_PASSWORD; set SESSION_SECRET, CRON_SECRET,
+                       # ADMIN_EMAIL, and SITE_URL before starting
 docker compose up -d
 ```
 
@@ -213,38 +131,6 @@ The app, scheduler, and database use the prebuilt image and Compose
 configuration. Plain `docker compose up` also replaces the single web
 container during updates; use an orchestrator with rolling updates if a
 brief interruption is unacceptable.
-
-**Or hand it to an AI agent** with shell access to your server:
-
-> Deploy OpenCloudCRM (https://github.com/indishmarketer/opencloudcrm) for
-> me on [describe what you have -- e.g. "an Ubuntu VPS I can SSH into" or
-> "Render"].
->
-> Use `docker-compose.yml` from the repo root as-is. It pulls a prebuilt
-> image from `ghcr.io/indishmarketer/opencloudcrm` and runs Postgres
-> alongside it -- do not build the app from source on this server; the
-> prebuilt image exists specifically so nothing has to build there.
->
-> Generate strong random `DB_PASSWORD`, `SESSION_SECRET`, and `CRON_SECRET` values. Ask me for
-> the email to use as `ADMIN_EMAIL` (whoever logs in with it becomes the
-> console owner) and the public site URL. Set that as `SITE_URL`. Clone the repo, write the
-> variables to a `.env` file next to `docker-compose.yml`, and run
-> `docker compose up -d`.
->
-> Confirm the app container's logs show the migration step finishing
-> ("Nothing pending" or a list of applied migrations) and the server
-> starting, not crashing. Then tell me the URL and confirm I can log in at
-> `/console/login` with `ADMIN_EMAIL`. The homepage itself will say "not
-> live yet" until a page is published from `/console/pages` -- that's
-> expected on a fresh install. If anything fails, show me the actual
-> error instead of guessing.
->
-> If a migration fails: a migration that already succeeded is marked
-> done permanently in that database and won't re-run just because its
-> file changes later, so retrying after a fix with just `docker compose
-> up -d` won't help -- you'll see the exact same error. Run `docker
-> compose down -v` (removes the database volume too) and `docker compose
-> up -d` again instead, so migrations run fresh from an empty database.
 
 ## What it is
 
