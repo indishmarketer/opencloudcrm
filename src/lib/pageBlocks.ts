@@ -15,14 +15,14 @@
 
 import { safeHref, SOCIAL_PLATFORMS } from "@/lib/siteChromeShape";
 
-export type FieldKind = "text" | "textarea" | "richtext" | "link" | "image" | "select" | "number" | "toggle" | "list" | "color" | "code" | "datetime";
+export type FieldKind = "text" | "textarea" | "richtext" | "link" | "image" | "select" | "iconPicker" | "number" | "toggle" | "list" | "color" | "code" | "datetime";
 
 type BaseField = { key: string; label: string; help?: string };
 export type FieldDef =
   | (BaseField & { kind: "text" | "textarea"; max?: number; placeholder?: string })
   | (BaseField & { kind: "richtext" })
   | (BaseField & { kind: "link" | "image"; placeholder?: string })
-  | (BaseField & { kind: "select"; options: { value: string; label: string }[] })
+  | (BaseField & { kind: "select" | "iconPicker"; options: { value: string; label: string }[] })
   | (BaseField & { kind: "number"; min: number; max: number })
   | (BaseField & { kind: "toggle" })
   | (BaseField & { kind: "list"; itemLabel: string; max: number; fields: FieldDef[] })
@@ -75,6 +75,18 @@ const select = (key: string, label: string, options: [string, string][], help?: 
   key,
   label,
   kind: "select",
+  help,
+  options: options.map(([value, optionLabel]) => ({ value, label: optionLabel })),
+});
+/** Same shape as select(), but rendered as a searchable visual grid of
+ * glyphs (see IconPickerField in PageBlockFields.tsx) instead of a list of
+ * option labels -- for a field whose options are themselves icons, where
+ * reading a name next to a dozen others is far slower than recognizing the
+ * shape. */
+const iconPicker = (key: string, label: string, options: [string, string][], help?: string): FieldDef => ({
+  key,
+  label,
+  kind: "iconPicker",
   help,
   options: options.map(([value, optionLabel]) => ({ value, label: optionLabel })),
 });
@@ -243,7 +255,7 @@ export const BLOCK_DEFS: BlockDef[] = [
     description: "One standalone icon, optionally with a label and link -- e.g. a feature list item or a trust badge.",
     category: "Content",
     fields: [
-      select("icon", "Icon", ICON_NAMES),
+      iconPicker("icon", "Icon", ICON_NAMES),
       text("label", "Label (optional)", { max: 80 }),
       link("href", "Link (optional)"),
       select("size", "Size", [["sm", "Small"], ["md", "Medium"], ["lg", "Large"]]),
@@ -711,7 +723,8 @@ function normalizeField(field: FieldDef, value: unknown, fallback: unknown, sani
       return value === undefined ? (typeof fallback === "string" ? fallback : "") : safeHref(value);
     case "image":
       return value === undefined ? (typeof fallback === "string" ? fallback : "") : safeImageUrl(value);
-    case "select": {
+    case "select":
+    case "iconPicker": {
       const allowed = field.options.map((o) => o.value);
       const v = typeof value === "number" ? String(value) : value;
       if (typeof v === "string" && allowed.includes(v)) return v;

@@ -1,9 +1,11 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import RichTextEditor from "@/components/RichTextEditor";
 import BrandSelect from "@/components/BrandSelect";
 import MediaLibraryPicker from "@/components/MediaLibraryPicker";
+import AnchoredPopover from "@/components/AnchoredPopover";
+import { ICON_COMPONENTS } from "@/components/pageBlocks/blockViews";
 import { MERGE_TAGS, type FieldDef } from "@/lib/pageBlocks";
 
 const inputClass =
@@ -234,6 +236,104 @@ function ListField({
   );
 }
 
+/** Like BrandSelect, but for a field whose options ARE glyphs: a searchable
+ * grid of the actual icons (WhatsApp-emoji-picker style), not a list of
+ * their names. Typing still filters by label -- browsing by name alone
+ * doesn't work when you don't remember what any given icon is called. */
+function IconPickerField({
+  value,
+  onChange,
+  options,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  options: { value: string; label: string }[];
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const trigger = useRef<HTMLButtonElement>(null);
+  const searchInput = useRef<HTMLInputElement>(null);
+
+  const close = useCallback(() => {
+    setOpen(false);
+    setQuery("");
+  }, []);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return options;
+    return options.filter((o) => o.label.toLowerCase().includes(q));
+  }, [options, query]);
+
+  useEffect(() => {
+    if (open) searchInput.current?.focus();
+  }, [open]);
+
+  function pick(next: string) {
+    onChange(next);
+    close();
+  }
+
+  const Selected = ICON_COMPONENTS[value];
+
+  return (
+    <div className="relative">
+      <button
+        ref={trigger}
+        type="button"
+        onClick={() => (open ? close() : setOpen(true))}
+        aria-expanded={open}
+        className={`flex w-full items-center gap-2.5 rounded-lg border border-line bg-paper px-3 py-2 text-left text-sm outline-none transition-colors focus:border-ink ${
+          open ? "border-ink" : ""
+        }`}
+      >
+        {Selected ? <Selected className="h-5 w-5 shrink-0" /> : null}
+        <span className="truncate text-ink-soft">{options.find((o) => o.value === value)?.label || "Choose an icon…"}</span>
+      </button>
+      <AnchoredPopover anchor={trigger} open={open} onClose={close} width={296} className="p-0">
+        <div className="sticky top-0 z-10 bg-paper">
+          <input
+            ref={searchInput}
+            type="text"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && filtered.length > 0) {
+                event.preventDefault();
+                pick(filtered[0].value);
+              }
+            }}
+            placeholder="Search icons…"
+            className="w-full border-b border-line bg-paper px-4 py-2.5 text-sm outline-none placeholder:text-ink-soft/70"
+          />
+        </div>
+        {filtered.length === 0 ? (
+          <p className="px-4 py-3 text-sm text-ink-soft">No matches.</p>
+        ) : (
+          <div className="grid grid-cols-6 gap-1 p-2">
+            {filtered.map((o) => {
+              const Glyph = ICON_COMPONENTS[o.value];
+              return (
+                <button
+                  key={o.value}
+                  type="button"
+                  title={o.label}
+                  onClick={() => pick(o.value)}
+                  className={`flex aspect-square items-center justify-center rounded-lg hover:bg-paper-soft ${
+                    o.value === value ? "bg-paper-soft ring-1 ring-inset ring-ink/20" : ""
+                  }`}
+                >
+                  {Glyph ? <Glyph className="h-5 w-5" /> : null}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </AnchoredPopover>
+    </div>
+  );
+}
+
 function FieldInput({
   field,
   value,
@@ -278,6 +378,8 @@ function FieldInput({
           options={field.options}
         />
       );
+    case "iconPicker":
+      return <IconPickerField value={asString || field.options[0]?.value || ""} onChange={onChange} options={field.options} />;
     case "number":
       return (
         <input

@@ -59,6 +59,19 @@ function rowColumns(row: PageBlock): PageBlock[][] {
   return Array.isArray(row.props.items) ? (row.props.items as PageBlock[][]) : [];
 }
 
+/** When the Columns field changes a row's column count, `items` (one array
+ * per column) has to grow or shrink to match right away -- otherwise the
+ * canvas renders the new column count but the extra columns have no
+ * `items` entry at all, so there's nothing there to click "+ Add element"
+ * on until the page is saved and reloaded (normalizeBlock pads/truncates
+ * server-side on save, but that's a full round-trip too late for editing
+ * to feel like it's working). Mirrors that same pad/truncate here. */
+function resizeRowItems(props: Record<string, unknown>): Record<string, unknown> {
+  const count = Number(props.columns) || 2;
+  const items = Array.isArray(props.items) ? (props.items as PageBlock[][]) : [];
+  return { ...props, items: Array.from({ length: count }, (_, i) => items[i] || []) };
+}
+
 const BackIcon = () => (
   <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
     <path d="m14.5 5-7 7 7 7M8 12h12" />
@@ -583,7 +596,8 @@ export default function ConsolePageEditor({
           key: selectedTopBlock.id,
           def: getBlockDef(selectedTopBlock.type),
           props: selectedTopBlock.props,
-          onChangeProps: (next: Record<string, unknown>) => update(blocks.map((b) => (b.id === selectedTopBlock.id ? { ...b, props: next } : b))),
+          onChangeProps: (next: Record<string, unknown>) =>
+            update(blocks.map((b) => (b.id === selectedTopBlock.id ? { ...b, props: selectedTopBlock.type === "row" ? resizeRowItems(next) : next } : b))),
           onDelete: () => void removeBlock(selectedTopBlock),
           canDuplicate: !getBlockDef(selectedTopBlock.type)?.internal,
         }

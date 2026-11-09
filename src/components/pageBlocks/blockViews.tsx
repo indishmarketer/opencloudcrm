@@ -93,7 +93,10 @@ const FONT_WEIGHT: Record<string, string> = { normal: "font-normal", medium: "fo
 /** Keys must match ICON_NAMES in src/lib/pageBlocks.ts exactly -- that file
  * drives the picker options, this map is what actually resolves a chosen
  * key to a glyph. */
-const ICON_COMPONENTS: Record<string, LucideIcon> = {
+/** Exported so the console's icon-picker field (PageBlockFields.tsx) can
+ * render the real glyphs in its grid instead of just option labels --
+ * same source of truth IconBlock itself renders from. */
+export const ICON_COMPONENTS: Record<string, LucideIcon> = {
   star: Star,
   heart: Heart,
   zap: Zap,
