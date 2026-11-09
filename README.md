@@ -78,8 +78,9 @@ Pick **one** of these three ways to create the resources:
 
 1. In Coolify (v4.5+): **Settings -> Advanced**, enable **MCP Server** and
    **API Access**.
-2. **Keys & Tokens -> API Tokens**, create a token with project, resource,
-   and deploy permissions.
+2. **Keys & Tokens -> API Tokens**, create a token with **root** permissions.
+   A scoped token can't create a new project or environment, and the prompt
+   below may need to do that. Keep this token secure -- it has full access.
 3. Connect your agent to `https://your-coolify-domain/mcp` with that token.
    For Claude Code:
    ```bash
@@ -93,9 +94,11 @@ Pick **one** of these three ways to create the resources:
    > PostgreSQL database** layout in
    > `https://github.com/indishmarketer/opencloudcrm/blob/main/docs/coolify-rolling-deployment.md`.
    > Follow the environment, health-check, and scheduled-task steps there.
-   > Do not create a Docker Compose service or publish a host port. Verify a
-   > rolling update with continuous HTTP requests before saying updates are
-   > uninterrupted.
+   > If no suitable project and environment already exist, create a new
+   > project and environment first, then deploy into it -- otherwise use
+   > the one I point you to. Do not create a Docker Compose service or
+   > publish a host port. Verify a rolling update with continuous HTTP
+   > requests before saying updates are uninterrupted.
 
 **3. Click through it manually** -- the full step-by-step is in
 [Coolify rolling deployment](docs/coolify-rolling-deployment.md).
