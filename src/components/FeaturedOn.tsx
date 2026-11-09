@@ -63,8 +63,31 @@ function BadgeItem({ listing, copy }: { listing: Listing; copy?: boolean }) {
   );
 }
 
-export default function FeaturedOn({ heading, listings }: { heading: string; listings: Listing[] }) {
-  if (listings.length === 0) return null;
+export default function FeaturedOn({
+  heading,
+  listings,
+  editorEmpty = false,
+}: {
+  heading: string;
+  listings: Listing[];
+  /** A freshly-added block has no badges yet, and this renders nothing
+   * until it does -- right for a real page, wrong for the editor canvas,
+   * where that makes the block invisible and unselectable. Only the
+   * editor's own call site passes this. */
+  editorEmpty?: boolean;
+}) {
+  if (listings.length === 0) {
+    if (!editorEmpty) return null;
+    return (
+      <section className="border-b border-line bg-paper-soft">
+        <div className="mx-auto max-w-6xl px-6 py-8 sm:py-10">
+          <div className="flex min-h-[72px] items-center justify-center rounded-xl border border-dashed border-line bg-paper px-6 py-8 text-center text-sm text-ink-soft">
+            Add badges in the panel on the right
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section aria-labelledby="featured-on-heading" className="border-b border-line bg-paper-soft">

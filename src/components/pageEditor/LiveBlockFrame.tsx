@@ -128,17 +128,17 @@ export function renderLiveBlock(
     case "stats":
       return <StatsBlock props={props} />;
     case "latestPosts":
-      return <LatestPostsView props={props} posts={liveData.posts} />;
+      return <LatestPostsView props={props} posts={liveData.posts} editorEmpty />;
     case "latestCourses":
-      return <LatestCoursesView props={props} courses={liveData.courses} />;
+      return <LatestCoursesView props={props} courses={liveData.courses} editorEmpty />;
     case "reviews":
-      return <ReviewsView props={props} reviewers={liveData.reviewers} />;
+      return <ReviewsView props={props} reviewers={liveData.reviewers} editorEmpty />;
     case "workflowDemo":
       return <WorkflowDemoBlock props={props} />;
     case "integrations":
       return <IntegrationsBlock props={props} />;
     case "featuredOn":
-      return <FeaturedOnBlock props={props} />;
+      return <FeaturedOnBlock props={props} editorEmpty />;
     case "contactForm":
       return <ContactFormSection props={props} business={business} />;
     case "newsletter":

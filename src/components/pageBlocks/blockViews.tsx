@@ -1064,9 +1064,17 @@ function CardGridLink({ href, image, title, text }: { href: string; image: strin
   );
 }
 
-export function LatestPostsView({ props, posts }: { props: Props; posts: BlogIndexEntry[] }) {
+export function LatestPostsView({ props, posts, editorEmpty = false }: { props: Props; posts: BlogIndexEntry[]; editorEmpty?: boolean }) {
   const visible = posts.slice(0, num(props, "count", 3));
-  if (!visible.length) return null;
+  if (!visible.length) {
+    if (!editorEmpty) return null;
+    return (
+      <Section props={props}>
+        <SectionHeading heading={str(props, "heading")} link={{ href: "/blog", label: str(props, "linkLabel") }} />
+        <EmptyBlockPlaceholder text="No published blog posts yet -- this will fill in once you have some" />
+      </Section>
+    );
+  }
   return (
     <Section props={props}>
       <SectionHeading heading={str(props, "heading")} link={{ href: "/blog", label: str(props, "linkLabel") }} />
@@ -1081,9 +1089,17 @@ export function LatestPostsView({ props, posts }: { props: Props; posts: BlogInd
 
 export type CourseSummary = { slug: string; title: string; description: string | null; cover_image_url: string | null };
 
-export function LatestCoursesView({ props, courses }: { props: Props; courses: CourseSummary[] }) {
+export function LatestCoursesView({ props, courses, editorEmpty = false }: { props: Props; courses: CourseSummary[]; editorEmpty?: boolean }) {
   const visible = courses.slice(0, num(props, "count", 3));
-  if (!visible.length) return null;
+  if (!visible.length) {
+    if (!editorEmpty) return null;
+    return (
+      <Section props={props}>
+        <SectionHeading heading={str(props, "heading")} link={{ href: "/courses", label: str(props, "linkLabel") }} />
+        <EmptyBlockPlaceholder text="No published courses yet -- this will fill in once you have some" />
+      </Section>
+    );
+  }
   return (
     <Section props={props}>
       <SectionHeading heading={str(props, "heading")} link={{ href: "/courses", label: str(props, "linkLabel") }} />
@@ -1096,9 +1112,17 @@ export function LatestCoursesView({ props, courses }: { props: Props; courses: C
   );
 }
 
-export function ReviewsView({ props, reviewers }: { props: Props; reviewers: Reviewer[] }) {
+export function ReviewsView({ props, reviewers, editorEmpty = false }: { props: Props; reviewers: Reviewer[]; editorEmpty?: boolean }) {
   const latest = reviewers.slice(0, num(props, "count", 3));
-  if (!latest.length) return null;
+  if (!latest.length) {
+    if (!editorEmpty) return null;
+    return (
+      <Section props={props}>
+        <SectionHeading heading={str(props, "heading")} link={{ href: "/reviews", label: str(props, "linkLabel") }} />
+        <EmptyBlockPlaceholder text="No published reviews yet -- this will fill in once you have some" />
+      </Section>
+    );
+  }
   return (
     <Section props={props}>
       <SectionHeading heading={str(props, "heading")} link={{ href: "/reviews", label: str(props, "linkLabel") }} />
@@ -1148,7 +1172,7 @@ export function IntegrationsBlock({ props }: { props: Props }) {
   );
 }
 
-export function FeaturedOnBlock({ props }: { props: Props }) {
+export function FeaturedOnBlock({ props, editorEmpty = false }: { props: Props; editorEmpty?: boolean }) {
   const items = list(props, "items").map((item) => ({
     href: str(item, "href"),
     badge: str(item, "badge"),
@@ -1156,7 +1180,7 @@ export function FeaturedOnBlock({ props }: { props: Props }) {
     height: typeof item.height === "number" ? item.height : 60,
     alt: str(item, "alt"),
   }));
-  return <FeaturedOn heading={str(props, "heading")} listings={items} />;
+  return <FeaturedOn heading={str(props, "heading")} listings={items} editorEmpty={editorEmpty} />;
 }
 
 export function NewsletterBlock({ props }: { props: Props }) {
