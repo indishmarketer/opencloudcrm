@@ -22,7 +22,32 @@ database. `docker-compose.yml` in this repo gives you both, using a
 this app from source needs several GB of RAM and fails silently on a small
 VPS (the build just gets killed, no error, deploy shows "failed").
 
+For a public site on Coolify, use the standalone application and database
+layout below. The Compose file is a simpler option, but it briefly replaces
+the only web container during updates and can show a 503 page.
+
 ### Coolify
+
+**Recommended for public sites:** Use a standalone PostgreSQL database and a
+standalone Docker Image application. Coolify can start the new web container
+before removing the old one during updates. The complete setup, including
+scheduled jobs and a deployment test, is in
+[Coolify rolling deployment](docs/coolify-rolling-deployment.md). The app image
+already has a readiness check. Do not publish a fixed host port or use a fixed
+container name.
+
+If you use a Coolify MCP agent, give it this prompt:
+
+> Deploy OpenCloudCRM from `ghcr.io/indishmarketer/opencloudcrm:latest`
+> using the **standalone Docker Image application** and **standalone
+> PostgreSQL database** layout in
+> `https://github.com/indishmarketer/opencloudcrm/blob/main/docs/coolify-rolling-deployment.md`.
+> Follow the environment, health-check, and scheduled-task steps there.
+> Do not create a Docker Compose service or publish a host port. Verify a
+> rolling update with continuous HTTP requests before saying updates are
+> uninterrupted.
+
+**Simpler Compose install (the site can briefly return 503 during updates):**
 
 **Deploy With AI Agents**
 
@@ -71,7 +96,7 @@ Let AI agents (Claude Code, Codex, Antigravity, OpenCode, etc.) do the whole thi
    > *exact same* error again, that's why -- don't keep redeploying.
    > Delete the service (with its volumes) and deploy fresh instead.
 
-**Deploy Manually:**
+**Deploy Compose manually:**
 
 1. **New Resource -> Docker Compose**, point it at this repo (branch
    `main`). If Coolify gives you an empty box instead of a Git source
@@ -107,11 +132,11 @@ one and switch traffic after the new app becomes healthy. Keep the scheduler
 separate so it does not determine the web app's rollout.
 
 
-**Already have this running and just want to update it?** 
-Redeploy the same app resource -- don't switch it to Compose. Redeploying only rebuilds
-that one container; it never touches your existing database. Migrations
-only ever add (`CREATE TABLE IF NOT EXISTS`, etc.), never drop, so this is
-safe even with real data in there.
+**Already have a standalone application running and just want to update it?**
+Redeploy that application resource. Keep its database separate and leave
+host port mapping and fixed container naming disabled so Coolify can overlap
+the old and new web containers. Review migration compatibility before each
+release because both versions may run at once.
 
 **Stuck on a migration error on a brand-new (not yet real-data) deploy?**
 A migration that completes successfully is marked done permanently for
@@ -146,7 +171,10 @@ cp .env.example .env   # fill in DB_PASSWORD, SESSION_SECRET, ADMIN_EMAIL
 docker compose up -d
 ```
 
-The app, scheduler, and database use the same prebuilt image and Compose configuration.
+The app, scheduler, and database use the prebuilt image and Compose
+configuration. Plain `docker compose up` also replaces the single web
+container during updates; use an orchestrator with rolling updates if a
+brief interruption is unacceptable.
 
 **Or hand it to an AI agent** with shell access to your server:
 
@@ -211,16 +239,16 @@ shows what's pending without running anything.
 `.env.example` documents every variable. Compose requires `DB_PASSWORD`,
 `SESSION_SECRET`, `ADMIN_EMAIL`, `CRON_SECRET`, and `SITE_URL`; it builds `DATABASE_URL`
 from the database service. A standalone image requires `DATABASE_URL` instead
-of `DB_PASSWORD`;
-everything else is optional and documented inline where it matters (e.g.
+of `DB_PASSWORD`. Everything else is optional and documented inline where it matters (e.g.
 outbound email is required for console login, since that's a magic link).
 
 The Compose scheduler calls reminder routes every minute, email and outbound
 webhook dispatch every five minutes, and maintenance daily. Set
 `BACKUP_ENABLED=true` after configuring R2 backup storage, and
 `CALCOM_ENABLED=true` after configuring Cal.com to enable those daily jobs.
-If you run only the Docker image without Compose, arrange equivalent POST
-requests to `/api/cron/*` with `Authorization: Bearer <CRON_SECRET>`.
+For a standalone Coolify application, use the three scheduled tasks in
+[Coolify rolling deployment](docs/coolify-rolling-deployment.md). They call
+[`scripts/cron/run-once.sh`](scripts/cron/run-once.sh) inside the container.
 Before sending mail, set `EMAIL_FROM` to an address verified by your email
 provider and enter your business address in Console → Site Settings.
 
