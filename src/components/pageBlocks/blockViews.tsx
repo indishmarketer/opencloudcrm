@@ -49,6 +49,7 @@ import CountdownTimer from "@/components/CountdownTimer";
 import BusinessContactDetails from "@/components/BusinessContactDetails";
 import BlockImage from "@/components/pageBlocks/BlockImage";
 import ContactFormBlock from "@/components/pageBlocks/ContactFormBlock";
+import CustomFormBlock from "@/components/pageBlocks/CustomFormBlock";
 
 /** Every block's actual visual output, as plain (non-async, no server-only
  * imports) components -- deliberately isomorphic: used by the public
@@ -1204,6 +1205,22 @@ export function ContactFormSection({ props, business }: { props: Props; business
  * in src/lib/otpCompletion.ts) -- only the block's own fields/labels are
  * generalized, not the OTP/webhook/email plumbing behind them. */
 export function FormBlock({ props, business }: { props: Props; business: ResolvedBusiness }) {
+  if (str(props, "mode") === "custom") {
+    const fields = list(props, "customFields")
+      .filter((f) => str(f, "label"))
+      .map((f) => ({ label: str(f, "label"), type: str(f, "type") || "text", options: str(f, "options"), required: bool(f, "required") }));
+    return (
+      <RichSection props={props} widthDefault={672}>
+        <CustomFormBlock
+          heading={str(props, "heading")}
+          text={str(props, "text")}
+          fields={fields}
+          successHeading={str(props, "successHeading") || "Thanks, got it."}
+          successText={str(props, "successText")}
+        />
+      </RichSection>
+    );
+  }
   if (str(props, "mode") === "newsletter") {
     return (
       <RichSection props={props} widthDefault={576}>
