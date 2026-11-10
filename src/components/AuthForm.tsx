@@ -6,7 +6,6 @@ import Turnstile from "@/components/Turnstile";
 import UpdatesOptIn from "@/components/UpdatesOptIn";
 import CountrySelect from "@/components/CountrySelect";
 import PhoneInput, { toE164 } from "@/components/PhoneInput";
-import { isPhoneRequired } from "@/lib/phoneRequirement";
 import { trackEvent } from "@/lib/gtag";
 
 export default function AuthForm({ mode }: { mode: "signup" | "login" }) {
@@ -26,8 +25,6 @@ export default function AuthForm({ mode }: { mode: "signup" | "login" }) {
   const [country, setCountry] = useState("");
   const [phone, setPhone] = useState("");
   const handleToken = useCallback((t: string) => setTurnstileToken(t), []);
-  // WhatsApp-first markets need the number; everywhere else it's optional.
-  const phoneNeeded = isPhoneRequired(country);
 
   async function handleResend() {
     setResent(true);
@@ -46,11 +43,6 @@ export default function AuthForm({ mode }: { mode: "signup" | "login" }) {
       return;
     }
     const e164Phone = mode === "signup" ? toE164(country, phone) : null;
-    if (mode === "signup" && phoneNeeded && !e164Phone) {
-      setStatus("error");
-      setError("Enter your phone number.");
-      return;
-    }
     setStatus("submitting");
     setError("");
     setNeedsVerification(false);
@@ -214,12 +206,9 @@ export default function AuthForm({ mode }: { mode: "signup" | "login" }) {
       {mode === "signup" && (
         <div>
           <label className="text-sm font-medium" htmlFor="phone">
-            Phone {!phoneNeeded && <span className="text-ink-soft">(optional)</span>}
+            Phone <span className="text-ink-soft">(optional)</span>
           </label>
           <PhoneInput id="phone" country={country} value={phone} onChange={setPhone} className="mt-2" />
-          {phoneNeeded && (
-            <p className="mt-1.5 text-xs text-ink-soft">We send order and booking updates on WhatsApp.</p>
-          )}
         </div>
       )}
       {mode === "signup" && (

@@ -12,7 +12,6 @@ import { getAttributionFromRequest } from "@/lib/attribution";
 import { checkRateLimit, privateRateLimitKey } from "@/lib/rateLimit";
 import { ensureContact } from "@/lib/contacts";
 import { normalizeCountry } from "@/lib/countries";
-import { isPhoneRequired } from "@/lib/phoneRequirement";
 import { SITE_URL } from "@/lib/liveSiteUrl";
 import { z } from "zod";
 
@@ -43,13 +42,10 @@ export async function POST(req: NextRequest) {
   // anything, so the box only counts when a number came with it.
   const whatsappOptIn = parsed.data.whatsapp_opt_in === true && !!parsed.data.phone;
   // Country is a real required answer now, not a guess we fill in: it drives
-  // the currency, the payment method, and whether the phone number below is
-  // mandatory, so an IP fallback would silently decide all three.
+  // the currency and the payment method, so an IP fallback would silently
+  // decide both. Phone is always optional, for every country.
   const country = normalizeCountry(parsed.data.country);
   if (!country) return NextResponse.json({ error: "Select your country." }, { status: 400 });
-  if (isPhoneRequired(country) && !parsed.data.phone) {
-    return NextResponse.json({ error: "Enter your phone number." }, { status: 400 });
-  }
   if (!(await checkRateLimit(`signup-email:${privateRateLimitKey(email)}`, 3, 24 * 60 * 60 * 1000))) {
     return NextResponse.json({ error: "Too many signup attempts." }, { status: 429 });
   }
