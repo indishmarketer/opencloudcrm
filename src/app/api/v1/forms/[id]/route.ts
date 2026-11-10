@@ -36,9 +36,12 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     heading: typeof body.heading === "string" ? body.heading : existing.heading,
     introText: typeof body.introText === "string" ? body.introText : existing.introText,
     fields: body.fields !== undefined ? body.fields : existing.fields,
+    elements: body.elements !== undefined ? body.elements : existing.elements,
     submitLabel: typeof body.submitLabel === "string" ? body.submitLabel : existing.submitLabel,
     successHeading: typeof body.successHeading === "string" ? body.successHeading : existing.successHeading,
     successText: typeof body.successText === "string" ? body.successText : existing.successText,
+    submissionAction: typeof body.submissionAction === "string" ? body.submissionAction : existing.submissionAction,
+    redirectUrl: typeof body.redirectUrl === "string" ? body.redirectUrl : existing.redirectUrl,
     notifyEmail: typeof body.notifyEmail === "string" ? body.notifyEmail : existing.notifyEmail,
     verifyEmail: typeof body.verifyEmail === "boolean" ? body.verifyEmail : existing.verifyEmail,
     design: body.design !== undefined ? body.design : existing.design,
@@ -68,7 +71,14 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   const existing = await resolveForm(id);
   if (!existing) return NextResponse.json({ error: "Form not found." }, { status: 404 });
 
-  const ok = await deleteForm(existing.id);
-  if (!ok) return NextResponse.json({ error: "Form not found." }, { status: 404 });
-  return NextResponse.json({ ok: true });
+  if (existing.isFixed) {
+    return NextResponse.json({ error: "Fixed forms (Sign up / Log in) cannot be deleted." }, { status: 403 });
+  }
+
+  try {
+    await deleteForm(existing.id);
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    return NextResponse.json({ error: err instanceof Error ? err.message : "Could not delete form." }, { status: 500 });
+  }
 }

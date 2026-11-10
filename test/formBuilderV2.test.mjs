@@ -4,6 +4,9 @@ import {
   normalizeFormDefinition,
   validateFormDefinition,
   normalizeFormFields,
+  normalizeFormElements,
+  elementsToFields,
+  formDefinitionToElements,
   EMPTY_FORM_DESIGN,
 } from "../src/lib/formsShape.ts";
 
@@ -14,9 +17,12 @@ test("form builder v2: blank form can start with 0 fields and no forced copy", (
   assert.equal(normalized.heading, "");
   assert.equal(normalized.introText, "");
   assert.deepEqual(normalized.fields, []);
+  assert.deepEqual(normalized.elements, []);
   assert.equal(normalized.submitLabel, "Submit");
   assert.equal(normalized.successHeading, "");
   assert.equal(normalized.successText, "");
+  assert.equal(normalized.submissionAction, "message");
+  assert.equal(normalized.redirectUrl, "");
   assert.equal(normalized.verifyEmail, false);
   assert.equal(normalized.isFixed, false);
   assert.deepEqual(normalized.design, EMPTY_FORM_DESIGN);
@@ -99,4 +105,52 @@ test("form builder v2: isFixed flag is preserved for auth forms", () => {
 
   const regular = normalizeFormDefinition({ name: "Contact", isFixed: false });
   assert.equal(regular.isFixed, false);
+});
+
+test("form builder v2: canvas elements can be converted to/from fields cleanly", () => {
+  const elements = [
+    { id: "e1", type: "heading", headingText: "Get in touch" },
+    { id: "e2", type: "text", textContent: "We reply within 24h" },
+    { id: "e3", type: "text_input", fieldLabel: "Your Name", fieldKey: "name", fieldRequired: true },
+    { id: "e4", type: "email", fieldLabel: "Work Email", fieldKey: "email", fieldRequired: true },
+    { id: "e5", type: "hidden", fieldKey: "utm_source", fieldDefaultValue: "twitter" },
+    { id: "e6", type: "button", buttonLabel: "Send Message" },
+  ];
+
+  const normalizedElements = normalizeFormElements(elements);
+  assert.equal(normalizedElements.length, 6);
+
+  const fields = elementsToFields(normalizedElements);
+  assert.equal(fields.length, 3);
+  assert.equal(fields[0].key, "name");
+  assert.equal(fields[0].type, "text");
+  assert.equal(fields[0].required, true);
+  assert.equal(fields[1].key, "email");
+  assert.equal(fields[1].type, "email");
+  assert.equal(fields[2].key, "utm_source");
+  assert.equal(fields[2].hidden, true);
+  assert.equal(fields[2].defaultValue, "twitter");
+
+  // Converting classic form definition to elements
+  const converted = formDefinitionToElements({
+    heading: "Contact Form",
+    introText: "Drop us a line",
+    fields: [{ key: "subject", label: "Subject", type: "text", required: true, hidden: false, defaultValue: "", options: "" }],
+    submitLabel: "Submit Ticket",
+  });
+  assert.equal(converted.length, 4);
+  assert.equal(converted[0].type, "heading");
+  assert.equal(converted[1].type, "text");
+  assert.equal(converted[2].type, "text_input");
+  assert.equal(converted[3].type, "button");
+});
+
+test("form builder v2: submission action and redirect URL are normalized", () => {
+  const redirectForm = normalizeFormDefinition({
+    name: "Lead Form",
+    submissionAction: "redirect",
+    redirectUrl: "/thank-you-page",
+  });
+  assert.equal(redirectForm.submissionAction, "redirect");
+  assert.equal(redirectForm.redirectUrl, "/thank-you-page");
 });

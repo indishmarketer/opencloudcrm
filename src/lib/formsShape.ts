@@ -1,8 +1,8 @@
-/** A saved, reusable form built in Console → Forms: its name, copy, fields,
- * design, and optional email-verification step.  Placeable as a page-builder
+/** A saved, reusable form built in Console → Forms: its name, canvas elements,
+ * design, and optional email-verification step. Placeable as a page-builder
  * "savedForm" block or opened as a popup from any button's action -- the same
  * form definition drives both, and the same form can be reused in more than
- * one place.  Every form also gets a shareable /f/<slug> standalone URL.
+ * one place. Every form also gets a shareable /f/<slug> standalone URL.
  *
  * No imports on purpose: safe for client components and plain node tests.
  * The DB read/write lives in src/lib/forms.ts. */
@@ -20,43 +20,83 @@ export const FORM_FIELD_TYPES: { value: FormFieldType; label: string }[] = [
   { value: "date", label: "Date" },
 ];
 
+export type FormElementType =
+  | "heading"
+  | "text"
+  | "text_input"
+  | "email"
+  | "phone"
+  | "textarea"
+  | "select"
+  | "checkbox"
+  | "number"
+  | "hidden"
+  | "button"
+  | "divider";
+
+export const FORM_ELEMENT_PALETTE: {
+  type: FormElementType;
+  label: string;
+  category: "layout" | "fields" | "action";
+  description: string;
+}[] = [
+  { type: "heading", label: "Heading", category: "layout", description: "Title or section header" },
+  { type: "text", label: "Paragraph", category: "layout", description: "Instructions, notes, or disclaimer" },
+  { type: "text_input", label: "Text input", category: "fields", description: "Single-line text field" },
+  { type: "email", label: "Email", category: "fields", description: "Email address with validation" },
+  { type: "phone", label: "Phone", category: "fields", description: "Phone number input" },
+  { type: "textarea", label: "Long text", category: "fields", description: "Multi-line text area" },
+  { type: "select", label: "Dropdown", category: "fields", description: "Select menu with custom choices" },
+  { type: "checkbox", label: "Checkbox", category: "fields", description: "Single checkbox or consent toggle" },
+  { type: "number", label: "Number", category: "fields", description: "Numeric input" },
+  { type: "hidden", label: "Hidden field", category: "fields", description: "Silently captures tracking context (UTM)" },
+  { type: "button", label: "Submit button", category: "action", description: "Form submission button" },
+  { type: "divider", label: "Divider", category: "layout", description: "Horizontal separation line" },
+];
+
+export type FormCanvasElement = {
+  id: string;
+  type: FormElementType;
+  // Heading properties
+  headingText?: string;
+  headingLevel?: "h1" | "h2" | "h3" | "h4";
+  headingAlign?: "left" | "center" | "right";
+  // Text properties
+  textContent?: string;
+  textMuted?: boolean;
+  textAlign?: "left" | "center" | "right";
+  // Field properties
+  fieldKey?: string;
+  fieldLabel?: string;
+  fieldPlaceholder?: string;
+  fieldRequired?: boolean;
+  fieldDefaultValue?: string;
+  fieldOptions?: string;
+  // Button properties
+  buttonLabel?: string;
+  buttonAlign?: "full" | "left" | "center" | "right";
+  buttonVariant?: "primary" | "outline";
+  // Divider properties
+  dividerSpacing?: "sm" | "md" | "lg";
+};
+
 export type FormField = {
-  /** Stable key for this field's value in a submission, independent of
-   * label text so renaming a label never orphans past submissions'
-   * field_values keys.  Auto-generated from the label when a field is added. */
   key: string;
   label: string;
   type: FormFieldType;
-  /** Comma-separated choices, only meaningful when type === "select". */
   options: string;
   required: boolean;
-  /** When true the field is not shown to the visitor but its defaultValue is
-   * still included in the submission payload -- for silently capturing
-   * tracking context like UTM parameters from the page the form sits on. */
   hidden: boolean;
-  /** Pre-set value submitted for a hidden field (e.g. a UTM source).  Also
-   * used as the initial value of a visible field when the form pre-fills. */
   defaultValue: string;
 };
 
-/** Per-form design tokens.  Every field defaults to "" which means "inherit
- * the site's own look."  Non-empty values are applied as inline styles by
- * SavedForm so they can never be overridden by the site theme or the page
- * the form sits in. */
 export type FormDesign = {
-  /** Hex/CSS color for the submit button background. */
   buttonColor: string;
-  /** Hex/CSS color for the submit button label. */
   buttonTextColor: string;
-  /** Hex/CSS color for input borders. */
   borderColor: string;
-  /** Hex/CSS color for the form background (wrapper). */
   backgroundColor: string;
-  /** Hex/CSS color for label and body text. */
   textColor: string;
-  /** CSS border-radius value for inputs and the button (e.g. "8px" or "9999px"). */
   borderRadius: string;
-  /** CSS font-family override for the whole form. */
   fontFamily: string;
 };
 
@@ -70,39 +110,176 @@ export const EMPTY_FORM_DESIGN: FormDesign = {
   fontFamily: "",
 };
 
+export type FormSubmissionAction = "message" | "redirect";
+
 export type FormDefinition = {
   id: number;
   name: string;
-  /** Optional URL-safe slug for the /f/<slug> standalone page. */
   slug: string;
   heading: string;
   introText: string;
   fields: FormField[];
+  elements: FormCanvasElement[];
   submitLabel: string;
   successHeading: string;
   successText: string;
+  submissionAction: FormSubmissionAction;
+  redirectUrl: string;
   notifyEmail: string;
-  /** When true, the form collects data then sends an OTP to the visitor's
-   * email field; the submission is only recorded after they confirm it. */
   verifyEmail: boolean;
   design: FormDesign;
-  /** When true, this form's field structure is fixed by core auth/security
-   * logic (Sign up / Log in). The form cannot be deleted and its field list
-   * cannot be edited, but its header text, submit label, and design tokens
-   * are fully editable. */
   isFixed: boolean;
 };
 
-export const MAX_FORM_FIELDS = 20;
+export const MAX_FORM_FIELDS = 30;
+
+export function isFieldElementType(type: FormElementType): boolean {
+  return [
+    "text_input",
+    "email",
+    "phone",
+    "textarea",
+    "select",
+    "checkbox",
+    "number",
+    "hidden",
+  ].includes(type);
+}
 
 function slugifyKey(label: string, index: number): string {
   const base = label.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
   return base || `field_${index + 1}`;
 }
 
-/** Coerces anything (a console save, a stored JSON blob) into a clean field
- * list.  Unknown types fall back to "text"; keys are de-duplicated so two
- * fields with the same label don't collide in field_values. */
+export function elementsToFields(elements: FormCanvasElement[]): FormField[] {
+  const seenKeys = new Set<string>();
+  const fields: FormField[] = [];
+
+  for (let i = 0; i < elements.length; i++) {
+    const el = elements[i];
+    if (!isFieldElementType(el.type)) continue;
+
+    const rawType: FormFieldType =
+      el.type === "hidden"
+        ? "text"
+        : el.type === "text_input"
+          ? "text"
+          : (el.type as FormFieldType);
+
+    const label = (el.fieldLabel ?? (el.type === "hidden" ? "Hidden tracker" : "Field")).trim().slice(0, 100);
+    let key = (el.fieldKey ?? slugifyKey(label, i)).trim().slice(0, 60);
+    if (!key) key = `field_${i + 1}`;
+    while (seenKeys.has(key)) key = `${key}_${i}`;
+    seenKeys.add(key);
+
+    fields.push({
+      key,
+      label,
+      type: rawType,
+      options: typeof el.fieldOptions === "string" ? el.fieldOptions.slice(0, 500) : "",
+      required: el.type === "hidden" ? false : el.fieldRequired === true,
+      hidden: el.type === "hidden",
+      defaultValue: typeof el.fieldDefaultValue === "string" ? el.fieldDefaultValue.slice(0, 500) : "",
+    });
+  }
+  return fields.slice(0, MAX_FORM_FIELDS);
+}
+
+export function formDefinitionToElements(form: {
+  heading?: string;
+  introText?: string;
+  fields?: FormField[];
+  submitLabel?: string;
+  elements?: FormCanvasElement[];
+}): FormCanvasElement[] {
+  if (Array.isArray(form.elements) && form.elements.length > 0) {
+    return form.elements;
+  }
+  const elements: FormCanvasElement[] = [];
+  if (form.heading) {
+    elements.push({
+      id: "elem_heading",
+      type: "heading",
+      headingText: form.heading,
+      headingLevel: "h2",
+      headingAlign: "left",
+    });
+  }
+  if (form.introText) {
+    elements.push({
+      id: "elem_intro",
+      type: "text",
+      textContent: form.introText,
+      textMuted: true,
+      textAlign: "left",
+    });
+  }
+  if (Array.isArray(form.fields)) {
+    for (const f of form.fields) {
+      const type: FormElementType = f.hidden
+        ? "hidden"
+        : f.type === "text"
+          ? "text_input"
+          : (f.type as FormElementType);
+      elements.push({
+        id: `elem_${f.key || Math.random().toString(36).slice(2, 9)}`,
+        type,
+        fieldKey: f.key,
+        fieldLabel: f.label,
+        fieldPlaceholder: "",
+        fieldRequired: f.required,
+        fieldDefaultValue: f.defaultValue,
+        fieldOptions: f.options,
+      });
+    }
+  }
+  if (form.submitLabel) {
+    elements.push({
+      id: "elem_submit",
+      type: "button",
+      buttonLabel: form.submitLabel,
+      buttonAlign: "full",
+      buttonVariant: "primary",
+    });
+  }
+  return elements;
+}
+
+export function normalizeFormElements(input: unknown): FormCanvasElement[] {
+  if (!Array.isArray(input)) return [];
+  return input.slice(0, 50).map((raw, index) => {
+    const obj = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+    const id = typeof obj.id === "string" && obj.id ? obj.id : `elem_${index}_${Math.random().toString(36).slice(2, 7)}`;
+    const validTypes: FormElementType[] = FORM_ELEMENT_PALETTE.map((p) => p.type);
+    const type: FormElementType = validTypes.includes(obj.type as FormElementType)
+      ? (obj.type as FormElementType)
+      : "text_input";
+
+    const str = (v: unknown, limit = 200) => (typeof v === "string" ? v.trim().slice(0, limit) : "");
+
+    return {
+      id,
+      type,
+      headingText: str(obj.headingText, 200),
+      headingLevel: ["h1", "h2", "h3", "h4"].includes(String(obj.headingLevel)) ? (obj.headingLevel as "h1" | "h2" | "h3" | "h4") : "h2",
+      headingAlign: ["left", "center", "right"].includes(String(obj.headingAlign)) ? (obj.headingAlign as "left" | "center" | "right") : "left",
+      textContent: str(obj.textContent, 800),
+      textMuted: obj.textMuted === true,
+      textAlign: ["left", "center", "right"].includes(String(obj.textAlign)) ? (obj.textAlign as "left" | "center" | "right") : "left",
+      fieldKey: str(obj.fieldKey, 60),
+      fieldLabel: str(obj.fieldLabel, 100),
+      fieldPlaceholder: str(obj.fieldPlaceholder, 100),
+      fieldRequired: obj.fieldRequired === true,
+      fieldDefaultValue: str(obj.fieldDefaultValue, 500),
+      fieldOptions: str(obj.fieldOptions, 500),
+      buttonLabel: str(obj.buttonLabel, 60),
+      buttonAlign: ["full", "left", "center", "right"].includes(String(obj.buttonAlign)) ? (obj.buttonAlign as "full" | "left" | "center" | "right") : "full",
+      buttonVariant: obj.buttonVariant === "outline" ? "outline" : "primary",
+      dividerSpacing: ["sm", "md", "lg"].includes(String(obj.dividerSpacing)) ? (obj.dividerSpacing as "sm" | "md" | "lg") : "md",
+    };
+  });
+}
+
 export function normalizeFormFields(input: unknown): FormField[] {
   const raw = Array.isArray(input) ? input : [];
   const seenKeys = new Set<string>();
@@ -142,15 +319,51 @@ function normalizeDesign(input: unknown): FormDesign {
 export function normalizeFormDefinition(input: unknown): Omit<FormDefinition, "id"> {
   const raw = input && typeof input === "object" ? (input as Record<string, unknown>) : {};
   const str = (value: unknown, limit = 200) => (typeof value === "string" ? value.trim().slice(0, limit) : "");
+  
+  let elements = normalizeFormElements(raw.elements);
+  let fields = normalizeFormFields(raw.fields);
+
+  if (elements.length > 0 && fields.length === 0) {
+    fields = elementsToFields(elements);
+  } else if (fields.length > 0 && elements.length === 0) {
+    elements = formDefinitionToElements({
+      heading: str(raw.heading, 200),
+      introText: str(raw.introText, 600),
+      fields,
+      submitLabel: str(raw.submitLabel, 60),
+    });
+  }
+
+  // Derive heading, introText, submitLabel from elements if present
+  let heading = str(raw.heading, 200);
+  let introText = str(raw.introText, 600);
+  let submitLabel = str(raw.submitLabel, 60) || "Submit";
+
+  const firstHeading = elements.find((e) => e.type === "heading");
+  if (firstHeading && firstHeading.headingText) {
+    heading = firstHeading.headingText;
+  }
+  const firstText = elements.find((e) => e.type === "text");
+  if (firstText && firstText.textContent) {
+    introText = firstText.textContent;
+  }
+  const firstButton = elements.find((e) => e.type === "button");
+  if (firstButton && firstButton.buttonLabel) {
+    submitLabel = firstButton.buttonLabel;
+  }
+
   return {
     name: str(raw.name, 100),
     slug: str(raw.slug, 80).toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/^-+|-+$/g, ""),
-    heading: str(raw.heading, 200),
-    introText: str(raw.introText, 600),
-    fields: normalizeFormFields(raw.fields),
-    submitLabel: str(raw.submitLabel, 60) || "Submit",
+    heading,
+    introText,
+    fields,
+    elements,
+    submitLabel,
     successHeading: str(raw.successHeading, 200),
     successText: str(raw.successText, 600),
+    submissionAction: raw.submissionAction === "redirect" ? "redirect" : "message",
+    redirectUrl: str(raw.redirectUrl, 300),
     notifyEmail: str(raw.notifyEmail, 200),
     verifyEmail: raw.verifyEmail === true,
     design: normalizeDesign(raw.design),
@@ -161,8 +374,10 @@ export function normalizeFormDefinition(input: unknown): Omit<FormDefinition, "i
 /** Returns a human-readable error, or null if the form can be saved. */
 export function validateFormDefinition(form: Omit<FormDefinition, "id">): string | null {
   if (!form.name) return "Give this form a name.";
-  // A form with no fields is valid -- it starts completely blank.
+  
+  // Check field labels for visible fields
   if (form.fields.some((f) => !f.label && !f.hidden)) return "Every visible field needs a label.";
+  
   const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (form.notifyEmail && !EMAIL_RE.test(form.notifyEmail)) return "The notify email doesn't look like an email address.";
   if (form.verifyEmail) {
