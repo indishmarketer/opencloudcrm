@@ -30,6 +30,7 @@ export const WEBHOOK_EVENT_TYPES = [
   { key: "community.post_created", label: "Community post created", description: "Someone creates a forum post (General or PRO space)." },
   { key: "community.member_inactive", label: "Community member inactive", description: "An active community member has not created their first post." },
   { key: "lead_magnet.downloaded", label: "Free guide downloaded", description: "Someone verifies their email after requesting a free guide and reaches its download page." },
+  { key: "custom_form.submitted", label: "Custom form submitted", description: "Someone submits a form built in Console -> Forms; use the form name and field values in conditions and actions." },
 ] as const;
 
 export type WebhookEventType = (typeof WEBHOOK_EVENT_TYPES)[number]["key"];

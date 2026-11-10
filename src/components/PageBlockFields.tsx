@@ -83,6 +83,33 @@ function ImageField({ value, onChange }: { value: string; onChange: (v: string) 
   );
 }
 
+function FormPickerField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [forms, setForms] = useState<{ id: number; name: string }[] | null>(null);
+
+  useEffect(() => {
+    fetch("/api/console/forms")
+      .then((r) => (r.ok ? r.json() : { forms: [] }))
+      .then((data) => setForms(Array.isArray(data.forms) ? data.forms : []))
+      .catch(() => setForms([]));
+  }, []);
+
+  if (forms === null) return <p className="text-sm text-ink-soft">Loading forms…</p>;
+  if (!forms.length) {
+    return (
+      <p className="text-sm text-ink-soft">
+        No saved forms yet. Create one in <a href="/console/forms" target="_blank" rel="noreferrer" className="underline">Console -&gt; Forms</a>, then come back here.
+      </p>
+    );
+  }
+  return (
+    <BrandSelect
+      value={value}
+      onChange={onChange}
+      options={[{ value: "", label: "Choose a form…" }, ...forms.map((f) => ({ value: String(f.id), label: f.name }))]}
+    />
+  );
+}
+
 const HEX_COLOR_RE = /^#[0-9a-fA-F]{3}([0-9a-fA-F]{3}([0-9a-fA-F]{2})?)?$/;
 
 function ColorField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
@@ -380,6 +407,8 @@ function FieldInput({
       );
     case "iconPicker":
       return <IconPickerField value={asString || field.options[0]?.value || ""} onChange={onChange} options={field.options} />;
+    case "formPicker":
+      return <FormPickerField value={asString} onChange={onChange} />;
     case "number":
       return (
         <input

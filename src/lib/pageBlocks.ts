@@ -16,7 +16,7 @@
 import { safeHref, SOCIAL_PLATFORMS } from "@/lib/siteChromeShape";
 import { escapeHtml } from "@/lib/escapeHtml";
 
-export type FieldKind = "text" | "textarea" | "richtext" | "link" | "image" | "select" | "iconPicker" | "number" | "toggle" | "list" | "color" | "code" | "datetime";
+export type FieldKind = "text" | "textarea" | "richtext" | "link" | "image" | "select" | "iconPicker" | "formPicker" | "number" | "toggle" | "list" | "color" | "code" | "datetime";
 
 type BaseField = { key: string; label: string; help?: string };
 export type FieldDef =
@@ -24,6 +24,7 @@ export type FieldDef =
   | (BaseField & { kind: "richtext" })
   | (BaseField & { kind: "link" | "image"; placeholder?: string })
   | (BaseField & { kind: "select" | "iconPicker"; options: { value: string; label: string }[] })
+  | (BaseField & { kind: "formPicker" })
   | (BaseField & { kind: "number"; min: number; max: number })
   | (BaseField & { kind: "toggle" })
   | (BaseField & { kind: "list"; itemLabel: string; max: number; fields: FieldDef[] })
@@ -122,6 +123,11 @@ const iconPicker = (key: string, label: string, options: [string, string][], hel
   help,
   options: options.map(([value, optionLabel]) => ({ value, label: optionLabel })),
 });
+/** Options come from the live `forms` table (Console -> Forms), not a
+ * static list known at BlockDef time -- the field editor fetches them
+ * itself (see FormPickerField in PageBlockFields.tsx), same pattern as the
+ * media-library-backed `image` kind. */
+const formPicker = (key: string, label: string, help?: string): FieldDef => ({ key, label, kind: "formPicker", help });
 const count = (key: string, label: string, max = 12): FieldDef => ({ key, label, kind: "number", min: 1, max });
 const dimension = (key: string, label: string, max: number, help?: string): FieldDef => ({ key, label, kind: "number", min: 0, max, help });
 
@@ -252,7 +258,8 @@ export const BLOCK_DEFS: BlockDef[] = [
       textarea("text", "Supporting text", { max: 600 }),
       text("primaryLabel", "Main button text", { max: 60 }),
       link("primaryHref", "Main button link"),
-      select("primaryAction", "Main button opens", [["link", "The link above"], ["leadMagnet", "The free-guide popup (if a guide is active)"], ["contactPopup", "A contact-form popup"]]),
+      select("primaryAction", "Main button opens", [["link", "The link above"], ["leadMagnet", "The free-guide popup (if a guide is active)"], ["contactPopup", "A contact-form popup"], ["formPopup", "A saved form, as a popup"]]),
+      formPicker("primaryFormId", "Saved form", "Only when \"Main button opens\" above is set to \"A saved form.\""),
       text("secondaryLabel", "Second button text", { max: 60 }),
       link("secondaryHref", "Second button link"),
       image("image", "Image"),
@@ -268,6 +275,7 @@ export const BLOCK_DEFS: BlockDef[] = [
       primaryLabel: "Get in touch",
       primaryHref: "/contact",
       primaryAction: "link",
+      primaryFormId: "",
       secondaryLabel: "",
       secondaryHref: "",
       image: "",
@@ -517,12 +525,13 @@ export const BLOCK_DEFS: BlockDef[] = [
       textarea("text", "Text", { max: 400 }),
       text("buttonLabel", "Button text", { max: 60 }),
       link("buttonHref", "Button link"),
-      select("buttonAction", "Button opens", [["link", "The link above"], ["contactPopup", "A contact-form popup"]]),
+      select("buttonAction", "Button opens", [["link", "The link above"], ["contactPopup", "A contact-form popup"], ["formPopup", "A saved form, as a popup"]]),
+      formPicker("buttonFormId", "Saved form", "Only when \"Button opens\" above is set to \"A saved form.\""),
       text("secondaryLabel", "Second button text", { max: 60 }),
       link("secondaryHref", "Second button link"),
       select("style", "Style", [["band", "Full-width band"], ["card", "Dark card"]]),
     ],
-    defaults: { heading: "Ready to get started?", text: "", buttonLabel: "Get in touch", buttonHref: "/contact", buttonAction: "link", secondaryLabel: "", secondaryHref: "", style: "band" },
+    defaults: { heading: "Ready to get started?", text: "", buttonLabel: "Get in touch", buttonHref: "/contact", buttonAction: "link", buttonFormId: "", secondaryLabel: "", secondaryHref: "", style: "band" },
   },
   {
     type: "countdown",
@@ -658,7 +667,8 @@ export const BLOCK_DEFS: BlockDef[] = [
     group: "element",
     styleModel: "rich",
     fields: [
-      select("mode", "Type", [["contact", "Contact form (name, email, message)"], ["newsletter", "Newsletter signup (email only)"], ["custom", "Custom form (your own fields)"]]),
+      select("mode", "Type", [["contact", "Contact form (name, email, message)"], ["newsletter", "Newsletter signup (email only)"], ["custom", "Custom form (your own fields)"], ["saved", "A saved form from Console -> Forms"]]),
+      formPicker("savedFormId", "Saved form", "Only for \"A saved form\" above. Its own heading, fields and thank-you copy come from Console -> Forms, not the fields below."),
       text("heading", "Heading", { max: 160 }),
       textarea("text", "Intro", { max: 600 }),
       text("messageLabel", "Message field label", { max: 120, help: "Contact form only." }),
@@ -682,6 +692,7 @@ export const BLOCK_DEFS: BlockDef[] = [
     ],
     defaults: {
       mode: "contact",
+      savedFormId: "",
       heading: "Contact us",
       text: "Send us a message and we'll get back to you.",
       messageLabel: "How can we help?",
@@ -1227,6 +1238,14 @@ function normalizeField(field: FieldDef, value: unknown, fallback: unknown, sani
       const v = typeof value === "number" ? String(value) : value;
       if (typeof v === "string" && allowed.includes(v)) return v;
       return typeof fallback === "string" && allowed.includes(fallback) ? fallback : allowed[0];
+    }
+    // No fixed option list to validate against -- unlike "select", the
+    // choices come from the live `forms` table. Stored as a numeric-id
+    // string ("" when none chosen yet); the actual id is validated when
+    // the block is rendered/submitted against, not here.
+    case "formPicker": {
+      const v = typeof value === "number" ? String(value) : value;
+      return typeof v === "string" && /^\d*$/.test(v) ? v : typeof fallback === "string" ? fallback : "";
     }
     case "number": {
       const n = typeof value === "string" ? Number(value) : value;

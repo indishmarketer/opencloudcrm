@@ -44,6 +44,7 @@ const baseNavGroups = [
       { href: "/console/courses", label: "Courses" },
       { href: "/console/directory", label: "Tools directory" },
       { href: "/console/lead-magnets", label: "Free guides" },
+      { href: "/console/forms", label: "Forms" },
     ],
   },
   {

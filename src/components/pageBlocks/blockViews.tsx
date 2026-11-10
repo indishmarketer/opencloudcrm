@@ -45,6 +45,8 @@ import IntegrationIcons from "@/components/IntegrationIcons";
 import FeaturedOn from "@/components/FeaturedOn";
 import GuidePopup from "@/components/GuidePopup";
 import ContactPopup from "@/components/ContactPopup";
+import SavedFormPopup from "@/components/SavedFormPopup";
+import SavedFormBlock from "@/components/pageBlocks/SavedFormBlock";
 import NewsletterSignupForm from "@/components/NewsletterSignupForm";
 import CountdownTimer from "@/components/CountdownTimer";
 import BusinessContactDetails from "@/components/BusinessContactDetails";
@@ -363,6 +365,7 @@ export function HeroView({ props, activeLeadMagnet }: { props: Props; activeLead
   const primaryAction = str(props, "primaryAction");
   const guide = primaryAction === "leadMagnet" ? activeLeadMagnet : null;
   const contactPopup = primaryAction === "contactPopup";
+  const formPopupId = primaryAction === "formPopup" ? Number(str(props, "primaryFormId")) || 0 : 0;
   const primaryClass = dark
     ? "rounded-full bg-paper px-6 py-3 text-center text-sm font-medium text-ink transition-opacity hover:opacity-80"
     : BUTTON_DARK;
@@ -424,6 +427,8 @@ export function HeroView({ props, activeLeadMagnet }: { props: Props; activeLead
                 />
               ) : contactPopup && primaryLabel ? (
                 <ContactPopup buttonLabel={primaryLabel} buttonClassName={primaryClass} />
+              ) : formPopupId && primaryLabel ? (
+                <SavedFormPopup formId={formPopupId} buttonLabel={primaryLabel} buttonClassName={primaryClass} />
               ) : (
                 <ButtonLink href={str(props, "primaryHref")} label={primaryLabel} className={primaryClass} />
               )}
@@ -970,11 +975,19 @@ export function CountdownBlock({ props, nested = false, editorEmpty = false }: {
 
 export function CtaBlock({ props }: { props: Props }) {
   const primaryLabel = str(props, "buttonLabel");
-  const contactPopup = str(props, "buttonAction") === "contactPopup";
+  const buttonAction = str(props, "buttonAction");
+  const contactPopup = buttonAction === "contactPopup";
+  const formPopupId = buttonAction === "formPopup" ? Number(str(props, "buttonFormId")) || 0 : 0;
   const buttons = (light: boolean) => (
     <div className="flex flex-col gap-3 sm:flex-row">
       {contactPopup && primaryLabel ? (
         <ContactPopup
+          buttonLabel={primaryLabel}
+          buttonClassName={light ? "rounded-full bg-paper px-6 py-3 text-center text-sm font-medium text-ink transition-opacity hover:opacity-80" : BUTTON_DARK}
+        />
+      ) : formPopupId && primaryLabel ? (
+        <SavedFormPopup
+          formId={formPopupId}
           buttonLabel={primaryLabel}
           buttonClassName={light ? "rounded-full bg-paper px-6 py-3 text-center text-sm font-medium text-ink transition-opacity hover:opacity-80" : BUTTON_DARK}
         />
@@ -1314,6 +1327,14 @@ export function ContactFormSection({ props, business }: { props: Props; business
  * in src/lib/otpCompletion.ts) -- only the block's own fields/labels are
  * generalized, not the OTP/webhook/email plumbing behind them. */
 export function FormBlock({ props, business }: { props: Props; business: ResolvedBusiness }) {
+  if (str(props, "mode") === "saved") {
+    const formId = Number(str(props, "savedFormId")) || 0;
+    return (
+      <RichSection props={props} widthDefault={672}>
+        <SavedFormBlock formId={formId} />
+      </RichSection>
+    );
+  }
   if (str(props, "mode") === "custom") {
     const fields = list(props, "customFields")
       .filter((f) => str(f, "label"))
