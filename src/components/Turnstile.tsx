@@ -44,7 +44,18 @@ export default function Turnstile({
   );
 
   useEffect(() => {
-    if (!siteKey) return;
+    if (!siteKey) {
+      // Not configured on this deployment -- the widget never renders, so
+      // nothing will ever call onToken for us. Signal "not required" with a
+      // non-empty placeholder so a caller gating its submit button on
+      // "do we have a token yet" (e.g. AuthForm) isn't stuck disabled
+      // forever. The server independently decides whether Turnstile is
+      // actually required (see verifyTurnstile) -- it never trusts this
+      // value, so a forged placeholder from a deployment that DOES have
+      // Turnstile configured still fails verification server-side.
+      onToken("turnstile-not-configured");
+      return;
+    }
 
     function render() {
       if (!window.turnstile || !ref.current || rendered.current) return;
