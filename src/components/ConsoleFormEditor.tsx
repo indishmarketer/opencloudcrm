@@ -1,11 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   DndContext,
   DragOverlay,
-  KeyboardSensor,
   PointerSensor,
   closestCenter,
   useDraggable,
@@ -13,39 +12,42 @@ import {
   useSensor,
   useSensors,
   type DragEndEvent,
-  type DragStartEvent,
 } from "@dnd-kit/core";
 import {
   SortableContext,
   arrayMove,
-  sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import ConsoleModal from "@/components/ConsoleModal";
-import { useConfirm } from "@/components/ConfirmDialog";
+import InkSelect from "@/components/InkSelect";
 import {
   isFieldElementType,
   type FormCanvasElement,
   type FormDefinition,
   type FormDesign,
   type FormElementType,
+  type FormSubmissionAction,
 } from "@/lib/formsShape";
 
-const button =
-  "rounded-lg border border-line px-3.5 py-2 text-sm font-medium text-ink transition-colors hover:border-ink disabled:cursor-not-allowed disabled:opacity-50";
-const primaryButton =
-  "rounded-lg bg-ink px-4 py-2 text-sm font-medium text-paper transition-opacity hover:opacity-80 disabled:cursor-wait disabled:opacity-60";
-const iconButton =
-  "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-ink-soft hover:bg-paper-soft hover:text-ink";
-const inputClass =
-  "w-full rounded-xl border border-line bg-paper px-3.5 py-2 text-sm outline-none transition focus:border-ink focus:ring-1 focus:ring-ink";
-
+// Deterministic ID generator that avoids Math.random() in render
 let elementCounter = 0;
-function nextElementId(prefix = "elem"): string {
+function nextElementId(): string {
   elementCounter += 1;
-  return `${prefix}_${elementCounter}_${Date.now().toString(36)}`;
+  return `elem_${Date.now().toString(36)}_${elementCounter}`;
+}
+
+function parseChoices(raw?: string): string[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) return parsed.map(String).map((s) => s.trim()).filter(Boolean);
+  } catch {}
+  if (raw.includes("\n")) {
+    return raw.split("\n").map((s) => s.trim()).filter(Boolean);
+  }
+  return raw.split(",").map((s) => s.trim()).filter(Boolean);
 }
 
 // ── Icons ───────────────────────────────────────────────────────────────────
@@ -90,19 +92,35 @@ const DragHandleIcon = () => (
 );
 const TrashIcon = () => (
   <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="3 6 5 6 21 6" />
-    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+    <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
   </svg>
 );
 const CopyIcon = () => (
   <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+    <rect x="9" y="9" width="13" height="13" rx="2" />
     <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
   </svg>
 );
 const CheckIcon = () => (
   <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4 text-green-600" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <polyline points="20 6 9 17 4 12" />
+  </svg>
+);
+const EyeOffIcon = () => (
+  <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4 text-ink-soft shrink-0" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+    <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
+    <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
+    <line x1="2" y1="2" x2="22" y2="22" />
+  </svg>
+);
+const StyleIcon = () => (
+  <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="13.5" cy="6.5" r="2.5" />
+    <circle cx="17.5" cy="10.5" r="2.5" />
+    <circle cx="8.5" cy="7.5" r="2.5" />
+    <circle cx="6.5" cy="12.5" r="2.5" />
+    <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.9 0 1.5-.7 1.5-1.5 0-.4-.1-.7-.4-1-.3-.3-.4-.6-.4-1 0-.8.7-1.5 1.5-1.5H16c3.3 0 6-2.7 6-6 0-5.5-4.5-10-10-10z" />
   </svg>
 );
 
@@ -151,10 +169,38 @@ function ElementIcon({ type, className = "h-5 w-5" }: { type: FormElementType; c
           <rect x="3" y="6" width="18" height="12" rx="2" /><path d="m15 11 2 2 2-2" />
         </svg>
       );
+    case "radio":
+      return (
+        <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="4" fill="currentColor" />
+        </svg>
+      );
+    case "multiselect":
+      return (
+        <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="4" width="7" height="7" rx="1.5" /><polyline points="4.5 7.5 6 9 8.5 6" />
+          <rect x="3" y="13" width="7" height="7" rx="1.5" /><polyline points="4.5 16.5 6 18 8.5 15" />
+          <line x1="13" y1="7.5" x2="21" y2="7.5" /><line x1="13" y1="16.5" x2="21" y2="16.5" />
+        </svg>
+      );
     case "checkbox":
       return (
         <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <rect x="3" y="3" width="18" height="18" rx="2" /><path d="m9 12 2 2 4-4" />
+        </svg>
+      );
+    case "country":
+      return (
+        <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="10" />
+          <line x1="2" y1="12" x2="22" y2="12" />
+          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+        </svg>
+      );
+    case "address":
+      return (
+        <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" /><circle cx="12" cy="10" r="3" />
         </svg>
       );
     case "number":
@@ -163,22 +209,22 @@ function ElementIcon({ type, className = "h-5 w-5" }: { type: FormElementType; c
           <line x1="4" y1="9" x2="20" y2="9" /><line x1="4" y1="15" x2="20" y2="15" /><line x1="10" y1="3" x2="8" y2="21" /><line x1="16" y1="3" x2="14" y2="21" />
         </svg>
       );
-    case "hidden":
-      return (
-        <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" /><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" /><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" /><line x1="2" y1="2" x2="22" y2="22" />
-        </svg>
-      );
     case "button":
       return (
         <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="4" y="6" width="16" height="12" rx="3" /><circle cx="12" cy="12" r="1.5" fill="currentColor" />
+          <rect x="3" y="6" width="18" height="12" rx="3" /><line x1="8" y1="12" x2="16" y2="12" />
         </svg>
       );
     case "divider":
       return (
         <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <line x1="3" y1="12" x2="21" y2="12" />
+        </svg>
+      );
+    default:
+      return (
+        <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="6" width="18" height="12" rx="2" /><path d="M8 12h8" />
         </svg>
       );
   }
@@ -204,14 +250,17 @@ const PALETTE_GROUPS: {
       { type: "phone", label: "Phone" },
       { type: "textarea", label: "Long text" },
       { type: "select", label: "Dropdown" },
+      { type: "radio", label: "Single select" },
+      { type: "multiselect", label: "Multi select" },
       { type: "checkbox", label: "Checkbox" },
+      { type: "country", label: "Country" },
+      { type: "address", label: "Address" },
       { type: "number", label: "Number" },
-      { type: "hidden", label: "Hidden" },
     ],
   },
   {
     group: "Action",
-    items: [{ type: "button", label: "Submit" }],
+    items: [{ type: "button", label: "Button" }],
   },
 ];
 
@@ -223,26 +272,114 @@ function createElement(type: FormElementType): FormCanvasElement {
     case "text":
       return { id, type, textContent: "Add descriptive text or instructions here.", textMuted: false, textAlign: "left" };
     case "text_input":
-      return { id, type, fieldLabel: "Text field", fieldKey: "text_field", fieldPlaceholder: "", fieldRequired: false };
+      return { id, type, fieldLabel: "Text field", fieldKey: "text_field", fieldPlaceholder: "Enter text…", fieldRequired: false };
     case "email":
       return { id, type, fieldLabel: "Email address", fieldKey: "email", fieldPlaceholder: "you@example.com", fieldRequired: true };
     case "phone":
-      return { id, type, fieldLabel: "Phone number", fieldKey: "phone", fieldPlaceholder: "+1 (555) 000-0000", fieldRequired: false };
+      return { id, type, fieldLabel: "Phone number", fieldKey: "phone", fieldPlaceholder: "98765 43210", fieldRequired: false };
     case "textarea":
-      return { id, type, fieldLabel: "Message", fieldKey: "message", fieldPlaceholder: "Type your message...", fieldRequired: false };
+      return { id, type, fieldLabel: "Message", fieldKey: "message", fieldPlaceholder: "Type your message…", fieldRequired: false };
     case "select":
-      return { id, type, fieldLabel: "Select option", fieldKey: "choice", fieldOptions: "Option 1, Option 2, Option 3", fieldRequired: false };
+      return {
+        id,
+        type,
+        fieldLabel: "Select option",
+        fieldKey: "choice",
+        fieldOptions: JSON.stringify(["Option 1", "Option 2", "Option 3"]),
+        fieldRequired: false,
+      };
+    case "radio":
+      return {
+        id,
+        type,
+        fieldLabel: "Single select option",
+        fieldKey: "single_choice",
+        fieldOptions: JSON.stringify(["Option 1", "Option 2", "Option 3"]),
+        fieldRequired: false,
+      };
+    case "multiselect":
+      return {
+        id,
+        type,
+        fieldLabel: "Multi select options",
+        fieldKey: "multi_choices",
+        fieldOptions: JSON.stringify(["Choice 1", "Choice 2", "Choice 3"]),
+        fieldRequired: false,
+      };
     case "checkbox":
       return { id, type, fieldLabel: "I agree to the terms and privacy policy", fieldKey: "consent", fieldRequired: true };
+    case "country":
+      return { id, type, fieldLabel: "Country", fieldKey: "country", fieldRequired: false };
+    case "address":
+      return { id, type, fieldLabel: "Street Address", fieldKey: "address", fieldPlaceholder: "123 Main St, Suite 100", fieldRequired: false };
     case "number":
       return { id, type, fieldLabel: "Quantity / Amount", fieldKey: "quantity", fieldRequired: false };
-    case "hidden":
-      return { id, type, fieldLabel: "UTM Source", fieldKey: "utm_source", fieldDefaultValue: "website", fieldRequired: false };
     case "button":
       return { id, type, buttonLabel: "Submit", buttonAlign: "full", buttonVariant: "primary" };
     case "divider":
       return { id, type, dividerSpacing: "md" };
+    default:
+      return { id, type: "text_input", fieldLabel: "Text field", fieldKey: "field", fieldRequired: false };
   }
+}
+
+// ── Corner Radius Picker with Custom Input (Image 2 Fix) ────────────────────
+
+function CornerRadiusPicker({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (val: string) => void;
+}) {
+  const PRESETS = [
+    { value: "", label: "Theme default (rounded)" },
+    { value: "0px", label: "Sharp (0px)" },
+    { value: "4px", label: "Subtle (4px)" },
+    { value: "8px", label: "Rounded (8px)" },
+    { value: "12px", label: "Curved (12px)" },
+    { value: "16px", label: "Large (16px)" },
+    { value: "9999px", label: "Pill (9999px)" },
+    { value: "__custom__", label: "Custom px…" },
+  ];
+
+  const isPreset = PRESETS.some((p) => p.value !== "__custom__" && p.value === value);
+  const activeValue = isPreset ? value : "__custom__";
+  const [customPx, setCustomPx] = useState(value ? value.replace(/[^0-9]/g, "") || "8" : "8");
+
+  return (
+    <div className="space-y-1.5">
+      <InkSelect
+        value={activeValue}
+        onChange={(val) => {
+          if (val === "__custom__") {
+            onChange(`${customPx || 8}px`);
+          } else {
+            onChange(val);
+          }
+        }}
+        options={PRESETS}
+      />
+      {activeValue === "__custom__" && (
+        <div className="flex items-center gap-2 pt-1">
+          <input
+            type="number"
+            min="0"
+            max="100"
+            value={customPx}
+            onChange={(e) => {
+              const num = e.target.value;
+              setCustomPx(num);
+              onChange(`${num || 0}px`);
+            }}
+            placeholder="8"
+            className="w-24 rounded-lg border border-line bg-white px-3 py-1.5 text-xs text-ink outline-none focus:border-ink"
+          />
+          <span className="text-xs text-ink-soft">pixels (px)</span>
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ── Left Palette Draggable Tile ─────────────────────────────────────────────
@@ -316,16 +453,19 @@ function SortableElementItem({
   };
 
   const inputStyle = {
-    borderColor: design.borderColor || undefined,
-    borderRadius: design.borderRadius || undefined,
-    color: design.textColor || undefined,
+    borderColor: element.elementStyle?.borderColor || design.borderColor || undefined,
+    borderRadius: element.elementStyle?.borderRadius || design.borderRadius || undefined,
+    backgroundColor: element.elementStyle?.backgroundColor || undefined,
+    color: element.elementStyle?.textColor || design.textColor || undefined,
   };
 
   const buttonStyle = {
-    backgroundColor: design.buttonColor || undefined,
-    color: design.buttonTextColor || undefined,
-    borderRadius: design.borderRadius || undefined,
+    backgroundColor: element.elementStyle?.backgroundColor || design.buttonColor || "#0a0a0a",
+    color: element.elementStyle?.textColor || design.buttonTextColor || "#ffffff",
+    borderRadius: element.elementStyle?.borderRadius || design.borderRadius || undefined,
   };
+
+  const choices = parseChoices(element.fieldOptions);
 
   return (
     <div
@@ -339,8 +479,8 @@ function SortableElementItem({
         isDragging ? "opacity-30" : ""
       } ${
         selected
-          ? "border-ink bg-paper shadow-md ring-2 ring-ink/10"
-          : "border-transparent bg-paper hover:border-line hover:shadow-sm"
+          ? "border-ink bg-white shadow-md ring-2 ring-ink/10"
+          : "border-transparent bg-white hover:border-line hover:shadow-sm"
       }`}
     >
       {/* Floating Action Toolbar on hover / selection */}
@@ -402,6 +542,10 @@ function SortableElementItem({
             value={element.headingText || ""}
             onChange={(e) => onUpdateProps({ headingText: e.target.value })}
             placeholder="Headline"
+            style={{
+              color: element.elementStyle?.textColor || undefined,
+              fontSize: element.elementStyle?.fontSize || undefined,
+            }}
             className={`w-full bg-transparent outline-none font-bold tracking-tight text-ink border-b border-transparent hover:border-line focus:border-ink ${
               element.headingLevel === "h1"
                 ? "text-2xl"
@@ -422,6 +566,10 @@ function SortableElementItem({
             value={element.textContent || ""}
             onChange={(e) => onUpdateProps({ textContent: e.target.value })}
             placeholder="Paragraph text"
+            style={{
+              color: element.elementStyle?.textColor || undefined,
+              fontSize: element.elementStyle?.fontSize || undefined,
+            }}
             className={`w-full resize-none bg-transparent outline-none text-sm border-b border-transparent hover:border-line focus:border-ink ${
               element.textMuted ? "text-ink-soft" : "text-ink"
             }`}
@@ -435,14 +583,21 @@ function SortableElementItem({
         </div>
       )}
 
-      {element.type === "hidden" && (
-        <div className="flex items-center justify-between rounded-lg border border-dashed border-line bg-paper-soft px-3 py-2 text-xs text-ink-soft">
-          <span className="font-mono font-medium">Hidden tracker: {element.fieldKey || "param"}</span>
-          <span>Value: &quot;{element.fieldDefaultValue || ""}&quot;</span>
+      {/* Hidden field indicator on admin canvas */}
+      {(element.type === "hidden" || element.fieldHidden) && (
+        <div className="flex items-center justify-between rounded-lg border border-dashed border-line bg-paper-soft px-3.5 py-2.5 text-xs text-ink">
+          <div className="flex items-center gap-2 font-medium">
+            <EyeOffIcon />
+            <span>Hidden Field: {element.fieldLabel || element.fieldKey || "tracker"}</span>
+          </div>
+          <span className="text-ink-soft font-mono text-[11px]">
+            Param / Default: &quot;{element.fieldDefaultValue || "auto"}&quot;
+          </span>
         </div>
       )}
 
-      {isFieldElementType(element.type) && element.type !== "hidden" && (
+      {/* Visible field elements */}
+      {isFieldElementType(element.type) && !element.fieldHidden && element.type !== "hidden" && (
         <div className="space-y-1.5">
           <div className="flex items-center gap-1">
             <input
@@ -451,41 +606,95 @@ function SortableElementItem({
               placeholder="Field label"
               className="bg-transparent text-sm font-medium text-ink outline-none border-b border-transparent hover:border-line focus:border-ink px-0.5"
             />
-            {element.fieldRequired && <span className="text-red-500 font-bold">*</span>}
           </div>
 
           {element.type === "textarea" ? (
             <textarea
               readOnly
-              placeholder={element.fieldPlaceholder || "Type here..."}
+              placeholder={element.fieldPlaceholder || "Type here…"}
               rows={3}
               style={inputStyle}
               className="w-full resize-none rounded-xl border border-line bg-paper px-3.5 py-2.5 text-sm outline-none cursor-default"
             />
-          ) : element.type === "select" ? (
-            <select
-              disabled
+          ) : element.type === "phone" ? (
+            <div className="flex gap-2">
+              <div
+                style={inputStyle}
+                className="flex h-11 shrink-0 items-center gap-1.5 rounded-xl border border-line bg-paper px-3 text-sm text-ink cursor-default"
+              >
+                <span>🇮🇳</span>
+                <span className="font-mono text-xs font-medium text-ink">+91</span>
+                <svg aria-hidden="true" viewBox="0 0 24 24" className="h-3.5 w-3.5 text-ink-soft" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </div>
+              <input
+                type="text"
+                readOnly
+                placeholder={element.fieldPlaceholder || "98765 43210"}
+                style={inputStyle}
+                className="flex-1 rounded-xl border border-line bg-paper px-3.5 py-2.5 text-sm outline-none cursor-default"
+              />
+            </div>
+          ) : element.type === "country" ? (
+            <div
               style={inputStyle}
-              className="w-full rounded-xl border border-line bg-paper px-3.5 py-2.5 text-sm outline-none cursor-default text-ink"
+              className="flex w-full items-center justify-between rounded-xl border border-line bg-paper px-3.5 py-2.5 text-sm text-ink cursor-default"
             >
-              <option>{element.fieldPlaceholder || "Choose an option..."}</option>
-              {(element.fieldOptions || "")
-                .split(",")
-                .filter(Boolean)
-                .map((opt, i) => (
-                  <option key={i}>{opt.trim()}</option>
-                ))}
-            </select>
+              <span className="flex items-center gap-2">
+                <span>🌐</span>
+                <span className="text-ink-soft">Select country…</span>
+              </span>
+              <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4 text-ink-soft" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </div>
+          ) : element.type === "select" ? (
+            <div
+              style={inputStyle}
+              className="flex w-full items-center justify-between rounded-xl border border-line bg-paper px-3.5 py-2.5 text-sm text-ink cursor-default"
+            >
+              <span className="text-ink-soft">{element.fieldPlaceholder || "Choose an option…"}</span>
+              <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4 text-ink-soft" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </div>
+          ) : element.type === "radio" ? (
+            <div className="space-y-1.5 pt-1">
+              {choices.map((choice, i) => (
+                <div
+                  key={i}
+                  style={inputStyle}
+                  className="flex items-center gap-2.5 rounded-lg border border-line bg-paper px-3 py-2 text-xs text-ink cursor-default"
+                >
+                  <input type="radio" disabled checked={i === 0} className="accent-ink" />
+                  <span>{choice}</span>
+                </div>
+              ))}
+            </div>
+          ) : element.type === "multiselect" ? (
+            <div className="space-y-1.5 pt-1">
+              {choices.map((choice, i) => (
+                <div
+                  key={i}
+                  style={inputStyle}
+                  className="flex items-center gap-2.5 rounded-lg border border-line bg-paper px-3 py-2 text-xs text-ink cursor-default"
+                >
+                  <input type="checkbox" disabled checked={i === 0} className="h-3.5 w-3.5 rounded border-line accent-ink" />
+                  <span>{choice}</span>
+                </div>
+              ))}
+            </div>
           ) : element.type === "checkbox" ? (
             <div className="flex items-center gap-2 pt-1">
               <input type="checkbox" disabled className="h-4 w-4 rounded border-line accent-ink" />
-              <span className="text-sm text-ink-soft">{element.fieldLabel || "Checkbox option"}</span>
+              <span className="text-sm text-ink-soft">{element.fieldLabel || "Checkbox agreement"}</span>
             </div>
           ) : (
             <input
               type="text"
               readOnly
-              placeholder={element.fieldPlaceholder || "Enter text..."}
+              placeholder={element.fieldPlaceholder || "Enter text…"}
               style={inputStyle}
               className="w-full rounded-xl border border-line bg-paper px-3.5 py-2.5 text-sm outline-none cursor-default"
             />
@@ -552,47 +761,46 @@ export default function ConsoleFormEditor({
   backLabel: string;
 }) {
   const router = useRouter();
-  const { dialog } = useConfirm();
 
+  // Core Form State
   const [formName, setFormName] = useState(initialForm.name);
-  const [slug, setSlug] = useState(initialForm.slug || "");
-  const [elements, setElements] = useState<FormCanvasElement[]>(initialForm.elements || []);
+  const [slug, setSlug] = useState(initialForm.slug);
+  const [elements, setElements] = useState<FormCanvasElement[]>(initialForm.elements);
   const [design, setDesign] = useState<FormDesign>(initialForm.design);
-  const [submissionAction, setSubmissionAction] = useState<"message" | "redirect">(
-    initialForm.submissionAction || "message",
-  );
-  const [redirectUrl, setRedirectUrl] = useState(initialForm.redirectUrl || "");
-  const [successHeading, setSuccessHeading] = useState(initialForm.successHeading || "Thank you!");
-  const [successText, setSuccessText] = useState(
-    initialForm.successText || "We have received your submission.",
-  );
-  const [notifyEmail, setNotifyEmail] = useState(initialForm.notifyEmail || "");
-  const [verifyEmail, setVerifyEmail] = useState(initialForm.verifyEmail === true);
+  const [submissionAction, setSubmissionAction] = useState<FormSubmissionAction>(initialForm.submissionAction);
+  const [redirectUrl, setRedirectUrl] = useState(initialForm.redirectUrl);
+  const [successHeading, setSuccessHeading] = useState(initialForm.successHeading);
+  const [successText, setSuccessText] = useState(initialForm.successText);
+  const [notifyEmail, setNotifyEmail] = useState(initialForm.notifyEmail);
+  const [verifyEmail, setVerifyEmail] = useState(initialForm.verifyEmail);
 
+  // Editor Interaction State
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [rightTab, setRightTab] = useState<"inspector" | "design">("design");
+  const [rightTab, setRightTab] = useState<"inspector" | "style">("inspector");
+  const [device, setDevice] = useState<"desktop" | "mobile">("desktop");
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [device, setDevice] = useState<"desktop" | "mobile">("desktop");
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [confirmLeave, setConfirmLeave] = useState(false);
-  const [copiedLink, setCopiedLink] = useState(false);
-  const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [confirmLeave, setConfirmLeave] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
   const [activeDragLabel, setActiveDragLabel] = useState<string | null>(null);
 
-  // Undo / Redo history
-  const [history, setHistory] = useState<{ past: FormCanvasElement[][]; future: FormCanvasElement[][] }>({
-    past: [],
-    future: [],
-  });
+  // Undo / Redo History
+  const [history, setHistory] = useState<{
+    past: FormCanvasElement[][];
+    future: FormCanvasElement[][];
+  }>({ past: [], future: [] });
 
-  const updateElements = useCallback(
-    (next: FormCanvasElement[]) => {
-      setHistory((h) => ({ past: [...h.past, elements].slice(-100), future: [] }));
-      setElements(next);
+  const pushHistory = useCallback(
+    (newElements: FormCanvasElement[]) => {
+      setHistory((curr) => ({
+        past: [...curr.past.slice(-20), elements],
+        future: [],
+      }));
+      setElements(newElements);
       setDirty(true);
-      setMessage("");
     },
     [elements],
   );
@@ -600,79 +808,112 @@ export default function ConsoleFormEditor({
   const undo = useCallback(() => {
     if (history.past.length === 0) return;
     const prev = history.past[history.past.length - 1];
-    setHistory((h) => ({ past: h.past.slice(0, -1), future: [...h.future, elements] }));
-    setSelectedId(null);
+    setHistory((curr) => ({
+      past: curr.past.slice(0, -1),
+      future: [elements, ...curr.future],
+    }));
     setElements(prev);
     setDirty(true);
-  }, [history, elements]);
+  }, [elements, history.past]);
 
   const redo = useCallback(() => {
     if (history.future.length === 0) return;
-    const next = history.future[history.future.length - 1];
-    setHistory((h) => ({ past: [...h.past, elements], future: h.future.slice(0, -1) }));
-    setSelectedId(null);
+    const next = history.future[0];
+    setHistory((curr) => ({
+      past: [...curr.past, elements],
+      future: curr.future.slice(1),
+    }));
     setElements(next);
     setDirty(true);
-  }, [history, elements]);
+  }, [elements, history.future]);
 
-  // Keyboard shortcuts
+  const saveRef = useRef(save);
+  useEffect(() => {
+    saveRef.current = save;
+  });
+
+  // Keyboard shortcut listener (Ctrl+Z / Ctrl+Shift+Z / Ctrl+S)
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key === "z") {
-        if (e.shiftKey) redo();
-        else undo();
+      if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+      } else if ((e.ctrlKey || e.metaKey) && ((e.key === "z" && e.shiftKey) || e.key === "y")) {
+        e.preventDefault();
+        redo();
+      } else if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+        e.preventDefault();
+        void saveRef.current();
       }
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [undo, redo]);
 
+  // DnD Sensors
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 5 },
+    }),
   );
 
-  function addElement(type: FormElementType) {
-    const newEl = createElement(type);
-    updateElements([...elements, newEl]);
-    setSelectedId(newEl.id);
-    setRightTab("inspector");
-  }
-
-  function handleDragStart(event: DragStartEvent) {
-    const data = event.active.data.current as { kind?: string; elementType?: FormElementType } | undefined;
-    if (data?.kind === "palette" && data.elementType) {
-      setActiveDragLabel(`Add ${data.elementType.replace("_", " ")}`);
-      return;
+  function handleDragStart(event: { active: { id: string | number; data?: { current?: Record<string, unknown> } } }) {
+    const data = event.active.data?.current;
+    if (data?.kind === "palette") {
+      const type = data.elementType as FormElementType;
+      const paletteItem = PALETTE_GROUPS.flatMap((g) => g.items).find((i) => i.type === type);
+      setActiveDragLabel(paletteItem ? `Add ${paletteItem.label}` : "Add Element");
+    } else {
+      const el = elements.find((e) => e.id === String(event.active.id));
+      setActiveDragLabel(el ? el.fieldLabel || el.buttonLabel || el.headingText || "Element" : "Element");
     }
-    const dragged = elements.find((el) => el.id === event.active.id);
-    setActiveDragLabel(dragged ? dragged.type.replace("_", " ") : null);
   }
 
   function handleDragEnd(event: DragEndEvent) {
-    setActiveDragLabel(null);
     const { active, over } = event;
+    setActiveDragLabel(null);
     if (!over) return;
 
-    const data = active.data.current as { kind?: string; elementType?: FormElementType } | undefined;
-    if (data?.kind === "palette" && data.elementType) {
-      const index =
-        over.id === "canvas-end"
-          ? elements.length
-          : Math.max(0, elements.findIndex((el) => el.id === over.id));
-      const newEl = createElement(data.elementType);
-      updateElements([...elements.slice(0, index), newEl, ...elements.slice(index)]);
+    const data = active.data?.current;
+    // Dropping from palette onto canvas
+    if (data?.kind === "palette") {
+      const newEl = createElement(data.elementType as FormElementType);
+      if (over.id === "canvas-end") {
+        pushHistory([...elements, newEl]);
+      } else {
+        const overIndex = elements.findIndex((el) => el.id === over.id);
+        if (overIndex >= 0) {
+          const next = [...elements];
+          next.splice(overIndex, 0, newEl);
+          pushHistory(next);
+        } else {
+          pushHistory([...elements, newEl]);
+        }
+      }
       setSelectedId(newEl.id);
       setRightTab("inspector");
       return;
     }
 
-    const oldIndex = elements.findIndex((el) => el.id === active.id);
-    if (oldIndex < 0) return;
-    const newIndex =
-      over.id === "canvas-end" ? elements.length - 1 : elements.findIndex((el) => el.id === over.id);
-    if (newIndex < 0 || oldIndex === newIndex) return;
-    updateElements(arrayMove(elements, oldIndex, newIndex));
+    // Canvas internal reordering
+    if (active.id !== over.id) {
+      const oldIndex = elements.findIndex((el) => el.id === active.id);
+      const newIndex = elements.findIndex((el) => el.id === over.id);
+      if (oldIndex >= 0 && newIndex >= 0) {
+        pushHistory(arrayMove(elements, oldIndex, newIndex));
+      }
+    }
+  }
+
+  function addElement(type: FormElementType) {
+    const newEl = createElement(type);
+    pushHistory([...elements, newEl]);
+    setSelectedId(newEl.id);
+    setRightTab("inspector");
+  }
+
+  function updateElements(next: FormCanvasElement[]) {
+    pushHistory(next);
   }
 
   function updateElementProps(id: string, patch: Partial<FormCanvasElement>) {
@@ -686,7 +927,6 @@ export default function ConsoleFormEditor({
     updateElements(elements.filter((el) => el.id !== id));
     if (selectedId === id) {
       setSelectedId(null);
-      setRightTab("design");
     }
   }
 
@@ -749,11 +989,20 @@ export default function ConsoleFormEditor({
   }
 
   const selectedElement = elements.find((el) => el.id === selectedId) || null;
+  const isFormStyleSelected = selectedId === "__form_style__";
+  const isSidebarVisible = Boolean(selectedElement || isFormStyleSelected);
+
+  const inputClass =
+    "w-full rounded-lg border border-line bg-white px-3 py-2 text-xs text-ink outline-none transition-colors focus:border-ink";
+  const button =
+    "inline-flex items-center justify-center rounded-full border border-line px-3.5 py-1.5 text-xs font-medium text-ink transition-colors hover:border-ink hover:bg-paper-soft";
+  const primaryButton =
+    "inline-flex items-center justify-center rounded-full bg-ink px-4 py-1.5 text-xs font-medium text-paper transition-opacity hover:opacity-85 disabled:opacity-50";
+  const iconButton =
+    "flex h-8 w-8 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-paper-soft hover:text-ink";
 
   return (
     <div className="flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-white text-ink">
-      {dialog}
-
       {/* Confirmation modal on leaving with unsaved changes */}
       {confirmLeave && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center bg-ink/40 px-6">
@@ -1040,6 +1289,20 @@ export default function ConsoleFormEditor({
             </button>
           </div>
 
+          {/* Form Style Trigger */}
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedId("__form_style__");
+              setRightTab("style");
+            }}
+            aria-label="Form Style"
+            title="Form Style & Theme"
+            className={`${iconButton} ${isFormStyleSelected ? "bg-paper-soft text-ink" : ""}`}
+          >
+            <StyleIcon />
+          </button>
+
           {slug && (
             <a
               href={`/f/${slug}`}
@@ -1095,7 +1358,7 @@ export default function ConsoleFormEditor({
         </p>
       )}
 
-      {/* Main Studio 3-Column Layout */}
+      {/* Main Studio Layout */}
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
@@ -1120,297 +1383,394 @@ export default function ConsoleFormEditor({
             ))}
           </aside>
 
-          {/* Center Canvas with Realistic Desktop & Mobile Mockups */}
+          {/* Center Canvas */}
           <main
             onClick={() => {
-              setSelectedId(null);
+              setSelectedId("__form_style__");
+              setRightTab("style");
             }}
-            className="relative min-w-0 flex-1 overflow-y-auto bg-paper-soft p-4 sm:p-8 flex items-start justify-center"
+            className="relative min-w-0 flex-1 overflow-y-auto bg-[#fafafa] p-4 sm:p-10 flex items-start justify-center transition-colors"
           >
-            {device === "mobile" ? (
-              /* Authentic Mobile Mockup Frame */
-              <div className="w-[375px] shrink-0 overflow-hidden rounded-[3rem] border-[10px] border-ink shadow-2xl bg-white flex flex-col">
-                {/* Speaker pill notch */}
-                <div className="h-5 w-full bg-ink flex items-center justify-center pt-1 pb-2">
-                  <div className="h-3 w-20 rounded-full bg-zinc-800" />
-                </div>
-                <div
-                  style={{
-                    backgroundColor: design.backgroundColor || "#ffffff",
-                    fontFamily: design.fontFamily || undefined,
-                  }}
-                  className="min-h-[580px] p-4 overflow-y-auto"
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className={`w-full transition-all duration-200 ${
+                device === "mobile" ? "max-w-[390px]" : "max-w-2xl sm:max-w-3xl"
+              }`}
+            >
+              <div
+                style={{
+                  backgroundColor: design.backgroundColor || "#ffffff",
+                  fontFamily: design.fontFamily || undefined,
+                  borderRadius: design.borderRadius || "16px",
+                  borderColor: design.borderColor || "#e5e7eb",
+                }}
+                className="rounded-2xl border border-line/80 bg-white p-6 sm:p-10 shadow-sm transition-all"
+              >
+                <SortableContext
+                  items={elements.map((el) => el.id)}
+                  strategy={verticalListSortingStrategy}
                 >
-                  <SortableContext
-                    items={elements.map((el) => el.id)}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    {elements.map((element, i) => (
-                      <SortableElementItem
-                        key={element.id}
-                        element={element}
-                        selected={selectedId === element.id}
-                        onSelect={() => {
-                          setSelectedId(element.id);
-                          setRightTab("inspector");
-                        }}
-                        onDelete={() => deleteElement(element.id)}
-                        onDuplicate={() => duplicateElement(element.id)}
-                        onMoveUp={() => moveElement(i, -1)}
-                        onMoveDown={() => moveElement(i, 1)}
-                        canMoveUp={i > 0}
-                        canMoveDown={i < elements.length - 1}
-                        onUpdateProps={(patch) => updateElementProps(element.id, patch)}
-                        design={design}
-                        isFixed={initialForm.isFixed}
-                      />
-                    ))}
-                  </SortableContext>
-                  <CanvasEndDropzone empty={elements.length === 0} />
-                </div>
-              </div>
-            ) : (
-              /* Realistic Desktop Browser Frame */
-              <div className="w-full max-w-2xl rounded-2xl border border-line bg-white shadow-md overflow-hidden flex flex-col">
-                {/* Browser top chrome */}
-                <div className="flex h-10 items-center justify-between border-b border-line bg-paper px-4">
-                  <div className="flex items-center gap-1.5">
-                    <span className="h-3 w-3 rounded-full bg-red-400" />
-                    <span className="h-3 w-3 rounded-full bg-amber-400" />
-                    <span className="h-3 w-3 rounded-full bg-green-400" />
-                  </div>
-                  <div className="mx-auto rounded-md border border-line bg-paper-soft px-8 py-1 text-[11px] font-mono text-ink-soft">
-                    {slug ? `/f/${slug}` : "preview"}
-                  </div>
-                </div>
+                  {elements.map((element, i) => (
+                    <SortableElementItem
+                      key={element.id}
+                      element={element}
+                      selected={selectedId === element.id}
+                      onSelect={() => {
+                        setSelectedId(element.id);
+                        setRightTab("inspector");
+                      }}
+                      onDelete={() => deleteElement(element.id)}
+                      onDuplicate={() => duplicateElement(element.id)}
+                      onMoveUp={() => moveElement(i, -1)}
+                      onMoveDown={() => moveElement(i, 1)}
+                      canMoveUp={i > 0}
+                      canMoveDown={i < elements.length - 1}
+                      onUpdateProps={(patch) => updateElementProps(element.id, patch)}
+                      design={design}
+                      isFixed={initialForm.isFixed}
+                    />
+                  ))}
+                </SortableContext>
 
-                <div
-                  style={{
-                    backgroundColor: design.backgroundColor || "#ffffff",
-                    fontFamily: design.fontFamily || undefined,
-                  }}
-                  className="min-h-[420px] p-6 sm:p-8"
-                >
-                  <SortableContext
-                    items={elements.map((el) => el.id)}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    {elements.map((element, i) => (
-                      <SortableElementItem
-                        key={element.id}
-                        element={element}
-                        selected={selectedId === element.id}
-                        onSelect={() => {
-                          setSelectedId(element.id);
-                          setRightTab("inspector");
-                        }}
-                        onDelete={() => deleteElement(element.id)}
-                        onDuplicate={() => duplicateElement(element.id)}
-                        onMoveUp={() => moveElement(i, -1)}
-                        onMoveDown={() => moveElement(i, 1)}
-                        canMoveUp={i > 0}
-                        canMoveDown={i < elements.length - 1}
-                        onUpdateProps={(patch) => updateElementProps(element.id, patch)}
-                        design={design}
-                        isFixed={initialForm.isFixed}
-                      />
-                    ))}
-                  </SortableContext>
-
-                  <CanvasEndDropzone empty={elements.length === 0} />
-                </div>
+                <CanvasEndDropzone empty={elements.length === 0} />
               </div>
-            )}
+            </div>
           </main>
 
-          {/* Right Sidebar: Dedicated Inspector & Design System */}
-          <aside className="w-[320px] shrink-0 border-l border-line bg-white flex flex-col">
-            <div className="flex border-b border-line bg-paper-soft/50">
-              <button
-                type="button"
-                onClick={() => setRightTab("inspector")}
-                className={`flex-1 py-3 text-xs font-semibold uppercase tracking-wider text-center border-b-2 transition ${
-                  rightTab === "inspector"
-                    ? "border-ink text-ink bg-white"
-                    : "border-transparent text-ink-soft hover:text-ink"
-                }`}
-              >
-                Inspector
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setRightTab("design");
-                }}
-                className={`flex-1 py-3 text-xs font-semibold uppercase tracking-wider text-center border-b-2 transition ${
-                  rightTab === "design"
-                    ? "border-ink text-ink bg-white"
-                    : "border-transparent text-ink-soft hover:text-ink"
-                }`}
-              >
-                Form Design
-              </button>
-            </div>
+          {/* Right Sidebar: Contextual Inspector & Style Panel */}
+          {isSidebarVisible && (
+            <aside className="w-[340px] shrink-0 border-l border-line bg-white flex flex-col animate-in slide-in-from-right-4 duration-150">
+              {/* Header */}
+              <div className="flex h-12 shrink-0 items-center justify-between border-b border-line px-4">
+                <span className="text-xs font-semibold uppercase tracking-wider text-ink">
+                  {isFormStyleSelected
+                    ? "Form Style"
+                    : selectedElement
+                      ? `${selectedElement.type.replace("_", " ")} Element`
+                      : "Settings"}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedId(null)}
+                  className="rounded p-1 text-ink-soft hover:bg-paper-soft hover:text-ink"
+                  title="Close sidebar"
+                >
+                  <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto p-4 space-y-4">
-              {rightTab === "inspector" && selectedElement ? (
-                /* Selected Element Inspector */
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between border-b border-line pb-2.5">
-                    <div className="flex items-center gap-1.5">
-                      <ElementIcon type={selectedElement.type} className="h-4 w-4 text-ink-soft" />
-                      <span className="text-sm font-semibold capitalize text-ink">
-                        {selectedElement.type.replace("_", " ")}
-                      </span>
+              {/* Tabs for element editing */}
+              {selectedElement && (
+                <div className="flex border-b border-line bg-paper-soft/40">
+                  <button
+                    type="button"
+                    onClick={() => setRightTab("inspector")}
+                    className={`flex-1 py-2.5 text-xs font-semibold uppercase tracking-wider text-center border-b-2 transition ${
+                      rightTab === "inspector"
+                        ? "border-ink text-ink bg-white"
+                        : "border-transparent text-ink-soft hover:text-ink"
+                    }`}
+                  >
+                    Properties
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRightTab("style")}
+                    className={`flex-1 py-2.5 text-xs font-semibold uppercase tracking-wider text-center border-b-2 transition ${
+                      rightTab === "style"
+                        ? "border-ink text-ink bg-white"
+                        : "border-transparent text-ink-soft hover:text-ink"
+                    }`}
+                  >
+                    Style
+                  </button>
+                </div>
+              )}
+
+              <div className="min-h-0 flex-1 overflow-y-auto p-4 space-y-4">
+                {/* 1. Global Form Style */}
+                {isFormStyleSelected && (
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="text-sm font-semibold text-ink">Form Style &amp; Theme</h3>
+                      <p className="mt-0.5 text-xs text-ink-soft">
+                        Applied across all elements and form container.
+                      </p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedId(null)}
-                      className="text-xs text-ink-soft hover:text-ink"
-                    >
-                      Deselect
-                    </button>
+
+                    <label className="grid gap-1.5 text-xs font-medium">
+                      Form Background Color
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={design.backgroundColor || "#ffffff"}
+                          onChange={(e) => {
+                            setDesign({ ...design, backgroundColor: e.target.value });
+                            setDirty(true);
+                          }}
+                          className="h-8 w-8 cursor-pointer rounded border border-line"
+                        />
+                        <input
+                          value={design.backgroundColor}
+                          placeholder="#ffffff"
+                          onChange={(e) => {
+                            setDesign({ ...design, backgroundColor: e.target.value });
+                            setDirty(true);
+                          }}
+                          className={inputClass}
+                        />
+                      </div>
+                    </label>
+
+                    <label className="grid gap-1.5 text-xs font-medium">
+                      Submit Button Color
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={design.buttonColor || "#0a0a0a"}
+                          onChange={(e) => {
+                            setDesign({ ...design, buttonColor: e.target.value });
+                            setDirty(true);
+                          }}
+                          className="h-8 w-8 cursor-pointer rounded border border-line"
+                        />
+                        <input
+                          value={design.buttonColor}
+                          placeholder="#0a0a0a"
+                          onChange={(e) => {
+                            setDesign({ ...design, buttonColor: e.target.value });
+                            setDirty(true);
+                          }}
+                          className={inputClass}
+                        />
+                      </div>
+                    </label>
+
+                    <label className="grid gap-1.5 text-xs font-medium">
+                      Submit Button Text Color
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={design.buttonTextColor || "#ffffff"}
+                          onChange={(e) => {
+                            setDesign({ ...design, buttonTextColor: e.target.value });
+                            setDirty(true);
+                          }}
+                          className="h-8 w-8 cursor-pointer rounded border border-line"
+                        />
+                        <input
+                          value={design.buttonTextColor}
+                          placeholder="#ffffff"
+                          onChange={(e) => {
+                            setDesign({ ...design, buttonTextColor: e.target.value });
+                            setDirty(true);
+                          }}
+                          className={inputClass}
+                        />
+                      </div>
+                    </label>
+
+                    <label className="grid gap-1.5 text-xs font-medium">
+                      Input Border Color
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={design.borderColor || "#e2e2e0"}
+                          onChange={(e) => {
+                            setDesign({ ...design, borderColor: e.target.value });
+                            setDirty(true);
+                          }}
+                          className="h-8 w-8 cursor-pointer rounded border border-line"
+                        />
+                        <input
+                          value={design.borderColor}
+                          placeholder="#e2e2e0"
+                          onChange={(e) => {
+                            setDesign({ ...design, borderColor: e.target.value });
+                            setDirty(true);
+                          }}
+                          className={inputClass}
+                        />
+                      </div>
+                    </label>
+
+                    <div className="grid gap-1.5 text-xs font-medium">
+                      <span>Corner Radius</span>
+                      <CornerRadiusPicker
+                        value={design.borderRadius || ""}
+                        onChange={(val) => {
+                          setDesign({ ...design, borderRadius: val });
+                          setDirty(true);
+                        }}
+                      />
+                    </div>
+
+                    <div className="grid gap-1.5 text-xs font-medium">
+                      <span>Font Family</span>
+                      <InkSelect
+                        value={design.fontFamily || ""}
+                        onChange={(val) => {
+                          setDesign({ ...design, fontFamily: val });
+                          setDirty(true);
+                        }}
+                        options={[
+                          { value: "", label: "Theme default" },
+                          { value: "system-ui, sans-serif", label: "Modern Sans-Serif" },
+                          { value: "Georgia, serif", label: "Editorial Serif" },
+                          { value: "monospace", label: "Monospace" },
+                        ]}
+                      />
+                    </div>
                   </div>
+                )}
 
-                  {selectedElement.type === "heading" && (
-                    <>
-                      <label className="grid gap-1.5 text-xs font-medium">
-                        Headline Text
-                        <input
-                          value={selectedElement.headingText || ""}
-                          onChange={(e) => updateElementProps(selectedElement.id, { headingText: e.target.value })}
-                          className={inputClass}
-                        />
-                      </label>
-                      <label className="grid gap-1.5 text-xs font-medium">
-                        Heading Level
-                        <select
-                          value={selectedElement.headingLevel || "h2"}
-                          onChange={(e) =>
-                            updateElementProps(selectedElement.id, {
-                              headingLevel: e.target.value as "h1" | "h2" | "h3" | "h4",
-                            })
-                          }
-                          className={inputClass}
-                        >
-                          <option value="h1">H1 — Largest</option>
-                          <option value="h2">H2 — Standard Title</option>
-                          <option value="h3">H3 — Subtitle</option>
-                          <option value="h4">H4 — Small Header</option>
-                        </select>
-                      </label>
-                      <label className="grid gap-1.5 text-xs font-medium">
-                        Text Alignment
-                        <select
-                          value={selectedElement.headingAlign || "left"}
-                          onChange={(e) =>
-                            updateElementProps(selectedElement.id, {
-                              headingAlign: e.target.value as "left" | "center" | "right",
-                            })
-                          }
-                          className={inputClass}
-                        >
-                          <option value="left">Left</option>
-                          <option value="center">Centered</option>
-                          <option value="right">Right</option>
-                        </select>
-                      </label>
-                    </>
-                  )}
-
-                  {selectedElement.type === "text" && (
-                    <>
-                      <label className="grid gap-1.5 text-xs font-medium">
-                        Paragraph Content
-                        <textarea
-                          rows={4}
-                          value={selectedElement.textContent || ""}
-                          onChange={(e) => updateElementProps(selectedElement.id, { textContent: e.target.value })}
-                          className={inputClass}
-                        />
-                      </label>
-                      <label className="flex items-center gap-2 text-xs font-medium cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={selectedElement.textMuted === true}
-                          onChange={(e) => updateElementProps(selectedElement.id, { textMuted: e.target.checked })}
-                          className="h-4 w-4 rounded border-line accent-ink"
-                        />
-                        <span>Muted soft text tone</span>
-                      </label>
-                    </>
-                  )}
-
-                  {isFieldElementType(selectedElement.type) && (
-                    <>
-                      <label className="grid gap-1.5 text-xs font-medium">
-                        Field Label
-                        <input
-                          value={selectedElement.fieldLabel || ""}
-                          onChange={(e) => updateElementProps(selectedElement.id, { fieldLabel: e.target.value })}
-                          className={inputClass}
-                        />
-                      </label>
-
-                      <label className="grid gap-1.5 text-xs font-medium">
-                        Submission Key Name
-                        <input
-                          value={selectedElement.fieldKey || ""}
-                          placeholder="field_key"
-                          onChange={(e) =>
-                            updateElementProps(selectedElement.id, {
-                              fieldKey: e.target.value
-                                .toLowerCase()
-                                .replace(/[^a-z0-9_]/g, "_")
-                                .replace(/^_+|_+$/g, ""),
-                            })
-                          }
-                          className={inputClass}
-                        />
-                        <span className="text-[10px] text-ink-soft">
-                          Parameter key saved in submissions &amp; contacts.
-                        </span>
-                      </label>
-
-                      {selectedElement.type !== "hidden" && selectedElement.type !== "checkbox" && (
+                {/* 2. Selected Element Properties Tab */}
+                {selectedElement && rightTab === "inspector" && (
+                  <div className="space-y-4">
+                    {selectedElement.type === "heading" && (
+                      <>
                         <label className="grid gap-1.5 text-xs font-medium">
-                          Placeholder Text
+                          Headline Text
                           <input
-                            value={selectedElement.fieldPlaceholder || ""}
-                            onChange={(e) => updateElementProps(selectedElement.id, { fieldPlaceholder: e.target.value })}
+                            value={selectedElement.headingText || ""}
+                            onChange={(e) => updateElementProps(selectedElement.id, { headingText: e.target.value })}
                             className={inputClass}
                           />
                         </label>
-                      )}
+                        <div className="grid gap-1.5 text-xs font-medium">
+                          <span>Heading Level</span>
+                          <InkSelect
+                            value={selectedElement.headingLevel || "h2"}
+                            onChange={(val) => updateElementProps(selectedElement.id, { headingLevel: val as "h1" | "h2" | "h3" | "h4" })}
+                            options={[
+                              { value: "h1", label: "H1 — Largest Title" },
+                              { value: "h2", label: "H2 — Section Heading" },
+                              { value: "h3", label: "H3 — Subsection" },
+                              { value: "h4", label: "H4 — Small Header" },
+                            ]}
+                          />
+                        </div>
+                      </>
+                    )}
 
-                      {/* Dropdown Options Manager */}
-                      {selectedElement.type === "select" && (
-                        <div className="space-y-2">
-                          <label className="grid gap-1 text-xs font-medium">
-                            Dropdown Choices
-                            <textarea
-                              rows={4}
-                              value={selectedElement.fieldOptions || ""}
-                              onChange={(e) => updateElementProps(selectedElement.id, { fieldOptions: e.target.value })}
-                              placeholder="Option 1, Option 2, Option 3"
+                    {selectedElement.type === "text" && (
+                      <>
+                        <label className="grid gap-1.5 text-xs font-medium">
+                          Paragraph Content
+                          <textarea
+                            rows={4}
+                            value={selectedElement.textContent || ""}
+                            onChange={(e) => updateElementProps(selectedElement.id, { textContent: e.target.value })}
+                            className={inputClass}
+                          />
+                        </label>
+                        <label className="flex items-center gap-2 text-xs font-medium cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={selectedElement.textMuted === true}
+                            onChange={(e) => updateElementProps(selectedElement.id, { textMuted: e.target.checked })}
+                            className="h-4 w-4 rounded border-line accent-ink"
+                          />
+                          <span>Muted secondary text color</span>
+                        </label>
+                      </>
+                    )}
+
+                    {/* Field Properties */}
+                    {isFieldElementType(selectedElement.type) && (
+                      <>
+                        <label className="grid gap-1.5 text-xs font-medium">
+                          Field Label
+                          <input
+                            value={selectedElement.fieldLabel || ""}
+                            onChange={(e) => updateElementProps(selectedElement.id, { fieldLabel: e.target.value })}
+                            className={inputClass}
+                          />
+                        </label>
+
+                        <label className="grid gap-1.5 text-xs font-medium">
+                          Submission Key Name
+                          <input
+                            value={selectedElement.fieldKey || ""}
+                            placeholder="field_key"
+                            onChange={(e) =>
+                              updateElementProps(selectedElement.id, {
+                                fieldKey: e.target.value
+                                  .toLowerCase()
+                                  .replace(/[^a-z0-9_]/g, "_")
+                                  .replace(/^_+|_+$/g, ""),
+                              })
+                            }
+                            className={inputClass}
+                          />
+                          <span className="text-[10px] text-ink-soft">
+                            Saved in contact records and submission entries.
+                          </span>
+                        </label>
+
+                        {selectedElement.type !== "checkbox" && selectedElement.type !== "country" && (
+                          <label className="grid gap-1.5 text-xs font-medium">
+                            Placeholder Text
+                            <input
+                              value={selectedElement.fieldPlaceholder || ""}
+                              onChange={(e) => updateElementProps(selectedElement.id, { fieldPlaceholder: e.target.value })}
                               className={inputClass}
                             />
-                            <span className="text-[10px] text-ink-soft">Separate choices with commas.</span>
                           </label>
-                        </div>
-                      )}
+                        )}
 
-                      {selectedElement.type === "hidden" ? (
-                        <label className="grid gap-1.5 text-xs font-medium">
-                          Tracking Default Value
-                          <input
-                            value={selectedElement.fieldDefaultValue || ""}
-                            placeholder="e.g. google, facebook, newsletter"
-                            onChange={(e) => updateElementProps(selectedElement.id, { fieldDefaultValue: e.target.value })}
-                            className={inputClass}
-                          />
-                        </label>
-                      ) : (
+                        {/* Choices Manager for Dropdown, Radio, Multiselect */}
+                        {["select", "radio", "multiselect"].includes(selectedElement.type) && (
+                          <div className="space-y-2 pt-2 border-t border-line">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-semibold text-ink">Choices / Options</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const current = parseChoices(selectedElement.fieldOptions);
+                                  const next = [...current, `Option ${current.length + 1}`];
+                                  updateElementProps(selectedElement.id, { fieldOptions: JSON.stringify(next) });
+                                }}
+                                className="text-xs font-medium text-ink hover:underline"
+                              >
+                                + Add choice
+                              </button>
+                            </div>
+                            <div className="space-y-1.5">
+                              {parseChoices(selectedElement.fieldOptions).map((choice, i, arr) => (
+                                <div key={i} className="flex items-center gap-1.5">
+                                  <input
+                                    value={choice}
+                                    onChange={(e) => {
+                                      const next = [...arr];
+                                      next[i] = e.target.value;
+                                      updateElementProps(selectedElement.id, { fieldOptions: JSON.stringify(next) });
+                                    }}
+                                    placeholder={`Choice ${i + 1}`}
+                                    className={inputClass}
+                                  />
+                                  <button
+                                    type="button"
+                                    disabled={arr.length <= 1}
+                                    onClick={() => {
+                                      const next = arr.filter((_, idx) => idx !== i);
+                                      updateElementProps(selectedElement.id, { fieldOptions: JSON.stringify(next) });
+                                    }}
+                                    title="Remove choice"
+                                    className="p-2 text-ink-soft hover:text-red-600 disabled:opacity-30 rounded"
+                                  >
+                                    <TrashIcon />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Required toggle */}
                         <label className="flex items-center gap-2 text-xs font-medium cursor-pointer pt-1">
                           <input
                             type="checkbox"
@@ -1420,216 +1780,307 @@ export default function ConsoleFormEditor({
                           />
                           <span>Required field</span>
                         </label>
-                      )}
-                    </>
-                  )}
 
-                  {selectedElement.type === "button" && (
-                    <>
-                      <label className="grid gap-1.5 text-xs font-medium">
-                        Button Label
-                        <input
-                          value={selectedElement.buttonLabel || ""}
-                          onChange={(e) => updateElementProps(selectedElement.id, { buttonLabel: e.target.value })}
-                          className={inputClass}
-                        />
-                      </label>
-                      <label className="grid gap-1.5 text-xs font-medium">
-                        Button Width &amp; Alignment
-                        <select
-                          value={selectedElement.buttonAlign || "full"}
-                          onChange={(e) =>
+                        {/* Hidden field toggle */}
+                        <label className="flex items-center gap-2 text-xs font-medium cursor-pointer pt-1">
+                          <input
+                            type="checkbox"
+                            checked={selectedElement.fieldHidden === true}
+                            onChange={(e) => updateElementProps(selectedElement.id, { fieldHidden: e.target.checked })}
+                            className="h-4 w-4 rounded border-line accent-ink"
+                          />
+                          <span>Hidden field (not visible to visitors)</span>
+                        </label>
+
+                        {selectedElement.fieldHidden && (
+                          <label className="grid gap-1.5 text-xs font-medium pt-1">
+                            Tracking Default / UTM Parameter Value
+                            <input
+                              value={selectedElement.fieldDefaultValue || ""}
+                              placeholder="e.g. utm_source or organic"
+                              onChange={(e) => updateElementProps(selectedElement.id, { fieldDefaultValue: e.target.value })}
+                              className={inputClass}
+                            />
+                            <span className="text-[10px] text-ink-soft">
+                              Silently submitted with form to capture context without asking visitors.
+                            </span>
+                          </label>
+                        )}
+                      </>
+                    )}
+
+                    {selectedElement.type === "button" && (
+                      <>
+                        <label className="grid gap-1.5 text-xs font-medium">
+                          Button Label
+                          <input
+                            value={selectedElement.buttonLabel || ""}
+                            onChange={(e) => updateElementProps(selectedElement.id, { buttonLabel: e.target.value })}
+                            className={inputClass}
+                          />
+                        </label>
+                        <div className="grid gap-1.5 text-xs font-medium">
+                          <span>Button Width &amp; Alignment</span>
+                          <InkSelect
+                            value={selectedElement.buttonAlign || "full"}
+                            onChange={(val) =>
+                              updateElementProps(selectedElement.id, {
+                                buttonAlign: val as "full" | "left" | "center" | "right",
+                              })
+                            }
+                            options={[
+                              { value: "full", label: "Full width" },
+                              { value: "left", label: "Left aligned" },
+                              { value: "center", label: "Centered" },
+                              { value: "right", label: "Right aligned" },
+                            ]}
+                          />
+                        </div>
+                      </>
+                    )}
+
+                    {selectedElement.type === "divider" && (
+                      <div className="grid gap-1.5 text-xs font-medium">
+                        <span>Divider Spacing</span>
+                        <InkSelect
+                          value={selectedElement.dividerSpacing || "md"}
+                          onChange={(val) =>
                             updateElementProps(selectedElement.id, {
-                              buttonAlign: e.target.value as "full" | "left" | "center" | "right",
+                              dividerSpacing: val as "sm" | "md" | "lg",
                             })
                           }
-                          className={inputClass}
+                          options={[
+                            { value: "sm", label: "Small" },
+                            { value: "md", label: "Medium" },
+                            { value: "lg", label: "Large" },
+                          ]}
+                        />
+                      </div>
+                    )}
+
+                    {!initialForm.isFixed && (
+                      <div className="pt-4 border-t border-line">
+                        <button
+                          type="button"
+                          onClick={() => deleteElement(selectedElement.id)}
+                          className="w-full rounded-xl border border-red-200 bg-red-50 py-2 text-xs font-medium text-red-600 hover:border-red-600 transition"
                         >
-                          <option value="full">Full width</option>
-                          <option value="left">Left aligned</option>
-                          <option value="center">Centered</option>
-                          <option value="right">Right aligned</option>
-                        </select>
-                      </label>
-                    </>
-                  )}
-
-                  {selectedElement.type === "divider" && (
-                    <label className="grid gap-1.5 text-xs font-medium">
-                      Spacing
-                      <select
-                        value={selectedElement.dividerSpacing || "md"}
-                        onChange={(e) =>
-                          updateElementProps(selectedElement.id, {
-                            dividerSpacing: e.target.value as "sm" | "md" | "lg",
-                          })
-                        }
-                        className={inputClass}
-                      >
-                        <option value="sm">Small</option>
-                        <option value="md">Medium</option>
-                        <option value="lg">Large</option>
-                      </select>
-                    </label>
-                  )}
-
-                  {!initialForm.isFixed && (
-                    <div className="pt-4 border-t border-line">
-                      <button
-                        type="button"
-                        onClick={() => deleteElement(selectedElement.id)}
-                        className="w-full rounded-xl border border-red-200 bg-red-50 py-2 text-xs font-medium text-red-600 hover:border-red-600 transition"
-                      >
-                        Delete element
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                /* Form Design System Tab */
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-sm font-semibold text-ink">Form Design System</h3>
-                    <p className="mt-0.5 text-xs text-ink-soft">
-                      Style tokens applied independently from page and site themes.
-                    </p>
+                          Delete element
+                        </button>
+                      </div>
+                    )}
                   </div>
+                )}
 
-                  <label className="grid gap-1.5 text-xs font-medium">
-                    Submit Button Color
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="color"
-                        value={design.buttonColor || "#0a0a0a"}
-                        onChange={(e) => {
-                          setDesign({ ...design, buttonColor: e.target.value });
-                          setDirty(true);
-                        }}
-                        className="h-8 w-8 cursor-pointer rounded border border-line"
-                      />
-                      <input
-                        value={design.buttonColor}
-                        placeholder="#0a0a0a"
-                        onChange={(e) => {
-                          setDesign({ ...design, buttonColor: e.target.value });
-                          setDirty(true);
-                        }}
-                        className={inputClass}
-                      />
+                {/* 3. Selected Element Style Tab */}
+                {selectedElement && rightTab === "style" && (
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="text-sm font-semibold text-ink">Custom Style</h3>
+                      <p className="mt-0.5 text-xs text-ink-soft">
+                        Overrides global theme for this specific element.
+                      </p>
                     </div>
-                  </label>
 
-                  <label className="grid gap-1.5 text-xs font-medium">
-                    Submit Button Text Color
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="color"
-                        value={design.buttonTextColor || "#ffffff"}
-                        onChange={(e) => {
-                          setDesign({ ...design, buttonTextColor: e.target.value });
-                          setDirty(true);
-                        }}
-                        className="h-8 w-8 cursor-pointer rounded border border-line"
-                      />
-                      <input
-                        value={design.buttonTextColor}
-                        placeholder="#ffffff"
-                        onChange={(e) => {
-                          setDesign({ ...design, buttonTextColor: e.target.value });
-                          setDirty(true);
-                        }}
-                        className={inputClass}
-                      />
-                    </div>
-                  </label>
+                    {/* Button Style */}
+                    {selectedElement.type === "button" && (
+                      <>
+                        <label className="grid gap-1.5 text-xs font-medium">
+                          Button Background Color
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="color"
+                              value={selectedElement.elementStyle?.backgroundColor || design.buttonColor || "#0a0a0a"}
+                              onChange={(e) =>
+                                updateElementProps(selectedElement.id, {
+                                  elementStyle: { ...selectedElement.elementStyle, backgroundColor: e.target.value },
+                                })
+                              }
+                              className="h-8 w-8 cursor-pointer rounded border border-line"
+                            />
+                            <input
+                              value={selectedElement.elementStyle?.backgroundColor || ""}
+                              placeholder={design.buttonColor || "#0a0a0a"}
+                              onChange={(e) =>
+                                updateElementProps(selectedElement.id, {
+                                  elementStyle: { ...selectedElement.elementStyle, backgroundColor: e.target.value },
+                                })
+                              }
+                              className={inputClass}
+                            />
+                          </div>
+                        </label>
 
-                  <label className="grid gap-1.5 text-xs font-medium">
-                    Input Border Color
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="color"
-                        value={design.borderColor || "#e2e2e0"}
-                        onChange={(e) => {
-                          setDesign({ ...design, borderColor: e.target.value });
-                          setDirty(true);
-                        }}
-                        className="h-8 w-8 cursor-pointer rounded border border-line"
-                      />
-                      <input
-                        value={design.borderColor}
-                        placeholder="#e2e2e0"
-                        onChange={(e) => {
-                          setDesign({ ...design, borderColor: e.target.value });
-                          setDirty(true);
-                        }}
-                        className={inputClass}
-                      />
-                    </div>
-                  </label>
+                        <label className="grid gap-1.5 text-xs font-medium">
+                          Button Text Color
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="color"
+                              value={selectedElement.elementStyle?.textColor || design.buttonTextColor || "#ffffff"}
+                              onChange={(e) =>
+                                updateElementProps(selectedElement.id, {
+                                  elementStyle: { ...selectedElement.elementStyle, textColor: e.target.value },
+                                })
+                              }
+                              className="h-8 w-8 cursor-pointer rounded border border-line"
+                            />
+                            <input
+                              value={selectedElement.elementStyle?.textColor || ""}
+                              placeholder={design.buttonTextColor || "#ffffff"}
+                              onChange={(e) =>
+                                updateElementProps(selectedElement.id, {
+                                  elementStyle: { ...selectedElement.elementStyle, textColor: e.target.value },
+                                })
+                              }
+                              className={inputClass}
+                            />
+                          </div>
+                        </label>
 
-                  <label className="grid gap-1.5 text-xs font-medium">
-                    Form Background Color
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="color"
-                        value={design.backgroundColor || "#ffffff"}
-                        onChange={(e) => {
-                          setDesign({ ...design, backgroundColor: e.target.value });
-                          setDirty(true);
-                        }}
-                        className="h-8 w-8 cursor-pointer rounded border border-line"
-                      />
-                      <input
-                        value={design.backgroundColor}
-                        placeholder="#ffffff"
-                        onChange={(e) => {
-                          setDesign({ ...design, backgroundColor: e.target.value });
-                          setDirty(true);
-                        }}
-                        className={inputClass}
-                      />
-                    </div>
-                  </label>
+                        <div className="grid gap-1.5 text-xs font-medium">
+                          <span>Button Corner Radius</span>
+                          <CornerRadiusPicker
+                            value={selectedElement.elementStyle?.borderRadius || design.borderRadius || ""}
+                            onChange={(val) =>
+                              updateElementProps(selectedElement.id, {
+                                elementStyle: { ...selectedElement.elementStyle, borderRadius: val },
+                              })
+                            }
+                          />
+                        </div>
+                      </>
+                    )}
 
-                  <label className="grid gap-1.5 text-xs font-medium">
-                    Corner Radius
-                    <select
-                      value={design.borderRadius}
-                      onChange={(e) => {
-                        setDesign({ ...design, borderRadius: e.target.value });
-                        setDirty(true);
-                      }}
-                      className={inputClass}
-                    >
-                      <option value="">Theme default (rounded)</option>
-                      <option value="0px">Sharp (0px)</option>
-                      <option value="6px">Subtle (6px)</option>
-                      <option value="12px">Rounded (12px)</option>
-                      <option value="16px">Curved (16px)</option>
-                      <option value="9999px">Pill (9999px)</option>
-                    </select>
-                  </label>
+                    {/* Typography Style */}
+                    {(selectedElement.type === "heading" || selectedElement.type === "text") && (
+                      <>
+                        <label className="grid gap-1.5 text-xs font-medium">
+                          Text Color
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="color"
+                              value={selectedElement.elementStyle?.textColor || design.textColor || "#0a0a0a"}
+                              onChange={(e) =>
+                                updateElementProps(selectedElement.id, {
+                                  elementStyle: { ...selectedElement.elementStyle, textColor: e.target.value },
+                                })
+                              }
+                              className="h-8 w-8 cursor-pointer rounded border border-line"
+                            />
+                            <input
+                              value={selectedElement.elementStyle?.textColor || ""}
+                              placeholder="#0a0a0a"
+                              onChange={(e) =>
+                                updateElementProps(selectedElement.id, {
+                                  elementStyle: { ...selectedElement.elementStyle, textColor: e.target.value },
+                                })
+                              }
+                              className={inputClass}
+                            />
+                          </div>
+                        </label>
 
-                  <label className="grid gap-1.5 text-xs font-medium">
-                    Font Family
-                    <select
-                      value={design.fontFamily}
-                      onChange={(e) => {
-                        setDesign({ ...design, fontFamily: e.target.value });
-                        setDirty(true);
-                      }}
-                      className={inputClass}
-                    >
-                      <option value="">Theme default</option>
-                      <option value="system-ui, sans-serif">Modern Sans-Serif</option>
-                      <option value="Georgia, serif">Editorial Serif</option>
-                      <option value="monospace">Monospace</option>
-                    </select>
-                  </label>
-                </div>
-              )}
-            </div>
-          </aside>
+                        <div className="grid gap-1.5 text-xs font-medium">
+                          <span>Text Alignment</span>
+                          <div className="grid grid-cols-3 gap-1">
+                            {(["left", "center", "right"] as const).map((align) => (
+                              <button
+                                key={align}
+                                type="button"
+                                onClick={() => {
+                                  if (selectedElement.type === "heading") {
+                                    updateElementProps(selectedElement.id, { headingAlign: align });
+                                  } else {
+                                    updateElementProps(selectedElement.id, { textAlign: align });
+                                  }
+                                }}
+                                className={`rounded-lg border py-1.5 text-xs font-medium capitalize transition-colors ${
+                                  (selectedElement.type === "heading" ? selectedElement.headingAlign : selectedElement.textAlign) === align
+                                    ? "border-ink bg-ink text-white"
+                                    : "border-line bg-white text-ink hover:border-ink"
+                                }`}
+                              >
+                                {align}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </>
+                    )}
+
+                    {/* Input Field Style */}
+                    {isFieldElementType(selectedElement.type) && selectedElement.type !== "hidden" && (
+                      <>
+                        <label className="grid gap-1.5 text-xs font-medium">
+                          Input Border Color
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="color"
+                              value={selectedElement.elementStyle?.borderColor || design.borderColor || "#e2e2e0"}
+                              onChange={(e) =>
+                                updateElementProps(selectedElement.id, {
+                                  elementStyle: { ...selectedElement.elementStyle, borderColor: e.target.value },
+                                })
+                              }
+                              className="h-8 w-8 cursor-pointer rounded border border-line"
+                            />
+                            <input
+                              value={selectedElement.elementStyle?.borderColor || ""}
+                              placeholder={design.borderColor || "#e2e2e0"}
+                              onChange={(e) =>
+                                updateElementProps(selectedElement.id, {
+                                  elementStyle: { ...selectedElement.elementStyle, borderColor: e.target.value },
+                                })
+                              }
+                              className={inputClass}
+                            />
+                          </div>
+                        </label>
+
+                        <label className="grid gap-1.5 text-xs font-medium">
+                          Input Background Color
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="color"
+                              value={selectedElement.elementStyle?.backgroundColor || "#ffffff"}
+                              onChange={(e) =>
+                                updateElementProps(selectedElement.id, {
+                                  elementStyle: { ...selectedElement.elementStyle, backgroundColor: e.target.value },
+                                })
+                              }
+                              className="h-8 w-8 cursor-pointer rounded border border-line"
+                            />
+                            <input
+                              value={selectedElement.elementStyle?.backgroundColor || ""}
+                              placeholder="#ffffff"
+                              onChange={(e) =>
+                                updateElementProps(selectedElement.id, {
+                                  elementStyle: { ...selectedElement.elementStyle, backgroundColor: e.target.value },
+                                })
+                              }
+                              className={inputClass}
+                            />
+                          </div>
+                        </label>
+
+                        <div className="grid gap-1.5 text-xs font-medium">
+                          <span>Corner Radius</span>
+                          <CornerRadiusPicker
+                            value={selectedElement.elementStyle?.borderRadius || design.borderRadius || ""}
+                            onChange={(val) =>
+                              updateElementProps(selectedElement.id, {
+                                elementStyle: { ...selectedElement.elementStyle, borderRadius: val },
+                              })
+                            }
+                          />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            </aside>
+          )}
         </div>
 
         <DragOverlay>

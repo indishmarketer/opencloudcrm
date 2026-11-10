@@ -7,7 +7,19 @@
  * No imports on purpose: safe for client components and plain node tests.
  * The DB read/write lives in src/lib/forms.ts. */
 
-export type FormFieldType = "text" | "email" | "phone" | "textarea" | "select" | "checkbox" | "number" | "date";
+export type FormFieldType =
+  | "text"
+  | "email"
+  | "phone"
+  | "textarea"
+  | "select"
+  | "radio"
+  | "multiselect"
+  | "checkbox"
+  | "country"
+  | "address"
+  | "number"
+  | "date";
 
 export const FORM_FIELD_TYPES: { value: FormFieldType; label: string }[] = [
   { value: "text", label: "Text" },
@@ -15,7 +27,11 @@ export const FORM_FIELD_TYPES: { value: FormFieldType; label: string }[] = [
   { value: "phone", label: "Phone" },
   { value: "textarea", label: "Long text" },
   { value: "select", label: "Dropdown" },
+  { value: "radio", label: "Single select" },
+  { value: "multiselect", label: "Multi select" },
   { value: "checkbox", label: "Checkbox" },
+  { value: "country", label: "Country" },
+  { value: "address", label: "Address" },
   { value: "number", label: "Number" },
   { value: "date", label: "Date" },
 ];
@@ -28,7 +44,11 @@ export type FormElementType =
   | "phone"
   | "textarea"
   | "select"
+  | "radio"
+  | "multiselect"
   | "checkbox"
+  | "country"
+  | "address"
   | "number"
   | "hidden"
   | "button"
@@ -44,13 +64,16 @@ export const FORM_ELEMENT_PALETTE: {
   { type: "text", label: "Paragraph", category: "layout", description: "Instructions, notes, or disclaimer" },
   { type: "text_input", label: "Text input", category: "fields", description: "Single-line text field" },
   { type: "email", label: "Email", category: "fields", description: "Email address with validation" },
-  { type: "phone", label: "Phone", category: "fields", description: "Phone number input" },
+  { type: "phone", label: "Phone", category: "fields", description: "Phone number with country flag & code" },
   { type: "textarea", label: "Long text", category: "fields", description: "Multi-line text area" },
   { type: "select", label: "Dropdown", category: "fields", description: "Select menu with custom choices" },
+  { type: "radio", label: "Single select", category: "fields", description: "Radio choices where one can be chosen" },
+  { type: "multiselect", label: "Multi select", category: "fields", description: "Checkbox choices for multiple picks" },
   { type: "checkbox", label: "Checkbox", category: "fields", description: "Single checkbox or consent toggle" },
+  { type: "country", label: "Country", category: "fields", description: "Searchable country selector with flags" },
+  { type: "address", label: "Address", category: "fields", description: "Street or postal address" },
   { type: "number", label: "Number", category: "fields", description: "Numeric input" },
-  { type: "hidden", label: "Hidden field", category: "fields", description: "Silently captures tracking context (UTM)" },
-  { type: "button", label: "Submit button", category: "action", description: "Form submission button" },
+  { type: "button", label: "Button", category: "action", description: "Form action button" },
   { type: "divider", label: "Divider", category: "layout", description: "Horizontal separation line" },
 ];
 
@@ -70,6 +93,7 @@ export type FormCanvasElement = {
   fieldLabel?: string;
   fieldPlaceholder?: string;
   fieldRequired?: boolean;
+  fieldHidden?: boolean;
   fieldDefaultValue?: string;
   fieldOptions?: string;
   // Button properties
@@ -78,6 +102,16 @@ export type FormCanvasElement = {
   buttonVariant?: "primary" | "outline";
   // Divider properties
   dividerSpacing?: "sm" | "md" | "lg";
+  // Per-element custom styling
+  elementStyle?: {
+    backgroundColor?: string;
+    textColor?: string;
+    borderColor?: string;
+    borderRadius?: string;
+    fontSize?: string;
+    textAlign?: "left" | "center" | "right";
+    padding?: string;
+  };
 };
 
 export type FormField = {
@@ -140,7 +174,11 @@ export function isFieldElementType(type: FormElementType): boolean {
     "phone",
     "textarea",
     "select",
+    "radio",
+    "multiselect",
     "checkbox",
+    "country",
+    "address",
     "number",
     "hidden",
   ].includes(type);
@@ -159,6 +197,7 @@ export function elementsToFields(elements: FormCanvasElement[]): FormField[] {
     const el = elements[i];
     if (!isFieldElementType(el.type)) continue;
 
+    const isHidden = el.type === "hidden" || el.fieldHidden === true;
     const rawType: FormFieldType =
       el.type === "hidden"
         ? "text"
@@ -166,7 +205,7 @@ export function elementsToFields(elements: FormCanvasElement[]): FormField[] {
           ? "text"
           : (el.type as FormFieldType);
 
-    const label = (el.fieldLabel ?? (el.type === "hidden" ? "Hidden tracker" : "Field")).trim().slice(0, 100);
+    const label = (el.fieldLabel ?? (isHidden ? "Hidden tracker" : "Field")).trim().slice(0, 100);
     let key = (el.fieldKey ?? slugifyKey(label, i)).trim().slice(0, 60);
     if (!key) key = `field_${i + 1}`;
     while (seenKeys.has(key)) key = `${key}_${i}`;
@@ -176,9 +215,9 @@ export function elementsToFields(elements: FormCanvasElement[]): FormField[] {
       key,
       label,
       type: rawType,
-      options: typeof el.fieldOptions === "string" ? el.fieldOptions.slice(0, 500) : "",
-      required: el.type === "hidden" ? false : el.fieldRequired === true,
-      hidden: el.type === "hidden",
+      options: typeof el.fieldOptions === "string" ? el.fieldOptions.slice(0, 1000) : "",
+      required: isHidden ? false : el.fieldRequired === true,
+      hidden: isHidden,
       defaultValue: typeof el.fieldDefaultValue === "string" ? el.fieldDefaultValue.slice(0, 500) : "",
     });
   }
@@ -216,11 +255,9 @@ export function formDefinitionToElements(form: {
   }
   if (Array.isArray(form.fields)) {
     for (const f of form.fields) {
-      const type: FormElementType = f.hidden
-        ? "hidden"
-        : f.type === "text"
-          ? "text_input"
-          : (f.type as FormElementType);
+      const type: FormElementType = f.type === "text"
+        ? "text_input"
+        : (f.type as FormElementType);
       elements.push({
         id: `elem_${f.key || Math.random().toString(36).slice(2, 9)}`,
         type,
@@ -228,6 +265,7 @@ export function formDefinitionToElements(form: {
         fieldLabel: f.label,
         fieldPlaceholder: "",
         fieldRequired: f.required,
+        fieldHidden: f.hidden,
         fieldDefaultValue: f.defaultValue,
         fieldOptions: f.options,
       });
@@ -247,15 +285,29 @@ export function formDefinitionToElements(form: {
 
 export function normalizeFormElements(input: unknown): FormCanvasElement[] {
   if (!Array.isArray(input)) return [];
+  const validTypes: FormElementType[] = [
+    ...FORM_ELEMENT_PALETTE.map((p) => p.type),
+    "hidden",
+  ];
+
   return input.slice(0, 50).map((raw, index) => {
     const obj = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
     const id = typeof obj.id === "string" && obj.id ? obj.id : `elem_${index}_${Math.random().toString(36).slice(2, 7)}`;
-    const validTypes: FormElementType[] = FORM_ELEMENT_PALETTE.map((p) => p.type);
     const type: FormElementType = validTypes.includes(obj.type as FormElementType)
       ? (obj.type as FormElementType)
       : "text_input";
 
     const str = (v: unknown, limit = 200) => (typeof v === "string" ? v.trim().slice(0, limit) : "");
+    const rawStyle = obj.elementStyle && typeof obj.elementStyle === "object" ? (obj.elementStyle as Record<string, unknown>) : undefined;
+    const elementStyle = rawStyle ? {
+      backgroundColor: str(rawStyle.backgroundColor, 50) || undefined,
+      textColor: str(rawStyle.textColor, 50) || undefined,
+      borderColor: str(rawStyle.borderColor, 50) || undefined,
+      borderRadius: str(rawStyle.borderRadius, 50) || undefined,
+      fontSize: str(rawStyle.fontSize, 30) || undefined,
+      textAlign: ["left", "center", "right"].includes(String(rawStyle.textAlign)) ? (rawStyle.textAlign as "left" | "center" | "right") : undefined,
+      padding: str(rawStyle.padding, 30) || undefined,
+    } : undefined;
 
     return {
       id,
@@ -270,12 +322,14 @@ export function normalizeFormElements(input: unknown): FormCanvasElement[] {
       fieldLabel: str(obj.fieldLabel, 100),
       fieldPlaceholder: str(obj.fieldPlaceholder, 100),
       fieldRequired: obj.fieldRequired === true,
+      fieldHidden: obj.fieldHidden === true || obj.type === "hidden",
       fieldDefaultValue: str(obj.fieldDefaultValue, 500),
-      fieldOptions: str(obj.fieldOptions, 500),
+      fieldOptions: str(obj.fieldOptions, 1000),
       buttonLabel: str(obj.buttonLabel, 60),
       buttonAlign: ["full", "left", "center", "right"].includes(String(obj.buttonAlign)) ? (obj.buttonAlign as "full" | "left" | "center" | "right") : "full",
       buttonVariant: obj.buttonVariant === "outline" ? "outline" : "primary",
       dividerSpacing: ["sm", "md", "lg"].includes(String(obj.dividerSpacing)) ? (obj.dividerSpacing as "sm" | "md" | "lg") : "md",
+      elementStyle,
     };
   });
 }

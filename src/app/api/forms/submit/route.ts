@@ -77,13 +77,20 @@ export async function POST(req: NextRequest) {
     const phoneField = form.fields.find(
       (f) => (f.type === "phone" || /phone/i.test(f.key)) && String(payload.fields[f.key] || "").trim()
     );
+    const countryField = form.fields.find(
+      (f) => (f.type === "country" || /country/i.test(f.key)) && String(payload.fields[f.key] || "").trim()
+    );
     const contactName = nameField ? String(payload.fields[nameField.key]).trim() : null;
     const contactPhone = phoneField ? String(payload.fields[phoneField.key]).trim() : null;
+    const contactCountry = countryField ? String(payload.fields[countryField.key]).trim() : null;
 
     const contactId = await ensureContact({
       email: otpEmail,
       name: contactName,
       phone: contactPhone,
+      phoneSource: contactPhone ? "form" : undefined,
+      country: contactCountry,
+      countrySource: contactCountry ? "form" : undefined,
     }).catch(() => null);
     const submissionId = await recordFormSubmission({
       formId,
@@ -174,12 +181,23 @@ export async function POST(req: NextRequest) {
     const phoneField = form.fields.find(
       (f) => (f.type === "phone" || /phone/i.test(f.key)) && String(fields[f.key] || "").trim()
     );
+    const countryField = form.fields.find(
+      (f) => (f.type === "country" || /country/i.test(f.key)) && String(fields[f.key] || "").trim()
+    );
     const email = emailField ? String(fields[emailField.key]).trim() : "";
     const contactName = nameField ? String(fields[nameField.key]).trim() : null;
     const contactPhone = phoneField ? String(fields[phoneField.key]).trim() : null;
+    const contactCountry = countryField ? String(fields[countryField.key]).trim() : null;
 
     const contactId = email
-      ? await ensureContact({ email, name: contactName, phone: contactPhone }).catch(() => null)
+      ? await ensureContact({
+          email,
+          name: contactName,
+          phone: contactPhone,
+          phoneSource: contactPhone ? "form" : undefined,
+          country: contactCountry,
+          countrySource: contactCountry ? "form" : undefined,
+        }).catch(() => null)
       : null;
 
     const submissionId = await recordFormSubmission({ formId, fieldValues: fields, pageUrl, contactId });
