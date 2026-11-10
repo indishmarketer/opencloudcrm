@@ -14,6 +14,9 @@ import { getPublishedPage } from "@/lib/sitePages";
 
 const OG_IMAGE = assetUrl("newsletter/og-newsletter.png");
 
+// The selected saved form is resolved from the database on each request.
+export const dynamic = "force-dynamic";
+
 const baseMetadata: Metadata = {
   title: "Newsletter",
   description: `Get updates from ${SITE_NAME} by email. Free, no spam.`,
