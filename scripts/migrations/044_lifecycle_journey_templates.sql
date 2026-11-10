@@ -7,8 +7,8 @@ WHERE NOT EXISTS (SELECT 1 FROM email_flows WHERE trigger_key = 'newsletter_sign
 
 INSERT INTO email_flow_steps (flow_id, position, delay_days, from_email, subject, body_html)
 SELECT f.id, 0, 0, 'hello@example.com',
-  'Welcome to Indish Marketer',
-  '<p>Hi {{first_name}},</p><p>Thanks for joining the Indish Marketer newsletter.</p><p>You will receive practical updates when we publish something worth sharing.</p>'
+  'Welcome to the newsletter',
+  '<p>Hi {{first_name}},</p><p>Thanks for joining the newsletter.</p><p>You will receive practical updates when we publish something worth sharing.</p>'
 FROM email_flows f WHERE f.trigger_key = 'newsletter_signup'
   AND NOT EXISTS (SELECT 1 FROM email_flow_steps st WHERE st.flow_id = f.id);
 
@@ -19,7 +19,7 @@ WHERE NOT EXISTS (SELECT 1 FROM email_flows WHERE trigger_key = 'community_inact
 INSERT INTO email_flow_steps (flow_id, position, delay_days, from_email, subject, body_html)
 SELECT f.id, 0, 3, 'support@example.com',
   'Introduce yourself to the community',
-  '<p>Hi {{first_name}},</p><p>You are part of the Indish Marketer community. When you are ready, introduce yourself or share what you are working on.</p><p><a href="{{community_url}}">Create your first post</a></p>'
+  '<p>Hi {{first_name}},</p><p>You are part of this community. When you are ready, introduce yourself or share what you are working on.</p><p><a href="{{community_url}}">Create your first post</a></p>'
 FROM email_flows f WHERE f.trigger_key = 'community_inactivity'
   AND NOT EXISTS (SELECT 1 FROM email_flow_steps st WHERE st.flow_id = f.id);
 

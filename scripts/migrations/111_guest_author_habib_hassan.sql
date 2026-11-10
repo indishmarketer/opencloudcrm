@@ -1,13 +1,7 @@
--- Guest author for "After the Export" (2026-10). Bio and link are from the
--- author note he supplied with the draft.
-INSERT INTO blog_authors (slug, name, role, bio, avatar_url, social_links, is_active)
-VALUES (
-  'habib-hassan',
-  'Habib Hassan',
-  'Founder, Repostit',
-  'Habib Hassan is the founder of Repostit, a service for publishing finished video content to connected social accounts.',
-  NULL,
-  '[{"label": "Repostit", "url": "https://repostit.io/"}]'::jsonb,
-  true
-)
-ON CONFLICT (slug) DO NOTHING;
+-- This migration used to seed a real third-party guest author bio tied to a
+-- specific blog post that was never part of the committed seed data (see
+-- 144_blog_posts.sql's comment) -- so on a fresh install it was an orphaned
+-- row with no matching post, just clutter in a generic deployment's author
+-- list. Intentionally a no-op now; kept as a file so the migration numbering
+-- stays stable for installs that already ran it.
+SELECT 1;

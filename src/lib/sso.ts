@@ -1,4 +1,5 @@
 import { decodeJwt } from "jose";
+import { SITE_HOSTNAME } from "@/lib/liveSiteUrl";
 
 export type SsoProvider = "google" | "github" | "linkedin";
 
@@ -113,7 +114,9 @@ function profileFromIdToken(idToken: string): SsoProfile | null {
 }
 
 async function fetchGithubProfile(accessToken: string): Promise<SsoProfile | null> {
-  const headers = { Authorization: `Bearer ${accessToken}`, Accept: "application/vnd.github+json", "User-Agent": "indishmarketer.com" };
+  // GitHub's API rejects requests with no User-Agent -- this deployment's
+  // own hostname identifies the caller, same as any other self-hosted app.
+  const headers = { Authorization: `Bearer ${accessToken}`, Accept: "application/vnd.github+json", "User-Agent": SITE_HOSTNAME };
   const userRes = await fetch("https://api.github.com/user", { headers });
   if (!userRes.ok) return null;
   const user = await userRes.json().catch(() => null);

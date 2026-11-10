@@ -1,50 +1,20 @@
 [
   {
-    "slug": "ai-automation",
-    "name": "AI Agents & Automation",
-    "description": "n8n, Claude, MCP, and the AI agents we actually build and run — lead generation, self-hosting, and workflows that run themselves.",
-    "image": "https://images.indishmarketer.com/categories/ai-automation.webp"
+    "slug": "news",
+    "name": "News",
+    "description": "Updates and announcements.",
+    "image": ""
   },
   {
-    "slug": "tool-reviews",
-    "name": "Tool & App Reviews",
-    "description": "Honest, hands-on reviews of the AI tools and apps we've actually used — what's worth paying for and what isn't.",
-    "image": "https://images.indishmarketer.com/categories/tool-reviews.webp"
+    "slug": "guides",
+    "name": "Guides",
+    "description": "How-tos and practical walkthroughs.",
+    "image": ""
   },
   {
-    "slug": "gohighlevel-crm",
-    "name": "GoHighLevel & CRM",
-    "description": "Tutorials, comparisons, and real setups for GoHighLevel and the CRMs agencies actually run their client work on.",
-    "image": "https://images.indishmarketer.com/categories/gohighlevel-crm.webp"
-  },
-  {
-    "slug": "whatsapp-marketing",
-    "name": "WhatsApp Marketing",
-    "description": "WhatsApp automation, CRMs, and AI agents for businesses that live and die by their WhatsApp replies.",
-    "image": "https://images.indishmarketer.com/categories/whatsapp-marketing.webp"
-  },
-  {
-    "slug": "anti-detect-browsers",
-    "name": "Anti-Detect Browsers",
-    "description": "Reviews and setup guides for the browsers agencies and marketers use to manage multiple accounts safely.",
-    "image": "https://images.indishmarketer.com/categories/anti-detect-browsers.webp"
-  },
-  {
-    "slug": "make-money-online",
-    "name": "Make Money Online",
-    "description": "Real side hustles and small businesses you can actually start, with what they pay and what they take to run.",
-    "image": "https://images.indishmarketer.com/categories/make-money-online.webp"
-  },
-  {
-    "slug": "affiliate-reviews",
-    "name": "Affiliate & Business Opportunity Reviews",
-    "description": "Honest, sometimes unflattering reviews of the courses, programs, and affiliate offers that flood your feed — what's legit and what to skip.",
-    "image": "https://images.indishmarketer.com/categories/affiliate-reviews.webp"
-  },
-  {
-    "slug": "ai-video-content",
-    "name": "AI Video & Content Creation",
-    "description": "AI video, image, and content generation tools, reviewed for what they're actually good at.",
-    "image": "https://images.indishmarketer.com/categories/ai-video-content.webp"
+    "slug": "case-studies",
+    "name": "Case Studies",
+    "description": "Real examples and results.",
+    "image": ""
   }
 ]

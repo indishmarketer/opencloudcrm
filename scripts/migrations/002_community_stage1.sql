@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS community_settings (
 
 INSERT INTO community_settings (space, about_text)
 VALUES
-  ('general', 'A free, public space to ask questions, share wins, and meet other members of the Indish Marketer community.'),
+  ('general', 'A free, public space to ask questions, share wins, and meet other members of this community.'),
   ('pro', 'The PRO community, for paying members: deeper discussions, direct access, and priority support.')
 ON CONFLICT (space) DO NOTHING;
 

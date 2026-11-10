@@ -1,14 +1,19 @@
--- Seed guide for the homepage "Get the free guide" popup -- a real,
--- useful short PDF (not a placeholder), published immediately so the
--- flow works end to end from launch. The owner can edit/replace it any
--- time from /console/lead-magnets.
+-- Seed an EXAMPLE guide for the homepage "Get the free guide" popup, so a
+-- fresh console shows what a lead magnet looks like -- seeded UNPUBLISHED
+-- (a previous version of this seed published it immediately with marketing
+-- copy specific to the original project maintainer's own automation-agency
+-- business, which would show on every fresh install's homepage regardless
+-- of the deploying business's actual niche). The business can edit this
+-- example or replace it with their own, then publish it, from
+-- /console/lead-magnets. Until something is published, the homepage's
+-- "leadMagnet" button action falls back to a plain link automatically.
 INSERT INTO lead_magnets (slug, title, headline, subheadline, cover_image_url, file_url, published)
 VALUES (
-  'indie-automation-starter-guide',
-  'The Indie Automation Starter Guide',
-  '3 automations that save solo businesses hours every week',
-  'A short, practical guide to capturing leads automatically, following up without lifting a finger, and keeping your CRM in sync. No fluff.',
-  'https://images.indishmarketer.com/lead-magnets/indie-automation-starter-guide-cover.webp',
-  'https://images.indishmarketer.com/lead-magnets/indie-automation-starter-guide.pdf',
-  true
+  'example-starter-guide',
+  'Example Starter Guide',
+  'Replace this with your own free guide',
+  'Edit this lead magnet from Console -> Lead magnets: give it your own title, headline, cover image and PDF, then publish it.',
+  '',
+  '',
+  false
 );
