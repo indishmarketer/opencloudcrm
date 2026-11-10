@@ -11,8 +11,9 @@ import { SITE_URL } from "@/lib/liveSiteUrl";
 import { getReplyToEmail } from "@/lib/businessProfile";
 import { getBusiness } from "@/lib/businessProfile";
 import { escapeHtml } from "@/lib/escapeHtml";
+import { resolveEmailDomain } from "@/lib/emailSettings";
 
-const EMAIL_DOMAIN = new URL(SITE_URL).hostname.replace(/^www\./, "");
+const SITE_HOSTNAME = new URL(SITE_URL).hostname.replace(/^www\./, "");
 
 type EmailProvider = "ses" | "brevo";
 
@@ -153,13 +154,14 @@ export async function sendEmail({
   // delivery/bounce/complaint events come back via
   // /api/webhooks/ses-sns; Brevo doesn't have an equivalent wired up yet.
   const provider = resolveProvider();
-  // info@indishmarketer.com is a receive-only inbox (the owner's real
-  // forwarding target), never an automated "From" identity -- support@ is
-  // the safe fallback if a call site somehow omits `from`.
+  // info@ is reserved as a receive-only inbox (never an automated "From"
+  // identity) by the allow-list in emailTemplates.ts -- support@ is the
+  // safe fallback if a call site somehow omits `from`.
   const configuredSender = from && !/@example\.com$/i.test(from) ? from : undefined;
   const defaultSender = process.env.EMAIL_FROM && !/@example\.com$/i.test(process.env.EMAIL_FROM)
     ? process.env.EMAIL_FROM : undefined;
-  const sender = configuredSender || defaultSender || `support@${EMAIL_DOMAIN}`;
+  const emailDomain = await resolveEmailDomain(SITE_HOSTNAME);
+  const sender = configuredSender || defaultSender || `support@${emailDomain}`;
   const resolvedCategory = category || "system";
   const resolvedTemplateKey = templateKey || null;
   const normalizedTo = to.trim().toLowerCase();

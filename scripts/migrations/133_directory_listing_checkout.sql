@@ -44,12 +44,12 @@ INSERT INTO email_templates
 VALUES
   ('account-email-change', 'security', 'Confirm account email change',
    'Sent to the new address when a member asks to change their account email.',
-   $s$Confirm your new Indish Marketer email address$s$,
-   $b$<p>You asked to use this address for your Indish Marketer account.</p><p><a href="{{confirm_url}}">Confirm this email address</a></p><p>The link works for one hour. Until you open it, your account keeps using {{current_email}}.</p><p>If you did not ask for this, ignore this email and nothing changes.</p>$b$,
+   $s$Confirm your new {{site_name}} email address$s$,
+   $b$<p>You asked to use this address for your {{site_name}} account.</p><p><a href="{{confirm_url}}">Confirm this email address</a></p><p>The link works for one hour. Until you open it, your account keeps using {{current_email}}.</p><p>If you did not ask for this, ignore this email and nothing changes.</p>$b$,
    'support@example.com', true, false, ARRAY['confirm_url','current_email']),
   ('tool-submission-approved-payment', 'community-support', 'Tool approved, payment needed',
    'Sent when a paid tool listing passes review and is ready for its one-time listing payment.',
    $s${{tool_name}} is approved. Complete your listing payment$s$,
-   $b$<p>Good news. We approved <strong>{{tool_name}}</strong> for the Indish Marketer directory.</p><p>Complete the one-time $5 listing payment to publish it:</p><p><a href="{{payment_url}}">Pay for your listing</a></p><p>Your listing will go live after the payment is confirmed.</p><p>Indish Marketer</p>$b$,
+   $b$<p>Good news. We approved <strong>{{tool_name}}</strong> for the {{site_name}} directory.</p><p>Complete the one-time $5 listing payment to publish it:</p><p><a href="{{payment_url}}">Pay for your listing</a></p><p>Your listing will go live after the payment is confirmed.</p><p>{{site_name}}</p>$b$,
    'support@example.com', false, true, ARRAY['tool_name','payment_url'])
 ON CONFLICT (key) DO NOTHING;

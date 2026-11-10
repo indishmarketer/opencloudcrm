@@ -6,9 +6,9 @@ import { cleanTestRecipient } from "@/lib/testRecipient";
 import { pool } from "@/lib/db";
 import { applyTemplateVars } from "@/lib/emailTemplates";
 import { SITE_NAME } from "@/config/brand";
-import { SITE_URL } from "@/lib/liveSiteUrl";
-
-const EMAIL_DOMAIN = new URL(SITE_URL).hostname.replace(/^www\./, "");
+import { SITE_URL, SITE_HOSTNAME } from "@/lib/liveSiteUrl";
+import { resolveEmailDomain } from "@/lib/emailSettings";
+import { getBusiness } from "@/lib/businessProfile";
 
 /** Sends whatever is CURRENTLY in the editor (not the saved DB row), with
  * {{var}} placeholders left un-substituted -- there's no single "real"
@@ -45,12 +45,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ key
     tier_label: "PRO", ref_label: "Reference", payment_ref: "TEST-123", amount: "999", currency: "INR",
   };
   const vars = Object.fromEntries((template.rows[0].allowed_vars || []).map((name: string) => [name, sampleValues[name] || `(example ${name})`]));
+  // site_name is always substitutable (see getEmailTemplate), including in
+  // a test send of unsaved editor content that bypasses getEmailTemplate.
+  const business = await getBusiness();
+  vars.site_name = business.brand || SITE_NAME;
 
   const result = await sendEmail({
     to: toEmail,
     subject: `[TEST] ${applyTemplateVars(String(subject), vars)}`,
     html: applyTemplateVars(String(bodyHtml), vars),
-    from: String(fromEmail || `support@${EMAIL_DOMAIN}`),
+    from: String(fromEmail || `support@${await resolveEmailDomain(SITE_HOSTNAME)}`),
     critical: true,
     templateKey: key,
     category: "fixed",

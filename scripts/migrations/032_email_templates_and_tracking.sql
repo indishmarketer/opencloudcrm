@@ -54,7 +54,7 @@ INSERT INTO email_templates (key, category, label, description, subject, body_ht
 ('magic-link-login', 'security', 'Console login link',
  'Sent to a console admin requesting a passwordless login link.',
  $s$Your console login link$s$,
- $b$<p>Click below to log in to the Indish Marketer console.</p><p><a href="{{link}}">Log in</a></p><p>This link expires in 15 minutes. If you didn't request this, ignore it.</p>$b$,
+ $b$<p>Click below to log in to the {{site_name}} console.</p><p><a href="{{link}}">Log in</a></p><p>This link expires in 15 minutes. If you didn't request this, ignore it.</p>$b$,
  'hello@example.com', true, true),
 
 ('email-verification', 'security', 'Confirm your email',
@@ -65,8 +65,8 @@ INSERT INTO email_templates (key, category, label, description, subject, body_ht
 
 ('console-admin-invite', 'admin', 'Console admin invite',
  'Sent when an existing console admin adds a new one.',
- $s$You've been added to the Indish Marketer console$s$,
- $b$<p>{{invited_by}} gave you access to the Indish Marketer console.</p><p><a href="{{login_url}}">Log in</a> with this email address to get a one-time link, no password needed.</p>$b$,
+ $s$You've been added to the {{site_name}} console$s$,
+ $b$<p>{{invited_by}} gave you access to the {{site_name}} console.</p><p><a href="{{login_url}}">Log in</a> with this email address to get a one-time link, no password needed.</p>$b$,
  'hello@example.com', false, true),
 
 ('author-application-admin-notify', 'admin', 'New author application (admin alert)',
@@ -77,14 +77,14 @@ INSERT INTO email_templates (key, category, label, description, subject, body_ht
 
 ('author-application-approved', 'admin', 'Author application approved',
  'Sent to the applicant when a console admin approves their author application.',
- $s$You're in — writing for Indish Marketer$s$,
- $b$<p>Hi {{name}},</p><p>Good news, we'd love to have you write for the Indish Marketer blog. Reply to this email and we'll get you set up with a topic and next steps.</p><p>— Indish Marketer</p>$b$,
+ $s$You're in — writing for {{site_name}}$s$,
+ $b$<p>Hi {{name}},</p><p>Good news, we'd love to have you write for the {{site_name}} blog. Reply to this email and we'll get you set up with a topic and next steps.</p><p>— {{site_name}}</p>$b$,
  'hello@example.com', false, true),
 
 ('author-application-rejected', 'admin', 'Author application rejected',
  'Sent to the applicant when a console admin rejects their author application.',
  $s$Your author application$s$,
- $b$<p>Hi {{name}},</p><p>Thanks for applying to write for the Indish Marketer blog. We're not able to take you on right now, but we'll keep your application on file.</p><p>— Indish Marketer</p>$b$,
+ $b$<p>Hi {{name}},</p><p>Thanks for applying to write for the {{site_name}} blog. We're not able to take you on right now, but we'll keep your application on file.</p><p>— {{site_name}}</p>$b$,
  'hello@example.com', false, true),
 
 ('contact-form-admin-notify', 'community-support', 'New contact form message (admin alert)',
@@ -95,8 +95,8 @@ INSERT INTO email_templates (key, category, label, description, subject, body_ht
 
 ('contact-form-reply', 'community-support', 'Reply to a contact form message',
  'Sent when a console admin replies to someone who submitted the contact form.',
- $s$Re: your message to Indish Marketer$s$,
- $b$<p>Hi {{name}},</p><p>{{message}}</p><p>— Indish Marketer</p>$b$,
+ $s$Re: your message to {{site_name}}$s$,
+ $b$<p>Hi {{name}},</p><p>{{message}}</p><p>— {{site_name}}</p>$b$,
  'hello@example.com', false, true),
 
 ('review-submitted-admin-notify', 'community-support', 'New review submitted (admin alert)',
@@ -108,7 +108,7 @@ INSERT INTO email_templates (key, category, label, description, subject, body_ht
 ('review-question-to-author', 'community-support', 'Question about a submitted review',
  'Sent when a console admin asks the reviewer a question before publishing.',
  $s$A quick question about your review$s$,
- $b$<p>Hi {{name}},</p><p>Thanks for leaving a review for Indish Marketer. Before we publish it, we had a quick question:</p><p>{{note}}</p><p>Just reply to this email and we'll take another look.</p>$b$,
+ $b$<p>Hi {{name}},</p><p>Thanks for leaving a review for {{site_name}}. Before we publish it, we had a quick question:</p><p>{{note}}</p><p>Just reply to this email and we'll take another look.</p>$b$,
  'hello@example.com', false, true),
 
 ('payment-claim-admin-notify', 'community-support', 'New payment claim (admin alert)',

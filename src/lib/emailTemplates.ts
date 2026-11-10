@@ -1,5 +1,9 @@
 import { pool } from "@/lib/db";
-import { emailAt } from "@/lib/liveSiteUrl";
+import { SITE_HOSTNAME } from "@/lib/liveSiteUrl";
+import { resolveEmailDomain } from "@/lib/emailSettings";
+import { getBusiness } from "@/lib/businessProfile";
+import { SITE_NAME } from "@/config/brand";
+import { escapeHtml } from "@/lib/escapeHtml";
 
 export type EmailTemplate = {
   key: string;
@@ -37,7 +41,18 @@ export async function getEmailTemplate(key: string): Promise<EmailTemplate> {
   );
   const row = result.rows[0];
   if (!row) throw new Error(`Missing email_templates row for key "${key}". Run migration 032.`);
-  return row;
+  // {{site_name}} is resolved here, before the caller applies its own vars,
+  // so every seeded template can reference the deployment's own business
+  // name instead of a hardcoded one -- and so call sites never need to know
+  // this placeholder exists. Only {{site_name}} is touched; any other
+  // {{var}} the caller still needs to fill is left untouched.
+  const business = await getBusiness();
+  const siteName = escapeHtml(business.brand || SITE_NAME);
+  return {
+    ...row,
+    subject: row.subject.replace(/\{\{site_name\}\}/g, siteName),
+    body_html: row.body_html.replace(/\{\{site_name\}\}/g, siteName),
+  };
 }
 
 export async function listEmailTemplates(): Promise<EmailTemplate[]> {
@@ -128,7 +143,11 @@ export async function updateEmailTemplate(
     throw new EmailTemplateUpdateError("subject and bodyHtml are required.");
   }
   // info@ (this site's receive-only inbox) is never selectable as a sending
-  // identity here -- me@ is the owner-notification alias instead.
+  // identity here -- me@ is the owner-notification alias instead. The
+  // domain is the console-configured sending domain when one is set (see
+  // emailSettings.ts), else this deployment's own site domain.
+  const domain = await resolveEmailDomain(SITE_HOSTNAME);
+  const emailAt = (local: string) => `${local}@${domain}`;
   const allowedSenders = new Set([emailAt("me"), emailAt("support"), emailAt("reach"), emailAt("academy")]);
   if (fromEmail !== undefined && fromEmail !== null && !allowedSenders.has(fromEmail)) {
     throw new EmailTemplateUpdateError("Choose a verified sending address.");
@@ -136,7 +155,11 @@ export async function updateEmailTemplate(
   const template = await pool.query("SELECT allowed_vars FROM email_templates WHERE key = $1", [key]);
   if (!template.rows[0]) throw new EmailTemplateUpdateError("Template not found.", 404);
   const usedVars = [...`${subject} ${bodyHtml}`.matchAll(/\{\{(\w+)\}\}/g)].map((match) => match[1]);
-  const invalidVars = usedVars.filter((name) => !(template.rows[0].allowed_vars || []).includes(name));
+  // site_name is always available -- it's substituted automatically by
+  // getEmailTemplate before any template is sent, not something each
+  // template's own allowed_vars list needs to opt into.
+  const allowedVars = new Set([...(template.rows[0].allowed_vars || []), "site_name"]);
+  const invalidVars = usedVars.filter((name) => !allowedVars.has(name));
   if (invalidVars.length > 0) {
     throw new EmailTemplateUpdateError(`Unsupported placeholder: {{${invalidVars[0]}}}`);
   }
