@@ -71,7 +71,20 @@ export async function POST(req: NextRequest) {
     const form = await getFormById(formId);
     if (!form) return NextResponse.json({ error: "This form no longer exists." }, { status: 404 });
 
-    const contactId = await ensureContact({ email: otpEmail }).catch(() => null);
+    const nameField = form.fields.find(
+      (f) => (/name/i.test(f.key) || /name/i.test(f.label) || f.type === "text") && String(payload.fields[f.key] || "").trim()
+    );
+    const phoneField = form.fields.find(
+      (f) => (f.type === "phone" || /phone/i.test(f.key)) && String(payload.fields[f.key] || "").trim()
+    );
+    const contactName = nameField ? String(payload.fields[nameField.key]).trim() : null;
+    const contactPhone = phoneField ? String(payload.fields[phoneField.key]).trim() : null;
+
+    const contactId = await ensureContact({
+      email: otpEmail,
+      name: contactName,
+      phone: contactPhone,
+    }).catch(() => null);
     const submissionId = await recordFormSubmission({
       formId,
       fieldValues: payload.fields,
@@ -155,10 +168,18 @@ export async function POST(req: NextRequest) {
 
     // ── Standard (non-OTP) submit ───────────────────────────────────────────
     const emailField = form.fields.find((f) => f.type === "email" && String(fields[f.key] || "").trim());
-    const nameField = form.fields.find((f) => f.type === "text" && String(fields[f.key] || "").trim());
+    const nameField = form.fields.find(
+      (f) => (/name/i.test(f.key) || /name/i.test(f.label) || f.type === "text") && String(fields[f.key] || "").trim()
+    );
+    const phoneField = form.fields.find(
+      (f) => (f.type === "phone" || /phone/i.test(f.key)) && String(fields[f.key] || "").trim()
+    );
     const email = emailField ? String(fields[emailField.key]).trim() : "";
+    const contactName = nameField ? String(fields[nameField.key]).trim() : null;
+    const contactPhone = phoneField ? String(fields[phoneField.key]).trim() : null;
+
     const contactId = email
-      ? await ensureContact({ email, name: nameField ? String(fields[nameField.key]).trim() : null }).catch(() => null)
+      ? await ensureContact({ email, name: contactName, phone: contactPhone }).catch(() => null)
       : null;
 
     const submissionId = await recordFormSubmission({ formId, fieldValues: fields, pageUrl, contactId });

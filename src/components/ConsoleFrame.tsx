@@ -32,6 +32,7 @@ export default function ConsoleFrame({
   // stays in the normal sidebar layout.
   const isPageEditor =
     /^\/console\/pages\/[^/]+$/.test(pathname) ||
+    /^\/console\/forms\/[^/]+$/.test(pathname) ||
     /^\/console\/workflows\/[^/]+$/.test(pathname) ||
     /^\/console\/courses\/[^/]+\/page-sections$/.test(pathname) ||
     /^\/console\/directory\/tools\/[^/]+\/page-sections$/.test(pathname);

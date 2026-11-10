@@ -8,10 +8,12 @@ import {
   KeyboardSensor,
   PointerSensor,
   closestCenter,
+  useDraggable,
   useDroppable,
   useSensor,
   useSensors,
   type DragEndEvent,
+  type DragStartEvent,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -24,7 +26,6 @@ import { CSS } from "@dnd-kit/utilities";
 import ConsoleModal from "@/components/ConsoleModal";
 import { useConfirm } from "@/components/ConfirmDialog";
 import {
-  FORM_ELEMENT_PALETTE,
   isFieldElementType,
   type FormCanvasElement,
   type FormDefinition,
@@ -39,7 +40,15 @@ const primaryButton =
 const iconButton =
   "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-ink-soft hover:bg-paper-soft hover:text-ink";
 const inputClass =
-  "w-full rounded-xl border border-line bg-paper px-3.5 py-2.5 text-sm outline-none transition focus:border-ink";
+  "w-full rounded-xl border border-line bg-paper px-3.5 py-2 text-sm outline-none transition focus:border-ink focus:ring-1 focus:ring-ink";
+
+let elementCounter = 0;
+function nextElementId(prefix = "elem"): string {
+  elementCounter += 1;
+  return `${prefix}_${elementCounter}_${Date.now().toString(36)}`;
+}
+
+// ── Icons ───────────────────────────────────────────────────────────────────
 
 const BackIcon = () => (
   <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -72,20 +81,6 @@ const GearIcon = () => (
     <path d="m19.4 15 .1.1 1.4 1.1-1.5 2.6-1.7-.7a8.2 8.2 0 0 1-1.7 1l-.3 1.8h-3l-.3-1.8a8.2 8.2 0 0 1-1.7-1l-1.7.7-1.5-2.6 1.4-1.1a7.6 7.6 0 0 1 0-2l-1.4-1.1 1.5-2.6 1.7.7a8.2 8.2 0 0 1 1.7-1l.3-1.8h3l.3 1.8a8.2 8.2 0 0 1 1.7 1l1.7-.7 1.5 2.6-1.4 1.1a7.6 7.6 0 0 1 0 2Z" />
   </svg>
 );
-const PaletteIcon = () => (
-  <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="13.5" cy="6.5" r=".5" fill="currentColor" />
-    <circle cx="17.5" cy="10.5" r=".5" fill="currentColor" />
-    <circle cx="8.5" cy="7.5" r=".5" fill="currentColor" />
-    <circle cx="6.5" cy="12.5" r=".5" fill="currentColor" />
-    <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.9 0 1.5-.7 1.5-1.5 0-.4-.2-.8-.4-1.1-.3-.3-.4-.7-.4-1.1 0-.9.7-1.6 1.6-1.6h1.9c4 0 7.4-3.4 7.4-7.4 0-5.2-4.5-9.3-10-9.3z" />
-  </svg>
-);
-const CloseIcon = () => (
-  <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M6 6l12 12M18 6L6 18" />
-  </svg>
-);
 const DragHandleIcon = () => (
   <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4 text-ink-soft cursor-grab active:cursor-grabbing" fill="currentColor">
     <circle cx="9" cy="6" r="1.5" /><circle cx="15" cy="6" r="1.5" />
@@ -111,11 +106,114 @@ const CheckIcon = () => (
   </svg>
 );
 
-let elementCounter = 0;
-function nextElementId(prefix = "elem"): string {
-  elementCounter += 1;
-  return `${prefix}_${elementCounter}_${Date.now().toString(36)}`;
+// Element category and icon mapper
+function ElementIcon({ type, className = "h-5 w-5" }: { type: FormElementType; className?: string }) {
+  switch (type) {
+    case "heading":
+      return (
+        <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M4 12h16M4 6v12M20 6v12" />
+        </svg>
+      );
+    case "text":
+      return (
+        <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M4 6h16M4 12h16M4 18h10" />
+        </svg>
+      );
+    case "text_input":
+      return (
+        <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="6" width="18" height="12" rx="2" /><path d="M8 12h8" />
+        </svg>
+      );
+    case "email":
+      return (
+        <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="4" /><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8" />
+        </svg>
+      );
+    case "phone":
+      return (
+        <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+        </svg>
+      );
+    case "textarea":
+      return (
+        <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="4" width="18" height="16" rx="2" /><path d="M7 8h10M7 12h10M7 16h6" />
+        </svg>
+      );
+    case "select":
+      return (
+        <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="6" width="18" height="12" rx="2" /><path d="m15 11 2 2 2-2" />
+        </svg>
+      );
+    case "checkbox":
+      return (
+        <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2" /><path d="m9 12 2 2 4-4" />
+        </svg>
+      );
+    case "number":
+      return (
+        <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="4" y1="9" x2="20" y2="9" /><line x1="4" y1="15" x2="20" y2="15" /><line x1="10" y1="3" x2="8" y2="21" /><line x1="16" y1="3" x2="14" y2="21" />
+        </svg>
+      );
+    case "hidden":
+      return (
+        <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" /><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" /><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" /><line x1="2" y1="2" x2="22" y2="22" />
+        </svg>
+      );
+    case "button":
+      return (
+        <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="4" y="6" width="16" height="12" rx="3" /><circle cx="12" cy="12" r="1.5" fill="currentColor" />
+        </svg>
+      );
+    case "divider":
+      return (
+        <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="3" y1="12" x2="21" y2="12" />
+        </svg>
+      );
+  }
 }
+
+const PALETTE_GROUPS: {
+  group: string;
+  items: { type: FormElementType; label: string }[];
+}[] = [
+  {
+    group: "Layout",
+    items: [
+      { type: "heading", label: "Heading" },
+      { type: "text", label: "Text" },
+      { type: "divider", label: "Divider" },
+    ],
+  },
+  {
+    group: "Fields",
+    items: [
+      { type: "text_input", label: "Text input" },
+      { type: "email", label: "Email" },
+      { type: "phone", label: "Phone" },
+      { type: "textarea", label: "Long text" },
+      { type: "select", label: "Dropdown" },
+      { type: "checkbox", label: "Checkbox" },
+      { type: "number", label: "Number" },
+      { type: "hidden", label: "Hidden" },
+    ],
+  },
+  {
+    group: "Action",
+    items: [{ type: "button", label: "Submit" }],
+  },
+];
 
 function createElement(type: FormElementType): FormCanvasElement {
   const id = nextElementId();
@@ -147,6 +245,39 @@ function createElement(type: FormElementType): FormCanvasElement {
   }
 }
 
+// ── Left Palette Draggable Tile ─────────────────────────────────────────────
+
+function PaletteTile({
+  item,
+  onPick,
+}: {
+  item: { type: FormElementType; label: string };
+  onPick: (type: FormElementType) => void;
+}) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: `palette:${item.type}`,
+    data: { kind: "palette", elementType: item.type },
+  });
+
+  return (
+    <button
+      ref={setNodeRef}
+      type="button"
+      {...listeners}
+      {...attributes}
+      onClick={() => onPick(item.type)}
+      className={`flex cursor-grab touch-none flex-col items-center gap-1.5 rounded-xl border border-line bg-paper px-2 py-2.5 text-center transition-colors hover:border-ink hover:bg-paper-soft active:cursor-grabbing ${
+        isDragging ? "opacity-40" : ""
+      }`}
+    >
+      <ElementIcon type={item.type} className="h-5 w-5 text-ink-soft" />
+      <span className="text-[11px] font-medium leading-tight text-ink">{item.label}</span>
+    </button>
+  );
+}
+
+// ── Canvas Sortable Element Item ────────────────────────────────────────────
+
 function SortableElementItem({
   element,
   selected,
@@ -157,6 +288,7 @@ function SortableElementItem({
   onMoveDown,
   canMoveUp,
   canMoveDown,
+  onUpdateProps,
   design,
   isFixed,
 }: {
@@ -169,6 +301,7 @@ function SortableElementItem({
   onMoveDown: () => void;
   canMoveUp: boolean;
   canMoveDown: boolean;
+  onUpdateProps: (patch: Partial<FormCanvasElement>) => void;
   design: FormDesign;
   isFixed: boolean;
 }) {
@@ -210,7 +343,7 @@ function SortableElementItem({
           : "border-transparent bg-paper hover:border-line hover:shadow-sm"
       }`}
     >
-      {/* Action Toolbar on hover / selection */}
+      {/* Floating Action Toolbar on hover / selection */}
       <div
         className={`absolute right-3 top-3 z-20 flex items-center gap-1 rounded-lg border border-line bg-white p-0.5 shadow-sm transition-opacity ${
           selected ? "opacity-100" : "opacity-0 group-hover:opacity-100"
@@ -262,28 +395,38 @@ function SortableElementItem({
         )}
       </div>
 
-      {/* Live Preview of Element */}
+      {/* Live Preview with Direct Inline Canvas Editing */}
       {element.type === "heading" && (
         <div style={{ textAlign: element.headingAlign || "left" }}>
-          {element.headingLevel === "h1" ? (
-            <h1 className="text-2xl font-bold tracking-tight text-ink">{element.headingText || "Headline"}</h1>
-          ) : element.headingLevel === "h3" ? (
-            <h3 className="text-lg font-semibold text-ink">{element.headingText || "Headline"}</h3>
-          ) : element.headingLevel === "h4" ? (
-            <h4 className="text-base font-semibold text-ink">{element.headingText || "Headline"}</h4>
-          ) : (
-            <h2 className="text-xl font-bold tracking-tight text-ink">{element.headingText || "Headline"}</h2>
-          )}
+          <input
+            value={element.headingText || ""}
+            onChange={(e) => onUpdateProps({ headingText: e.target.value })}
+            placeholder="Headline"
+            className={`w-full bg-transparent outline-none font-bold tracking-tight text-ink border-b border-transparent hover:border-line focus:border-ink ${
+              element.headingLevel === "h1"
+                ? "text-2xl"
+                : element.headingLevel === "h3"
+                  ? "text-lg"
+                  : element.headingLevel === "h4"
+                    ? "text-base"
+                    : "text-xl"
+            }`}
+          />
         </div>
       )}
 
       {element.type === "text" && (
-        <p
-          style={{ textAlign: element.textAlign || "left" }}
-          className={`text-sm ${element.textMuted ? "text-ink-soft" : "text-ink"}`}
-        >
-          {element.textContent || "Paragraph text"}
-        </p>
+        <div style={{ textAlign: element.textAlign || "left" }}>
+          <textarea
+            rows={2}
+            value={element.textContent || ""}
+            onChange={(e) => onUpdateProps({ textContent: e.target.value })}
+            placeholder="Paragraph text"
+            className={`w-full resize-none bg-transparent outline-none text-sm border-b border-transparent hover:border-line focus:border-ink ${
+              element.textMuted ? "text-ink-soft" : "text-ink"
+            }`}
+          />
+        </div>
       )}
 
       {element.type === "divider" && (
@@ -294,22 +437,27 @@ function SortableElementItem({
 
       {element.type === "hidden" && (
         <div className="flex items-center justify-between rounded-lg border border-dashed border-line bg-paper-soft px-3 py-2 text-xs text-ink-soft">
-          <span className="font-mono font-medium">Hidden tracking: {element.fieldKey || "param"}</span>
+          <span className="font-mono font-medium">Hidden tracker: {element.fieldKey || "param"}</span>
           <span>Value: &quot;{element.fieldDefaultValue || ""}&quot;</span>
         </div>
       )}
 
       {isFieldElementType(element.type) && element.type !== "hidden" && (
         <div className="space-y-1.5">
-          <label className="flex items-center gap-1 text-sm font-medium text-ink">
-            {element.fieldLabel || "Field label"}
-            {element.fieldRequired && <span className="text-red-500">*</span>}
-          </label>
+          <div className="flex items-center gap-1">
+            <input
+              value={element.fieldLabel || ""}
+              onChange={(e) => onUpdateProps({ fieldLabel: e.target.value })}
+              placeholder="Field label"
+              className="bg-transparent text-sm font-medium text-ink outline-none border-b border-transparent hover:border-line focus:border-ink px-0.5"
+            />
+            {element.fieldRequired && <span className="text-red-500 font-bold">*</span>}
+          </div>
 
           {element.type === "textarea" ? (
             <textarea
               readOnly
-              placeholder={element.fieldPlaceholder}
+              placeholder={element.fieldPlaceholder || "Type here..."}
               rows={3}
               style={inputStyle}
               className="w-full resize-none rounded-xl border border-line bg-paper px-3.5 py-2.5 text-sm outline-none cursor-default"
@@ -318,9 +466,9 @@ function SortableElementItem({
             <select
               disabled
               style={inputStyle}
-              className="w-full rounded-xl border border-line bg-paper px-3.5 py-2.5 text-sm outline-none cursor-default text-ink-soft"
+              className="w-full rounded-xl border border-line bg-paper px-3.5 py-2.5 text-sm outline-none cursor-default text-ink"
             >
-              <option>{element.fieldPlaceholder || "Select an option..."}</option>
+              <option>{element.fieldPlaceholder || "Choose an option..."}</option>
               {(element.fieldOptions || "")
                 .split(",")
                 .filter(Boolean)
@@ -330,14 +478,14 @@ function SortableElementItem({
             </select>
           ) : element.type === "checkbox" ? (
             <div className="flex items-center gap-2 pt-1">
-              <input type="checkbox" disabled className="h-4 w-4 rounded border-line" />
+              <input type="checkbox" disabled className="h-4 w-4 rounded border-line accent-ink" />
               <span className="text-sm text-ink-soft">{element.fieldLabel || "Checkbox option"}</span>
             </div>
           ) : (
             <input
               type="text"
               readOnly
-              placeholder={element.fieldPlaceholder}
+              placeholder={element.fieldPlaceholder || "Enter text..."}
               style={inputStyle}
               className="w-full rounded-xl border border-line bg-paper px-3.5 py-2.5 text-sm outline-none cursor-default"
             />
@@ -357,15 +505,19 @@ function SortableElementItem({
                   : "w-full"
           }`}
         >
-          <button
-            type="button"
+          <div
             style={buttonStyle}
             className={`${
-              element.buttonAlign === "full" ? "w-full" : ""
+              element.buttonAlign === "full" ? "w-full text-center" : ""
             } rounded-xl bg-ink px-6 py-2.5 text-sm font-medium text-paper shadow-sm`}
           >
-            {element.buttonLabel || "Submit"}
-          </button>
+            <input
+              value={element.buttonLabel || ""}
+              onChange={(e) => onUpdateProps({ buttonLabel: e.target.value })}
+              placeholder="Submit"
+              className="bg-transparent text-center font-medium outline-none border-b border-transparent hover:border-paper/40 focus:border-paper w-auto"
+            />
+          </div>
         </div>
       )}
     </div>
@@ -387,6 +539,8 @@ function CanvasEndDropzone({ empty }: { empty: boolean }) {
     </div>
   );
 }
+
+// ── Main ConsoleFormEditor Component ────────────────────────────────────────
 
 export default function ConsoleFormEditor({
   initialForm,
@@ -416,16 +570,16 @@ export default function ConsoleFormEditor({
   const [verifyEmail, setVerifyEmail] = useState(initialForm.verifyEmail === true);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"inspector" | "design">("inspector");
+  const [rightTab, setRightTab] = useState<"inspector" | "design">("design");
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
   const [device, setDevice] = useState<"desktop" | "mobile">("desktop");
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [paletteOpen, setPaletteOpen] = useState(false);
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [activeDragLabel, setActiveDragLabel] = useState<string | null>(null);
 
   // Undo / Redo history
   const [history, setHistory] = useState<{ past: FormCanvasElement[][]; future: FormCanvasElement[][] }>({
@@ -461,7 +615,7 @@ export default function ConsoleFormEditor({
     setDirty(true);
   }, [history, elements]);
 
-  // Keyboard shortcuts for undo/redo
+  // Keyboard shortcuts
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key === "z") {
@@ -482,10 +636,21 @@ export default function ConsoleFormEditor({
     const newEl = createElement(type);
     updateElements([...elements, newEl]);
     setSelectedId(newEl.id);
-    setActiveTab("inspector");
+    setRightTab("inspector");
+  }
+
+  function handleDragStart(event: DragStartEvent) {
+    const data = event.active.data.current as { kind?: string; elementType?: FormElementType } | undefined;
+    if (data?.kind === "palette" && data.elementType) {
+      setActiveDragLabel(`Add ${data.elementType.replace("_", " ")}`);
+      return;
+    }
+    const dragged = elements.find((el) => el.id === event.active.id);
+    setActiveDragLabel(dragged ? dragged.type.replace("_", " ") : null);
   }
 
   function handleDragEnd(event: DragEndEvent) {
+    setActiveDragLabel(null);
     const { active, over } = event;
     if (!over) return;
 
@@ -498,7 +663,7 @@ export default function ConsoleFormEditor({
       const newEl = createElement(data.elementType);
       updateElements([...elements.slice(0, index), newEl, ...elements.slice(index)]);
       setSelectedId(newEl.id);
-      setActiveTab("inspector");
+      setRightTab("inspector");
       return;
     }
 
@@ -510,17 +675,19 @@ export default function ConsoleFormEditor({
     updateElements(arrayMove(elements, oldIndex, newIndex));
   }
 
-  function updateSelectedProps(patch: Partial<FormCanvasElement>) {
-    if (!selectedId) return;
+  function updateElementProps(id: string, patch: Partial<FormCanvasElement>) {
     updateElements(
-      elements.map((el) => (el.id === selectedId ? ({ ...el, ...patch } as FormCanvasElement) : el)),
+      elements.map((el) => (el.id === id ? ({ ...el, ...patch } as FormCanvasElement) : el)),
     );
   }
 
   function deleteElement(id: string) {
     if (initialForm.isFixed) return;
     updateElements(elements.filter((el) => el.id !== id));
-    if (selectedId === id) setSelectedId(null);
+    if (selectedId === id) {
+      setSelectedId(null);
+      setRightTab("design");
+    }
   }
 
   function duplicateElement(id: string) {
@@ -534,6 +701,7 @@ export default function ConsoleFormEditor({
     };
     updateElements([...elements.slice(0, idx + 1), clone, ...elements.slice(idx + 1)]);
     setSelectedId(clone.id);
+    setRightTab("inspector");
   }
 
   function moveElement(idx: number, delta: number) {
@@ -629,10 +797,10 @@ export default function ConsoleFormEditor({
 
       {/* Form Settings Modal */}
       {settingsOpen && (
-        <ConsoleModal title="Form settings & submission outcome" onClose={() => setSettingsOpen(false)} wide>
+        <ConsoleModal title="Form Settings" onClose={() => setSettingsOpen(false)} wide>
           <div className="space-y-5">
             <label className="grid gap-1.5 text-sm font-medium">
-              Form name
+              Form Name
               <input
                 value={formName}
                 maxLength={100}
@@ -645,7 +813,7 @@ export default function ConsoleFormEditor({
             </label>
 
             <label className="grid gap-1.5 text-sm font-medium">
-              Direct shareable address
+              Direct Shareable Address
               <div className="flex items-center gap-1">
                 <span className="text-sm text-ink-soft">/f/</span>
                 <input
@@ -665,13 +833,13 @@ export default function ConsoleFormEditor({
                 />
               </div>
               <span className="text-xs text-ink-soft">
-                Visitors can access this form directly at /f/{slug || "slug"}.
+                Standalone direct link visitors can access without being on a website page.
               </span>
             </label>
 
             <div className="rounded-xl border border-line p-4 space-y-3">
-              <h3 className="text-sm font-semibold text-ink">Two-step email verification</h3>
-              <label className="flex items-start gap-2 text-sm cursor-pointer">
+              <h3 className="text-sm font-semibold text-ink">Two-Step Email Verification</h3>
+              <label className="flex items-start gap-2.5 text-sm cursor-pointer">
                 <input
                   type="checkbox"
                   checked={verifyEmail}
@@ -679,21 +847,21 @@ export default function ConsoleFormEditor({
                     setVerifyEmail(e.target.checked);
                     setDirty(true);
                   }}
-                  className="mt-0.5 h-4 w-4 rounded border-line"
+                  className="mt-0.5 h-4 w-4 rounded border-line accent-ink"
                 />
                 <div>
-                  <span className="font-medium text-ink">Verify email with one-time passcode (OTP)</span>
+                  <span className="font-medium text-ink">Require OTP verification passcode</span>
                   <p className="text-xs text-ink-soft">
-                    When enabled, submitting sends a verification code to the visitor&apos;s email. The submission is only recorded once confirmed.
+                    Sends a 6-digit code to the email address before recording the submission and creating the contact.
                   </p>
                 </div>
               </label>
             </div>
 
             <div className="rounded-xl border border-line p-4 space-y-4">
-              <h3 className="text-sm font-semibold text-ink">After submission outcome</h3>
+              <h3 className="text-sm font-semibold text-ink">Submission Outcome</h3>
               <div className="space-y-2">
-                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <label className="flex items-center gap-2.5 text-sm cursor-pointer">
                   <input
                     type="radio"
                     name="submissionAction"
@@ -703,10 +871,11 @@ export default function ConsoleFormEditor({
                       setSubmissionAction("message");
                       setDirty(true);
                     }}
+                    className="accent-ink"
                   />
-                  <span>Show confirmation message on the page</span>
+                  <span>Show thank you confirmation message inline</span>
                 </label>
-                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <label className="flex items-center gap-2.5 text-sm cursor-pointer">
                   <input
                     type="radio"
                     name="submissionAction"
@@ -716,6 +885,7 @@ export default function ConsoleFormEditor({
                       setSubmissionAction("redirect");
                       setDirty(true);
                     }}
+                    className="accent-ink"
                   />
                   <span>Redirect to thank you page or custom URL</span>
                 </label>
@@ -723,7 +893,7 @@ export default function ConsoleFormEditor({
 
               {submissionAction === "redirect" ? (
                 <label className="grid gap-1.5 text-sm font-medium pt-2">
-                  Thank you page URL
+                  Thank You Page Address / URL
                   <input
                     value={redirectUrl}
                     placeholder="/thank-you or https://example.com/thanks"
@@ -737,7 +907,7 @@ export default function ConsoleFormEditor({
               ) : (
                 <div className="grid gap-3 pt-2">
                   <label className="grid gap-1.5 text-sm font-medium">
-                    Success heading
+                    Success Headline
                     <input
                       value={successHeading}
                       onChange={(e) => {
@@ -748,7 +918,7 @@ export default function ConsoleFormEditor({
                     />
                   </label>
                   <label className="grid gap-1.5 text-sm font-medium">
-                    Success text
+                    Success Message
                     <textarea
                       value={successText}
                       rows={2}
@@ -764,7 +934,7 @@ export default function ConsoleFormEditor({
             </div>
 
             <label className="grid gap-1.5 text-sm font-medium">
-              Notify email on submission (optional)
+              Notify Email Address (Optional)
               <input
                 type="email"
                 value={notifyEmail}
@@ -830,13 +1000,13 @@ export default function ConsoleFormEditor({
               setFormName(e.target.value);
               setDirty(true);
             }}
-            className="truncate font-medium text-sm text-ink bg-transparent border-b border-transparent hover:border-line focus:border-ink outline-none px-1 py-0.5"
+            className="truncate font-semibold text-sm text-ink bg-transparent border-b border-transparent hover:border-line focus:border-ink outline-none px-1.5 py-0.5 rounded"
             placeholder="Form name"
           />
 
           {initialForm.isFixed && (
             <span className="hidden sm:inline-block rounded-full bg-paper-soft px-2.5 py-0.5 text-xs font-semibold text-ink-soft">
-              Auth System Form
+              Auth Fixed Form
             </span>
           )}
 
@@ -844,22 +1014,13 @@ export default function ConsoleFormEditor({
         </div>
 
         <div className="flex shrink-0 items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => setPaletteOpen(true)}
-            aria-label="Elements"
-            title="Elements"
-            className={`${iconButton} sm:hidden`}
-          >
-            +
-          </button>
-
+          {/* Working Desktop vs Mobile Viewport Switcher */}
           <div className="flex items-center gap-0.5 rounded-lg bg-paper-soft p-0.5">
             <button
               type="button"
               onClick={() => setDevice("desktop")}
-              aria-label="Desktop"
-              title="Desktop preview"
+              aria-label="Desktop view"
+              title="Desktop view"
               className={`flex h-7 w-8 items-center justify-center rounded-md transition-colors ${
                 device === "desktop" ? "bg-white text-ink shadow-sm" : "text-ink-soft hover:text-ink"
               }`}
@@ -869,8 +1030,8 @@ export default function ConsoleFormEditor({
             <button
               type="button"
               onClick={() => setDevice("mobile")}
-              aria-label="Mobile"
-              title="Mobile preview"
+              aria-label="Mobile view"
+              title="Mobile view"
               className={`flex h-7 w-8 items-center justify-center rounded-md transition-colors ${
                 device === "mobile" ? "bg-white text-ink shadow-sm" : "text-ink-soft hover:text-ink"
               }`}
@@ -909,19 +1070,6 @@ export default function ConsoleFormEditor({
 
           <button
             type="button"
-            onClick={() => {
-              setActiveTab("design");
-              setSelectedId(null);
-            }}
-            aria-label="Form Design System"
-            title="Form Design System"
-            className={`${iconButton} ${activeTab === "design" ? "bg-paper-soft text-ink" : ""}`}
-          >
-            <PaletteIcon />
-          </button>
-
-          <button
-            type="button"
             onClick={() => setSettingsOpen(true)}
             aria-label="Form settings"
             title="Form settings"
@@ -947,156 +1095,143 @@ export default function ConsoleFormEditor({
         </p>
       )}
 
-      {/* Studio 3-Column Layout */}
+      {/* Main Studio 3-Column Layout */}
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
+        onDragCancel={() => setActiveDragLabel(null)}
       >
         <div className="relative flex min-h-0 flex-1 overflow-hidden">
-          {/* Left Sidebar: Palette */}
-          <aside
-            className={`${
-              paletteOpen ? "fixed inset-0 z-40 flex flex-col bg-white" : "hidden"
-            } sm:static sm:z-auto sm:flex sm:w-[220px] sm:shrink-0 sm:flex-col sm:border-r sm:border-line sm:bg-white`}
-          >
-            <div className="flex h-12 shrink-0 items-center justify-between border-b border-line px-3 sm:hidden">
-              <span className="text-sm font-semibold">Elements</span>
-              <button
-                type="button"
-                onClick={() => setPaletteOpen(false)}
-                aria-label="Close"
-                className={iconButton}
-              >
-                <CloseIcon />
-              </button>
-            </div>
-
-            <div className="min-h-0 flex-1 overflow-y-auto p-3 space-y-4">
-              <div>
-                <span className="px-1 text-xs font-semibold uppercase tracking-wider text-ink-soft">
-                  Layout
-                </span>
-                <div className="mt-2 space-y-1">
-                  {FORM_ELEMENT_PALETTE.filter((p) => p.category === "layout").map((item) => (
-                    <button
-                      key={item.type}
-                      type="button"
-                      onClick={() => {
-                        addElement(item.type);
-                        setPaletteOpen(false);
-                      }}
-                      className="w-full text-left rounded-xl border border-line bg-paper px-3 py-2 text-sm font-medium hover:border-ink hover:bg-paper-soft transition flex items-center justify-between"
-                    >
-                      <span>{item.label}</span>
-                      <span className="text-xs text-ink-soft">+</span>
-                    </button>
+          {/* Left Sidebar: Palette of Drag-and-Drop Elements */}
+          <aside className="w-[200px] shrink-0 border-r border-line bg-white flex flex-col overflow-y-auto p-3 space-y-4">
+            {PALETTE_GROUPS.map(({ group, items }) => (
+              <div key={group}>
+                <p className="px-0.5 text-[10px] font-semibold uppercase tracking-wider text-ink-soft">
+                  {group}
+                </p>
+                <div className="mt-1.5 grid grid-cols-2 gap-1.5">
+                  {items.map((item) => (
+                    <PaletteTile key={item.type} item={item} onPick={addElement} />
                   ))}
                 </div>
               </div>
-
-              <div>
-                <span className="px-1 text-xs font-semibold uppercase tracking-wider text-ink-soft">
-                  Form Fields
-                </span>
-                <div className="mt-2 space-y-1">
-                  {FORM_ELEMENT_PALETTE.filter((p) => p.category === "fields").map((item) => (
-                    <button
-                      key={item.type}
-                      type="button"
-                      onClick={() => {
-                        addElement(item.type);
-                        setPaletteOpen(false);
-                      }}
-                      className="w-full text-left rounded-xl border border-line bg-paper px-3 py-2 text-sm font-medium hover:border-ink hover:bg-paper-soft transition flex items-center justify-between"
-                    >
-                      <span>{item.label}</span>
-                      <span className="text-xs text-ink-soft">+</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <span className="px-1 text-xs font-semibold uppercase tracking-wider text-ink-soft">
-                  Actions
-                </span>
-                <div className="mt-2 space-y-1">
-                  {FORM_ELEMENT_PALETTE.filter((p) => p.category === "action").map((item) => (
-                    <button
-                      key={item.type}
-                      type="button"
-                      onClick={() => {
-                        addElement(item.type);
-                        setPaletteOpen(false);
-                      }}
-                      className="w-full text-left rounded-xl border border-line bg-paper px-3 py-2 text-sm font-medium hover:border-ink hover:bg-paper-soft transition flex items-center justify-between"
-                    >
-                      <span>{item.label}</span>
-                      <span className="text-xs text-ink-soft">+</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
+            ))}
           </aside>
 
-          {/* Center Canvas */}
+          {/* Center Canvas with Realistic Desktop & Mobile Mockups */}
           <main
-            onClick={() => setSelectedId(null)}
+            onClick={() => {
+              setSelectedId(null);
+            }}
             className="relative min-w-0 flex-1 overflow-y-auto bg-paper-soft p-4 sm:p-8 flex items-start justify-center"
           >
-            <div
-              className={`w-full transition-all duration-200 ${
-                device === "mobile" ? "max-w-[412px]" : "max-w-xl"
-              }`}
-            >
-              <div
-                style={{
-                  backgroundColor: design.backgroundColor || "#ffffff",
-                  fontFamily: design.fontFamily || undefined,
-                }}
-                className="min-h-[300px] rounded-2xl border border-line p-6 shadow-sm bg-white"
-              >
-                <SortableContext
-                  items={elements.map((el) => el.id)}
-                  strategy={verticalListSortingStrategy}
+            {device === "mobile" ? (
+              /* Authentic Mobile Mockup Frame */
+              <div className="w-[375px] shrink-0 overflow-hidden rounded-[3rem] border-[10px] border-ink shadow-2xl bg-white flex flex-col">
+                {/* Speaker pill notch */}
+                <div className="h-5 w-full bg-ink flex items-center justify-center pt-1 pb-2">
+                  <div className="h-3 w-20 rounded-full bg-zinc-800" />
+                </div>
+                <div
+                  style={{
+                    backgroundColor: design.backgroundColor || "#ffffff",
+                    fontFamily: design.fontFamily || undefined,
+                  }}
+                  className="min-h-[580px] p-4 overflow-y-auto"
                 >
-                  {elements.map((element, i) => (
-                    <SortableElementItem
-                      key={element.id}
-                      element={element}
-                      selected={selectedId === element.id}
-                      onSelect={() => {
-                        setSelectedId(element.id);
-                        setActiveTab("inspector");
-                      }}
-                      onDelete={() => deleteElement(element.id)}
-                      onDuplicate={() => duplicateElement(element.id)}
-                      onMoveUp={() => moveElement(i, -1)}
-                      onMoveDown={() => moveElement(i, 1)}
-                      canMoveUp={i > 0}
-                      canMoveDown={i < elements.length - 1}
-                      design={design}
-                      isFixed={initialForm.isFixed}
-                    />
-                  ))}
-                </SortableContext>
-
-                <CanvasEndDropzone empty={elements.length === 0} />
+                  <SortableContext
+                    items={elements.map((el) => el.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    {elements.map((element, i) => (
+                      <SortableElementItem
+                        key={element.id}
+                        element={element}
+                        selected={selectedId === element.id}
+                        onSelect={() => {
+                          setSelectedId(element.id);
+                          setRightTab("inspector");
+                        }}
+                        onDelete={() => deleteElement(element.id)}
+                        onDuplicate={() => duplicateElement(element.id)}
+                        onMoveUp={() => moveElement(i, -1)}
+                        onMoveDown={() => moveElement(i, 1)}
+                        canMoveUp={i > 0}
+                        canMoveDown={i < elements.length - 1}
+                        onUpdateProps={(patch) => updateElementProps(element.id, patch)}
+                        design={design}
+                        isFixed={initialForm.isFixed}
+                      />
+                    ))}
+                  </SortableContext>
+                  <CanvasEndDropzone empty={elements.length === 0} />
+                </div>
               </div>
-            </div>
+            ) : (
+              /* Realistic Desktop Browser Frame */
+              <div className="w-full max-w-2xl rounded-2xl border border-line bg-white shadow-md overflow-hidden flex flex-col">
+                {/* Browser top chrome */}
+                <div className="flex h-10 items-center justify-between border-b border-line bg-paper px-4">
+                  <div className="flex items-center gap-1.5">
+                    <span className="h-3 w-3 rounded-full bg-red-400" />
+                    <span className="h-3 w-3 rounded-full bg-amber-400" />
+                    <span className="h-3 w-3 rounded-full bg-green-400" />
+                  </div>
+                  <div className="mx-auto rounded-md border border-line bg-paper-soft px-8 py-1 text-[11px] font-mono text-ink-soft">
+                    {slug ? `/f/${slug}` : "preview"}
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    backgroundColor: design.backgroundColor || "#ffffff",
+                    fontFamily: design.fontFamily || undefined,
+                  }}
+                  className="min-h-[420px] p-6 sm:p-8"
+                >
+                  <SortableContext
+                    items={elements.map((el) => el.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    {elements.map((element, i) => (
+                      <SortableElementItem
+                        key={element.id}
+                        element={element}
+                        selected={selectedId === element.id}
+                        onSelect={() => {
+                          setSelectedId(element.id);
+                          setRightTab("inspector");
+                        }}
+                        onDelete={() => deleteElement(element.id)}
+                        onDuplicate={() => duplicateElement(element.id)}
+                        onMoveUp={() => moveElement(i, -1)}
+                        onMoveDown={() => moveElement(i, 1)}
+                        canMoveUp={i > 0}
+                        canMoveDown={i < elements.length - 1}
+                        onUpdateProps={(patch) => updateElementProps(element.id, patch)}
+                        design={design}
+                        isFixed={initialForm.isFixed}
+                      />
+                    ))}
+                  </SortableContext>
+
+                  <CanvasEndDropzone empty={elements.length === 0} />
+                </div>
+              </div>
+            )}
           </main>
 
-          {/* Right Sidebar: Inspector & Design */}
-          <aside className="hidden lg:flex lg:w-[320px] lg:shrink-0 lg:flex-col lg:border-l lg:border-line lg:bg-white">
-            <div className="flex border-b border-line">
+          {/* Right Sidebar: Dedicated Inspector & Design System */}
+          <aside className="w-[320px] shrink-0 border-l border-line bg-white flex flex-col">
+            <div className="flex border-b border-line bg-paper-soft/50">
               <button
                 type="button"
-                onClick={() => setActiveTab("inspector")}
+                onClick={() => setRightTab("inspector")}
                 className={`flex-1 py-3 text-xs font-semibold uppercase tracking-wider text-center border-b-2 transition ${
-                  activeTab === "inspector"
-                    ? "border-ink text-ink"
+                  rightTab === "inspector"
+                    ? "border-ink text-ink bg-white"
                     : "border-transparent text-ink-soft hover:text-ink"
                 }`}
               >
@@ -1104,32 +1239,268 @@ export default function ConsoleFormEditor({
               </button>
               <button
                 type="button"
-                onClick={() => setActiveTab("design")}
+                onClick={() => {
+                  setRightTab("design");
+                }}
                 className={`flex-1 py-3 text-xs font-semibold uppercase tracking-wider text-center border-b-2 transition ${
-                  activeTab === "design"
-                    ? "border-ink text-ink"
+                  rightTab === "design"
+                    ? "border-ink text-ink bg-white"
                     : "border-transparent text-ink-soft hover:text-ink"
                 }`}
               >
-                Design System
+                Form Design
               </button>
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto p-4 space-y-4">
-              {activeTab === "design" ? (
-                /* Form Design Tokens Tab */
+              {rightTab === "inspector" && selectedElement ? (
+                /* Selected Element Inspector */
                 <div className="space-y-4">
-                  <h3 className="text-sm font-semibold text-ink">Form Visual Design</h3>
-                  <p className="text-xs text-ink-soft">
-                    Custom visual styling applied independently from page and site themes.
-                  </p>
+                  <div className="flex items-center justify-between border-b border-line pb-2.5">
+                    <div className="flex items-center gap-1.5">
+                      <ElementIcon type={selectedElement.type} className="h-4 w-4 text-ink-soft" />
+                      <span className="text-sm font-semibold capitalize text-ink">
+                        {selectedElement.type.replace("_", " ")}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedId(null)}
+                      className="text-xs text-ink-soft hover:text-ink"
+                    >
+                      Deselect
+                    </button>
+                  </div>
+
+                  {selectedElement.type === "heading" && (
+                    <>
+                      <label className="grid gap-1.5 text-xs font-medium">
+                        Headline Text
+                        <input
+                          value={selectedElement.headingText || ""}
+                          onChange={(e) => updateElementProps(selectedElement.id, { headingText: e.target.value })}
+                          className={inputClass}
+                        />
+                      </label>
+                      <label className="grid gap-1.5 text-xs font-medium">
+                        Heading Level
+                        <select
+                          value={selectedElement.headingLevel || "h2"}
+                          onChange={(e) =>
+                            updateElementProps(selectedElement.id, {
+                              headingLevel: e.target.value as "h1" | "h2" | "h3" | "h4",
+                            })
+                          }
+                          className={inputClass}
+                        >
+                          <option value="h1">H1 — Largest</option>
+                          <option value="h2">H2 — Standard Title</option>
+                          <option value="h3">H3 — Subtitle</option>
+                          <option value="h4">H4 — Small Header</option>
+                        </select>
+                      </label>
+                      <label className="grid gap-1.5 text-xs font-medium">
+                        Text Alignment
+                        <select
+                          value={selectedElement.headingAlign || "left"}
+                          onChange={(e) =>
+                            updateElementProps(selectedElement.id, {
+                              headingAlign: e.target.value as "left" | "center" | "right",
+                            })
+                          }
+                          className={inputClass}
+                        >
+                          <option value="left">Left</option>
+                          <option value="center">Centered</option>
+                          <option value="right">Right</option>
+                        </select>
+                      </label>
+                    </>
+                  )}
+
+                  {selectedElement.type === "text" && (
+                    <>
+                      <label className="grid gap-1.5 text-xs font-medium">
+                        Paragraph Content
+                        <textarea
+                          rows={4}
+                          value={selectedElement.textContent || ""}
+                          onChange={(e) => updateElementProps(selectedElement.id, { textContent: e.target.value })}
+                          className={inputClass}
+                        />
+                      </label>
+                      <label className="flex items-center gap-2 text-xs font-medium cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={selectedElement.textMuted === true}
+                          onChange={(e) => updateElementProps(selectedElement.id, { textMuted: e.target.checked })}
+                          className="h-4 w-4 rounded border-line accent-ink"
+                        />
+                        <span>Muted soft text tone</span>
+                      </label>
+                    </>
+                  )}
+
+                  {isFieldElementType(selectedElement.type) && (
+                    <>
+                      <label className="grid gap-1.5 text-xs font-medium">
+                        Field Label
+                        <input
+                          value={selectedElement.fieldLabel || ""}
+                          onChange={(e) => updateElementProps(selectedElement.id, { fieldLabel: e.target.value })}
+                          className={inputClass}
+                        />
+                      </label>
+
+                      <label className="grid gap-1.5 text-xs font-medium">
+                        Submission Key Name
+                        <input
+                          value={selectedElement.fieldKey || ""}
+                          placeholder="field_key"
+                          onChange={(e) =>
+                            updateElementProps(selectedElement.id, {
+                              fieldKey: e.target.value
+                                .toLowerCase()
+                                .replace(/[^a-z0-9_]/g, "_")
+                                .replace(/^_+|_+$/g, ""),
+                            })
+                          }
+                          className={inputClass}
+                        />
+                        <span className="text-[10px] text-ink-soft">
+                          Parameter key saved in submissions &amp; contacts.
+                        </span>
+                      </label>
+
+                      {selectedElement.type !== "hidden" && selectedElement.type !== "checkbox" && (
+                        <label className="grid gap-1.5 text-xs font-medium">
+                          Placeholder Text
+                          <input
+                            value={selectedElement.fieldPlaceholder || ""}
+                            onChange={(e) => updateElementProps(selectedElement.id, { fieldPlaceholder: e.target.value })}
+                            className={inputClass}
+                          />
+                        </label>
+                      )}
+
+                      {/* Dropdown Options Manager */}
+                      {selectedElement.type === "select" && (
+                        <div className="space-y-2">
+                          <label className="grid gap-1 text-xs font-medium">
+                            Dropdown Choices
+                            <textarea
+                              rows={4}
+                              value={selectedElement.fieldOptions || ""}
+                              onChange={(e) => updateElementProps(selectedElement.id, { fieldOptions: e.target.value })}
+                              placeholder="Option 1, Option 2, Option 3"
+                              className={inputClass}
+                            />
+                            <span className="text-[10px] text-ink-soft">Separate choices with commas.</span>
+                          </label>
+                        </div>
+                      )}
+
+                      {selectedElement.type === "hidden" ? (
+                        <label className="grid gap-1.5 text-xs font-medium">
+                          Tracking Default Value
+                          <input
+                            value={selectedElement.fieldDefaultValue || ""}
+                            placeholder="e.g. google, facebook, newsletter"
+                            onChange={(e) => updateElementProps(selectedElement.id, { fieldDefaultValue: e.target.value })}
+                            className={inputClass}
+                          />
+                        </label>
+                      ) : (
+                        <label className="flex items-center gap-2 text-xs font-medium cursor-pointer pt-1">
+                          <input
+                            type="checkbox"
+                            checked={selectedElement.fieldRequired === true}
+                            onChange={(e) => updateElementProps(selectedElement.id, { fieldRequired: e.target.checked })}
+                            className="h-4 w-4 rounded border-line accent-ink"
+                          />
+                          <span>Required field</span>
+                        </label>
+                      )}
+                    </>
+                  )}
+
+                  {selectedElement.type === "button" && (
+                    <>
+                      <label className="grid gap-1.5 text-xs font-medium">
+                        Button Label
+                        <input
+                          value={selectedElement.buttonLabel || ""}
+                          onChange={(e) => updateElementProps(selectedElement.id, { buttonLabel: e.target.value })}
+                          className={inputClass}
+                        />
+                      </label>
+                      <label className="grid gap-1.5 text-xs font-medium">
+                        Button Width &amp; Alignment
+                        <select
+                          value={selectedElement.buttonAlign || "full"}
+                          onChange={(e) =>
+                            updateElementProps(selectedElement.id, {
+                              buttonAlign: e.target.value as "full" | "left" | "center" | "right",
+                            })
+                          }
+                          className={inputClass}
+                        >
+                          <option value="full">Full width</option>
+                          <option value="left">Left aligned</option>
+                          <option value="center">Centered</option>
+                          <option value="right">Right aligned</option>
+                        </select>
+                      </label>
+                    </>
+                  )}
+
+                  {selectedElement.type === "divider" && (
+                    <label className="grid gap-1.5 text-xs font-medium">
+                      Spacing
+                      <select
+                        value={selectedElement.dividerSpacing || "md"}
+                        onChange={(e) =>
+                          updateElementProps(selectedElement.id, {
+                            dividerSpacing: e.target.value as "sm" | "md" | "lg",
+                          })
+                        }
+                        className={inputClass}
+                      >
+                        <option value="sm">Small</option>
+                        <option value="md">Medium</option>
+                        <option value="lg">Large</option>
+                      </select>
+                    </label>
+                  )}
+
+                  {!initialForm.isFixed && (
+                    <div className="pt-4 border-t border-line">
+                      <button
+                        type="button"
+                        onClick={() => deleteElement(selectedElement.id)}
+                        className="w-full rounded-xl border border-red-200 bg-red-50 py-2 text-xs font-medium text-red-600 hover:border-red-600 transition"
+                      >
+                        Delete element
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* Form Design System Tab */
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-sm font-semibold text-ink">Form Design System</h3>
+                    <p className="mt-0.5 text-xs text-ink-soft">
+                      Style tokens applied independently from page and site themes.
+                    </p>
+                  </div>
 
                   <label className="grid gap-1.5 text-xs font-medium">
-                    Submit Button Background
+                    Submit Button Color
                     <div className="flex items-center gap-2">
                       <input
                         type="color"
-                        value={design.buttonColor || "#000000"}
+                        value={design.buttonColor || "#0a0a0a"}
                         onChange={(e) => {
                           setDesign({ ...design, buttonColor: e.target.value });
                           setDirty(true);
@@ -1138,7 +1509,7 @@ export default function ConsoleFormEditor({
                       />
                       <input
                         value={design.buttonColor}
-                        placeholder="#000000"
+                        placeholder="#0a0a0a"
                         onChange={(e) => {
                           setDesign({ ...design, buttonColor: e.target.value });
                           setDirty(true);
@@ -1177,7 +1548,7 @@ export default function ConsoleFormEditor({
                     <div className="flex items-center gap-2">
                       <input
                         type="color"
-                        value={design.borderColor || "#e5e7eb"}
+                        value={design.borderColor || "#e2e2e0"}
                         onChange={(e) => {
                           setDesign({ ...design, borderColor: e.target.value });
                           setDirty(true);
@@ -1186,7 +1557,7 @@ export default function ConsoleFormEditor({
                       />
                       <input
                         value={design.borderColor}
-                        placeholder="#e5e7eb"
+                        placeholder="#e2e2e0"
                         onChange={(e) => {
                           setDesign({ ...design, borderColor: e.target.value });
                           setDirty(true);
@@ -1230,11 +1601,11 @@ export default function ConsoleFormEditor({
                       }}
                       className={inputClass}
                     >
-                      <option value="">Theme default</option>
+                      <option value="">Theme default (rounded)</option>
                       <option value="0px">Sharp (0px)</option>
-                      <option value="6px">Small (6px)</option>
+                      <option value="6px">Subtle (6px)</option>
                       <option value="12px">Rounded (12px)</option>
-                      <option value="16px">Extra Rounded (16px)</option>
+                      <option value="16px">Curved (16px)</option>
                       <option value="9999px">Pill (9999px)</option>
                     </select>
                   </label>
@@ -1256,259 +1627,17 @@ export default function ConsoleFormEditor({
                     </select>
                   </label>
                 </div>
-              ) : selectedElement ? (
-                /* Element Inspector Tab */
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between border-b border-line pb-2">
-                    <span className="text-sm font-semibold capitalize text-ink">
-                      {selectedElement.type.replace("_", " ")}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedId(null)}
-                      className="text-xs text-ink-soft hover:text-ink"
-                    >
-                      Deselect
-                    </button>
-                  </div>
-
-                  {selectedElement.type === "heading" && (
-                    <>
-                      <label className="grid gap-1.5 text-xs font-medium">
-                        Heading text
-                        <input
-                          value={selectedElement.headingText || ""}
-                          onChange={(e) => updateSelectedProps({ headingText: e.target.value })}
-                          className={inputClass}
-                        />
-                      </label>
-                      <label className="grid gap-1.5 text-xs font-medium">
-                        Heading level
-                        <select
-                          value={selectedElement.headingLevel || "h2"}
-                          onChange={(e) =>
-                            updateSelectedProps({
-                              headingLevel: e.target.value as "h1" | "h2" | "h3" | "h4",
-                            })
-                          }
-                          className={inputClass}
-                        >
-                          <option value="h1">Heading 1</option>
-                          <option value="h2">Heading 2</option>
-                          <option value="h3">Heading 3</option>
-                          <option value="h4">Heading 4</option>
-                        </select>
-                      </label>
-                      <label className="grid gap-1.5 text-xs font-medium">
-                        Alignment
-                        <select
-                          value={selectedElement.headingAlign || "left"}
-                          onChange={(e) =>
-                            updateSelectedProps({
-                              headingAlign: e.target.value as "left" | "center" | "right",
-                            })
-                          }
-                          className={inputClass}
-                        >
-                          <option value="left">Left</option>
-                          <option value="center">Center</option>
-                          <option value="right">Right</option>
-                        </select>
-                      </label>
-                    </>
-                  )}
-
-                  {selectedElement.type === "text" && (
-                    <>
-                      <label className="grid gap-1.5 text-xs font-medium">
-                        Paragraph text
-                        <textarea
-                          rows={4}
-                          value={selectedElement.textContent || ""}
-                          onChange={(e) => updateSelectedProps({ textContent: e.target.value })}
-                          className={inputClass}
-                        />
-                      </label>
-                      <label className="flex items-center gap-2 text-xs font-medium cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={selectedElement.textMuted === true}
-                          onChange={(e) => updateSelectedProps({ textMuted: e.target.checked })}
-                          className="h-4 w-4 rounded border-line"
-                        />
-                        <span>Muted text color</span>
-                      </label>
-                    </>
-                  )}
-
-                  {isFieldElementType(selectedElement.type) && (
-                    <>
-                      <label className="grid gap-1.5 text-xs font-medium">
-                        Field label
-                        <input
-                          value={selectedElement.fieldLabel || ""}
-                          onChange={(e) => updateSelectedProps({ fieldLabel: e.target.value })}
-                          className={inputClass}
-                        />
-                      </label>
-
-                      <label className="grid gap-1.5 text-xs font-medium">
-                        Submission Key / Name
-                        <input
-                          value={selectedElement.fieldKey || ""}
-                          placeholder="field_key"
-                          onChange={(e) =>
-                            updateSelectedProps({
-                              fieldKey: e.target.value
-                                .toLowerCase()
-                                .replace(/[^a-z0-9_]/g, "_")
-                                .replace(/^_+|_+$/g, ""),
-                            })
-                          }
-                          className={inputClass}
-                        />
-                        <span className="text-[10px] text-ink-soft">
-                          Key under which this value is stored in submissions.
-                        </span>
-                      </label>
-
-                      {selectedElement.type !== "hidden" && selectedElement.type !== "checkbox" && (
-                        <label className="grid gap-1.5 text-xs font-medium">
-                          Placeholder text
-                          <input
-                            value={selectedElement.fieldPlaceholder || ""}
-                            onChange={(e) => updateSelectedProps({ fieldPlaceholder: e.target.value })}
-                            className={inputClass}
-                          />
-                        </label>
-                      )}
-
-                      {selectedElement.type === "select" && (
-                        <label className="grid gap-1.5 text-xs font-medium">
-                          Options (comma-separated)
-                          <textarea
-                            rows={3}
-                            value={selectedElement.fieldOptions || ""}
-                            onChange={(e) => updateSelectedProps({ fieldOptions: e.target.value })}
-                            placeholder="Option 1, Option 2, Option 3"
-                            className={inputClass}
-                          />
-                        </label>
-                      )}
-
-                      {selectedElement.type === "hidden" ? (
-                        <label className="grid gap-1.5 text-xs font-medium">
-                          Default tracking value
-                          <input
-                            value={selectedElement.fieldDefaultValue || ""}
-                            placeholder="e.g. utm_campaign_source"
-                            onChange={(e) => updateSelectedProps({ fieldDefaultValue: e.target.value })}
-                            className={inputClass}
-                          />
-                        </label>
-                      ) : (
-                        <label className="flex items-center gap-2 text-xs font-medium cursor-pointer pt-1">
-                          <input
-                            type="checkbox"
-                            checked={selectedElement.fieldRequired === true}
-                            onChange={(e) => updateSelectedProps({ fieldRequired: e.target.checked })}
-                            className="h-4 w-4 rounded border-line"
-                          />
-                          <span>Required field</span>
-                        </label>
-                      )}
-                    </>
-                  )}
-
-                  {selectedElement.type === "button" && (
-                    <>
-                      <label className="grid gap-1.5 text-xs font-medium">
-                        Button label
-                        <input
-                          value={selectedElement.buttonLabel || ""}
-                          onChange={(e) => updateSelectedProps({ buttonLabel: e.target.value })}
-                          className={inputClass}
-                        />
-                      </label>
-                      <label className="grid gap-1.5 text-xs font-medium">
-                        Button width / alignment
-                        <select
-                          value={selectedElement.buttonAlign || "full"}
-                          onChange={(e) =>
-                            updateSelectedProps({
-                              buttonAlign: e.target.value as "full" | "left" | "center" | "right",
-                            })
-                          }
-                          className={inputClass}
-                        >
-                          <option value="full">Full width</option>
-                          <option value="left">Left aligned</option>
-                          <option value="center">Centered</option>
-                          <option value="right">Right aligned</option>
-                        </select>
-                      </label>
-                    </>
-                  )}
-
-                  {selectedElement.type === "divider" && (
-                    <label className="grid gap-1.5 text-xs font-medium">
-                      Spacing
-                      <select
-                        value={selectedElement.dividerSpacing || "md"}
-                        onChange={(e) =>
-                          updateSelectedProps({
-                            dividerSpacing: e.target.value as "sm" | "md" | "lg",
-                          })
-                        }
-                        className={inputClass}
-                      >
-                        <option value="sm">Small</option>
-                        <option value="md">Medium</option>
-                        <option value="lg">Large</option>
-                      </select>
-                    </label>
-                  )}
-
-                  {!initialForm.isFixed && (
-                    <div className="pt-4 border-t border-line">
-                      <button
-                        type="button"
-                        onClick={() => deleteElement(selectedElement.id)}
-                        className="w-full rounded-xl border border-red-200 bg-red-50 py-2 text-xs font-medium text-red-600 hover:border-red-600"
-                      >
-                        Delete element
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                /* No element selected: Form Overview */
-                <div className="space-y-4">
-                  <h3 className="text-sm font-semibold text-ink">Form Overview</h3>
-                  <div className="rounded-xl border border-line bg-paper-soft p-3 text-xs text-ink-soft space-y-1">
-                    <p>
-                      <strong>Elements:</strong> {elements.length}
-                    </p>
-                    <p>
-                      <strong>Fields:</strong> {elements.filter((e) => isFieldElementType(e.type)).length}
-                    </p>
-                    <p>
-                      <strong>Slug:</strong> {slug ? `/f/${slug}` : "None"}
-                    </p>
-                  </div>
-                  <p className="text-xs text-ink-soft">
-                    Select any element on the canvas to configure its properties, or click &quot;Design System&quot; to change colors and fonts.
-                  </p>
-                </div>
               )}
             </div>
           </aside>
         </div>
 
         <DragOverlay>
-          <div className="rounded-xl border border-ink bg-paper px-4 py-2.5 text-sm font-medium text-ink shadow-xl">
-            Dragging element
-          </div>
+          {activeDragLabel && (
+            <div className="rounded-xl border border-ink bg-paper px-4 py-2 text-sm font-medium text-ink shadow-2xl">
+              {activeDragLabel}
+            </div>
+          )}
         </DragOverlay>
       </DndContext>
     </div>
