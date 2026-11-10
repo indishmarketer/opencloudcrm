@@ -7,8 +7,26 @@ import UpdatesOptIn from "@/components/UpdatesOptIn";
 import CountrySelect from "@/components/CountrySelect";
 import PhoneInput, { toE164 } from "@/components/PhoneInput";
 import { trackEvent } from "@/lib/gtag";
+import type { FormDesign } from "@/lib/formsShape";
 
-export default function AuthForm({ mode }: { mode: "signup" | "login" }) {
+function inputStyles(d?: FormDesign): React.CSSProperties {
+  if (!d) return {};
+  const styles: React.CSSProperties = {};
+  if (d.borderColor) styles.borderColor = d.borderColor;
+  if (d.borderRadius) styles.borderRadius = d.borderRadius;
+  return styles;
+}
+
+function buttonStyles(d?: FormDesign): React.CSSProperties {
+  if (!d) return {};
+  const styles: React.CSSProperties = {};
+  if (d.buttonColor) styles.backgroundColor = d.buttonColor;
+  if (d.buttonTextColor) styles.color = d.buttonTextColor;
+  if (d.borderRadius) styles.borderRadius = d.borderRadius;
+  return styles;
+}
+
+export default function AuthForm({ mode, design }: { mode: "signup" | "login"; design?: FormDesign }) {
   const searchParams = useSearchParams();
   const interest = searchParams.get("interest") || undefined;
   const ref = searchParams.get("ref") || searchParams.get("invite") || undefined;
@@ -163,6 +181,7 @@ export default function AuthForm({ mode }: { mode: "signup" | "login" }) {
             required
             autoComplete="name"
             className="mt-2 w-full rounded-lg border border-line bg-paper px-4 py-3 text-sm outline-none focus:border-ink"
+            style={inputStyles(design)}
           />
         </div>
       )}
@@ -177,6 +196,7 @@ export default function AuthForm({ mode }: { mode: "signup" | "login" }) {
           required
           autoComplete={mode === "signup" ? "email" : "username email"}
           className="mt-2 w-full rounded-lg border border-line bg-paper px-4 py-3 text-sm outline-none focus:border-ink"
+          style={inputStyles(design)}
         />
       </div>
       <div>
@@ -191,6 +211,7 @@ export default function AuthForm({ mode }: { mode: "signup" | "login" }) {
           minLength={8}
           autoComplete={mode === "signup" ? "new-password" : "current-password"}
           className="mt-2 w-full rounded-lg border border-line bg-paper px-4 py-3 text-sm outline-none focus:border-ink"
+          style={inputStyles(design)}
         />
       </div>
       {mode === "signup" && (
@@ -240,6 +261,7 @@ export default function AuthForm({ mode }: { mode: "signup" | "login" }) {
         type="submit"
         disabled={status === "submitting" || !turnstileToken}
         className="rounded-full bg-ink px-6 py-3 text-sm font-medium text-paper transition-opacity hover:opacity-80 disabled:opacity-50"
+        style={buttonStyles(design)}
       >
         {status === "submitting"
           ? "Please wait…"

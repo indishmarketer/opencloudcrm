@@ -35,7 +35,7 @@ export type SitePage = PageSnapshot & {
  * functionality). Kept in sync with src/app by test/sitePages.test.mjs. */
 export const RESERVED_PATH_PREFIXES = [
   "/_next", "/.well-known", "/account", "/api", "/apply-to-write", "/author", "/blog", "/book", "/community",
-  "/console", "/courses", "/forgot-password", "/guide", "/login", "/newsletter", "/oauth", "/preview",
+  "/console", "/courses", "/f", "/forgot-password", "/guide", "/login", "/newsletter", "/oauth", "/preview",
   "/privacy-policy", "/refund-policy", "/reset-password", "/resources/prompt-skill-library",
   "/reviews", "/signup", "/terms", "/tools", "/unsubscribe", "/verify", "/verify-email", "/webinars",
   "/sitemap.xml", "/robots.txt", "/llms.txt", "/favicon.ico", "/icon.png", "/apple-icon.png", "/icon.tsx", "/apple-icon.tsx", "/badges", "/images", "/console-assets",

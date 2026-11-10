@@ -28,6 +28,10 @@ import {
   PATCH as contentTemplateUpdatePATCH,
   DELETE as contentTemplateDeleteDELETE,
 } from "@/app/api/v1/email/content-templates/[id]/route";
+import { GET as formsListGET, POST as formCreatePOST } from "@/app/api/v1/forms/route";
+import { GET as formGetGET, PATCH as formUpdatePATCH, DELETE as formDeleteDELETE } from "@/app/api/v1/forms/[id]/route";
+import { GET as formSubmissionsGET } from "@/app/api/v1/forms/[id]/submissions/route";
+import { POST as placeFormOnPagePOST } from "@/app/api/v1/pages/[id]/place-form/route";
 
 /** Tool definitions for the REMOTE MCP transport (src/app/api/mcp/route.ts).
  * This runs inside the same Next.js server process as the /api/v1/* route
@@ -496,6 +500,108 @@ export function createMcpTools(authHeader: string): ToolDef[] {
         description: z.string().optional(),
       },
       handler: async (args) => unwrap(directorySubmitPOST(fakeRequest(authHeader, args))),
+    },
+    {
+      name: "list_forms",
+      description: "List all forms with field counts and submission counts. Forms can be standalone (/f/<slug>), embedded on pages, or opened as popups.",
+      inputSchema: {},
+      handler: async () => unwrap(formsListGET(fakeRequest(authHeader))),
+    },
+    {
+      name: "get_form",
+      description: "Get one form by ID or slug, including its fields, design tokens, email verification setting, and submission count.",
+      inputSchema: { id: z.union([z.number().int().positive(), z.string()]).describe("Form ID or slug") },
+      handler: async ({ id }) => unwrap(formGetGET(fakeRequest(authHeader), idParams(id))),
+    },
+    {
+      name: "create_form",
+      description: "Create a new reusable form. Can start completely blank with just a name, or include custom fields, design settings, and email verification.",
+      inputSchema: {
+        name: z.string().describe("Internal name for the form"),
+        slug: z.string().optional().describe("Optional URL-safe slug for standalone sharing at /f/<slug>"),
+        heading: z.string().optional().describe("Heading shown above the form"),
+        introText: z.string().optional().describe("Introductory text shown below the heading"),
+        fields: z.array(z.object({
+          label: z.string().describe("Field label (or internal key for hidden fields)"),
+          type: z.enum(["text", "email", "phone", "textarea", "select", "checkbox", "number", "date"]).default("text"),
+          options: z.string().optional().describe("Comma-separated options for select dropdowns"),
+          required: z.boolean().optional().default(false),
+          hidden: z.boolean().optional().default(false).describe("If true, hidden from visitors and submitted with defaultValue"),
+          defaultValue: z.string().optional().default("").describe("Value submitted for hidden fields (e.g. UTM parameters)"),
+        })).optional().default([]),
+        submitLabel: z.string().optional().describe("Button text (default: 'Submit')"),
+        successHeading: z.string().optional().describe("Thank-you heading"),
+        successText: z.string().optional().describe("Thank-you message"),
+        notifyEmail: z.string().optional().describe("Email address to notify on submission"),
+        verifyEmail: z.boolean().optional().describe("Require 2-step OTP email verification before submitting"),
+        design: z.object({
+          buttonColor: z.string().optional(),
+          buttonTextColor: z.string().optional(),
+          borderColor: z.string().optional(),
+          backgroundColor: z.string().optional(),
+          textColor: z.string().optional(),
+          borderRadius: z.string().optional(),
+          fontFamily: z.string().optional(),
+        }).optional(),
+      },
+      handler: async (args) => unwrap(formCreatePOST(fakeRequest(authHeader, args))),
+    },
+    {
+      name: "update_form",
+      description: "Update an existing form by ID or slug. Any omitted fields retain their existing values.",
+      inputSchema: {
+        id: z.union([z.number().int().positive(), z.string()]).describe("Form ID or slug"),
+        name: z.string().optional(),
+        slug: z.string().optional(),
+        heading: z.string().optional(),
+        introText: z.string().optional(),
+        fields: z.array(z.object({
+          key: z.string().optional(),
+          label: z.string(),
+          type: z.enum(["text", "email", "phone", "textarea", "select", "checkbox", "number", "date"]).default("text"),
+          options: z.string().optional(),
+          required: z.boolean().optional(),
+          hidden: z.boolean().optional(),
+          defaultValue: z.string().optional(),
+        })).optional(),
+        submitLabel: z.string().optional(),
+        successHeading: z.string().optional(),
+        successText: z.string().optional(),
+        notifyEmail: z.string().optional(),
+        verifyEmail: z.boolean().optional(),
+        design: z.object({
+          buttonColor: z.string().optional(),
+          buttonTextColor: z.string().optional(),
+          borderColor: z.string().optional(),
+          backgroundColor: z.string().optional(),
+          textColor: z.string().optional(),
+          borderRadius: z.string().optional(),
+          fontFamily: z.string().optional(),
+        }).optional(),
+      },
+      handler: async ({ id, ...updates }) => unwrap(formUpdatePATCH(fakeRequest(authHeader, updates), idParams(id))),
+    },
+    {
+      name: "delete_form",
+      description: "Permanently delete a form and its submissions by ID or slug.",
+      inputSchema: { id: z.union([z.number().int().positive(), z.string()]).describe("Form ID or slug") },
+      handler: async ({ id }) => unwrap(formDeleteDELETE(fakeRequest(authHeader), idParams(id))),
+    },
+    {
+      name: "list_form_submissions",
+      description: "List recorded submissions for a form by form ID or slug.",
+      inputSchema: { id: z.union([z.number().int().positive(), z.string()]).describe("Form ID or slug") },
+      handler: async ({ id }) => unwrap(formSubmissionsGET(fakeRequest(authHeader), idParams(id))),
+    },
+    {
+      name: "place_form_on_page",
+      description: "Place a saved form on a page as a form section. Adds a 'form' block with mode='saved' and savedFormId.",
+      inputSchema: {
+        pageId: z.number().int().positive().describe("The page ID to place the form on"),
+        formId: z.union([z.number().int().positive(), z.string()]).describe("Form ID or slug to place"),
+        position: z.union([z.enum(["top", "bottom"]), z.number().int().min(0)]).optional().describe("Where to place the form block ('top', 'bottom', or block index). Defaults to 'bottom'."),
+      },
+      handler: async ({ pageId, ...args }) => unwrap(placeFormOnPagePOST(fakeRequest(authHeader, args), idParams(pageId))),
     },
   ];
 }

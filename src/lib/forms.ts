@@ -1,9 +1,10 @@
 import { pool } from "@/lib/db";
-import type { FormDefinition, FormField } from "@/lib/formsShape";
+import type { FormDefinition, FormDesign, FormField } from "@/lib/formsShape";
 
 type FormRow = {
   id: number;
   name: string;
+  slug: string | null;
   heading: string;
   intro_text: string;
   fields: FormField[];
@@ -11,6 +12,9 @@ type FormRow = {
   success_heading: string;
   success_text: string;
   notify_email: string | null;
+  verify_email: boolean;
+  design: FormDesign;
+  is_fixed: boolean;
   created_at: Date;
   updated_at: Date;
 };
@@ -19,13 +23,17 @@ function toDefinition(row: FormRow): FormDefinition {
   return {
     id: row.id,
     name: row.name,
+    slug: row.slug || "",
     heading: row.heading,
     introText: row.intro_text,
-    fields: row.fields,
+    fields: row.fields || [],
     submitLabel: row.submit_label,
     successHeading: row.success_heading,
     successText: row.success_text,
     notifyEmail: row.notify_email || "",
+    verifyEmail: row.verify_email,
+    design: row.design || {},
+    isFixed: row.is_fixed === true,
   };
 }
 
@@ -44,28 +52,69 @@ export async function getFormById(id: number): Promise<FormDefinition | null> {
   return row ? toDefinition(row) : null;
 }
 
+export async function getFormBySlug(slug: string): Promise<FormDefinition | null> {
+  const result = await pool.query<FormRow>("SELECT * FROM forms WHERE slug = $1", [slug]);
+  const row = result.rows[0];
+  return row ? toDefinition(row) : null;
+}
+
 export async function createForm(input: Omit<FormDefinition, "id">): Promise<number> {
   const result = await pool.query<{ id: number }>(
-    `INSERT INTO forms (name, heading, intro_text, fields, submit_label, success_heading, success_text, notify_email)
-     VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7, $8) RETURNING id`,
-    [input.name, input.heading, input.introText, JSON.stringify(input.fields), input.submitLabel,
-     input.successHeading, input.successText, input.notifyEmail || null],
+    `INSERT INTO forms (name, slug, heading, intro_text, fields, submit_label, success_heading, success_text, notify_email, verify_email, design, is_fixed)
+     VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7, $8, $9, $10, $11::jsonb, $12) RETURNING id`,
+    [
+      input.name,
+      input.slug || null,
+      input.heading,
+      input.introText,
+      JSON.stringify(input.fields),
+      input.submitLabel,
+      input.successHeading,
+      input.successText,
+      input.notifyEmail || null,
+      input.verifyEmail,
+      JSON.stringify(input.design),
+      input.isFixed === true,
+    ],
   );
   return result.rows[0].id;
 }
 
 export async function updateForm(id: number, input: Omit<FormDefinition, "id">): Promise<boolean> {
+  const existing = await getFormById(id);
+  if (!existing) return false;
+
+  // Fixed forms (Sign up / Log in) preserve their fixed field structure
+  const fields = existing.isFixed ? existing.fields : input.fields;
+
   const result = await pool.query(
-    `UPDATE forms SET name = $1, heading = $2, intro_text = $3, fields = $4::jsonb, submit_label = $5,
-       success_heading = $6, success_text = $7, notify_email = $8, updated_at = now()
-     WHERE id = $9`,
-    [input.name, input.heading, input.introText, JSON.stringify(input.fields), input.submitLabel,
-     input.successHeading, input.successText, input.notifyEmail || null, id],
+    `UPDATE forms SET name = $1, slug = $2, heading = $3, intro_text = $4, fields = $5::jsonb,
+       submit_label = $6, success_heading = $7, success_text = $8, notify_email = $9,
+       verify_email = $10, design = $11::jsonb, updated_at = now()
+     WHERE id = $12`,
+    [
+      input.name,
+      input.slug || null,
+      input.heading,
+      input.introText,
+      JSON.stringify(fields),
+      input.submitLabel,
+      input.successHeading,
+      input.successText,
+      input.notifyEmail || null,
+      input.verifyEmail,
+      JSON.stringify(input.design),
+      id,
+    ],
   );
   return (result.rowCount ?? 0) > 0;
 }
 
 export async function deleteForm(id: number): Promise<boolean> {
+  const form = await getFormById(id);
+  if (form?.isFixed) {
+    throw new Error("Built-in fixed forms cannot be deleted.");
+  }
   const result = await pool.query("DELETE FROM forms WHERE id = $1", [id]);
   return (result.rowCount ?? 0) > 0;
 }
