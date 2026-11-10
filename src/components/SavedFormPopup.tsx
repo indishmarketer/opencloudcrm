@@ -7,7 +7,7 @@ import SavedForm from "@/components/SavedForm";
 /** Opens a saved form (Console -> Forms) in a modal when the button is
  * clicked -- the formPopup action on Hero/CTA buttons. The form itself
  * (fields, copy, submit) is fetched and rendered by SavedForm; this just
- * supplies the modal chrome, same pattern as ContactPopup/GuidePopup. */
+ * supplies the modal chrome, same pattern as GuidePopup. */
 export default function SavedFormPopup({
   formId,
   buttonLabel,

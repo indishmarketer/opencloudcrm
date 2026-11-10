@@ -37,6 +37,7 @@ export default async function ConsoleContactsPage() {
         EXISTS (SELECT 1 FROM directory_tools dt WHERE dt.submitted_by_user_id = c.user_id) AS has_tool_submission,
         EXISTS (SELECT 1 FROM contact_activities ca WHERE ca.contact_id = c.id AND ca.activity_type = 'webhook_lead') AS has_webhook_lead,
         COALESCE((SELECT array_agg(DISTINCT ca.source) FROM contact_activities ca WHERE ca.contact_id = c.id AND ca.activity_type = 'webhook_lead'), '{}') AS webhook_lead_sources
+        ,COALESCE((SELECT array_agg(DISTINCT ca.metadata->>'label') FROM contact_activities ca WHERE ca.contact_id = c.id AND ca.activity_type = 'form_submitted' AND ca.metadata->>'label' IS NOT NULL), '{}') AS form_sources
       FROM contacts c
       LEFT JOIN users u ON u.id = c.user_id
       ORDER BY c.first_seen_at DESC

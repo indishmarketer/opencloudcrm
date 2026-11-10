@@ -43,7 +43,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     submissionAction: typeof body.submissionAction === "string" ? body.submissionAction : existing.submissionAction,
     redirectUrl: typeof body.redirectUrl === "string" ? body.redirectUrl : existing.redirectUrl,
     notifyEmail: typeof body.notifyEmail === "string" ? body.notifyEmail : existing.notifyEmail,
-    verifyEmail: typeof body.verifyEmail === "boolean" ? body.verifyEmail : existing.verifyEmail,
+    source: typeof body.source === "string" ? body.source : existing.source,
+    verifyEmail: existing.systemRole ? true : typeof body.verifyEmail === "boolean" ? body.verifyEmail : existing.verifyEmail,
     design: body.design !== undefined ? body.design : existing.design,
   };
   const normalized = normalizeFormDefinition(merged);
@@ -71,8 +72,8 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   const existing = await resolveForm(id);
   if (!existing) return NextResponse.json({ error: "Form not found." }, { status: 404 });
 
-  if (existing.isFixed) {
-    return NextResponse.json({ error: "Fixed forms (Sign up / Log in) cannot be deleted." }, { status: 403 });
+  if (existing.isFixed || existing.systemRole) {
+    return NextResponse.json({ error: "Forms used by built-in pages cannot be deleted." }, { status: 403 });
   }
 
   try {

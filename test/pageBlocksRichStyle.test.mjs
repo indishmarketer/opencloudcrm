@@ -13,6 +13,14 @@ test("the element library has at least 30 real, pickable elements", () => {
   assert.ok(elements.length >= 30, `expected >= 30 elements, got ${elements.length}: ${elements.map((d) => d.type).join(", ")}`);
 });
 
+test("a newly dropped form waits for a saved form and exposes no field editor", () => {
+  const form = createBlock("form");
+  const definition = BLOCK_DEFS.find((block) => block.type === "form");
+  assert.equal(form.props.savedFormId, "");
+  assert.deepEqual(definition.fields.map((field) => field.key), ["savedFormId", "showContactDetails", "detailsHeading", "formBackgroundColor", "formTextColor", "formFieldBorderColor", "formButtonColor", "formButtonTextColor"]);
+  assert.equal("customFields" in form.props, false);
+});
+
 test("every real element type is either on the rich style model or has a documented reason not to be", () => {
   // spacer has no style fields at all by design (hasSectionFields excludes
   // it); custom keeps its own bespoke width/bare mechanism. Every other

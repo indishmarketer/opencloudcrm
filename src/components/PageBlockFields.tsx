@@ -89,7 +89,7 @@ function FormPickerField({ value, onChange }: { value: string; onChange: (v: str
   useEffect(() => {
     fetch("/api/console/forms")
       .then((r) => (r.ok ? r.json() : { forms: [] }))
-      .then((data) => setForms(Array.isArray(data.forms) ? data.forms : []))
+      .then((data) => setForms(Array.isArray(data.forms) ? data.forms.filter((form: { isFixed?: boolean }) => !form.isFixed) : []))
       .catch(() => setForms([]));
   }, []);
 

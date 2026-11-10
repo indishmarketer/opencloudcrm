@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import SafeImage from "@/components/SafeImage";
-import NewsletterSignupForm from "@/components/NewsletterSignupForm";
+import SavedForm from "@/components/SavedForm";
+import { getFormBySlug } from "@/lib/forms";
 import { getPublicPosts } from "@/lib/blogPosts";
 import { buildSafe } from "@/lib/db";
 import { resolveImage } from "@/lib/images";
@@ -43,6 +44,7 @@ export default async function NewsletterPage() {
   if (!(await getPublishedPage("/newsletter"))) notFound();
   // See the build-phase note on buildSafe (src/lib/db.ts).
   const recentPosts = await buildSafe(async () => (await getPublicPosts()).slice(0, 3), []);
+  const newsletterForm = await getFormBySlug("newsletter");
   return (
     <BuiltInPage path="/newsletter">
     <div>
@@ -95,10 +97,8 @@ export default async function NewsletterPage() {
       <section id="newsletter-signup" className="scroll-mt-24 border-t border-line bg-paper-gradient py-20 text-center">
         <div className="mx-auto max-w-xl px-6">
           <p className="text-xs font-semibold uppercase tracking-widest text-ink-soft">Join the newsletter</p>
-          <h2 className="mt-2 font-display text-3xl font-semibold">Let&apos;s build and grow together</h2>
-          <p className="mt-3 text-ink-soft">Get one useful email when there&apos;s something real to share.</p>
           <div className="mx-auto mt-8 max-w-md text-left">
-            <NewsletterSignupForm source="newsletter-final-cta" stacked />
+            {newsletterForm && <SavedForm formId={newsletterForm.id} />}
           </div>
         </div>
       </section>

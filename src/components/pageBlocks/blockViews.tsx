@@ -44,15 +44,11 @@ import WorkflowDemo from "@/components/WorkflowDemo";
 import IntegrationIcons from "@/components/IntegrationIcons";
 import FeaturedOn from "@/components/FeaturedOn";
 import GuidePopup from "@/components/GuidePopup";
-import ContactPopup from "@/components/ContactPopup";
 import SavedFormPopup from "@/components/SavedFormPopup";
 import SavedFormBlock from "@/components/pageBlocks/SavedFormBlock";
-import NewsletterSignupForm from "@/components/NewsletterSignupForm";
 import CountdownTimer from "@/components/CountdownTimer";
 import BusinessContactDetails from "@/components/BusinessContactDetails";
 import BlockImage from "@/components/pageBlocks/BlockImage";
-import ContactFormBlock from "@/components/pageBlocks/ContactFormBlock";
-import CustomFormBlock from "@/components/pageBlocks/CustomFormBlock";
 
 /** Every block's actual visual output, as plain (non-async, no server-only
  * imports) components -- deliberately isomorphic: used by the public
@@ -364,7 +360,6 @@ export function HeroView({ props, activeLeadMagnet }: { props: Props; activeLead
   const primaryLabel = str(props, "primaryLabel");
   const primaryAction = str(props, "primaryAction");
   const guide = primaryAction === "leadMagnet" ? activeLeadMagnet : null;
-  const contactPopup = primaryAction === "contactPopup";
   const formPopupId = primaryAction === "formPopup" ? Number(str(props, "primaryFormId")) || 0 : 0;
   const primaryClass = dark
     ? "rounded-full bg-paper px-6 py-3 text-center text-sm font-medium text-ink transition-opacity hover:opacity-80"
@@ -425,8 +420,6 @@ export function HeroView({ props, activeLeadMagnet }: { props: Props; activeLead
                   buttonLabel={primaryLabel}
                   buttonClassName={primaryClass}
                 />
-              ) : contactPopup && primaryLabel ? (
-                <ContactPopup buttonLabel={primaryLabel} buttonClassName={primaryClass} />
               ) : formPopupId && primaryLabel ? (
                 <SavedFormPopup formId={formPopupId} buttonLabel={primaryLabel} buttonClassName={primaryClass} />
               ) : (
@@ -976,16 +969,10 @@ export function CountdownBlock({ props, nested = false, editorEmpty = false }: {
 export function CtaBlock({ props }: { props: Props }) {
   const primaryLabel = str(props, "buttonLabel");
   const buttonAction = str(props, "buttonAction");
-  const contactPopup = buttonAction === "contactPopup";
   const formPopupId = buttonAction === "formPopup" ? Number(str(props, "buttonFormId")) || 0 : 0;
   const buttons = (light: boolean) => (
     <div className="flex flex-col gap-3 sm:flex-row">
-      {contactPopup && primaryLabel ? (
-        <ContactPopup
-          buttonLabel={primaryLabel}
-          buttonClassName={light ? "rounded-full bg-paper px-6 py-3 text-center text-sm font-medium text-ink transition-opacity hover:opacity-80" : BUTTON_DARK}
-        />
-      ) : formPopupId && primaryLabel ? (
+      {formPopupId && primaryLabel ? (
         <SavedFormPopup
           formId={formPopupId}
           buttonLabel={primaryLabel}
@@ -1210,20 +1197,6 @@ export function FeaturedOnBlock({ props, editorEmpty = false }: { props: Props; 
   return <FeaturedOn heading={str(props, "heading")} listings={items} editorEmpty={editorEmpty} />;
 }
 
-export function NewsletterBlock({ props }: { props: Props }) {
-  return (
-    <Section props={props} width="max-w-2xl">
-      <div className="text-center">
-        {str(props, "heading") && <h2 className="font-display text-3xl font-semibold">{str(props, "heading")}</h2>}
-        {str(props, "text") && <p className="mt-3 whitespace-pre-line text-ink-soft">{str(props, "text")}</p>}
-      </div>
-      <div className="mt-8">
-        <NewsletterSignupForm source="page-builder" dark={str(props, "background") === "dark"} />
-      </div>
-    </Section>
-  );
-}
-
 export function ContactDetailsBlock({ props, business }: { props: Props; business: ResolvedBusiness }) {
   return (
     <Section props={props} width="max-w-3xl">
@@ -1298,90 +1271,25 @@ export function SocialIconsBlock({ props, nested = false }: { props: Props; nest
   );
 }
 
-export function ContactFormSection({ props, business }: { props: Props; business: ResolvedBusiness }) {
-  const details = bool(props, "showDetails") ? (
-    <aside className="h-fit rounded-2xl border border-line bg-paper-soft p-6 lg:mt-2">
-      {str(props, "detailsHeading") && <h2 className="font-display text-xl font-semibold">{str(props, "detailsHeading")}</h2>}
-      <div className="mt-6">
-        <BusinessContactDetails business={business} />
-      </div>
-    </aside>
-  ) : null;
-  return (
-    <Section props={props} width="max-w-5xl">
-      <ContactFormBlock
-        heading={str(props, "heading")}
-        text={str(props, "text")}
-        messageLabel={str(props, "messageLabel") || "Message"}
-        successHeading={str(props, "successHeading") || "Thanks, got it."}
-        successText={str(props, "successText")}
-        aside={details}
-      />
-    </Section>
-  );
-}
-
-/** Replaces the deprecated "contactForm"/"newsletter" blocks with one
- * configurable section. Submits through the exact same backend pipelines
- * those two used (completeContactVerification / completeNewsletterVerification
- * in src/lib/otpCompletion.ts) -- only the block's own fields/labels are
- * generalized, not the OTP/webhook/email plumbing behind them. */
 export function FormBlock({ props, business }: { props: Props; business: ResolvedBusiness }) {
-  if (str(props, "mode") === "saved") {
-    const formId = Number(str(props, "savedFormId")) || 0;
-    return (
-      <RichSection props={props} widthDefault={672}>
-        <SavedFormBlock formId={formId} />
-      </RichSection>
-    );
-  }
-  if (str(props, "mode") === "custom") {
-    const fields = list(props, "customFields")
-      .filter((f) => str(f, "label"))
-      .map((f) => ({ label: str(f, "label"), type: str(f, "type") || "text", options: str(f, "options"), required: bool(f, "required") }));
-    return (
-      <RichSection props={props} widthDefault={672}>
-        <CustomFormBlock
-          heading={str(props, "heading")}
-          text={str(props, "text")}
-          fields={fields}
-          successHeading={str(props, "successHeading") || "Thanks, got it."}
-          successText={str(props, "successText")}
-        />
-      </RichSection>
-    );
-  }
-  if (str(props, "mode") === "newsletter") {
-    return (
-      <RichSection props={props} widthDefault={576}>
-        <div className="text-center">
-          {str(props, "heading") && <h2 className="font-display text-3xl font-semibold">{str(props, "heading")}</h2>}
-          {str(props, "text") && <p className="mt-3 whitespace-pre-line text-ink-soft">{str(props, "text")}</p>}
-        </div>
-        <div className="mt-8">
-          <NewsletterSignupForm source="page-builder" dark={false} />
-        </div>
-      </RichSection>
-    );
-  }
-  const details = bool(props, "showContactDetails") ? (
-    <aside className="h-fit rounded-2xl border border-line bg-paper-soft p-6 lg:mt-2">
-      {str(props, "detailsHeading") && <h2 className="font-display text-xl font-semibold">{str(props, "detailsHeading")}</h2>}
-      <div className="mt-6">
-        <BusinessContactDetails business={business} />
-      </div>
-    </aside>
-  ) : null;
+  const formId = Number(str(props, "savedFormId")) || 0;
   return (
-    <RichSection props={props} widthDefault={1152}>
-      <ContactFormBlock
-        heading={str(props, "heading")}
-        text={str(props, "text")}
-        messageLabel={str(props, "messageLabel") || "Message"}
-        successHeading={str(props, "successHeading") || "Thanks, got it."}
-        successText={str(props, "successText")}
-        aside={details}
-      />
+    <RichSection props={props} widthDefault={bool(props, "showContactDetails") ? 1152 : 672}>
+      <div className={bool(props, "showContactDetails") ? "grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.55fr)]" : ""}>
+        <SavedFormBlock formId={formId} designOverride={{
+          ...(str(props, "formBackgroundColor") ? { backgroundColor: str(props, "formBackgroundColor") } : {}),
+          ...(str(props, "formTextColor") ? { textColor: str(props, "formTextColor") } : {}),
+          ...(str(props, "formFieldBorderColor") ? { borderColor: str(props, "formFieldBorderColor") } : {}),
+          ...(str(props, "formButtonColor") ? { buttonColor: str(props, "formButtonColor") } : {}),
+          ...(str(props, "formButtonTextColor") ? { buttonTextColor: str(props, "formButtonTextColor") } : {}),
+        }} />
+        {bool(props, "showContactDetails") && (
+          <aside className="h-fit rounded-2xl border border-line bg-paper-soft p-6">
+            {str(props, "detailsHeading") && <h2 className="font-display text-xl font-semibold">{str(props, "detailsHeading")}</h2>}
+            <div className="mt-6"><BusinessContactDetails business={business} /></div>
+          </aside>
+        )}
+      </div>
     </RichSection>
   );
 }
@@ -1902,7 +1810,6 @@ export function AudioBlock({ props, nested = false, editorEmpty = false }: { pro
   }
   const content = (
     <figure>
-      {/* eslint-disable-next-line jsx-a11y/media-has-caption -- a raw audio file URL carries no caption track to attach */}
       <audio controls src={url} className="w-full" />
       {str(props, "caption") && <figcaption className="mt-2 text-center text-sm text-ink-soft">{str(props, "caption")}</figcaption>}
     </figure>
