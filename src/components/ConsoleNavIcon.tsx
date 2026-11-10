@@ -85,6 +85,14 @@ const PATHS: Record<string, React.ReactNode> = {
       <rect x="13.5" y="13" width="7.5" height="7.5" rx="1.5" />
     </>
   ),
+  "/console/forms": (
+    <>
+      <rect x="4" y="2.5" width="16" height="19" rx="2" />
+      <path d="M8 2.5v3h8v-3" />
+      <path d="m8 12 1.8 1.8L13.5 10" />
+      <path d="M8 16.5h8" />
+    </>
+  ),
   "/console/lead-magnets": (
     <>
       <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a2.5 2.5 0 0 1-2.5-2.5Z" />

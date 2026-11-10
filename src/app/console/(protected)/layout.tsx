@@ -3,14 +3,13 @@ import { getAdminSessionEmail } from "@/lib/auth";
 import { isConsoleOwner } from "@/lib/consoleAdmins";
 import ConsoleFrame from "@/components/ConsoleFrame";
 import { pool } from "@/lib/db";
-import { FEATURES } from "@/config/features";
 import { getSiteIdentity, resolveSiteName } from "@/lib/siteIdentity";
 
-// Every WhatsApp console page already renders a full "not connected yet"
-// block with zero config -- there's nothing to discover by leaving the
-// link visible, so it's hidden entirely rather than leading to a dead
-// end. Payments already shows its own live Configured/Not configured
-// state inline, so it isn't gated here.
+// Every nav entry shows up on every deployment, configured or not -- a
+// fresh install shouldn't have to set an env var just to discover a
+// section exists. WhatsApp (like Payments) already shows its own
+// Configured/"not connected yet" state once you're on the page, which is
+// the right place for that, not the nav.
 const baseNavGroups = [
   {
     title: "General",
@@ -32,7 +31,7 @@ const baseNavGroups = [
     links: [
       { href: "/console/workflows", label: "Automation" },
       { href: "/console/email", label: "Email" },
-      ...(FEATURES.whatsapp ? [{ href: "/console/whatsapp", label: "WhatsApp" }] : []),
+      { href: "/console/whatsapp", label: "WhatsApp" },
     ],
   },
   {

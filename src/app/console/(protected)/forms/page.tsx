@@ -34,15 +34,7 @@ export default async function ConsoleFormsPage() {
 
   return (
     <div>
-      <h1 className="flex items-center gap-2.5 font-display text-2xl font-semibold sm:text-3xl">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <rect x="3" y="4" width="18" height="17" rx="2" />
-          <line x1="7" y1="9" x2="17" y2="9" />
-          <line x1="7" y1="13" x2="17" y2="13" />
-          <line x1="7" y1="17" x2="12" y2="17" />
-        </svg>
-        Forms
-      </h1>
+      <h1 className="font-display text-2xl font-semibold sm:text-3xl">Forms</h1>
       <p className="mt-3 max-w-2xl text-sm text-ink-soft">
         Build a form with your own fields, labels and design, then place it as a page section or open it as a
         popup from any button -- reusable in as many places as you want.
