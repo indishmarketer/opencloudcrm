@@ -44,6 +44,7 @@ import WorkflowDemo from "@/components/WorkflowDemo";
 import IntegrationIcons from "@/components/IntegrationIcons";
 import FeaturedOn from "@/components/FeaturedOn";
 import GuidePopup from "@/components/GuidePopup";
+import ContactPopup from "@/components/ContactPopup";
 import NewsletterSignupForm from "@/components/NewsletterSignupForm";
 import CountdownTimer from "@/components/CountdownTimer";
 import BusinessContactDetails from "@/components/BusinessContactDetails";
@@ -359,7 +360,9 @@ export function HeroView({ props, activeLeadMagnet }: { props: Props; activeLead
   const backgroundImage = str(props, "backgroundImage");
   const backgroundColor = str(props, "backgroundColor");
   const primaryLabel = str(props, "primaryLabel");
-  const guide = str(props, "primaryAction") === "leadMagnet" ? activeLeadMagnet : null;
+  const primaryAction = str(props, "primaryAction");
+  const guide = primaryAction === "leadMagnet" ? activeLeadMagnet : null;
+  const contactPopup = primaryAction === "contactPopup";
   const primaryClass = dark
     ? "rounded-full bg-paper px-6 py-3 text-center text-sm font-medium text-ink transition-opacity hover:opacity-80"
     : BUTTON_DARK;
@@ -419,6 +422,8 @@ export function HeroView({ props, activeLeadMagnet }: { props: Props; activeLead
                   buttonLabel={primaryLabel}
                   buttonClassName={primaryClass}
                 />
+              ) : contactPopup && primaryLabel ? (
+                <ContactPopup buttonLabel={primaryLabel} buttonClassName={primaryClass} />
               ) : (
                 <ButtonLink href={str(props, "primaryHref")} label={primaryLabel} className={primaryClass} />
               )}
@@ -964,13 +969,22 @@ export function CountdownBlock({ props, nested = false, editorEmpty = false }: {
 }
 
 export function CtaBlock({ props }: { props: Props }) {
+  const primaryLabel = str(props, "buttonLabel");
+  const contactPopup = str(props, "buttonAction") === "contactPopup";
   const buttons = (light: boolean) => (
     <div className="flex flex-col gap-3 sm:flex-row">
-      <ButtonLink
-        href={str(props, "buttonHref")}
-        label={str(props, "buttonLabel")}
-        className={light ? "rounded-full bg-paper px-6 py-3 text-center text-sm font-medium text-ink transition-opacity hover:opacity-80" : BUTTON_DARK}
-      />
+      {contactPopup && primaryLabel ? (
+        <ContactPopup
+          buttonLabel={primaryLabel}
+          buttonClassName={light ? "rounded-full bg-paper px-6 py-3 text-center text-sm font-medium text-ink transition-opacity hover:opacity-80" : BUTTON_DARK}
+        />
+      ) : (
+        <ButtonLink
+          href={str(props, "buttonHref")}
+          label={primaryLabel}
+          className={light ? "rounded-full bg-paper px-6 py-3 text-center text-sm font-medium text-ink transition-opacity hover:opacity-80" : BUTTON_DARK}
+        />
+      )}
       <ButtonLink
         href={str(props, "secondaryHref")}
         label={str(props, "secondaryLabel")}
