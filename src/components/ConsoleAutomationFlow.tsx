@@ -21,12 +21,6 @@ const TRIGGERS: Record<string, string> = {
   community_inactivity: "A community member has not created their first post",
 };
 
-const FROM_ADDRESSES = [
-  { value: emailAt("academy"), label: emailAt("academy") },
-  { value: emailAt("support"), label: emailAt("support") },
-  { value: emailAt("reach"), label: emailAt("reach") },
-];
-
 type Step = {
   id: number;
   position: number;
@@ -115,18 +109,17 @@ function StepEditor({ step, earlierSteps, triggerKey, templates, onSaved, onDele
           }}
           className="w-20 rounded-lg border border-line bg-paper px-3 py-1.5 text-sm outline-none focus:border-ink"
         />
-        <label className="text-sm text-ink-soft">days, then send from</label>
-        <div className="min-w-[220px]">
-          <BrandSelect
-            value={fromEmail}
-            onChange={(v) => {
-              setFromEmail(v);
-              setDirty(true);
-            }}
-            options={FROM_ADDRESSES}
-            compact
-          />
-        </div>
+        <label className="text-sm text-ink-soft" htmlFor={`step-from-${step.id}`}>days, then send from</label>
+        <input
+          id={`step-from-${step.id}`}
+          type="email"
+          value={fromEmail}
+          onChange={(e) => {
+            setFromEmail(e.target.value);
+            setDirty(true);
+          }}
+          className="min-w-[220px] rounded-full border border-line bg-paper px-3.5 py-2 text-sm outline-none focus:border-ink"
+        />
       </div>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2">

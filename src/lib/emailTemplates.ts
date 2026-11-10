@@ -1,9 +1,9 @@
 import { pool } from "@/lib/db";
-import { SITE_HOSTNAME } from "@/lib/liveSiteUrl";
-import { resolveEmailDomain } from "@/lib/emailSettings";
 import { getBusiness } from "@/lib/businessProfile";
 import { SITE_NAME } from "@/config/brand";
 import { escapeHtml } from "@/lib/escapeHtml";
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export type EmailTemplate = {
   key: string;
@@ -142,15 +142,13 @@ export async function updateEmailTemplate(
   if (!subject.trim() || !bodyHtml.trim()) {
     throw new EmailTemplateUpdateError("subject and bodyHtml are required.");
   }
-  // info@ (this site's receive-only inbox) is never selectable as a sending
-  // identity here -- me@ is the owner-notification alias instead. The
-  // domain is the console-configured sending domain when one is set (see
-  // emailSettings.ts), else this deployment's own site domain.
-  const domain = await resolveEmailDomain(SITE_HOSTNAME);
-  const emailAt = (local: string) => `${local}@${domain}`;
-  const allowedSenders = new Set([emailAt("me"), emailAt("support"), emailAt("reach"), emailAt("academy")]);
-  if (fromEmail !== undefined && fromEmail !== null && !allowedSenders.has(fromEmail)) {
-    throw new EmailTemplateUpdateError("Choose a verified sending address.");
+  // The username (local part) is entirely the admin's choice -- no fixed
+  // list of addresses to pick from. Only checked for being a well-formed
+  // email address; whether it actually delivers depends on the sending
+  // domain (see emailSettings.ts) being verified with the mail provider,
+  // which this function has no way to check.
+  if (fromEmail !== undefined && fromEmail !== null && fromEmail !== "" && !EMAIL_RE.test(fromEmail)) {
+    throw new EmailTemplateUpdateError("That doesn't look like an email address.");
   }
   const template = await pool.query("SELECT allowed_vars FROM email_templates WHERE key = $1", [key]);
   if (!template.rows[0]) throw new EmailTemplateUpdateError("Template not found.", 404);

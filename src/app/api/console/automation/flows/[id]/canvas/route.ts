@@ -4,6 +4,8 @@ import { pool, withTransaction } from "@/lib/db";
 import { EMAIL_TRIGGERS } from "@/lib/emailAutomation";
 import { emailAt } from "@/lib/liveSiteUrl";
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 type RouteContext = { params: Promise<{ id: string }> };
 
 function positiveId(value: string): number | null {
@@ -64,7 +66,6 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
   const allowedGoals = ["none", "course_pro", "course_completed", "community_first_post"];
   const goalType = allowedGoals.includes(body.goalType) ? body.goalType : "none";
   const entrySegmentId = body.entrySegmentId ? positiveId(String(body.entrySegmentId)) : null;
-  const validSenders = new Set([emailAt("me"), emailAt("support"), emailAt("reach"), emailAt("academy")]);
   const validConditions = new Set(["always", "opened", "not_opened", "clicked", "not_clicked"]);
 
   try {
@@ -93,8 +94,8 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
         const delayDays = pendingDelayDays;
         pendingDelayDays = 0;
         const position = emailPosition++;
-        const fromEmailValue = String(config.fromEmail || emailAt("academy")).trim();
-        const fromEmail = validSenders.has(fromEmailValue) ? fromEmailValue : emailAt("academy");
+        const fromEmailValue = String(config.fromEmail || "").trim();
+        const fromEmail = EMAIL_RE.test(fromEmailValue) ? fromEmailValue : emailAt("academy");
         const actionType = config.actionType === "google_review_request" ? "google_review_request" : "email";
         const reviewTemplateKey = config.reviewTemplateKey === "google-review-reminder" ? config.reviewTemplateKey : "google-review-request";
         const subject = String(config.subject || "").slice(0, 300);

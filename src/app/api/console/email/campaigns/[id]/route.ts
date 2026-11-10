@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminSession } from "@/lib/auth";
 import { pool } from "@/lib/db";
-import { emailAt } from "@/lib/liveSiteUrl";
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const isAdmin = await getAdminSession();
@@ -22,9 +23,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const { id } = await params;
   const { subject, html, segmentId, fromEmail } = await req.json();
-  const allowedSenders = new Set([emailAt("support"), emailAt("reach"), emailAt("academy")]);
-  if (fromEmail !== undefined && !allowedSenders.has(String(fromEmail))) {
-    return NextResponse.json({ error: "Choose a verified sending address." }, { status: 400 });
+  if (fromEmail !== undefined && fromEmail !== null && fromEmail !== "" && !EMAIL_RE.test(String(fromEmail))) {
+    return NextResponse.json({ error: "That doesn't look like an email address." }, { status: 400 });
   }
   if (segmentId !== undefined) {
     const segment = await pool.query("SELECT 1 FROM contact_segments WHERE id = $1", [Number(segmentId)]);

@@ -463,7 +463,19 @@ function NodeSettings({ node, emailNodes, onChange, triggerType, triggerKey, tri
     </>}
     {node.data.kind === "email" && <>
       {field("To", "to", "{{contact.email}}")}
-      <div><p className="mb-1.5 text-xs font-medium text-ink-soft">From address</p><BrandSelect value={String(config.from || fromAddresses[0]?.value || "")} onChange={(value) => set("from", value)} options={fromAddresses} /></div>
+      <div>
+        <p className="mb-1.5 text-xs font-medium text-ink-soft">From address</p>
+        <input
+          value={String(config.from || fromAddresses[0]?.value || "")}
+          onChange={(event) => set("from", event.target.value)}
+          list="workflow-from-suggestions"
+          placeholder="you@yourdomain.com"
+          className="w-full rounded-lg border border-line px-3 py-2 text-sm text-ink outline-none focus:border-ink"
+        />
+        <datalist id="workflow-from-suggestions">
+          {fromAddresses.map((address) => <option key={address.value} value={address.value} />)}
+        </datalist>
+      </div>
       <div><p className="mb-1.5 text-xs font-medium text-ink-soft">Email content</p><BrandSelect value={String(config.contentMode || "custom")} onChange={(value) => set("contentMode", value)} options={[{ value: "template", label: "Use a saved template" }, { value: "custom", label: "Write a custom email" }]} /></div>
       {config.contentMode === "template" ? <>
         <div><p className="mb-1.5 text-xs font-medium text-ink-soft">Saved email template</p><BrandSelect value={config.templateKind && config.templateKey ? `${config.templateKind}:${config.templateKey}` : ""} onChange={(value) => { const [templateKind, templateKey] = value.split(":"); set("templateKind", templateKind); set("templateKey", templateKey); }} options={emailTemplates.map((template) => ({ value: template.value, label: template.label }))} searchable searchPlaceholder="Find an email template" placeholder="Select a template" /></div>

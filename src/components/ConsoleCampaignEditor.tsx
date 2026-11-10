@@ -9,14 +9,7 @@ import ScheduleDateTimeModal from "@/components/ScheduleDateTimeModal";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { CONTACT_MESSAGE_VARIABLES } from "@/lib/messageVariables";
 import { formatIndiaDateTime } from "@/lib/indiaTime";
-import { emailAt } from "@/lib/liveSiteUrl";
 import type { EmailContentTemplate } from "@/lib/emailContentTemplates";
-
-const FROM_ADDRESSES = [
-  { value: emailAt("reach"), label: emailAt("reach") },
-  { value: emailAt("academy"), label: emailAt("academy") },
-  { value: emailAt("support"), label: emailAt("support") },
-];
 
 type Campaign = {
   id: number;
@@ -206,19 +199,18 @@ export default function ConsoleCampaignEditor({ campaign, segments, templates, r
             <p className="mt-1 text-xs text-ink-soft">Only verified, sendable contacts are included. The final recipient list is frozen when sending starts.</p>
           </div>
           <div className="min-w-[220px]">
-            <label className="text-sm text-ink-soft">From</label>
-            <div className="mt-1">
-              <BrandSelect
-                value={fromEmail}
-                onChange={(v) => {
-                  setFromEmail(v);
-                  setDirty(true);
-                }}
-                options={FROM_ADDRESSES}
-                disabled={!isDraft}
-                compact
-              />
-            </div>
+            <label className="text-sm text-ink-soft" htmlFor="campaign-from-email">From</label>
+            <input
+              id="campaign-from-email"
+              type="email"
+              value={fromEmail}
+              onChange={(e) => {
+                setFromEmail(e.target.value);
+                setDirty(true);
+              }}
+              disabled={!isDraft}
+              className="mt-1 w-full rounded-full border border-line bg-paper px-3.5 py-2 text-sm outline-none focus:border-ink disabled:opacity-60"
+            />
           </div>
         </div>
 

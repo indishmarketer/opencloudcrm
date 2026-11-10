@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import BrandSelect from "@/components/BrandSelect";
 import RichTextEditor from "@/components/RichTextEditor";
 import { useConfirm } from "@/components/ConfirmDialog";
 
@@ -33,10 +32,6 @@ export type EmailTemplateRow = {
 };
 
 function TemplateEditor({ tpl, siteHost }: { tpl: EmailTemplateRow; siteHost: string }) {
-  const fromAddresses = ["me", "academy", "support", "reach"].map((local) => ({
-    value: `${local}@${siteHost}`,
-    label: `${local}@${siteHost}${local === "me" ? " (notifies you)" : ""}`,
-  }));
   const [subject, setSubject] = useState(tpl.subject);
   const [bodyHtml, setBodyHtml] = useState(tpl.body_html);
   const [fromEmail, setFromEmail] = useState(/@example\.com$/i.test(tpl.from_email) ? `support@${siteHost}` : tpl.from_email);
@@ -80,18 +75,18 @@ function TemplateEditor({ tpl, siteHost }: { tpl: EmailTemplateRow; siteHost: st
   return (
     <div className="mt-4 space-y-4 border-t border-line pt-4">
       <div className="flex flex-wrap items-center gap-3">
-        <label className="text-sm text-ink-soft">Send from</label>
-        <div className="min-w-[220px]">
-          <BrandSelect
-            value={fromEmail}
-            onChange={(v) => {
-              setFromEmail(v);
-              setDirty(true);
-            }}
-            options={fromAddresses}
-            compact
-          />
-        </div>
+        <label className="text-sm text-ink-soft" htmlFor={`from-${tpl.key}`}>Send from</label>
+        <input
+          id={`from-${tpl.key}`}
+          type="email"
+          value={fromEmail}
+          onChange={(e) => {
+            setFromEmail(e.target.value);
+            setDirty(true);
+          }}
+          placeholder={`yourname@${siteHost}`}
+          className="min-w-[220px] rounded-full border border-line bg-paper px-4 py-2 text-sm outline-none focus:border-ink"
+        />
         <label className="ml-auto flex items-center gap-2 text-sm text-ink-soft">
           <input
             type="checkbox"
@@ -168,63 +163,6 @@ function TemplateEditor({ tpl, siteHost }: { tpl: EmailTemplateRow; siteHost: st
   );
 }
 
-function SendingDomainSettings({ defaultDomain, sendingDomain }: { defaultDomain: string; sendingDomain: string }) {
-  const [value, setValue] = useState(sendingDomain);
-  const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
-  const [error, setError] = useState("");
-  const dirty = value.trim() !== sendingDomain;
-
-  async function save() {
-    setStatus("saving");
-    setError("");
-    const res = await fetch("/api/console/email/sending-domain", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sendingDomain: value.trim() }),
-    });
-    const body = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      setStatus("error");
-      setError(body.error || "Could not save the sending domain.");
-      return;
-    }
-    setValue(body.settings?.sendingDomain ?? value.trim());
-    setStatus("saved");
-    setTimeout(() => setStatus("idle"), 3000);
-  }
-
-  return (
-    <div className="mb-6 rounded-2xl border border-line bg-paper-soft p-5">
-      <label className="text-sm font-medium" htmlFor="email-sending-domain">Sending domain</label>
-      <p className="mt-1 max-w-2xl text-xs text-ink-soft">
-        The domain outgoing emails are sent from (e.g. <code>mail.example.com</code>). Leave this blank to use this
-        site&apos;s own domain (<code>{defaultDomain}</code>). A custom domain here must already be verified with
-        your email provider (SES or Brevo) — this field only changes which domain is used, it doesn&apos;t verify
-        DNS/DKIM for you.
-      </p>
-      <div className="mt-3 flex flex-wrap items-center gap-3">
-        <input
-          id="email-sending-domain"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          placeholder={defaultDomain}
-          className="w-64 rounded-full border border-line bg-paper px-4 py-2 text-sm outline-none focus:border-ink"
-        />
-        <button
-          type="button"
-          onClick={save}
-          disabled={!dirty || status === "saving"}
-          className="rounded-full bg-ink px-4 py-2 text-sm font-medium text-paper transition-opacity hover:opacity-80 disabled:opacity-50"
-        >
-          {status === "saving" ? "Saving..." : "Save"}
-        </button>
-        {status === "saved" && <p className="text-xs text-emerald-700">Saved.</p>}
-        {status === "error" && <p className="text-xs text-red-600">{error}</p>}
-      </div>
-    </div>
-  );
-}
-
 function sortedCategories(templates: EmailTemplateRow[]): string[] {
   const seen = new Set(templates.map((t) => t.category));
   return [...seen].sort((a, b) => (CATEGORY_LABELS[a] || a).localeCompare(CATEGORY_LABELS[b] || b));
@@ -233,13 +171,9 @@ function sortedCategories(templates: EmailTemplateRow[]): string[] {
 export default function ConsoleEmailTemplates({
   templates,
   siteHost,
-  defaultDomain,
-  sendingDomain,
 }: {
   templates: EmailTemplateRow[];
   siteHost: string;
-  defaultDomain: string;
-  sendingDomain: string;
 }) {
   const router = useRouter();
   const { confirm, dialog } = useConfirm();
@@ -292,7 +226,6 @@ export default function ConsoleEmailTemplates({
   return (
     <div>
       {dialog}
-      <SendingDomainSettings defaultDomain={defaultDomain} sendingDomain={sendingDomain} />
       <p className="max-w-2xl text-sm text-ink-soft">
         Every fixed (transactional) email this site can send — {templates.length} in total. Click one to edit its
         subject and content, or send yourself a test copy first.

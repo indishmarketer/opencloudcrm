@@ -13,7 +13,6 @@ import { WEBHOOK_EVENT_TYPES } from "@/lib/webhookEventCatalogue";
 import { findOrCreateAccount, grantCourseManually } from "@/lib/courseGrant";
 import { SITE_URL } from "@/lib/liveSiteUrl";
 import { sendMeetingConfirmation } from "@/lib/meetingEmails";
-import { emailAt } from "@/lib/liveSiteUrl";
 import { buildSegmentPredicate } from "@/lib/contactSegments";
 import { automationGoalReached } from "@/lib/emailAutomation";
 import { queueGoogleReviewRequest } from "@/lib/reviewRequests";
@@ -277,9 +276,10 @@ async function runAction(node: WorkflowNode, payload: unknown, run: { id: number
     // not. Escape substitutions so a form value can't inject markup.
     const html = interpolate(bodyTemplate, payload, true);
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) throw new Error(`Email action "${node.data.label}" needs a valid contact email.`);
-    const allowedSenders = [emailAt("me"), emailAt("support"), emailAt("reach"), emailAt("academy")];
-    if (typeof config.from === "string" && config.from && !allowedSenders.includes(config.from)) throw new Error("Choose an approved sender address for this email action.");
-    if (typeof config.from === "string" && config.from) from = config.from;
+    if (typeof config.from === "string" && config.from) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(config.from)) throw new Error(`Email action "${node.data.label}" needs a valid "From" address.`);
+      from = config.from;
+    }
     if (config.purpose === "marketing" && !test) {
       const consent = await pool.query("SELECT 1 FROM contacts WHERE normalized_email = lower(trim($1)) AND marketing_status = 'subscribed' AND deliverability_status = 'ok'", [to]);
       if (!consent.rowCount) return { skipped: true, reason: "Marketing consent or deliverability is missing." };
