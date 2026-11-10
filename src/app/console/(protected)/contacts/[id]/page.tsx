@@ -57,6 +57,12 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
   const contact = contactResult.rows[0];
   if (!contact) notFound();
   const contactId = Number(contact.id);
+  const formSubmissions = await pool.query<{
+    id: number; name: string; source: string; field_values: Record<string, string>;
+    fields: { key: string; label: string }[]; page_url: string; created_at: Date;
+  }>(`SELECT fs.id, f.name, f.source, fs.field_values, f.fields, fs.page_url, fs.created_at
+      FROM form_submissions fs JOIN forms f ON f.id = fs.form_id
+      WHERE fs.contact_id = $1 ORDER BY fs.created_at DESC LIMIT 50`, [contactId]);
   const userId = contact.user_id ? Number(contact.user_id) : null;
   const guestEmail = contact.email as string;
 
@@ -220,7 +226,7 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
       id: `activity-${row.id}`,
       kind: "activity",
       label: String(row.activity_type).replace(/_/g, " "),
-      detail: String(row.source).replace(/_/g, " "),
+      detail: row.activity_type === "form_submitted" ? String(row.metadata?.label || row.source) : String(row.source).replace(/_/g, " "),
       at: new Date(row.occurred_at).toISOString(),
     })),
     ...attribution.rows.map((row) => ({
@@ -347,6 +353,25 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
         courses={allCourses.rows.filter((c) => !enrollments.rows.some((e) => e.course_id === c.id))}
         replyToEmail={await getReplyToEmail()}
       />
+
+      {formSubmissions.rows.length > 0 && (
+        <section className="rounded-2xl border border-line bg-paper p-6">
+          <h2 className="font-display text-lg font-semibold">Form responses</h2>
+          <div className="mt-4 space-y-4">
+            {formSubmissions.rows.map((submission) => (
+              <div key={submission.id} className="rounded-xl border border-line p-4 text-sm">
+                <div className="font-medium">{submission.source || submission.name} · {onDate(submission.created_at)}</div>
+                <dl className="mt-3 grid gap-2 sm:grid-cols-2">
+                  {submission.fields.filter((field) => Object.hasOwn(submission.field_values, field.key)).map((field) => (
+                    <div key={field.key}><dt className="text-ink-soft">{field.label}</dt><dd className="whitespace-pre-wrap">{submission.field_values[field.key]}</dd></div>
+                  ))}
+                </dl>
+                {submission.page_url && <p className="mt-3 break-all text-xs text-ink-soft">{submission.page_url}</p>}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <ContactActivity
         contactId={contactId}

@@ -24,6 +24,8 @@ type FormRow = {
   submission_action?: FormSubmissionAction;
   redirect_url?: string;
   notify_email: string | null;
+  source: string;
+  system_role: "contact" | "newsletter" | null;
   verify_email: boolean;
   design: FormDesign;
   is_fixed: boolean;
@@ -56,6 +58,8 @@ function toDefinition(row: FormRow): FormDefinition {
     submissionAction: row.submission_action === "redirect" ? "redirect" : "message",
     redirectUrl: row.redirect_url || "",
     notifyEmail: row.notify_email || "",
+    source: row.source || "",
+    systemRole: row.system_role || null,
     verifyEmail: row.verify_email,
     design: row.design || {},
     isFixed: row.is_fixed === true,
@@ -89,8 +93,8 @@ export async function createForm(input: Omit<FormDefinition, "id">): Promise<num
   const fields = elementsToFields(elements);
 
   const result = await pool.query<{ id: number }>(
-    `INSERT INTO forms (name, slug, heading, intro_text, fields, elements, submit_label, success_heading, success_text, submission_action, redirect_url, notify_email, verify_email, design, is_fixed)
-     VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb, $7, $8, $9, $10, $11, $12, $13, $14::jsonb, $15) RETURNING id`,
+    `INSERT INTO forms (name, slug, heading, intro_text, fields, elements, submit_label, success_heading, success_text, submission_action, redirect_url, notify_email, verify_email, design, is_fixed, source)
+     VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb, $7, $8, $9, $10, $11, $12, $13, $14::jsonb, $15, $16) RETURNING id`,
     [
       input.name,
       input.slug || null,
@@ -107,6 +111,7 @@ export async function createForm(input: Omit<FormDefinition, "id">): Promise<num
       input.verifyEmail,
       JSON.stringify(input.design),
       input.isFixed === true,
+      input.source,
     ],
   );
   return result.rows[0].id;
@@ -129,7 +134,7 @@ export async function updateForm(id: number, input: Omit<FormDefinition, "id">):
     `UPDATE forms SET name = $1, slug = $2, heading = $3, intro_text = $4, fields = $5::jsonb,
        elements = $6::jsonb, submit_label = $7, success_heading = $8, success_text = $9,
        submission_action = $10, redirect_url = $11, notify_email = $12,
-       verify_email = $13, design = $14::jsonb, updated_at = now()
+       verify_email = $13, design = $14::jsonb, source = $16, updated_at = now()
      WHERE id = $15`,
     [
       input.name,
@@ -147,6 +152,7 @@ export async function updateForm(id: number, input: Omit<FormDefinition, "id">):
       input.verifyEmail,
       JSON.stringify(input.design),
       id,
+      input.source,
     ],
   );
   return (result.rowCount ?? 0) > 0;
@@ -154,8 +160,8 @@ export async function updateForm(id: number, input: Omit<FormDefinition, "id">):
 
 export async function deleteForm(id: number): Promise<boolean> {
   const form = await getFormById(id);
-  if (form?.isFixed) {
-    throw new Error("Built-in fixed forms cannot be deleted.");
+  if (form?.isFixed || form?.systemRole) {
+    throw new Error("Forms used by built-in pages cannot be deleted.");
   }
   const result = await pool.query("DELETE FROM forms WHERE id = $1", [id]);
   return (result.rowCount ?? 0) > 0;

@@ -152,7 +152,7 @@ export default function ConsoleForms({
   const [page, setPage] = useState(1);
 
   async function removeForm(form: FormWithSubmissions) {
-    if (form.isFixed) return;
+    if (form.isFixed || form.systemRole) return;
     const ok = await confirm({
       message: `Delete the form "${form.name}"? Any placed page blocks or links to /f/${form.slug || form.id} will stop working. This can't be undone.`,
       confirmLabel: "Delete",
@@ -237,7 +237,7 @@ export default function ConsoleForms({
                     <EditIcon />
                     Edit
                   </Link>
-                  {!row.isFixed && (
+                  {!row.isFixed && !row.systemRole && (
                     <button
                       type="button"
                       onClick={() => removeForm(row)}

@@ -14,7 +14,6 @@ import {
   ButtonBlock,
   CardsBlock,
   ContactDetailsBlock,
-  ContactFormSection,
   CountdownBlock,
   CtaBlock,
   CustomCodeBlock,
@@ -33,7 +32,6 @@ import {
   ListBlock,
   LogoBlock,
   MapBlock,
-  NewsletterBlock,
   PageHeaderBlock,
   PriceTableBlock,
   ProgressBlock,
@@ -124,8 +122,6 @@ function renderBlock(block: PageBlock, props: Props, business: ResolvedBusiness,
     case "workflowDemo": return <WorkflowDemoBlock props={props} />;
     case "integrations": return <IntegrationsBlock props={props} />;
     case "featuredOn": return <FeaturedOnBlock props={props} />;
-    case "contactForm": return <ContactFormSection props={props} business={business} />;
-    case "newsletter": return <NewsletterBlock props={props} />;
     case "form": return <FormBlock props={props} business={business} />;
     case "contactDetails": return <ContactDetailsBlock props={props} business={business} />;
     case "businessDetails": return <BusinessDetailsBlock props={props} business={business} />;

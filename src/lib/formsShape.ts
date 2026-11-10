@@ -160,6 +160,8 @@ export type FormDefinition = {
   submissionAction: FormSubmissionAction;
   redirectUrl: string;
   notifyEmail: string;
+  source: string;
+  systemRole: "contact" | "newsletter" | null;
   verifyEmail: boolean;
   design: FormDesign;
   isFixed: boolean;
@@ -419,6 +421,8 @@ export function normalizeFormDefinition(input: unknown): Omit<FormDefinition, "i
     submissionAction: raw.submissionAction === "redirect" ? "redirect" : "message",
     redirectUrl: str(raw.redirectUrl, 300),
     notifyEmail: str(raw.notifyEmail, 200),
+    source: str(raw.source, 100),
+    systemRole: null,
     verifyEmail: raw.verifyEmail === true,
     design: normalizeDesign(raw.design),
     isFixed: raw.isFixed === true,

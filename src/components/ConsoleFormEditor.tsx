@@ -772,7 +772,8 @@ export default function ConsoleFormEditor({
   const [successHeading, setSuccessHeading] = useState(initialForm.successHeading);
   const [successText, setSuccessText] = useState(initialForm.successText);
   const [notifyEmail, setNotifyEmail] = useState(initialForm.notifyEmail);
-  const [verifyEmail, setVerifyEmail] = useState(initialForm.verifyEmail);
+  const [source, setSource] = useState(initialForm.source);
+  const [verifyEmail, setVerifyEmail] = useState(initialForm.verifyEmail || Boolean(initialForm.systemRole));
 
   // Editor Interaction State
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -965,6 +966,7 @@ export default function ConsoleFormEditor({
       successHeading,
       successText,
       notifyEmail,
+      source,
       verifyEmail,
     };
 
@@ -1062,6 +1064,12 @@ export default function ConsoleFormEditor({
             </label>
 
             <label className="grid gap-1.5 text-sm font-medium">
+              Contact source
+              <input value={source} maxLength={100} placeholder="Newsletter" onChange={(e) => { setSource(e.target.value); setDirty(true); }} className={inputClass} />
+              <span className="text-xs text-ink-soft">Shown on every contact who submits this form. Use the same label across pages to group sources.</span>
+            </label>
+
+            <label className="grid gap-1.5 text-sm font-medium">
               Direct Shareable Address
               <div className="flex items-center gap-1">
                 <span className="text-sm text-ink-soft">/f/</span>
@@ -1092,6 +1100,7 @@ export default function ConsoleFormEditor({
                 <input
                   type="checkbox"
                   checked={verifyEmail}
+                  disabled={Boolean(initialForm.systemRole)}
                   onChange={(e) => {
                     setVerifyEmail(e.target.checked);
                     setDirty(true);

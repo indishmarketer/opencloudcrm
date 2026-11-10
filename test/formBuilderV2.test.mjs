@@ -40,6 +40,11 @@ test("form builder v2: slug normalizes to url-safe format", () => {
   assert.equal(norm2.slug, "my-form");
 });
 
+test("form source keeps the exact owner label and limits its length", () => {
+  assert.equal(normalizeFormDefinition({ name: "Updates", source: "  Newsletter launch  " }).source, "Newsletter launch");
+  assert.equal(normalizeFormDefinition({ name: "Updates", source: "x".repeat(120) }).source.length, 100);
+});
+
 test("form builder v2: supports hidden tracking fields with defaultValue", () => {
   const fields = normalizeFormFields([
     { label: "Your Name", type: "text", required: true },

@@ -15,7 +15,6 @@ import {
   ButtonBlock,
   CardsBlock,
   ContactDetailsBlock,
-  ContactFormSection,
   CountdownBlock,
   CtaBlock,
   CustomCodeBlock,
@@ -35,7 +34,6 @@ import {
   LogoBlock,
   MapBlock,
   NestedElement,
-  NewsletterBlock,
   PageHeaderBlock,
   PriceTableBlock,
   ProgressBlock,
@@ -139,10 +137,6 @@ export function renderLiveBlock(
       return <IntegrationsBlock props={props} />;
     case "featuredOn":
       return <FeaturedOnBlock props={props} editorEmpty />;
-    case "contactForm":
-      return <ContactFormSection props={props} business={business} />;
-    case "newsletter":
-      return <NewsletterBlock props={props} />;
     case "form":
       return <FormBlock props={props} business={business} />;
     case "contactDetails":

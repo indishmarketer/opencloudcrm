@@ -133,6 +133,7 @@ type ContactRow = {
   has_webhook_lead: boolean;
   /** Distinct source slugs (the URL segment used in the inbound webhook) that registered this contact as a lead. */
   webhook_lead_sources: string[];
+  form_sources: string[];
   marketing_status: string;
   deliverability_status: string;
   /** India-time days (YYYY-MM-DD, newest first) with an email open or click, a click, or a signed-in visit. */
@@ -289,6 +290,9 @@ function SourceTags({ row }: { row: ContactRow }) {
       ? "OpenCloud"
       : source.replace(/[-_]+/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
     if (!tags.includes(label)) tags.push(label);
+  }
+  for (const source of row.form_sources || []) {
+    if (!tags.includes(source)) tags.push(source);
   }
   return (
     <div className="flex flex-wrap gap-1">

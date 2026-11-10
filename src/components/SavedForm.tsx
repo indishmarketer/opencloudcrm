@@ -273,9 +273,11 @@ function PhoneFieldInput({
 export default function SavedForm({
   formId,
   showHeading = true,
+  designOverride,
 }: {
   formId: number;
   showHeading?: boolean;
+  designOverride?: Partial<FormDesign>;
 }) {
   const [form, setForm] = useState<PublicForm | null>(null);
   const [loadError, setLoadError] = useState(false);
@@ -418,7 +420,7 @@ export default function SavedForm({
   if (loadError) return <p className="text-sm text-red-600">Could not load this form.</p>;
   if (!form) return <p className="text-sm text-ink-soft">Loading…</p>;
 
-  const design = form.design || {};
+  const design = { ...(form.design || {}), ...designOverride };
 
   if (status === "done") {
     return (

@@ -17,7 +17,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!Number.isInteger(formId)) return NextResponse.json({ error: "Not found." }, { status: 404 });
 
   const form = await getFormById(formId);
-  if (!form) return NextResponse.json({ error: "Not found." }, { status: 404 });
+  if (!form || form.isFixed) return NextResponse.json({ error: "Not found." }, { status: 404 });
 
   return NextResponse.json({
     id: form.id,
@@ -30,7 +30,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     successText: form.successText,
     submissionAction: form.submissionAction,
     redirectUrl: form.redirectUrl,
-    verifyEmail: form.verifyEmail,
+    verifyEmail: form.verifyEmail || Boolean(form.systemRole),
     design: form.design,
   });
 }
