@@ -479,8 +479,8 @@ function SortableElementItem({
         isDragging ? "opacity-30" : ""
       } ${
         selected
-          ? "border-ink bg-white shadow-md ring-2 ring-ink/10"
-          : "border-transparent bg-white hover:border-line hover:shadow-sm"
+          ? "border-ink bg-white"
+          : "border-transparent bg-white hover:border-line"
       }`}
     >
       {/* Floating Action Toolbar on hover / selection */}
@@ -738,9 +738,9 @@ function CanvasEndDropzone({ empty }: { empty: boolean }) {
   return (
     <div
       ref={setNodeRef}
-      className={`transition-colors rounded-xl border-2 border-dashed ${
-        isOver ? "border-ink bg-paper-soft" : "border-line"
-      } ${empty ? "p-16 text-center text-sm text-ink-soft" : "h-12 flex items-center justify-center text-xs text-ink-soft"}`}
+      className={`transition-colors rounded-xl border border-dashed ${
+        isOver ? "border-ink bg-paper-soft text-ink" : "border-line text-ink-soft"
+      } ${empty ? "p-16 text-center text-sm" : "py-6 flex items-center justify-center text-xs"}`}
     >
       {empty
         ? "Canvas is empty. Drag an element here from the left palette, or click one to add it."
@@ -1384,27 +1384,20 @@ export default function ConsoleFormEditor({
           </aside>
 
           {/* Center Canvas */}
-          <main
-            onClick={() => {
-              setSelectedId("__form_style__");
-              setRightTab("style");
-            }}
-            className="relative min-w-0 flex-1 overflow-y-auto bg-[#fafafa] p-4 sm:p-10 flex items-start justify-center transition-colors"
-          >
-            <div
-              onClick={(e) => e.stopPropagation()}
-              className={`w-full transition-all duration-200 ${
-                device === "mobile" ? "max-w-[390px]" : "max-w-2xl sm:max-w-3xl"
-              }`}
+          {device === "desktop" ? (
+            <main
+              onClick={() => {
+                if (selectedId) setSelectedId(null);
+              }}
+              style={{
+                backgroundColor: design.backgroundColor || "#ffffff",
+                fontFamily: design.fontFamily || undefined,
+              }}
+              className="relative min-w-0 flex-1 h-full overflow-y-auto bg-white px-6 py-6 sm:px-12 sm:py-8 transition-colors"
             >
               <div
-                style={{
-                  backgroundColor: design.backgroundColor || "#ffffff",
-                  fontFamily: design.fontFamily || undefined,
-                  borderRadius: design.borderRadius || "16px",
-                  borderColor: design.borderColor || "#e5e7eb",
-                }}
-                className="rounded-2xl border border-line/80 bg-white p-6 sm:p-10 shadow-sm transition-all"
+                onClick={(e) => e.stopPropagation()}
+                className="w-full space-y-3"
               >
                 <SortableContext
                   items={elements.map((el) => el.id)}
@@ -1434,12 +1427,59 @@ export default function ConsoleFormEditor({
 
                 <CanvasEndDropzone empty={elements.length === 0} />
               </div>
-            </div>
-          </main>
+            </main>
+          ) : (
+            /* Mobile Preview */
+            <main
+              onClick={() => {
+                if (selectedId) setSelectedId(null);
+              }}
+              className="relative min-w-0 flex-1 h-full overflow-hidden bg-paper-soft flex justify-center items-stretch transition-colors"
+            >
+              <div
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  backgroundColor: design.backgroundColor || "#ffffff",
+                  fontFamily: design.fontFamily || undefined,
+                }}
+                className="w-full max-w-[400px] h-full shrink-0 border-x border-line flex flex-col overflow-hidden bg-white"
+              >
+                <div className="flex-1 min-h-0 overflow-y-auto px-4 py-6 space-y-3">
+                  <SortableContext
+                    items={elements.map((el) => el.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    {elements.map((element, i) => (
+                      <SortableElementItem
+                        key={element.id}
+                        element={element}
+                        selected={selectedId === element.id}
+                        onSelect={() => {
+                          setSelectedId(element.id);
+                          setRightTab("inspector");
+                        }}
+                        onDelete={() => deleteElement(element.id)}
+                        onDuplicate={() => duplicateElement(element.id)}
+                        onMoveUp={() => moveElement(i, -1)}
+                        onMoveDown={() => moveElement(i, 1)}
+                        canMoveUp={i > 0}
+                        canMoveDown={i < elements.length - 1}
+                        onUpdateProps={(patch) => updateElementProps(element.id, patch)}
+                        design={design}
+                        isFixed={initialForm.isFixed}
+                      />
+                    ))}
+                  </SortableContext>
+
+                  <CanvasEndDropzone empty={elements.length === 0} />
+                </div>
+              </div>
+            </main>
+          )}
 
           {/* Right Sidebar: Contextual Inspector & Style Panel */}
           {isSidebarVisible && (
-            <aside className="w-[340px] shrink-0 border-l border-line bg-white flex flex-col animate-in slide-in-from-right-4 duration-150">
+            <aside className="w-[360px] shrink-0 border-l border-line bg-white flex flex-col animate-in slide-in-from-right-4 duration-150">
               {/* Header */}
               <div className="flex h-12 shrink-0 items-center justify-between border-b border-line px-4">
                 <span className="text-xs font-semibold uppercase tracking-wider text-ink">
