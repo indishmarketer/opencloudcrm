@@ -842,8 +842,12 @@ function SortableElementItem({
                 color: element.elementStyle?.textColor || undefined,
                 fontSize: element.elementStyle?.fontSize || undefined,
                 fontWeight: element.elementStyle?.fontWeight || undefined,
+                // The label follows the element's alignment, the same as it
+                // does on the live form. Without this the canvas aligned the
+                // box but left the label alone, so the two never matched.
+                textAlign: element.elementStyle?.textAlign || undefined,
               }}
-              className="bg-transparent text-sm font-medium text-ink outline-none border-b border-transparent hover:border-line focus:border-ink px-0.5"
+              className="w-full bg-transparent text-sm font-medium text-ink outline-none border-b border-transparent hover:border-line focus:border-ink px-0.5"
             />
           </div>
 
@@ -853,7 +857,7 @@ function SortableElementItem({
               placeholder={element.fieldPlaceholder || "Type here…"}
               rows={3}
               style={inputStyle}
-              className="w-full resize-none rounded-xl border border-line bg-paper px-3.5 py-2.5 text-sm outline-none cursor-default"
+              className="block w-full resize-none rounded-xl border border-line bg-paper px-3.5 py-2.5 text-sm outline-none cursor-default"
             />
           ) : element.type === "phone" ? (
             <div className="flex gap-2">
@@ -935,7 +939,7 @@ function SortableElementItem({
               readOnly
               placeholder={element.fieldPlaceholder || "Enter text…"}
               style={inputStyle}
-              className="w-full rounded-xl border border-line bg-paper px-3.5 py-2.5 text-sm outline-none cursor-default"
+              className="block w-full rounded-xl border border-line bg-paper px-3.5 py-2.5 text-sm outline-none cursor-default"
             />
           )}
         </div>
@@ -1005,37 +1009,33 @@ function VerifyCanvasPreview({
         confirmation link in that email — either one finishes the submission.
       </p>
 
+      {/* The clickable element IS the styled element. Wrapping a styled span
+          in an unstyled button meant width and alignment landed on the inner
+          box while the outer one -- the thing actually being positioned --
+          ignored them, so a resized confirm button never moved. */}
       <div className="mt-6 space-y-4">
         <button
           type="button"
           onClick={() => onSelect(VERIFY_INPUT_ID)}
-          className={`block w-full rounded-lg text-left ${ring(VERIFY_INPUT_ID)}`}
+          style={elementInputStyle(design, design.verifyInput)}
+          className={`block w-full rounded-lg border border-line bg-paper px-4 py-3 text-center text-lg tracking-widest text-ink-soft ${ring(VERIFY_INPUT_ID)}`}
           title="Code box"
         >
-          <span
-            style={elementInputStyle(design, design.verifyInput)}
-            className="block w-full rounded-lg border border-line bg-paper px-4 py-3 text-center text-lg tracking-widest text-ink-soft"
-          >
-            123456
-          </span>
+          123456
         </button>
 
         <button
           type="button"
           onClick={() => onSelect(VERIFY_BUTTON_ID)}
-          className={`${hasCustomWidth(design.verifyButton) ? "" : "block w-full"} rounded-full ${ring(VERIFY_BUTTON_ID)}`}
+          style={{
+            backgroundColor: design.buttonColor || "#0a0a0a",
+            color: design.buttonTextColor || "#ffffff",
+            ...elementButtonStyle(design, design.verifyButton),
+          }}
+          className={`block ${hasCustomWidth(design.verifyButton) ? "" : "w-full"} rounded-full px-6 py-3 text-sm font-medium ${ring(VERIFY_BUTTON_ID)}`}
           title="Confirm button"
         >
-          <span
-            style={{
-              backgroundColor: design.buttonColor || "#0a0a0a",
-              color: design.buttonTextColor || "#ffffff",
-              ...elementButtonStyle(design, design.verifyButton),
-            }}
-            className={`${hasCustomWidth(design.verifyButton) ? "" : "w-full"} flex items-center justify-center rounded-full px-6 py-3 text-sm font-medium`}
-          >
-            Confirm and submit
-          </span>
+          Confirm and submit
         </button>
       </div>
 
@@ -1090,6 +1090,7 @@ export default function ConsoleFormEditor({
   const [notifyEmail, setNotifyEmail] = useState(initialForm.notifyEmail);
   const [source, setSource] = useState(initialForm.source);
   const [verifyEmail, setVerifyEmail] = useState(initialForm.verifyEmail);
+  const [systemRole, setSystemRole] = useState<"" | "newsletter" | "contact">(initialForm.systemRole || "");
 
   // Editor Interaction State
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -1287,6 +1288,7 @@ export default function ConsoleFormEditor({
       notifyEmail,
       source,
       verifyEmail,
+      systemRole: systemRole || null,
     };
 
     const res = await fetch(`/api/v1/forms/${initialForm.id}`, {
@@ -1578,6 +1580,40 @@ export default function ConsoleFormEditor({
                     </span>
                   </div>
                 </div>
+              )}
+            </div>
+
+            <div className="rounded-xl border border-line p-4 space-y-3">
+              <div>
+                <h3 className="text-sm font-semibold text-ink">Built-in behaviour</h3>
+                <p className="mt-0.5 text-xs text-ink-soft">
+                  Every form records its responses and builds contacts on its own. This adds one extra
+                  action on top. Leave it on None and the form behaves exactly like any other.
+                </p>
+              </div>
+              <InkSelect
+                value={systemRole}
+                onChange={(val) => {
+                  setSystemRole(val as "" | "newsletter" | "contact");
+                  setDirty(true);
+                }}
+                options={[
+                  { value: "", label: "None — an ordinary form" },
+                  { value: "newsletter", label: "Also add the person to your newsletter list" },
+                  { value: "contact", label: "Also file the answer as a contact message" },
+                ]}
+              />
+              {systemRole === "newsletter" && (
+                <p className="text-xs text-ink-soft">
+                  Subscribers from this form appear under Email → Newsletter. Switching this to None stops
+                  that; responses and contacts keep working.
+                </p>
+              )}
+              {systemRole === "contact" && (
+                <p className="text-xs text-ink-soft">
+                  Submissions are also filed as contact messages and sent to your admin address. Switching
+                  this to None stops that; responses and contacts keep working.
+                </p>
               )}
             </div>
 

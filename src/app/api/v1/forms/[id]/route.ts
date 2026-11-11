@@ -45,6 +45,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     redirectUrl: typeof body.redirectUrl === "string" ? body.redirectUrl : existing.redirectUrl,
     notifyEmail: typeof body.notifyEmail === "string" ? body.notifyEmail : existing.notifyEmail,
     source: typeof body.source === "string" ? body.source : existing.source,
+    systemRole: body.systemRole !== undefined ? body.systemRole : existing.systemRole,
     // Freely toggleable on every form. It used to be pinned on for the
     // seeded Contact and Newsletter forms, which meant they could never be
     // used as plain forms, and -- because the Turnstile widget was hidden

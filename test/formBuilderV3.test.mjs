@@ -18,6 +18,7 @@ import {
   elementInputStyle,
   elementWrapperStyle,
   hasCustomWidth,
+  splitBoxStyle,
 } from "../src/lib/formElementStyles.ts";
 import { extractContactData } from "../src/lib/formsShape.ts";
 
@@ -339,12 +340,20 @@ test("extractContactData ignores blank answers and keeps the first of each kind"
 
 // ── System forms are ordinary forms ─────────────────────────────────────────
 
-test("email verification is a free choice on every form, not pinned by a system role", () => {
+test("email verification is a free choice on every form", () => {
   assert.equal(normalizeFormDefinition({ name: "Newsletter", verifyEmail: false }).verifyEmail, false);
   assert.equal(normalizeFormDefinition({ name: "Newsletter", verifyEmail: true }).verifyEmail, true);
-  // systemRole is never taken from client input -- it is a server-side label
-  // for built-in behaviour, and no longer a lock on editing or deleting.
-  assert.equal(normalizeFormDefinition({ name: "Spoof", systemRole: "newsletter" }).systemRole, null);
+});
+
+test("built-in behaviour is an owner setting, and only the two real values", () => {
+  // Newsletter and Contact are ordinary forms that happen to carry an extra
+  // action; any form can take it on, and either can drop it and become
+  // completely ordinary.
+  assert.equal(normalizeFormDefinition({ name: "F" }).systemRole, null);
+  assert.equal(normalizeFormDefinition({ name: "F", systemRole: "newsletter" }).systemRole, "newsletter");
+  assert.equal(normalizeFormDefinition({ name: "F", systemRole: "contact" }).systemRole, "contact");
+  assert.equal(normalizeFormDefinition({ name: "F", systemRole: null }).systemRole, null);
+  assert.equal(normalizeFormDefinition({ name: "F", systemRole: "admin" }).systemRole, null);
 });
 
 // ── The palette must stay in step with the element list ─────────────────────
@@ -390,4 +399,59 @@ test("every palette field type survives a round-trip to a saved field", () => {
     assert.equal(element.type, item.type, `${item.type} must not be rewritten on save`);
     assert.equal(elementsToFields([element]).length, 1, `${item.type} must produce a field`);
   }
+});
+
+// ── Alignment has to move the box, not only the label ───────────────────────
+// text-align moves inline content; it never moves a block-level box. Once a
+// field has an explicit width its input is a sized block, so "Center" moved
+// the label and left the box on the left -- and the console canvas and the
+// live page disagreed, because an unstyled <input> is inline-block (which
+// text-align does move) while the live one was block.
+
+test("a sized element is centred with auto margins, not text-align alone", () => {
+  const centred = elementInputStyle(EMPTY_DESIGN, { width: "280px", textAlign: "center" });
+  assert.equal(centred.width, "280px");
+  assert.equal(centred.marginLeft, "auto");
+  assert.equal(centred.marginRight, "auto");
+
+  const right = elementInputStyle(EMPTY_DESIGN, { width: "280px", textAlign: "right" });
+  assert.equal(right.marginLeft, "auto");
+  assert.equal(right.marginRight, "0");
+
+  const left = elementInputStyle(EMPTY_DESIGN, { width: "280px", textAlign: "left" });
+  assert.equal(left.marginLeft, "0");
+  assert.equal(left.marginRight, "auto");
+});
+
+test("a full-width element is not given margins -- it has nowhere to move", () => {
+  const noWidth = elementInputStyle(EMPTY_DESIGN, { textAlign: "center" });
+  assert.equal(noWidth.marginLeft, undefined);
+  assert.equal(noWidth.marginRight, undefined);
+  assert.equal(noWidth.textAlign, "center", "the label still aligns");
+});
+
+test("buttons are positioned the same way as inputs", () => {
+  const button = elementButtonStyle(EMPTY_DESIGN, { width: "320px", textAlign: "center" });
+  assert.equal(button.width, "320px");
+  assert.equal(button.marginLeft, "auto");
+  assert.equal(button.marginRight, "auto");
+});
+
+test("a composite control sizes the row, not each of its pieces", () => {
+  // The phone field is a country button beside an input. Applying the whole
+  // style to both made a 280px field render 560px wide.
+  const full = elementInputStyle(EMPTY_DESIGN, {
+    width: "280px",
+    textAlign: "center",
+    borderColor: "#ff0000",
+    paddingX: "10",
+  });
+  const { box, paint } = splitBoxStyle(full);
+
+  assert.equal(box.width, "280px");
+  assert.equal(box.marginLeft, "auto");
+  assert.equal(paint.width, undefined, "a piece must not carry the row's width");
+  assert.equal(paint.marginLeft, undefined, "a piece must not carry the row's placement");
+  assert.equal(paint.borderColor, "#ff0000", "but it keeps its own look");
+  assert.equal(paint.paddingLeft, "10px");
 });

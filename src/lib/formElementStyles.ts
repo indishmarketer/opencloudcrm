@@ -31,6 +31,23 @@ export function elementWrapperStyle(style?: FormElementStyle): CSSProperties {
   return out;
 }
 
+/** Horizontal placement for a box that carries its own width.
+ *
+ * `text-align` moves inline content, never a block-level box. Once a field
+ * is given an explicit width its input becomes a sized block, so setting
+ * Alignment to Center moved the *label* and left the box sitting on the
+ * left -- and the console canvas disagreed with the live page about it,
+ * because an unstyled <input> is inline-block (which text-align does move)
+ * while the live one was block. Auto margins are what actually position a
+ * sized box, and they behave the same in both. */
+export function elementAlignStyle(style?: FormElementStyle): CSSProperties {
+  // A full-width box has nowhere to move, so alignment stays purely textual.
+  if (!style?.textAlign || !cssLength(style.width)) return {};
+  if (style.textAlign === "center") return { marginLeft: "auto", marginRight: "auto" };
+  if (style.textAlign === "right") return { marginLeft: "auto", marginRight: "0" };
+  return { marginLeft: "0", marginRight: "auto" };
+}
+
 function applyBox(out: CSSProperties, style: FormElementStyle): void {
   const padX = px(style.paddingX) ?? px(style.padding);
   const padY = px(style.paddingY) ?? px(style.padding);
@@ -43,7 +60,12 @@ function applyBox(out: CSSProperties, style: FormElementStyle): void {
     out.paddingBottom = padY;
   }
   const width = px(style.width);
-  if (width) out.width = width;
+  if (width) {
+    out.width = width;
+    // A sized box is positioned by its margins, not by the parent's
+    // text-align -- see elementAlignStyle.
+    Object.assign(out, elementAlignStyle(style));
+  }
   const height = px(style.height);
   if (height) {
     out.height = height;
@@ -84,6 +106,10 @@ export function elementInputStyle(design: FormDesign, style?: FormElementStyle):
   if (style?.backgroundColor) out.backgroundColor = style.backgroundColor;
   const color = style?.textColor || design.textColor;
   if (color) out.color = color;
+  // The value typed into the box follows the element's alignment too, so
+  // "Center" centres the label, the box and its contents rather than leaving
+  // the text hanging off one edge of a centred box.
+  if (style?.textAlign) out.textAlign = style.textAlign;
   if (style) applyBox(out, style);
   return out;
 }
@@ -101,6 +127,22 @@ export function elementButtonStyle(design: FormDesign, style?: FormElementStyle)
   if (style?.borderColor) out.borderColor = style.borderColor;
   if (style) applyBox(out, style);
   return out;
+}
+
+/** Splits a computed control style into the part that sizes and positions
+ * the control as a whole, and the part that paints it.
+ *
+ * A composite control -- the phone field is a country button next to an
+ * input -- would otherwise apply the full style to each piece, so a 280px
+ * width produced a 560px-wide row. The wrapper takes the box, each piece
+ * takes the paint. */
+export function splitBoxStyle(style: CSSProperties): { box: CSSProperties; paint: CSSProperties } {
+  const { width, marginLeft, marginRight, ...paint } = style;
+  const box: CSSProperties = {};
+  if (width !== undefined) box.width = width;
+  if (marginLeft !== undefined) box.marginLeft = marginLeft;
+  if (marginRight !== undefined) box.marginRight = marginRight;
+  return { box, paint };
 }
 
 /** True when the element sets its own width, so the caller should drop the

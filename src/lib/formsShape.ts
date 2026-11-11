@@ -783,7 +783,11 @@ export function normalizeFormDefinition(input: unknown): Omit<FormDefinition, "i
     redirectUrl: str(raw.redirectUrl, 300),
     notifyEmail: str(raw.notifyEmail, 200),
     source: str(raw.source, 100),
-    systemRole: null,
+    // An owner-controlled setting now, not a hidden property of two seeded
+    // rows: any form can carry the newsletter or contact behaviour, and
+    // either seeded form can drop it and become completely ordinary.
+    systemRole:
+      raw.systemRole === "newsletter" || raw.systemRole === "contact" ? raw.systemRole : null,
     verifyEmail: raw.verifyEmail === true,
     design: normalizeDesign(raw.design),
     isFixed: raw.isFixed === true,

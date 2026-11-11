@@ -139,7 +139,7 @@ export async function updateForm(id: number, input: Omit<FormDefinition, "id">):
        elements = $6::jsonb, submit_label = $7, success_heading = $8, success_text = $9,
        submission_action = $10, redirect_url = $11, notify_email = $12,
        verify_email = $13, design = $14::jsonb, source = $16, success_image = $17,
-       updated_at = now()
+       system_role = $18, updated_at = now()
      WHERE id = $15`,
     [
       input.name,
@@ -159,6 +159,7 @@ export async function updateForm(id: number, input: Omit<FormDefinition, "id">):
       id,
       input.source,
       input.successImage || "",
+      input.systemRole,
     ],
   );
   return (result.rowCount ?? 0) > 0;

@@ -10,6 +10,7 @@ import {
   elementTextStyle,
   elementWrapperStyle,
   hasCustomWidth,
+  splitBoxStyle,
 } from "@/lib/formElementStyles";
 import { listCountryDialOptions } from "@/lib/countryDialCodes";
 
@@ -203,6 +204,10 @@ function PhoneFieldInput({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [open]);
 
+  // The row is one control made of two pieces: the wrapper carries its width
+  // and placement, each piece only its look. Giving both pieces the full
+  // style made a 280px field render 560px wide.
+  const { box: phoneBox, paint: phonePaint } = splitBoxStyle(style || {});
   const activeOption = allCountries.find((c) => c.code === countryCode) || allCountries.find((c) => c.code === "IN") || allCountries[0];
   const dialCode = activeOption ? activeOption.dialCode : "+1";
 
@@ -216,12 +221,12 @@ function PhoneFieldInput({
   }, [allCountries, search]);
 
   return (
-    <div ref={containerRef} className="relative mt-2 flex gap-2">
+    <div ref={containerRef} className="relative mt-2 flex gap-2" style={phoneBox}>
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
         className="flex h-11 shrink-0 items-center gap-1.5 rounded-lg border border-line bg-paper px-3 text-sm text-ink outline-none transition-colors hover:border-ink focus:border-ink"
-        style={style}
+        style={phonePaint}
       >
         <span className="text-base">{activeOption?.flag || "🌐"}</span>
         <span className="font-mono text-xs font-medium text-ink">{dialCode}</span>
@@ -241,7 +246,7 @@ function PhoneFieldInput({
           onChange(num ? `${dialCode} ${num.trim()}` : "");
         }}
         className="flex-1 rounded-lg border border-line bg-paper px-4 py-3 text-sm outline-none transition-colors focus:border-ink"
-        style={style}
+        style={phonePaint}
       />
 
       {open && (
@@ -558,7 +563,7 @@ export default function SavedForm({
           <button
             type="submit"
             disabled={status === "submitting"}
-            className={`${hasCustomWidth(design.verifyButton) ? "" : "w-full"} rounded-full bg-ink px-6 py-3 text-sm font-medium text-paper transition-opacity hover:opacity-80 disabled:opacity-50`}
+            className={`block ${hasCustomWidth(design.verifyButton) ? "" : "w-full"} rounded-full bg-ink px-6 py-3 text-sm font-medium text-paper transition-opacity hover:opacity-80 disabled:opacity-50`}
             style={elementButtonStyle(design, design.verifyButton)}
           >
             {status === "submitting" ? "Verifying…" : "Confirm and submit"}
