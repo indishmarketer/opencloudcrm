@@ -36,6 +36,9 @@ export async function ensureContact(
   input: {
     email: string;
     name?: string | null;
+    firstName?: string | null;
+    lastName?: string | null;
+    address?: string | null;
     userId?: number | null;
     seenAt?: Date;
     country?: string | null;
@@ -49,11 +52,17 @@ export async function ensureContact(
   const country = input.country && input.countrySource ? input.country : null;
   const phone = input.phone && input.phoneSource ? input.phone : null;
   const result = await db.query<{ id: string }>(
-    `INSERT INTO contacts (email, normalized_email, user_id, name, first_seen_at, last_seen_at, country, country_source, phone, phone_source)
-     VALUES ($1, $1, $2, $3, COALESCE($4, now()), COALESCE($4, now()), $5, $6, $7, $8)
+    `INSERT INTO contacts (email, normalized_email, user_id, name, first_name, last_name, address, first_seen_at, last_seen_at, country, country_source, phone, phone_source)
+     VALUES ($1, $1, $2, $3, $9, $10, $11, COALESCE($4, now()), COALESCE($4, now()), $5, $6, $7, $8)
      ON CONFLICT (normalized_email) DO UPDATE SET
        user_id = COALESCE(contacts.user_id, EXCLUDED.user_id),
        name = COALESCE(EXCLUDED.name, contacts.name),
+       -- Name parts and address only ever fill an empty slot: a form answer
+       -- must not overwrite something the owner or the person themselves
+       -- already put on the record.
+       first_name = COALESCE(contacts.first_name, EXCLUDED.first_name),
+       last_name = COALESCE(contacts.last_name, EXCLUDED.last_name),
+       address = COALESCE(contacts.address, EXCLUDED.address),
        last_seen_at = GREATEST(contacts.last_seen_at, EXCLUDED.last_seen_at),
        country = CASE WHEN ${COUNTRY_WINS} THEN EXCLUDED.country ELSE contacts.country END,
        country_source = CASE WHEN ${COUNTRY_WINS} THEN EXCLUDED.country_source ELSE contacts.country_source END,
@@ -65,6 +74,7 @@ export async function ensureContact(
       email, input.userId ?? null, input.name?.trim() || null, input.seenAt ?? null,
       country, country ? input.countrySource : null,
       phone, phone ? input.phoneSource : null,
+      input.firstName?.trim() || null, input.lastName?.trim() || null, input.address?.trim() || null,
     ],
   );
   return Number(result.rows[0].id);

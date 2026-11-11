@@ -46,7 +46,8 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
   if (!parsed.contactId && !parsed.userId && !parsed.email) notFound();
 
   const contactResult = await pool.query(
-    `SELECT c.id, c.email, c.user_id, c.name, c.phone, c.marketing_status, c.deliverability_status, now() AS request_now,
+    `SELECT c.id, c.email, c.user_id, c.name, c.first_name, c.last_name, c.address,
+            c.phone, c.marketing_status, c.deliverability_status, now() AS request_now,
             c.first_seen_at, c.last_seen_at, c.last_emailed_at, c.last_engaged_at,
             c.country, c.country_source, c.whatsapp_status
      FROM contacts c
@@ -272,8 +273,11 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
             <ContactEditForm
               contactId={contactId}
               initialName={contact.name || ""}
+              initialFirstName={contact.first_name || ""}
+              initialLastName={contact.last_name || ""}
               initialPhone={contact.phone || ""}
               initialCountry={contact.country || ""}
+              initialAddress={contact.address || ""}
             />
             <ContactDeleteButton contactId={contactId} label={email} hasAccount={!!user} />
           </div>
@@ -282,6 +286,7 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
           <span>{email}</span>
           {contact.phone && <><span aria-hidden="true">·</span><span>{contact.phone}</span></>}
           {contact.country && <><span aria-hidden="true">·</span><span>{countryName(contact.country)}</span></>}
+          {contact.address && <><span aria-hidden="true">·</span><span>{contact.address}</span></>}
         </div>
       </div>
 
@@ -295,6 +300,26 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
             <div className="flex items-baseline justify-between gap-4">
               <dt className="text-ink-soft">Contact ID</dt>
               <dd className="font-medium">#{contactId}</dd>
+            </div>
+            <div className="flex items-baseline justify-between gap-4">
+              <dt className="text-ink-soft">First name</dt>
+              <dd className="font-medium">{contact.first_name || "—"}</dd>
+            </div>
+            <div className="flex items-baseline justify-between gap-4">
+              <dt className="text-ink-soft">Last name</dt>
+              <dd className="font-medium">{contact.last_name || "—"}</dd>
+            </div>
+            <div className="flex items-baseline justify-between gap-4">
+              <dt className="text-ink-soft">Phone</dt>
+              <dd className="font-medium">{contact.phone || "—"}</dd>
+            </div>
+            <div className="flex items-baseline justify-between gap-4">
+              <dt className="text-ink-soft">Country</dt>
+              <dd className="font-medium">{contact.country ? countryName(contact.country) : "—"}</dd>
+            </div>
+            <div className="flex items-baseline justify-between gap-4">
+              <dt className="shrink-0 text-ink-soft">Address</dt>
+              <dd className="whitespace-pre-wrap text-right font-medium">{contact.address || "—"}</dd>
             </div>
             <div className="flex items-baseline justify-between gap-4">
               <dt className="text-ink-soft">Username</dt>

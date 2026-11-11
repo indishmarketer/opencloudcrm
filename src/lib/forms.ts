@@ -21,6 +21,7 @@ type FormRow = {
   submit_label: string;
   success_heading: string;
   success_text: string;
+  success_image?: string;
   submission_action?: FormSubmissionAction;
   redirect_url?: string;
   notify_email: string | null;
@@ -55,6 +56,7 @@ function toDefinition(row: FormRow): FormDefinition {
     submitLabel: row.submit_label,
     successHeading: row.success_heading,
     successText: row.success_text,
+    successImage: row.success_image || "",
     submissionAction: row.submission_action === "redirect" ? "redirect" : "message",
     redirectUrl: row.redirect_url || "",
     notifyEmail: row.notify_email || "",
@@ -93,8 +95,8 @@ export async function createForm(input: Omit<FormDefinition, "id">): Promise<num
   const fields = elementsToFields(elements);
 
   const result = await pool.query<{ id: number }>(
-    `INSERT INTO forms (name, slug, heading, intro_text, fields, elements, submit_label, success_heading, success_text, submission_action, redirect_url, notify_email, verify_email, design, is_fixed, source)
-     VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb, $7, $8, $9, $10, $11, $12, $13, $14::jsonb, $15, $16) RETURNING id`,
+    `INSERT INTO forms (name, slug, heading, intro_text, fields, elements, submit_label, success_heading, success_text, submission_action, redirect_url, notify_email, verify_email, design, is_fixed, source, success_image)
+     VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb, $7, $8, $9, $10, $11, $12, $13, $14::jsonb, $15, $16, $17) RETURNING id`,
     [
       input.name,
       input.slug || null,
@@ -112,6 +114,7 @@ export async function createForm(input: Omit<FormDefinition, "id">): Promise<num
       JSON.stringify(input.design),
       input.isFixed === true,
       input.source,
+      input.successImage || "",
     ],
   );
   return result.rows[0].id;
@@ -135,7 +138,8 @@ export async function updateForm(id: number, input: Omit<FormDefinition, "id">):
     `UPDATE forms SET name = $1, slug = $2, heading = $3, intro_text = $4, fields = $5::jsonb,
        elements = $6::jsonb, submit_label = $7, success_heading = $8, success_text = $9,
        submission_action = $10, redirect_url = $11, notify_email = $12,
-       verify_email = $13, design = $14::jsonb, source = $16, updated_at = now()
+       verify_email = $13, design = $14::jsonb, source = $16, success_image = $17,
+       updated_at = now()
      WHERE id = $15`,
     [
       input.name,
@@ -154,6 +158,7 @@ export async function updateForm(id: number, input: Omit<FormDefinition, "id">):
       JSON.stringify(input.design),
       id,
       input.source,
+      input.successImage || "",
     ],
   );
   return (result.rowCount ?? 0) > 0;

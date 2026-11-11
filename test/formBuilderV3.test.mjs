@@ -5,9 +5,11 @@ import {
   normalizeFormDefinition,
   normalizeFormElements,
   elementsToFields,
-  resolveContactMapping,
+  resolveContactRouting,
+  contactTargetFor,
+  defaultAddToContact,
   FORM_ELEMENT_PALETTE,
-  FORM_CONTACT_MAPPINGS,
+  CONTACT_TARGET_LABELS,
 } from "../src/lib/formsShape.ts";
 import {
   elementButtonStyle,
@@ -138,69 +140,146 @@ test("date is a real element type, so a date field can be placed on a form", () 
 
 // ── Add to contact ──────────────────────────────────────────────────────────
 
-test("an explicit contact mapping always wins over the type-derived default", () => {
-  assert.equal(resolveContactMapping({ type: "email", contactMapping: "none" }), "none");
-  assert.equal(resolveContactMapping({ type: "textarea", contactMapping: "detail" }), "detail");
-  assert.equal(resolveContactMapping({ type: "text", contactMapping: "name" }), "name");
+test("the contact destination follows the element type and is never a choice", () => {
+  // The whole point: an Email element can only ever be the contact's email,
+  // so there is nothing to pick -- only whether to copy it across.
+  assert.equal(contactTargetFor("email"), "email");
+  assert.equal(contactTargetFor("phone"), "phone");
+  assert.equal(contactTargetFor("country"), "country");
+  assert.equal(contactTargetFor("address"), "address");
+  assert.equal(contactTargetFor("full_name"), "full_name");
+  assert.equal(contactTargetFor("first_name"), "first_name");
+  assert.equal(contactTargetFor("last_name"), "last_name");
+  // Anything without a dedicated contact column becomes an extra detail.
+  assert.equal(contactTargetFor("text_input"), "detail");
+  assert.equal(contactTargetFor("textarea"), "detail");
+  assert.equal(contactTargetFor("number"), "detail");
+  assert.equal(contactTargetFor("select"), "detail");
+  assert.equal(contactTargetFor("checkbox"), "detail");
+
+  for (const target of Object.keys(CONTACT_TARGET_LABELS)) {
+    assert.equal(typeof CONTACT_TARGET_LABELS[target], "string");
+  }
 });
 
-test("the legacy default no longer treats any text field as the contact's name", () => {
-  // The old submit route matched `f.type === "text"`, so the first text field
-  // on a form -- "Company", "Order ref" -- was written over the contact's
-  // real name. Only a field that names itself a name does that now.
-  assert.equal(resolveContactMapping({ type: "text", key: "company", label: "Company" }), "none");
-  assert.equal(resolveContactMapping({ type: "text", key: "order_ref", label: "Order ref" }), "none");
-  assert.equal(resolveContactMapping({ type: "text", key: "name", label: "Name" }), "name");
-  assert.equal(resolveContactMapping({ type: "text", key: "full_name", label: "Full name" }), "name");
-  // Typed fields keep mapping themselves.
-  assert.equal(resolveContactMapping({ type: "email", key: "email", label: "Email" }), "email");
-  assert.equal(resolveContactMapping({ type: "phone", key: "phone", label: "Phone" }), "phone");
-  assert.equal(resolveContactMapping({ type: "country", key: "country", label: "Country" }), "country");
+test("identity fields are ticked by default, everything else is opt-in", () => {
+  assert.equal(defaultAddToContact("email"), true);
+  assert.equal(defaultAddToContact("phone"), true);
+  assert.equal(defaultAddToContact("full_name"), true);
+  assert.equal(defaultAddToContact("address"), true);
+  assert.equal(defaultAddToContact("textarea"), false);
+  assert.equal(defaultAddToContact("number"), false);
 });
 
-test("contact mapping round-trips from canvas element to derived field", () => {
+test("the tick overrides the default in both directions", () => {
+  assert.equal(resolveContactRouting({ type: "email", addToContact: false }).enabled, false);
+  assert.equal(resolveContactRouting({ type: "email", addToContact: false }).target, "email");
+  assert.equal(resolveContactRouting({ type: "textarea", addToContact: true }).enabled, true);
+  assert.equal(resolveContactRouting({ type: "textarea", addToContact: true }).target, "detail");
+});
+
+test("a form saved under the old dropdown keeps routing the same way", () => {
+  // contactMapping is read on the way in so existing forms are unaffected.
+  assert.deepEqual(resolveContactRouting({ type: "textarea", contactMapping: "none" }), {
+    target: "detail",
+    enabled: false,
+  });
+  assert.deepEqual(resolveContactRouting({ type: "text", contactMapping: "name" }), {
+    target: "full_name",
+    enabled: true,
+  });
+  assert.deepEqual(resolveContactRouting({ type: "textarea", contactMapping: "detail" }), {
+    target: "detail",
+    enabled: true,
+  });
+});
+
+test("a plain text field never becomes the contact's name", () => {
+  // The original submit route matched `f.type === "text"`, so the first text
+  // field on any form -- "Company", "Order ref" -- was written over the
+  // contact's real name. A text field is an extra detail now, and naming one
+  // "Full name" does not change that: use the Full name element.
+  for (const key of ["company", "order_ref", "name", "full_name"]) {
+    assert.equal(contactTargetFor("text_input"), "detail", `text_input (${key}) must not become a name`);
+  }
+  assert.equal(resolveContactRouting({ type: "text_input" }).enabled, false);
+});
+
+test("the tick and its destination round-trip from canvas element to field", () => {
   const elements = normalizeFormElements([
     { id: "e1", type: "email", fieldKey: "email", fieldLabel: "Email" },
-    { id: "e2", type: "textarea", fieldKey: "brief", fieldLabel: "Brief", contactMapping: "detail", contactDetailLabel: "Project brief" },
-    { id: "e3", type: "number", fieldKey: "headcount", fieldLabel: "Headcount", contactMapping: "none" },
+    { id: "e2", type: "textarea", fieldKey: "brief", fieldLabel: "Brief", addToContact: true, contactDetailLabel: "Project brief" },
+    { id: "e3", type: "number", fieldKey: "headcount", fieldLabel: "Headcount" },
+    { id: "e4", type: "first_name", fieldKey: "first_name", fieldLabel: "First name" },
   ]);
   const fields = elementsToFields(elements);
-  assert.equal(fields[1].contactMapping, "detail");
+
+  assert.equal(fields[0].contactTarget, "email");
+  assert.equal(fields[0].addToContact, true);
+  assert.equal(fields[1].contactTarget, "detail");
+  assert.equal(fields[1].addToContact, true);
   assert.equal(fields[1].contactDetailLabel, "Project brief");
-  assert.equal(fields[2].contactMapping, "none");
+  assert.equal(fields[2].addToContact, false, "a number is opt-in");
+  assert.equal(fields[3].contactTarget, "first_name");
+  assert.equal(fields[3].addToContact, true);
 
   // And through a full definition normalize, which is what the API saves.
   const normalized = normalizeFormDefinition({ name: "Brief", elements });
-  assert.equal(normalized.fields[1].contactMapping, "detail");
+  assert.equal(normalized.fields[1].contactTarget, "detail");
   assert.equal(normalized.elements[1].contactDetailLabel, "Project brief");
 });
 
-test("an unknown contact mapping is discarded rather than persisted", () => {
+test("a hidden tracker is never contact data, whatever its element type", () => {
+  const fields = elementsToFields(
+    normalizeFormElements([
+      { id: "e1", type: "email", fieldKey: "utm_email", fieldHidden: true, fieldDefaultValue: "x@y.z" },
+    ]),
+  );
+  assert.equal(fields[0].addToContact, false);
+});
+
+test("an unrecognised legacy mapping is discarded rather than trusted", () => {
   const [element] = normalizeFormElements([{ id: "e1", type: "text_input", contactMapping: "sql_injection" }]);
-  assert.equal(element.contactMapping, undefined);
-  assert.ok(FORM_CONTACT_MAPPINGS.every((option) => option.value !== "sql_injection"));
+  assert.equal(element.addToContact, undefined);
+  assert.equal(resolveContactRouting({ type: "text_input", addToContact: element.addToContact }).enabled, false);
+});
+
+test("Full name, First name and Last name are real, placeable elements", () => {
+  for (const type of ["full_name", "first_name", "last_name"]) {
+    assert.ok(
+      FORM_ELEMENT_PALETTE.some((item) => item.type === type),
+      `${type} must be in the palette`,
+    );
+  }
+});
+
+const field = (key, type, extra = {}) => ({
+  key,
+  label: key,
+  type,
+  options: "",
+  required: false,
+  hidden: false,
+  defaultValue: "",
+  ...extra,
 });
 
 test("extractContactData routes answers to the right place on the contact", () => {
   const fields = [
-    { key: "email", label: "Email", type: "email", options: "", required: true, hidden: false, defaultValue: "" },
-    { key: "full_name", label: "Full name", type: "text", options: "", required: true, hidden: false, defaultValue: "" },
-    { key: "phone", label: "Phone", type: "phone", options: "", required: false, hidden: false, defaultValue: "" },
-    { key: "country", label: "Country", type: "country", options: "", required: false, hidden: false, defaultValue: "" },
-    {
-      key: "budget", label: "Budget", type: "text", options: "", required: false, hidden: false, defaultValue: "",
-      contactMapping: "detail", contactDetailLabel: "Stated budget",
-    },
-    {
-      key: "notes", label: "Notes", type: "textarea", options: "", required: false, hidden: false, defaultValue: "",
-      contactMapping: "none",
-    },
+    field("email", "email", { addToContact: true, contactTarget: "email" }),
+    field("full_name", "full_name", { addToContact: true, contactTarget: "full_name" }),
+    field("phone", "phone", { addToContact: true, contactTarget: "phone" }),
+    field("country", "country", { addToContact: true, contactTarget: "country" }),
+    field("address", "address", { addToContact: true, contactTarget: "address" }),
+    field("budget", "text", { addToContact: true, contactTarget: "detail", contactDetailLabel: "Stated budget" }),
+    field("notes", "textarea", { addToContact: false, contactTarget: "detail" }),
   ];
   const data = extractContactData(fields, {
     email: "  Dana@Example.com ",
     full_name: "Dana Roy",
     phone: "+91 98765 43210",
     country: "IN",
+    address: "12 Laitumkhrah Rd",
     budget: "50k",
     notes: "internal only",
   });
@@ -209,16 +288,48 @@ test("extractContactData routes answers to the right place on the contact", () =
   assert.equal(data.name, "Dana Roy");
   assert.equal(data.phone, "+91 98765 43210");
   assert.equal(data.country, "IN");
+  assert.equal(data.address, "12 Laitumkhrah Rd");
+  // An unticked field stays in the submission and never reaches the contact.
   assert.deepEqual(data.details, [{ key: "budget", label: "Stated budget", value: "50k" }]);
+});
+
+test("a full name fills the two halves, and two halves fill the full name", () => {
+  const fromFull = extractContactData(
+    [field("full_name", "full_name", { addToContact: true, contactTarget: "full_name" })],
+    { full_name: "Dana Roy" },
+  );
+  assert.equal(fromFull.firstName, "Dana");
+  assert.equal(fromFull.lastName, "Roy");
+
+  const fromParts = extractContactData(
+    [
+      field("first_name", "first_name", { addToContact: true, contactTarget: "first_name" }),
+      field("last_name", "last_name", { addToContact: true, contactTarget: "last_name" }),
+    ],
+    { first_name: "Dana", last_name: "Roy" },
+  );
+  assert.equal(fromParts.name, "Dana Roy");
+
+  // A single-word name leaves the surname empty rather than inventing one.
+  const single = extractContactData(
+    [field("full_name", "full_name", { addToContact: true, contactTarget: "full_name" })],
+    { full_name: "Prince" },
+  );
+  assert.equal(single.firstName, "Prince");
+  assert.equal(single.lastName, null);
 });
 
 test("extractContactData ignores blank answers and keeps the first of each kind", () => {
   const fields = [
-    { key: "email", label: "Email", type: "email", options: "", required: true, hidden: false, defaultValue: "" },
-    { key: "alt_email", label: "Backup email", type: "email", options: "", required: false, hidden: false, defaultValue: "" },
-    { key: "name", label: "Name", type: "text", options: "", required: false, hidden: false, defaultValue: "" },
+    field("email", "email", { addToContact: true, contactTarget: "email" }),
+    field("alt_email", "email", { addToContact: true, contactTarget: "email" }),
+    field("full_name", "full_name", { addToContact: true, contactTarget: "full_name" }),
   ];
-  const data = extractContactData(fields, { email: "first@example.com", alt_email: "second@example.com", name: "   " });
+  const data = extractContactData(fields, {
+    email: "first@example.com",
+    alt_email: "second@example.com",
+    full_name: "   ",
+  });
   assert.equal(data.email, "first@example.com");
   assert.equal(data.name, null, "a whitespace-only answer is not a name");
   assert.deepEqual(data.details, []);

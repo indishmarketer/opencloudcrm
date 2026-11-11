@@ -53,6 +53,9 @@ const FORM_ELEMENT_SCHEMA = z
         "heading",
         "text",
         "text_input",
+        "full_name",
+        "first_name",
+        "last_name",
         "email",
         "phone",
         "textarea",
@@ -88,13 +91,16 @@ const FORM_ELEMENT_SCHEMA = z
       .string()
       .optional()
       .describe("Choices for select / radio / multiselect: a JSON array string, or newline- or comma-separated."),
-    contactMapping: z
-      .enum(["none", "name", "email", "phone", "country", "detail"])
+    addToContact: z
+      .boolean()
       .optional()
       .describe(
-        "Where this answer goes on the contact record. 'detail' saves it as a named extra detail shown on the contact's page. Omit to use the type-derived default (email/phone/country map themselves; a field named like a name maps to the contact name; everything else is 'none').",
+        "Whether this answer is copied onto the contact record. WHERE it lands is not a choice -- it follows from the element type (email->contact email, phone->phone, country->country, address->address, full_name/first_name/last_name->those names, everything else->a named extra contact detail). Defaults to true for those identity types and false for everything else.",
       ),
-    contactDetailLabel: z.string().optional().describe("Name for the contact detail when contactMapping is 'detail'."),
+    contactDetailLabel: z
+      .string()
+      .optional()
+      .describe("Name for the contact detail, for element types that become an extra contact detail."),
     buttonLabel: z.string().optional().describe("button only."),
     buttonAlign: z
       .enum(["full", "left", "center", "right"])
@@ -115,6 +121,8 @@ const FORM_DESIGN_SCHEMA = z
     textColor: z.string().optional(),
     borderRadius: z.string().optional(),
     fontFamily: z.string().optional(),
+    verifyInput: FORM_ELEMENT_STYLE_SCHEMA.optional().describe("Size and look of the 6-digit code box on the verification step."),
+    verifyButton: FORM_ELEMENT_STYLE_SCHEMA.optional().describe("Size and look of the confirm button on the verification step."),
   })
   .describe("Form-wide design tokens. Any element's elementStyle overrides these for that element.");
 
@@ -122,13 +130,13 @@ const FORM_FIELD_SCHEMA = z.object({
   key: z.string().optional(),
   label: z.string().describe("Field label (or internal key for hidden fields)"),
   type: z
-    .enum(["text", "email", "phone", "textarea", "select", "radio", "multiselect", "checkbox", "country", "address", "number", "date"])
+    .enum(["text", "full_name", "first_name", "last_name", "email", "phone", "textarea", "select", "radio", "multiselect", "checkbox", "country", "address", "number", "date"])
     .default("text"),
   options: z.string().optional().describe("Choices for select/radio/multiselect."),
   required: z.boolean().optional().default(false),
   hidden: z.boolean().optional().default(false).describe("If true, hidden from visitors and submitted with defaultValue"),
   defaultValue: z.string().optional().default("").describe("Value submitted for hidden fields (e.g. UTM parameters)"),
-  contactMapping: z.enum(["none", "name", "email", "phone", "country", "detail"]).optional(),
+  addToContact: z.boolean().optional(),
   contactDetailLabel: z.string().optional(),
 });
 
@@ -613,6 +621,7 @@ export function createTools(apiBase, token) {
         submitLabel: z.string().optional().describe("Button text (default: 'Submit')"),
         successHeading: z.string().optional().describe("Thank-you heading"),
         successText: z.string().optional().describe("Thank-you message"),
+        successImage: z.string().optional().describe("Image URL shown in the thank-you popup"),
         notifyEmail: z.string().optional().describe("Email address to notify on submission"),
         verifyEmail: z.boolean().optional().describe("Send a 6-digit code and magic link to the email field, and only record the submission once it is confirmed. Requires a visible email element."),
         design: FORM_DESIGN_SCHEMA.optional(),
@@ -636,7 +645,8 @@ export function createTools(apiBase, token) {
         submitLabel: z.string().optional(),
         successHeading: z.string().optional(),
         successText: z.string().optional(),
-        submissionAction: z.enum(["message", "redirect"]).optional().describe("Submission outcome: 'message' or 'redirect'"),
+        successImage: z.string().optional().describe("Image URL shown in the thank-you popup"),
+        submissionAction: z.enum(["message", "redirect"]).optional().describe("Submission outcome: 'message' shows a thank-you popup, 'redirect' sends them to redirectUrl"),
         redirectUrl: z.string().optional().describe("URL to redirect to if submissionAction is 'redirect'"),
         elements: z.array(FORM_ELEMENT_SCHEMA).optional().describe("Canvas elements in render order. Replaces the existing canvas."),
         notifyEmail: z.string().optional(),

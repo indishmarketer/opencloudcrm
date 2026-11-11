@@ -28,6 +28,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     submitLabel: form.submitLabel,
     successHeading: form.successHeading,
     successText: form.successText,
+    successImage: form.successImage,
     submissionAction: form.submissionAction,
     redirectUrl: form.redirectUrl,
     verifyEmail: form.verifyEmail,

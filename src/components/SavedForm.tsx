@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Turnstile from "@/components/Turnstile";
 import type { FormCanvasElement, FormDesign, FormField } from "@/lib/formsShape";
 import {
@@ -21,6 +22,7 @@ type PublicForm = {
   submitLabel: string;
   successHeading: string;
   successText: string;
+  successImage?: string;
   submissionAction?: "message" | "redirect";
   redirectUrl?: string;
   verifyEmail: boolean;
@@ -53,18 +55,25 @@ function designStyles(d: FormDesign): React.CSSProperties {
 const inputStyles = (d: FormDesign, elStyle?: FormCanvasElement["elementStyle"]) => elementInputStyle(d, elStyle);
 const buttonStyles = (d: FormDesign, elStyle?: FormCanvasElement["elementStyle"]) => elementButtonStyle(d, elStyle);
 
+// `block` keeps an input that has been given an explicit width on its own
+// line, under its label, rather than letting it flow inline beside it.
 const baseInputClass =
-  "mt-2 w-full rounded-lg border border-line bg-paper px-4 py-3 text-sm outline-none focus:border-ink transition-colors";
+  "mt-2 block w-full rounded-lg border border-line bg-paper px-4 py-3 text-sm outline-none focus:border-ink transition-colors";
 
 /** A field's own label follows its text colour and font size so restyling an
- * element restyles the whole field, not just its input box. */
+ * element restyles the whole field, not just its input box.
+ *
+ * `display: block` is not cosmetic. A <label> is inline by default, and an
+ * input given an explicit width becomes inline-block -- so narrowing a field
+ * to, say, 1px used to pull its input up onto the same line as its label
+ * instead of keeping it underneath. */
 function labelStyle(el: FormCanvasElement): React.CSSProperties {
   return {
+    display: "block",
     color: el.elementStyle?.textColor || undefined,
     fontSize: el.elementStyle?.fontSize || undefined,
     fontWeight: el.elementStyle?.fontWeight || undefined,
     textAlign: el.elementStyle?.textAlign || undefined,
-    display: el.elementStyle?.textAlign ? "block" : undefined,
   };
 }
 
@@ -308,6 +317,12 @@ export default function SavedForm({
   const [step, setStep] = useState<"form" | "otp">("form");
   const [otpEmail, setOtpEmail] = useState("");
   const [otpNotice, setOtpNotice] = useState("");
+  /** The thank-you popup. Closing it leaves the same message in place where
+   * the form was, so the confirmation is never lost. */
+  const [successOpen, setSuccessOpen] = useState(false);
+  /** True only between clicking "Send a new code" and the resend going out,
+   * which is the one moment the code screen needs a challenge. */
+  const [resendArmed, setResendArmed] = useState(false);
   const otpCodeRef = useRef<HTMLInputElement>(null);
   const [selectedPhoneCountry, setSelectedPhoneCountry] = useState<Record<string, string>>({});
 
@@ -339,6 +354,7 @@ export default function SavedForm({
       return;
     }
     setStatus("done");
+    setSuccessOpen(true);
   }
 
   /** Sends the form to the server. Both flows post the same body -- with
@@ -398,6 +414,23 @@ export default function SavedForm({
     await postForm(form);
   }
 
+  // Fires the resend as soon as the briefly-mounted challenge hands back a
+  // token, so the visitor only ever clicks "Send a new code" once.
+  useEffect(() => {
+    if (!resendArmed || !turnstileToken || !form) return;
+    let cancelled = false;
+    void (async () => {
+      const sent = await postForm(form);
+      if (cancelled) return;
+      setResendArmed(false);
+      if (sent) setOtpNotice(`A new code is on its way to ${otpEmail}.`);
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resendArmed, turnstileToken]);
+
   async function handleVerifyOtp(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!form) return;
@@ -437,11 +470,66 @@ export default function SavedForm({
   const design = { ...(form.design || {}), ...designOverride };
 
   if (status === "done") {
+    // The confirmation is a centred popup over the page rather than text
+    // quietly replacing the form in place, so it is impossible to miss --
+    // especially for a form sitting low on a long page.
     return (
-      <div style={designStyles(design)}>
-        <h2 className="font-display text-2xl font-semibold">{form.successHeading || "Thanks, got it."}</h2>
-        {form.successText && <p className="mt-3 text-ink-soft">{form.successText}</p>}
-      </div>
+      <>
+        <div style={designStyles(design)} className="text-center">
+          <h2 className="font-display text-2xl font-semibold">{form.successHeading || "Thanks, got it."}</h2>
+          {form.successText && <p className="mt-3 text-ink-soft">{form.successText}</p>}
+        </div>
+        {successOpen &&
+          createPortal(
+            <div
+              className="fixed inset-0 z-[120] flex items-center justify-center bg-ink/50 px-6 backdrop-blur-sm"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby={`saved-form-${form.id}-success`}
+              onClick={() => setSuccessOpen(false)}
+            >
+              <div
+                onClick={(e) => e.stopPropagation()}
+                style={designStyles(design)}
+                className="relative w-full max-w-md rounded-2xl border border-line bg-paper p-8 text-center shadow-2xl"
+              >
+                <button
+                  type="button"
+                  onClick={() => setSuccessOpen(false)}
+                  aria-label="Close"
+                  className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-paper-soft text-ink-soft transition-colors hover:bg-line hover:text-ink"
+                >
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+
+                {form.successImage && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={form.successImage}
+                    alt=""
+                    className="mx-auto mb-5 max-h-40 w-auto rounded-xl object-contain"
+                  />
+                )}
+                <h2 id={`saved-form-${form.id}-success`} className="font-display text-2xl font-semibold">
+                  {form.successHeading || "Thanks, got it."}
+                </h2>
+                {form.successText && <p className="mt-3 text-ink-soft">{form.successText}</p>}
+                <button
+                  type="button"
+                  onClick={() => setSuccessOpen(false)}
+                  className="mt-6 rounded-full bg-ink px-6 py-2.5 text-sm font-medium text-paper transition-opacity hover:opacity-80"
+                  style={buttonStyles(design)}
+                >
+                  Close
+                </button>
+              </div>
+            </div>,
+            document.body,
+          )}
+      </>
     );
   }
 
@@ -462,16 +550,16 @@ export default function SavedForm({
             autoComplete="one-time-code"
             required
             placeholder="123456"
-            className="w-full rounded-lg border border-line bg-paper px-4 py-3 text-center text-lg tracking-widest outline-none focus:border-ink"
-            style={inputStyles(design)}
+            className="block w-full rounded-lg border border-line bg-paper px-4 py-3 text-center text-lg tracking-widest outline-none focus:border-ink"
+            style={elementInputStyle(design, design.verifyInput)}
           />
           {error && <p className="text-sm text-red-600">{error}</p>}
           {otpNotice && <p className="text-sm text-ink-soft">{otpNotice}</p>}
           <button
             type="submit"
             disabled={status === "submitting"}
-            className="w-full rounded-full bg-ink px-6 py-3 text-sm font-medium text-paper transition-opacity hover:opacity-80 disabled:opacity-50"
-            style={buttonStyles(design)}
+            className={`${hasCustomWidth(design.verifyButton) ? "" : "w-full"} rounded-full bg-ink px-6 py-3 text-sm font-medium text-paper transition-opacity hover:opacity-80 disabled:opacity-50`}
+            style={elementButtonStyle(design, design.verifyButton)}
           >
             {status === "submitting" ? "Verifying…" : "Confirm and submit"}
           </button>
@@ -479,15 +567,20 @@ export default function SavedForm({
         <div className="mt-4 flex flex-wrap items-center gap-4 text-xs">
           <button
             type="button"
-            disabled={status === "submitting" || !turnstileToken}
-            onClick={async () => {
+            disabled={status === "submitting" || resendArmed}
+            onClick={() => {
               setOtpNotice("");
-              const sent = await postForm(form);
-              if (sent) setOtpNotice(`A new code is on its way to ${otpEmail}.`);
+              setError("");
+              // Resending posts the whole form again, which needs a token of
+              // its own. The challenge is mounted only for that moment --
+              // the code screen should not sit there showing "Verified" for
+              // something the visitor already passed on the previous step.
+              setResendArmed(true);
+              freshChallenge();
             }}
             className="underline text-ink-soft hover:text-ink disabled:opacity-50"
           >
-            Send a new code
+            {resendArmed ? "Sending…" : "Send a new code"}
           </button>
           <button
             type="button"
@@ -496,6 +589,7 @@ export default function SavedForm({
               setError("");
               setOtpNotice("");
               setStatus("idle");
+              setResendArmed(false);
               freshChallenge();
             }}
             className="underline text-ink-soft hover:text-ink"
@@ -503,16 +597,23 @@ export default function SavedForm({
             Change my answers
           </button>
         </div>
-        {/* The resend above posts the form again, which needs its own token. */}
-        <div className="mt-3">
-          <Turnstile key={turnstileNonce} onToken={handleToken} />
-        </div>
+        {resendArmed && (
+          <div className="mt-3">
+            <Turnstile key={turnstileNonce} onToken={handleToken} />
+          </div>
+        )}
       </div>
     );
   }
 
   const hasElements = Array.isArray(form.elements) && form.elements.length > 0;
   const setValue = (key: string, v: string) => setValues((prev) => ({ ...prev, [key]: v }));
+
+  // The challenge belongs immediately above the submit button, not after it.
+  // It is rendered as part of the first button element so it cannot end up
+  // stranded below the button when the button is not the last element.
+  const firstButtonId = form.elements?.find((e) => e.type === "button")?.id;
+  const challenge = <Turnstile key={turnstileNonce} onToken={handleToken} />;
 
   function handleCountrySelect(countryCode: string) {
     if (!form) return;
@@ -623,8 +724,9 @@ export default function SavedForm({
               // explicit size meant that size, not the container's.
               const fullWidth = el.buttonAlign === "full" && !hasCustomWidth(el.elementStyle);
               return (
+                <Fragment key={el.id}>
+                {el.id === firstButtonId && challenge}
                 <div
-                  key={el.id}
                   style={elementWrapperStyle(el.elementStyle)}
                   className={`flex ${
                     el.buttonAlign === "center"
@@ -649,6 +751,7 @@ export default function SavedForm({
                     {status === "submitting" ? "Sending…" : el.buttonLabel || "Submit"}
                   </button>
                 </div>
+                </Fragment>
               );
             }
 
@@ -824,6 +927,19 @@ export default function SavedForm({
                             ? "date"
                             : "text"
                     }
+                    autoComplete={
+                      el.type === "full_name"
+                        ? "name"
+                        : el.type === "first_name"
+                          ? "given-name"
+                          : el.type === "last_name"
+                            ? "family-name"
+                            : el.type === "email"
+                              ? "email"
+                              : el.type === "address"
+                                ? "street-address"
+                                : undefined
+                    }
                     required={el.fieldRequired}
                     placeholder={el.fieldPlaceholder}
                     value={val}
@@ -837,24 +953,26 @@ export default function SavedForm({
           })}
 
           {status === "error" && <p className="text-sm text-red-600">{error}</p>}
-          {/* Rendered for every form, verification on or off. The server
-              requires a Turnstile token on the first request of BOTH flows
-              -- the direct submit and the "send me a code" step -- so
-              hiding the widget on verification forms (which is what this
-              did) meant that request was always rejected with "Missing
-              verification token" and no code was ever sent. */}
-          <Turnstile key={turnstileNonce} onToken={handleToken} />
 
-          {/* Fallback button if canvas has no button element */}
-          {!form.elements!.some((e) => e.type === "button") && (
-            <button
-              type="submit"
-              disabled={status === "submitting" || !turnstileToken}
-              className="w-full rounded-xl bg-ink px-6 py-3 text-sm font-medium text-paper transition-opacity hover:opacity-80 disabled:opacity-50"
-              style={buttonStyles(design)}
-            >
-              {status === "submitting" ? "Sending…" : form.submitLabel || "Submit"}
-            </button>
+          {/* No button element on the canvas: the challenge and a fallback
+              submit button go here instead, still in that order. The
+              challenge is rendered for every form, verification on or off --
+              the server requires a Turnstile token on the first request of
+              BOTH flows, so hiding it on verification forms (which is what
+              this used to do) meant the request was always rejected with
+              "Missing verification token" and no code was ever sent. */}
+          {!firstButtonId && (
+            <>
+              {challenge}
+              <button
+                type="submit"
+                disabled={status === "submitting" || !turnstileToken}
+                className="w-full rounded-xl bg-ink px-6 py-3 text-sm font-medium text-paper transition-opacity hover:opacity-80 disabled:opacity-50"
+                style={buttonStyles(design)}
+              >
+                {status === "submitting" ? "Sending…" : form.submitLabel || "Submit"}
+              </button>
+            </>
           )}
         </form>
       ) : (

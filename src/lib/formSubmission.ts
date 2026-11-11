@@ -112,6 +112,9 @@ export async function completeFormSubmission(input: {
     ? await ensureContact({
         email,
         name: contactData.name,
+        firstName: contactData.firstName,
+        lastName: contactData.lastName,
+        address: contactData.address,
         phone: contactData.phone,
         phoneSource: contactData.phone ? "form" : undefined,
         country,

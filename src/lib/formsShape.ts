@@ -7,25 +7,73 @@
  * No imports on purpose: safe for client components and plain node tests.
  * The DB read/write lives in src/lib/forms.ts. */
 
-/** Where a field's submitted answer lands on the contact record.
- *  - "none"    -- kept in the submission only, never copied to the contact
- *  - name/email/phone/country -- written to that core contact column
- *  - "detail"  -- stored as a named extra detail on the contact, shown on
- *                 the contact page and individually deletable there
- *  undefined = legacy auto-detection (see resolveContactMapping). */
-export type FormContactMapping = "none" | "name" | "email" | "phone" | "country" | "detail";
+/** Which part of the contact record a field's answer belongs to.
+ *
+ * This is NEVER a choice -- it follows from the element type, because there
+ * is only ever one sensible answer: an Email element can only be the
+ * contact's email, a Phone element can only be their phone. The only thing
+ * worth deciding is whether to copy the answer across at all, which is the
+ * single `addToContact` tick in the editor.
+ *
+ * Anything without a dedicated contact column -- a text input, long text, a
+ * number, a dropdown, a checkbox -- becomes a named "extra contact detail"
+ * instead, shown on the contact's own page and deletable from there. */
+export type ContactTarget =
+  | "full_name"
+  | "first_name"
+  | "last_name"
+  | "email"
+  | "phone"
+  | "country"
+  | "address"
+  | "detail";
 
-export const FORM_CONTACT_MAPPINGS: { value: FormContactMapping; label: string }[] = [
-  { value: "none", label: "Don't add to contact" },
-  { value: "name", label: "Contact name" },
-  { value: "email", label: "Contact email" },
-  { value: "phone", label: "Contact phone" },
-  { value: "country", label: "Contact country" },
-  { value: "detail", label: "Extra contact detail" },
-];
+export const CONTACT_TARGET_LABELS: Record<ContactTarget, string> = {
+  full_name: "full name",
+  first_name: "first name",
+  last_name: "last name",
+  email: "email",
+  phone: "phone",
+  country: "country",
+  address: "address",
+  detail: "extra contact detail",
+};
+
+/** The contact field an element feeds. Pure type lookup, no configuration. */
+export function contactTargetFor(type: FormElementType | FormFieldType): ContactTarget {
+  switch (type) {
+    case "email":
+      return "email";
+    case "phone":
+      return "phone";
+    case "country":
+      return "country";
+    case "address":
+      return "address";
+    case "full_name":
+      return "full_name";
+    case "first_name":
+      return "first_name";
+    case "last_name":
+      return "last_name";
+    default:
+      return "detail";
+  }
+}
+
+/** Whether a brand-new element of this type starts ticked. The identity
+ * fields do -- someone who puts an Email element on a form wants the email.
+ * Everything else is opt-in, since a "How did you hear about us?" answer is
+ * usually just an answer. */
+export function defaultAddToContact(type: FormElementType | FormFieldType): boolean {
+  return contactTargetFor(type) !== "detail";
+}
 
 export type FormFieldType =
   | "text"
+  | "full_name"
+  | "first_name"
+  | "last_name"
   | "email"
   | "phone"
   | "textarea"
@@ -40,6 +88,9 @@ export type FormFieldType =
 
 export const FORM_FIELD_TYPES: { value: FormFieldType; label: string }[] = [
   { value: "text", label: "Text" },
+  { value: "full_name", label: "Full name" },
+  { value: "first_name", label: "First name" },
+  { value: "last_name", label: "Last name" },
   { value: "email", label: "Email" },
   { value: "phone", label: "Phone" },
   { value: "textarea", label: "Long text" },
@@ -57,6 +108,9 @@ export type FormElementType =
   | "heading"
   | "text"
   | "text_input"
+  | "full_name"
+  | "first_name"
+  | "last_name"
   | "email"
   | "phone"
   | "textarea"
@@ -81,6 +135,9 @@ export const FORM_ELEMENT_PALETTE: {
   { type: "heading", label: "Heading", category: "layout", description: "Title or section header" },
   { type: "text", label: "Paragraph", category: "layout", description: "Instructions, notes, or disclaimer" },
   { type: "text_input", label: "Text input", category: "fields", description: "Single-line text field" },
+  { type: "full_name", label: "Full name", category: "fields", description: "Goes to the contact's full name" },
+  { type: "first_name", label: "First name", category: "fields", description: "Goes to the contact's first name" },
+  { type: "last_name", label: "Last name", category: "fields", description: "Goes to the contact's last name" },
   { type: "email", label: "Email", category: "fields", description: "Email address with validation" },
   { type: "phone", label: "Phone", category: "fields", description: "Phone number with country flag & code" },
   { type: "textarea", label: "Long text", category: "fields", description: "Multi-line text area" },
@@ -115,10 +172,11 @@ export type FormCanvasElement = {
   fieldHidden?: boolean;
   fieldDefaultValue?: string;
   fieldOptions?: string;
-  /** Where this answer lands on the contact record. Undefined keeps the
-   * legacy type-derived behaviour -- see resolveContactMapping. */
-  contactMapping?: FormContactMapping;
-  /** Label used for the contact detail when contactMapping is "detail".
+  /** Whether this answer is copied onto the contact record. Where it lands
+   * is not a choice -- see contactTargetFor. Undefined means the type's
+   * default (defaultAddToContact). */
+  addToContact?: boolean;
+  /** Name for the contact detail when this element's target is "detail".
    * Falls back to the field label. */
   contactDetailLabel?: string;
   // Button properties
@@ -187,33 +245,39 @@ export type FormField = {
   /** Mirrored from the canvas element so the submit route -- which works off
    * `fields`, not `elements` -- can route answers onto the contact without
    * re-deriving anything. */
-  contactMapping?: FormContactMapping;
+  addToContact?: boolean;
+  contactTarget?: ContactTarget;
   contactDetailLabel?: string;
 };
 
-/** The effective contact mapping for a field. An explicit choice in the
- * editor always wins; otherwise the field's own type decides, which keeps
- * every form built before this setting existed behaving the same way.
+/** Where one field's answer goes, and whether it goes at all.
  *
- * The legacy fallback deliberately does NOT treat an arbitrary text field as
- * the contact's name: the old submit route matched `f.type === "text"`, so
+ * `target` is pure type lookup. `enabled` is the editor's single tick,
+ * falling back to the type's default.
+ *
+ * A text field whose label merely mentions a name is NOT treated as the
+ * contact's name: the original submit route matched `f.type === "text"`, so
  * the first text field on any form -- "Company", "Job title", "Order ref" --
- * was silently written over the contact's real name. Only a field that names
- * itself a name is used now. */
-export function resolveContactMapping(field: {
-  type: FormFieldType;
-  key?: string;
-  label?: string;
-  contactMapping?: FormContactMapping;
-}): FormContactMapping {
-  if (field.contactMapping) return field.contactMapping;
-  if (field.type === "email") return "email";
-  if (field.type === "phone") return "phone";
-  if (field.type === "country") return "country";
-  if (/name/i.test(field.key || "") || /name/i.test(field.label || "")) return "name";
-  if (/phone|mobile/i.test(field.key || "") || /phone|mobile/i.test(field.label || "")) return "phone";
-  if (/country/i.test(field.key || "") || /country/i.test(field.label || "")) return "country";
-  return "none";
+ * silently overwrote the contact's real name. Use the Full name / First name
+ * / Last name elements when you mean a name. */
+export function resolveContactRouting(field: {
+  type: FormFieldType | FormElementType;
+  addToContact?: boolean;
+  contactTarget?: ContactTarget;
+  /** Accepted only so forms saved under the previous dropdown keep working. */
+  contactMapping?: string;
+}): { target: ContactTarget; enabled: boolean } {
+  const legacy = field.contactMapping;
+  const target =
+    field.contactTarget ??
+    (legacy && legacy !== "none" && legacy !== "name"
+      ? (legacy as ContactTarget)
+      : legacy === "name"
+        ? "full_name"
+        : contactTargetFor(field.type));
+  const enabled =
+    field.addToContact ?? (legacy ? legacy !== "none" : defaultAddToContact(field.type));
+  return { target, enabled };
 }
 
 export type FormDesign = {
@@ -224,6 +288,11 @@ export type FormDesign = {
   textColor: string;
   borderRadius: string;
   fontFamily: string;
+  /** The "Check your email" step is not made of canvas elements, so its code
+   * box and confirm button had no way to be resized at all. These give them
+   * the same Layout & Size controls every element has. */
+  verifyInput?: FormElementStyle;
+  verifyButton?: FormElementStyle;
 };
 
 export const EMPTY_FORM_DESIGN: FormDesign = {
@@ -249,6 +318,9 @@ export type FormDefinition = {
   submitLabel: string;
   successHeading: string;
   successText: string;
+  /** Optional image shown in the thank-you popup, uploaded through the media
+   * library (Cloudflare R2) like every other image in the console. */
+  successImage: string;
   submissionAction: FormSubmissionAction;
   redirectUrl: string;
   notifyEmail: string;
@@ -276,8 +348,11 @@ export type FormContactDetail = { key: string; label: string; value: string };
 export type FormContactData = {
   email: string;
   name: string | null;
+  firstName: string | null;
+  lastName: string | null;
   phone: string | null;
   country: string | null;
+  address: string | null;
   details: FormContactDetail[];
 };
 
@@ -285,23 +360,43 @@ export type FormContactData = {
  * it is the one place the routing rules live and the one place they are
  * tested; src/lib/formSubmission.ts re-exports it for the server paths. */
 export function extractContactData(fields: FormField[], values: SubmittedValues): FormContactData {
-  const data: FormContactData = { email: "", name: null, phone: null, country: null, details: [] };
+  const data: FormContactData = {
+    email: "",
+    name: null,
+    firstName: null,
+    lastName: null,
+    phone: null,
+    country: null,
+    address: null,
+    details: [],
+  };
 
   for (const field of fields) {
     const value = String(values[field.key] ?? "").trim();
     if (!value) continue;
-    switch (resolveContactMapping(field)) {
+    const { target, enabled } = resolveContactRouting(field);
+    if (!enabled) continue;
+    switch (target) {
       case "email":
         if (!data.email) data.email = value;
         break;
-      case "name":
+      case "full_name":
         if (!data.name) data.name = value.slice(0, 200);
+        break;
+      case "first_name":
+        if (!data.firstName) data.firstName = value.slice(0, 100);
+        break;
+      case "last_name":
+        if (!data.lastName) data.lastName = value.slice(0, 100);
         break;
       case "phone":
         if (!data.phone) data.phone = value.slice(0, 40);
         break;
       case "country":
         if (!data.country) data.country = value;
+        break;
+      case "address":
+        if (!data.address) data.address = value.slice(0, 500);
         break;
       case "detail":
         data.details.push({
@@ -310,9 +405,20 @@ export function extractContactData(fields: FormField[], values: SubmittedValues)
           value: value.slice(0, 2000),
         });
         break;
-      default:
-        break;
     }
+  }
+
+  // A form that asked for first and last name separately still gives the
+  // contact a usable full name, and one that asked only for a full name
+  // still fills the two halves -- the contact record should not depend on
+  // which of the three name elements the form happened to use.
+  if (!data.name && (data.firstName || data.lastName)) {
+    data.name = [data.firstName, data.lastName].filter(Boolean).join(" ") || null;
+  }
+  if (data.name && !data.firstName && !data.lastName) {
+    const parts = data.name.trim().split(/\s+/);
+    data.firstName = parts[0] || null;
+    data.lastName = parts.length > 1 ? parts.slice(1).join(" ") : null;
   }
   return data;
 }
@@ -326,7 +432,7 @@ export const FORM_AUTHORING_NOTES = [
   "elements[] is the source of truth and renders in array order; fields[] is derived from it on save.",
   "Every element accepts elementStyle. Lengths take a CSS unit, and a bare number is read as px.",
   "A button's size comes from elementStyle.width / height; buttonAlign only positions a button that has no explicit width.",
-  "contactMapping decides what reaches the contact record. Everything submitted is recorded in the form's responses either way.",
+  "addToContact is a yes/no per element. Where an answer lands is fixed by the element type, never chosen. Everything submitted is recorded in the form's responses either way.",
   "verifyEmail adds a 6-digit code plus a magic link before the submission is recorded. It needs a visible email element on the form.",
   "Submissions can start an automation: use the custom_form.submitted workflow trigger, with its formId set to a form's id to scope it to that form alone.",
 ];
@@ -334,6 +440,9 @@ export const FORM_AUTHORING_NOTES = [
 export function isFieldElementType(type: FormElementType): boolean {
   return [
     "text_input",
+    "full_name",
+    "first_name",
+    "last_name",
     "email",
     "phone",
     "textarea",
@@ -365,10 +474,13 @@ export function cssLength(value: unknown): string | undefined {
   return /^-?[0-9]+(\.[0-9]+)?(px|rem|em|%|vw|vh|ch)$/.test(raw) ? raw : undefined;
 }
 
-const CONTACT_MAPPINGS = new Set<string>(FORM_CONTACT_MAPPINGS.map((m) => m.value));
+/** Values the previous dropdown could hold. Read on the way in so a form
+ * saved before the tick replaced it keeps routing its answers the same way;
+ * nothing writes these any more. */
+const LEGACY_CONTACT_MAPPINGS = new Set(["none", "name", "email", "phone", "country", "detail"]);
 
-function contactMappingOf(value: unknown): FormContactMapping | undefined {
-  return typeof value === "string" && CONTACT_MAPPINGS.has(value) ? (value as FormContactMapping) : undefined;
+function legacyMappingOf(value: unknown): string | undefined {
+  return typeof value === "string" && LEGACY_CONTACT_MAPPINGS.has(value) ? value : undefined;
 }
 
 function slugifyKey(label: string, index: number): string {
@@ -386,17 +498,18 @@ export function elementsToFields(elements: FormCanvasElement[]): FormField[] {
 
     const isHidden = el.type === "hidden" || el.fieldHidden === true;
     const rawType: FormFieldType =
-      el.type === "hidden"
-        ? "text"
-        : el.type === "text_input"
-          ? "text"
-          : (el.type as FormFieldType);
+      el.type === "hidden" || el.type === "text_input" ? "text" : (el.type as FormFieldType);
 
     const label = (el.fieldLabel ?? (isHidden ? "Hidden tracker" : "Field")).trim().slice(0, 100);
     let key = (el.fieldKey ?? slugifyKey(label, i)).trim().slice(0, 60);
     if (!key) key = `field_${i + 1}`;
     while (seenKeys.has(key)) key = `${key}_${i}`;
     seenKeys.add(key);
+
+    // A hidden tracker is never contact data, whatever its element type.
+    const routing = isHidden
+      ? { target: "detail" as ContactTarget, enabled: false }
+      : resolveContactRouting({ type: el.type, addToContact: el.addToContact });
 
     fields.push({
       key,
@@ -406,7 +519,8 @@ export function elementsToFields(elements: FormCanvasElement[]): FormField[] {
       required: isHidden ? false : el.fieldRequired === true,
       hidden: isHidden,
       defaultValue: typeof el.fieldDefaultValue === "string" ? el.fieldDefaultValue.slice(0, 500) : "",
-      contactMapping: el.contactMapping,
+      addToContact: routing.enabled,
+      contactTarget: routing.target,
       contactDetailLabel: el.contactDetailLabel,
     });
   }
@@ -457,7 +571,7 @@ export function formDefinitionToElements(form: {
         fieldHidden: f.hidden,
         fieldDefaultValue: f.defaultValue,
         fieldOptions: f.options,
-        contactMapping: f.contactMapping,
+        addToContact: f.addToContact,
         contactDetailLabel: f.contactDetailLabel,
       });
     }
@@ -489,24 +603,7 @@ export function normalizeFormElements(input: unknown): FormCanvasElement[] {
       : "text_input";
 
     const str = (v: unknown, limit = 200) => (typeof v === "string" ? v.trim().slice(0, limit) : "");
-    const rawStyle = obj.elementStyle && typeof obj.elementStyle === "object" ? (obj.elementStyle as Record<string, unknown>) : undefined;
-    const elementStyle: FormElementStyle | undefined = rawStyle ? {
-      backgroundColor: str(rawStyle.backgroundColor, 50) || undefined,
-      textColor: str(rawStyle.textColor, 50) || undefined,
-      borderColor: str(rawStyle.borderColor, 50) || undefined,
-      borderWidth: cssLength(rawStyle.borderWidth),
-      borderRadius: str(rawStyle.borderRadius, 50) || undefined,
-      fontSize: cssLength(rawStyle.fontSize),
-      fontWeight: str(rawStyle.fontWeight, 20) || undefined,
-      textAlign: ["left", "center", "right"].includes(String(rawStyle.textAlign)) ? (rawStyle.textAlign as "left" | "center" | "right") : undefined,
-      padding: cssLength(rawStyle.padding),
-      paddingX: cssLength(rawStyle.paddingX),
-      paddingY: cssLength(rawStyle.paddingY),
-      marginTop: cssLength(rawStyle.marginTop),
-      marginBottom: cssLength(rawStyle.marginBottom),
-      width: cssLength(rawStyle.width),
-      height: cssLength(rawStyle.height),
-    } : undefined;
+    const elementStyle = normalizeElementStyle(obj.elementStyle);
 
     return {
       id,
@@ -524,7 +621,12 @@ export function normalizeFormElements(input: unknown): FormCanvasElement[] {
       fieldHidden: obj.fieldHidden === true || obj.type === "hidden",
       fieldDefaultValue: str(obj.fieldDefaultValue, 500),
       fieldOptions: str(obj.fieldOptions, 1000),
-      contactMapping: contactMappingOf(obj.contactMapping),
+      addToContact:
+        typeof obj.addToContact === "boolean"
+          ? obj.addToContact
+          : legacyMappingOf(obj.contactMapping) !== undefined
+            ? obj.contactMapping !== "none"
+            : undefined,
       contactDetailLabel: str(obj.contactDetailLabel, 100) || undefined,
       buttonLabel: str(obj.buttonLabel, 60),
       buttonAlign: ["full", "left", "center", "right"].includes(String(obj.buttonAlign)) ? (obj.buttonAlign as "full" | "left" | "center" | "right") : "full",
@@ -545,6 +647,15 @@ export function normalizeFormFields(input: unknown): FormField[] {
     let key = typeof obj.key === "string" && obj.key.trim() ? obj.key.trim().slice(0, 60) : slugifyKey(label, index);
     while (seenKeys.has(key)) key = `${key}_${index}`;
     seenKeys.add(key);
+    const fieldRouting =
+      obj.hidden === true
+        ? { target: "detail" as ContactTarget, enabled: false }
+        : resolveContactRouting({
+            type,
+            addToContact: typeof obj.addToContact === "boolean" ? obj.addToContact : undefined,
+            contactTarget: typeof obj.contactTarget === "string" ? (obj.contactTarget as ContactTarget) : undefined,
+            contactMapping: legacyMappingOf(obj.contactMapping),
+          });
     return {
       key,
       label,
@@ -553,15 +664,45 @@ export function normalizeFormFields(input: unknown): FormField[] {
       required: obj.required === true,
       hidden: obj.hidden === true,
       defaultValue: typeof obj.defaultValue === "string" ? obj.defaultValue.slice(0, 500) : "",
-      contactMapping: contactMappingOf(obj.contactMapping),
+      addToContact: fieldRouting.enabled,
+      contactTarget: fieldRouting.target,
       contactDetailLabel: typeof obj.contactDetailLabel === "string" ? obj.contactDetailLabel.slice(0, 100) : undefined,
     };
   });
 }
 
+/** One place every elementStyle bag is cleaned, so the canvas elements and
+ * the verification step's own two controls are validated identically. */
+export function normalizeElementStyle(input: unknown): FormElementStyle | undefined {
+  if (!input || typeof input !== "object" || Array.isArray(input)) return undefined;
+  const raw = input as Record<string, unknown>;
+  const str = (v: unknown, limit = 50) => (typeof v === "string" ? v.trim().slice(0, limit) : "");
+  return {
+    backgroundColor: str(raw.backgroundColor) || undefined,
+    textColor: str(raw.textColor) || undefined,
+    borderColor: str(raw.borderColor) || undefined,
+    borderWidth: cssLength(raw.borderWidth),
+    borderRadius: str(raw.borderRadius) || undefined,
+    fontSize: cssLength(raw.fontSize),
+    fontWeight: str(raw.fontWeight, 20) || undefined,
+    textAlign: ["left", "center", "right"].includes(String(raw.textAlign))
+      ? (raw.textAlign as "left" | "center" | "right")
+      : undefined,
+    padding: cssLength(raw.padding),
+    paddingX: cssLength(raw.paddingX),
+    paddingY: cssLength(raw.paddingY),
+    marginTop: cssLength(raw.marginTop),
+    marginBottom: cssLength(raw.marginBottom),
+    width: cssLength(raw.width),
+    height: cssLength(raw.height),
+  };
+}
+
 function normalizeDesign(input: unknown): FormDesign {
   const raw = input && typeof input === "object" && !Array.isArray(input) ? (input as Record<string, unknown>) : {};
   const str = (v: unknown) => (typeof v === "string" ? v.slice(0, 100) : "");
+  const verifyInput = normalizeElementStyle(raw.verifyInput);
+  const verifyButton = normalizeElementStyle(raw.verifyButton);
   return {
     buttonColor: str(raw.buttonColor),
     buttonTextColor: str(raw.buttonTextColor),
@@ -570,6 +711,11 @@ function normalizeDesign(input: unknown): FormDesign {
     textColor: str(raw.textColor),
     borderRadius: str(raw.borderRadius),
     fontFamily: str(raw.fontFamily),
+    // Only present when actually set, so an untouched form's design stays
+    // the plain token bag it has always been rather than gaining two null
+    // keys in its stored jsonb.
+    ...(verifyInput ? { verifyInput } : {}),
+    ...(verifyButton ? { verifyButton } : {}),
   };
 }
 
@@ -619,6 +765,7 @@ export function normalizeFormDefinition(input: unknown): Omit<FormDefinition, "i
     submitLabel,
     successHeading: str(raw.successHeading, 200),
     successText: str(raw.successText, 600),
+    successImage: str(raw.successImage, 500),
     submissionAction: raw.submissionAction === "redirect" ? "redirect" : "message",
     redirectUrl: str(raw.redirectUrl, 300),
     notifyEmail: str(raw.notifyEmail, 200),

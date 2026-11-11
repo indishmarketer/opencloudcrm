@@ -40,6 +40,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     submitLabel: typeof body.submitLabel === "string" ? body.submitLabel : existing.submitLabel,
     successHeading: typeof body.successHeading === "string" ? body.successHeading : existing.successHeading,
     successText: typeof body.successText === "string" ? body.successText : existing.successText,
+    successImage: typeof body.successImage === "string" ? body.successImage : existing.successImage,
     submissionAction: typeof body.submissionAction === "string" ? body.submissionAction : existing.submissionAction,
     redirectUrl: typeof body.redirectUrl === "string" ? body.redirectUrl : existing.redirectUrl,
     notifyEmail: typeof body.notifyEmail === "string" ? body.notifyEmail : existing.notifyEmail,

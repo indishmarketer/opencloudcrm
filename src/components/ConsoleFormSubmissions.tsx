@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useConfirm } from "@/components/ConfirmDialog";
 import type { FormField } from "@/lib/formsShape";
-import { resolveContactMapping } from "@/lib/formsShape";
+import { resolveContactRouting } from "@/lib/formsShape";
 
 /** Everything a form has collected. The submissions API and the
  * form_submissions table have existed since the form builder shipped, but
@@ -123,7 +123,7 @@ export default function ConsoleFormSubmissions({
     URL.revokeObjectURL(url);
   }
 
-  const contactFields = fields.filter((f) => resolveContactMapping(f) !== "none");
+  const contactFields = fields.filter((f) => resolveContactRouting(f).enabled);
 
   return (
     <div className="space-y-5">

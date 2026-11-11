@@ -22,12 +22,13 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import ConsoleModal from "@/components/ConsoleModal";
 import InkSelect from "@/components/InkSelect";
+import MediaLibraryPicker from "@/components/MediaLibraryPicker";
+import PageUrlPicker from "@/components/PageUrlPicker";
 import {
-  FORM_CONTACT_MAPPINGS,
+  CONTACT_TARGET_LABELS,
   isFieldElementType,
-  resolveContactMapping,
+  resolveContactRouting,
   type FormCanvasElement,
-  type FormContactMapping,
   type FormDefinition,
   type FormDesign,
   type FormElementStyle,
@@ -154,6 +155,14 @@ function ElementIcon({ type, className = "h-5 w-5" }: { type: FormElementType; c
       return (
         <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <rect x="3" y="6" width="18" height="12" rx="2" /><path d="M8 12h8" />
+        </svg>
+      );
+    case "full_name":
+    case "first_name":
+    case "last_name":
+      return (
+        <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
         </svg>
       );
     case "email":
@@ -284,6 +293,12 @@ function createElement(type: FormElementType): FormCanvasElement {
       return { id, type, textContent: "Add descriptive text or instructions here.", textMuted: false, textAlign: "left" };
     case "text_input":
       return { id, type, fieldLabel: "Text field", fieldKey: "text_field", fieldPlaceholder: "Enter text…", fieldRequired: false };
+    case "full_name":
+      return { id, type, fieldLabel: "Full name", fieldKey: "full_name", fieldPlaceholder: "Jane Doe", fieldRequired: true };
+    case "first_name":
+      return { id, type, fieldLabel: "First name", fieldKey: "first_name", fieldPlaceholder: "Jane", fieldRequired: true };
+    case "last_name":
+      return { id, type, fieldLabel: "Last name", fieldKey: "last_name", fieldPlaceholder: "Doe", fieldRequired: false };
     case "email":
       return { id, type, fieldLabel: "Email address", fieldKey: "email", fieldPlaceholder: "you@example.com", fieldRequired: true };
     case "phone":
@@ -335,29 +350,6 @@ function createElement(type: FormElementType): FormCanvasElement {
 }
 
 // ── Corner Radius Picker with Custom Input (Image 2 Fix) ────────────────────
-
-/** Shows on the canvas next to any field whose answer is copied onto the
- * contact record, so the owner can see at a glance which answers become CRM
- * data and which stay in the submission. */
-function contactMappingBadge(element: FormCanvasElement) {
-  if (!isFieldElementType(element.type)) return null;
-  const mapping = resolveContactMapping({
-    type: (element.type === "text_input" || element.type === "hidden" ? "text" : element.type) as never,
-    key: element.fieldKey,
-    label: element.fieldLabel,
-    contactMapping: element.contactMapping,
-  });
-  if (mapping === "none") return null;
-  const label = mapping === "detail" ? "→ contact detail" : `→ contact ${mapping}`;
-  return (
-    <span
-      title="This answer is saved onto the contact record"
-      className="shrink-0 rounded-full bg-paper-soft px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-ink-soft"
-    >
-      {label}
-    </span>
-  );
-}
 
 // ── Size stepper ──────────────────────────────────────────────────────────
 
@@ -807,7 +799,6 @@ function SortableElementItem({
               }}
               className="bg-transparent text-sm font-medium text-ink outline-none border-b border-transparent hover:border-line focus:border-ink px-0.5"
             />
-            {contactMappingBadge(element)}
           </div>
 
           {element.type === "textarea" ? (
@@ -978,6 +969,8 @@ export default function ConsoleFormEditor({
   const [redirectUrl, setRedirectUrl] = useState(initialForm.redirectUrl);
   const [successHeading, setSuccessHeading] = useState(initialForm.successHeading);
   const [successText, setSuccessText] = useState(initialForm.successText);
+  const [successImage, setSuccessImage] = useState(initialForm.successImage || "");
+  const [imagePicker, setImagePicker] = useState(false);
   const [notifyEmail, setNotifyEmail] = useState(initialForm.notifyEmail);
   const [source, setSource] = useState(initialForm.source);
   const [verifyEmail, setVerifyEmail] = useState(initialForm.verifyEmail);
@@ -1172,6 +1165,7 @@ export default function ConsoleFormEditor({
       redirectUrl,
       successHeading,
       successText,
+      successImage,
       notifyEmail,
       source,
       verifyEmail,
@@ -1198,20 +1192,13 @@ export default function ConsoleFormEditor({
   }
 
   const selectedElement = elements.find((el) => el.id === selectedId) || null;
-  /** The contact mapping actually in force for the selected field: its
-   * explicit choice, or the type-derived default for a field saved before
-   * this setting existed. */
-  const effectiveMapping: FormContactMapping =
+  /** Where the selected field's answer would land, and whether it currently
+   * does. The destination is fixed by the element type -- the only decision
+   * is the tick. */
+  const selectedRouting =
     selectedElement && isFieldElementType(selectedElement.type)
-      ? resolveContactMapping({
-          type: (selectedElement.type === "text_input" || selectedElement.type === "hidden"
-            ? "text"
-            : selectedElement.type) as never,
-          key: selectedElement.fieldKey,
-          label: selectedElement.fieldLabel,
-          contactMapping: selectedElement.contactMapping,
-        })
-      : "none";
+      ? resolveContactRouting({ type: selectedElement.type, addToContact: selectedElement.addToContact })
+      : null;
   const isFormStyleSelected = selectedId === "__form_style__";
   const isSidebarVisible = Boolean(selectedElement || isFormStyleSelected);
 
@@ -1265,6 +1252,17 @@ export default function ConsoleFormEditor({
             </div>
           </div>
         </div>
+      )}
+
+      {imagePicker && (
+        <MediaLibraryPicker
+          onSelect={(url) => {
+            setSuccessImage(url);
+            setDirty(true);
+            setImagePicker(false);
+          }}
+          onClose={() => setImagePicker(false)}
+        />
       )}
 
       {/* Form Settings Modal */}
@@ -1334,6 +1332,33 @@ export default function ConsoleFormEditor({
                   </p>
                 </div>
               </label>
+
+              {verifyEmail && (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <p className="text-xs font-semibold text-ink">Code box</p>
+                    <ElementLayoutPanel
+                      style={design.verifyInput}
+                      showHeight
+                      onChange={(patch) => {
+                        setDesign({ ...design, verifyInput: { ...design.verifyInput, ...patch } });
+                        setDirty(true);
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-ink">Confirm button</p>
+                    <ElementLayoutPanel
+                      style={design.verifyButton}
+                      showHeight
+                      onChange={(patch) => {
+                        setDesign({ ...design, verifyButton: { ...design.verifyButton, ...patch } });
+                        setDirty(true);
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="rounded-xl border border-line p-4 space-y-4">
@@ -1370,20 +1395,25 @@ export default function ConsoleFormEditor({
               </div>
 
               {submissionAction === "redirect" ? (
-                <label className="grid gap-1.5 text-sm font-medium pt-2">
-                  Thank You Page Address / URL
-                  <input
+                <div className="grid gap-1.5 pt-2 text-sm font-medium">
+                  <span>Thank You Page Address / URL</span>
+                  <PageUrlPicker
                     value={redirectUrl}
-                    placeholder="/thank-you or https://example.com/thanks"
-                    onChange={(e) => {
-                      setRedirectUrl(e.target.value);
+                    onChange={(val) => {
+                      setRedirectUrl(val);
                       setDirty(true);
                     }}
                     className={inputClass}
                   />
-                </label>
+                  <span className="text-xs font-normal text-ink-soft">
+                    Type / to list this site&apos;s pages, search one by name, or paste any external link.
+                  </span>
+                </div>
               ) : (
                 <div className="grid gap-3 pt-2">
+                  <p className="text-xs text-ink-soft">
+                    Shown as a centred popup over the page the moment the form is submitted.
+                  </p>
                   <label className="grid gap-1.5 text-sm font-medium">
                     Success Headline
                     <input
@@ -1407,6 +1437,46 @@ export default function ConsoleFormEditor({
                       className={inputClass}
                     />
                   </label>
+                  <div className="grid gap-1.5 text-sm font-medium">
+                    <span>Image (optional)</span>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <input
+                        value={successImage}
+                        placeholder="https://… or pick from your media library"
+                        onChange={(e) => {
+                          setSuccessImage(e.target.value);
+                          setDirty(true);
+                        }}
+                        className={inputClass}
+                      />
+                      <button type="button" onClick={() => setImagePicker(true)} className={button}>
+                        Choose image
+                      </button>
+                      {successImage && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSuccessImage("");
+                            setDirty(true);
+                          }}
+                          className={button}
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                    {successImage && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={successImage}
+                        alt=""
+                        className="mt-1 max-h-28 w-auto rounded-lg border border-line object-contain"
+                      />
+                    )}
+                    <span className="text-xs font-normal text-ink-soft">
+                      Shown above the headline in the thank-you popup. Uploads go to your media library.
+                    </span>
+                  </div>
                 </div>
               )}
             </div>
@@ -2080,42 +2150,53 @@ export default function ConsoleFormEditor({
                           </label>
                         )}
 
-                        {/* Add to contact. Every submission is recorded in
-                            full either way -- this decides which answers
-                            also become data on the contact record itself. */}
-                        <div className="space-y-2 pt-3 border-t border-line">
-                          <div>
-                            <span className="text-xs font-semibold text-ink">Add to contact</span>
-                            <p className="mt-0.5 text-[10px] text-ink-soft">
-                              Where this answer lands on the contact record. Leave it off for answers you
-                              only want to read in the responses list.
-                            </p>
-                          </div>
-                          <InkSelect
-                            value={effectiveMapping}
-                            onChange={(val) =>
-                              updateElementProps(selectedElement.id, { contactMapping: val as FormContactMapping })
-                            }
-                            options={FORM_CONTACT_MAPPINGS}
-                          />
-                          {effectiveMapping === "detail" && (
-                            <label className="grid gap-1.5 text-xs font-medium">
-                              Detail name on the contact
+                        {/* Add to contact: one tick, no destination picker.
+                            An Email element can only ever be the contact's
+                            email, so the only real decision is whether to
+                            copy the answer across at all. Every submission
+                            is recorded in the responses list either way. */}
+                        {selectedRouting && !selectedElement.fieldHidden && (
+                          <div className="space-y-2 pt-3 border-t border-line">
+                            <label className="flex items-start gap-2.5 text-xs cursor-pointer">
                               <input
-                                value={selectedElement.contactDetailLabel || ""}
-                                placeholder={selectedElement.fieldLabel || "Detail"}
+                                type="checkbox"
+                                checked={selectedRouting.enabled}
                                 onChange={(e) =>
-                                  updateElementProps(selectedElement.id, { contactDetailLabel: e.target.value })
+                                  updateElementProps(selectedElement.id, { addToContact: e.target.checked })
                                 }
-                                className={inputClass}
+                                className="mt-0.5 h-4 w-4 rounded border-line accent-ink"
                               />
-                              <span className="text-[10px] text-ink-soft">
-                                Shown under Details from forms on the contact, and deletable from there.
-                                Re-submitting updates it rather than adding a second copy.
+                              <span>
+                                <span className="font-semibold text-ink">Add to contact</span>
+                                <span className="mt-0.5 block text-[10px] text-ink-soft">
+                                  Saved as the contact&apos;s{" "}
+                                  <strong className="font-semibold text-ink">
+                                    {CONTACT_TARGET_LABELS[selectedRouting.target]}
+                                  </strong>
+                                  . Untick to keep this answer in the responses list only.
+                                </span>
                               </span>
                             </label>
-                          )}
-                        </div>
+
+                            {selectedRouting.enabled && selectedRouting.target === "detail" && (
+                              <label className="grid gap-1.5 pl-6 text-xs font-medium">
+                                Detail name on the contact
+                                <input
+                                  value={selectedElement.contactDetailLabel || ""}
+                                  placeholder={selectedElement.fieldLabel || "Detail"}
+                                  onChange={(e) =>
+                                    updateElementProps(selectedElement.id, { contactDetailLabel: e.target.value })
+                                  }
+                                  className={inputClass}
+                                />
+                                <span className="text-[10px] text-ink-soft">
+                                  Shown under Details from forms on the contact, and deletable from there.
+                                  Re-submitting updates it rather than adding a second copy.
+                                </span>
+                              </label>
+                            )}
+                          </div>
+                        )}
                       </>
                     )}
 

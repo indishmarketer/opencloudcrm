@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authorizeRequest } from "@/lib/apiTokens";
 import {
+  CONTACT_TARGET_LABELS,
   FORM_AUTHORING_NOTES,
-  FORM_CONTACT_MAPPINGS,
   FORM_ELEMENT_PALETTE,
   FORM_ELEMENT_STYLE_KEYS,
   FORM_FIELD_TYPES,
@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
     elementTypes: FORM_ELEMENT_PALETTE,
     fieldTypes: FORM_FIELD_TYPES,
     elementStyleKeys: FORM_ELEMENT_STYLE_KEYS,
-    contactMappings: FORM_CONTACT_MAPPINGS,
+    contactTargets: CONTACT_TARGET_LABELS,
     notes: FORM_AUTHORING_NOTES,
   });
 }
