@@ -129,6 +129,29 @@ export function elementButtonStyle(design: FormDesign, style?: FormElementStyle)
   return out;
 }
 
+/** A field is a label plus a control, and the two have to move together.
+ *
+ * The sizing and placement belong to the pair, not to the input: when a
+ * field is 280px wide and centred, the label has to sit on the left edge of
+ * that 280px box -- not centred over it, and not away at the form's far
+ * left. So the group carries the width and the auto margins, the control
+ * fills the group, and the label is left-aligned inside it regardless of
+ * the element's alignment (which positions the box, and the value typed
+ * into it, but never the label). */
+export function fieldLayout(
+  design: FormDesign,
+  style?: FormElementStyle,
+): { group: CSSProperties; control: CSSProperties } {
+  const { box, paint } = splitBoxStyle(elementInputStyle(design, style));
+  const group: CSSProperties = { ...elementWrapperStyle(style), ...box };
+  // The group must not inherit text alignment: that would drag the label
+  // along with the box, which is the thing being fixed here.
+  delete group.textAlign;
+  const control: CSSProperties = { ...paint };
+  if (box.width !== undefined) control.width = "100%";
+  return { group, control };
+}
+
 /** Splits a computed control style into the part that sizes and positions
  * the control as a whole, and the part that paints it.
  *

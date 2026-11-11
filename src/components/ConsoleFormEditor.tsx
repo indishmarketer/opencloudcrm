@@ -41,6 +41,7 @@ import {
   elementInputStyle,
   elementTextStyle,
   elementWrapperStyle,
+  fieldLayout,
   hasCustomWidth,
 } from "@/lib/formElementStyles";
 
@@ -686,7 +687,9 @@ function SortableElementItem({
 
   // Built by the same helpers the live form uses, so the canvas is a true
   // preview rather than a separate approximation of it.
-  const inputStyle = elementInputStyle(design, element.elementStyle);
+  // Same label-plus-control grouping the live form uses, so the canvas and
+  // the published page agree about where a sized field's label sits.
+  const { group: fieldGroup, control: inputStyle } = fieldLayout(design, element.elementStyle);
   const buttonStyle = {
     backgroundColor: design.buttonColor || "#0a0a0a",
     color: design.buttonTextColor || "#ffffff",
@@ -832,7 +835,7 @@ function SortableElementItem({
 
       {/* Visible field elements */}
       {isFieldElementType(element.type) && !element.fieldHidden && element.type !== "hidden" && (
-        <div className="space-y-1.5" style={wrapperStyle}>
+        <div className="space-y-1.5" style={fieldGroup}>
           <div className="flex items-center gap-1">
             <input
               value={element.fieldLabel || ""}
@@ -842,10 +845,10 @@ function SortableElementItem({
                 color: element.elementStyle?.textColor || undefined,
                 fontSize: element.elementStyle?.fontSize || undefined,
                 fontWeight: element.elementStyle?.fontWeight || undefined,
-                // The label follows the element's alignment, the same as it
-                // does on the live form. Without this the canvas aligned the
-                // box but left the label alone, so the two never matched.
-                textAlign: element.elementStyle?.textAlign || undefined,
+                // Always left, matching the live form: alignment positions
+                // the field's box, and the label rides on that box's left
+                // edge rather than being aligned itself.
+                textAlign: "left",
               }}
               className="w-full bg-transparent text-sm font-medium text-ink outline-none border-b border-transparent hover:border-line focus:border-ink px-0.5"
             />

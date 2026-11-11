@@ -9,6 +9,7 @@ import {
   elementInputStyle,
   elementTextStyle,
   elementWrapperStyle,
+  fieldLayout,
   hasCustomWidth,
   splitBoxStyle,
 } from "@/lib/formElementStyles";
@@ -64,17 +65,22 @@ const baseInputClass =
 /** A field's own label follows its text colour and font size so restyling an
  * element restyles the whole field, not just its input box.
  *
+ * It is deliberately always left-aligned. Alignment positions the field's
+ * box (and the value inside it); the label stays on the left edge of that
+ * box, which is where a form label belongs whether the field is left,
+ * centre or right aligned.
+ *
  * `display: block` is not cosmetic. A <label> is inline by default, and an
  * input given an explicit width becomes inline-block -- so narrowing a field
- * to, say, 1px used to pull its input up onto the same line as its label
- * instead of keeping it underneath. */
+ * used to pull its input up onto the same line as its label instead of
+ * keeping it underneath. */
 function labelStyle(el: FormCanvasElement): React.CSSProperties {
   return {
     display: "block",
+    textAlign: "left",
     color: el.elementStyle?.textColor || undefined,
     fontSize: el.elementStyle?.fontSize || undefined,
     fontWeight: el.elementStyle?.fontWeight || undefined,
-    textAlign: el.elementStyle?.textAlign || undefined,
   };
 }
 
@@ -617,8 +623,31 @@ export default function SavedForm({
   // The challenge belongs immediately above the submit button, not after it.
   // It is rendered as part of the first button element so it cannot end up
   // stranded below the button when the button is not the last element.
-  const firstButtonId = form.elements?.find((e) => e.type === "button")?.id;
+  const firstButton = form.elements?.find((e) => e.type === "button");
+  const firstButtonId = firstButton?.id;
   const challenge = <Turnstile key={turnstileNonce} onToken={handleToken} />;
+
+  /** Lines the challenge up with whatever the button is doing, so "Verified"
+   * sits directly above the button rather than pinned to the form's left
+   * edge while a centred button floats away from it. */
+  function challengeRow(el?: FormCanvasElement) {
+    // A full-width button starts at the left edge whatever its alignment
+    // says, so the challenge stays there with it.
+    const fullWidth = !el || (el.buttonAlign === "full" && !hasCustomWidth(el.elementStyle));
+    const align = fullWidth
+      ? "left"
+      : el.elementStyle?.textAlign ||
+        (el.buttonAlign === "center" ? "center" : el.buttonAlign === "right" ? "right" : "left");
+    return (
+      <div
+        className={`flex ${
+          align === "center" ? "justify-center" : align === "right" ? "justify-end" : "justify-start"
+        }`}
+      >
+        {challenge}
+      </div>
+    );
+  }
 
   function handleCountrySelect(countryCode: string) {
     if (!form) return;
@@ -730,7 +759,7 @@ export default function SavedForm({
               const fullWidth = el.buttonAlign === "full" && !hasCustomWidth(el.elementStyle);
               return (
                 <Fragment key={el.id}>
-                {el.id === firstButtonId && challenge}
+                {el.id === firstButtonId && challengeRow(el)}
                 <div
                   style={elementWrapperStyle(el.elementStyle)}
                   className={`flex ${
@@ -760,15 +789,18 @@ export default function SavedForm({
               );
             }
 
-            // Input fields
+            // Input fields. The label and the control share one sized box --
+            // see fieldLayout -- so the label tracks the field's left edge
+            // instead of drifting to the form's edge or centring with it.
             const key = el.fieldKey || el.id;
             const inputId = `saved-form-${form.id}-${key}`;
             const val = values[key] || "";
             const choices = parseChoices(el.fieldOptions);
+            const { group: fieldGroup, control: fieldControl } = fieldLayout(design, el.elementStyle);
 
             if (el.type === "country") {
               return (
-                <div key={el.id} style={elementWrapperStyle(el.elementStyle)}>
+                <div key={el.id} style={fieldGroup}>
                   <label className="text-sm font-medium" style={labelStyle(el)} htmlFor={inputId}>
                     {el.fieldLabel || "Country"}
                   </label>
@@ -779,7 +811,7 @@ export default function SavedForm({
                       setValue(key, code);
                       handleCountrySelect(code);
                     }}
-                    style={inputStyles(design, el.elementStyle)}
+                    style={fieldControl}
                   />
                 </div>
               );
@@ -787,7 +819,7 @@ export default function SavedForm({
 
             if (el.type === "phone") {
               return (
-                <div key={el.id} style={elementWrapperStyle(el.elementStyle)}>
+                <div key={el.id} style={fieldGroup}>
                   <label className="text-sm font-medium" style={labelStyle(el)} htmlFor={inputId}>
                     {el.fieldLabel || "Phone number"}
                   </label>
@@ -801,7 +833,7 @@ export default function SavedForm({
                     onChange={(phoneVal) => setValue(key, phoneVal)}
                     placeholder={el.fieldPlaceholder}
                     required={el.fieldRequired}
-                    style={inputStyles(design, el.elementStyle)}
+                    style={fieldControl}
                   />
                 </div>
               );
@@ -809,7 +841,7 @@ export default function SavedForm({
 
             if (el.type === "radio") {
               return (
-                <div key={el.id} className="space-y-2" style={elementWrapperStyle(el.elementStyle)}>
+                <div key={el.id} className="space-y-2" style={fieldGroup}>
                   <span className="block text-sm font-medium" style={labelStyle(el)}>
                     {el.fieldLabel || "Select an option"}
                   </span>
@@ -818,7 +850,7 @@ export default function SavedForm({
                       <label
                         key={choice}
                         className="flex items-center gap-2.5 rounded-lg border border-line bg-paper px-3.5 py-2.5 text-sm text-ink cursor-pointer hover:border-ink transition-colors"
-                        style={inputStyles(design, el.elementStyle)}
+                        style={fieldControl}
                       >
                         <input
                           type="radio"
@@ -840,7 +872,7 @@ export default function SavedForm({
             if (el.type === "multiselect") {
               const selectedList = val ? val.split(",").map((s) => s.trim()).filter(Boolean) : [];
               return (
-                <div key={el.id} className="space-y-2" style={elementWrapperStyle(el.elementStyle)}>
+                <div key={el.id} className="space-y-2" style={fieldGroup}>
                   <span className="block text-sm font-medium" style={labelStyle(el)}>
                     {el.fieldLabel || "Select choices"}
                   </span>
@@ -851,7 +883,7 @@ export default function SavedForm({
                         <label
                           key={choice}
                           className="flex items-center gap-2.5 rounded-lg border border-line bg-paper px-3.5 py-2.5 text-sm text-ink cursor-pointer hover:border-ink transition-colors"
-                          style={inputStyles(design, el.elementStyle)}
+                          style={fieldControl}
                         >
                           <input
                             type="checkbox"
@@ -874,7 +906,7 @@ export default function SavedForm({
             }
 
             return (
-              <div key={el.id} style={elementWrapperStyle(el.elementStyle)}>
+              <div key={el.id} style={fieldGroup}>
                 {el.type !== "checkbox" && (
                   <label className="text-sm font-medium" style={labelStyle(el)} htmlFor={inputId}>
                     {el.fieldLabel}
@@ -890,7 +922,7 @@ export default function SavedForm({
                     value={val}
                     onChange={(e) => setValue(key, e.target.value)}
                     className={baseInputClass}
-                    style={inputStyles(design, el.elementStyle)}
+                    style={fieldControl}
                   />
                 ) : el.type === "select" ? (
                   <select
@@ -899,7 +931,7 @@ export default function SavedForm({
                     value={val}
                     onChange={(e) => setValue(key, e.target.value)}
                     className={baseInputClass}
-                    style={inputStyles(design, el.elementStyle)}
+                    style={fieldControl}
                   >
                     <option value="">Choose…</option>
                     {choices.map((o) => (
@@ -950,7 +982,7 @@ export default function SavedForm({
                     value={val}
                     onChange={(e) => setValue(key, e.target.value)}
                     className={baseInputClass}
-                    style={inputStyles(design, el.elementStyle)}
+                    style={fieldControl}
                   />
                 )}
               </div>
@@ -968,7 +1000,7 @@ export default function SavedForm({
               "Missing verification token" and no code was ever sent. */}
           {!firstButtonId && (
             <>
-              {challenge}
+              {challengeRow()}
               <button
                 type="submit"
                 disabled={status === "submitting" || !turnstileToken}

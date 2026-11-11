@@ -17,6 +17,7 @@ import {
   elementButtonStyle,
   elementInputStyle,
   elementWrapperStyle,
+  fieldLayout,
   hasCustomWidth,
   splitBoxStyle,
 } from "../src/lib/formElementStyles.ts";
@@ -454,4 +455,40 @@ test("a composite control sizes the row, not each of its pieces", () => {
   assert.equal(paint.marginLeft, undefined, "a piece must not carry the row's placement");
   assert.equal(paint.borderColor, "#ff0000", "but it keeps its own look");
   assert.equal(paint.paddingLeft, "10px");
+});
+
+// ── A field is a label plus a control, and they move together ───────────────
+// Alignment positions the field's box; the label rides on that box's left
+// edge. Centring a 280px field used to centre its label over the whole form
+// instead of putting it at the field's own left edge.
+
+test("the group carries the size and placement, the control fills it", () => {
+  const { group, control } = fieldLayout(EMPTY_DESIGN, {
+    width: "280px",
+    textAlign: "center",
+    marginTop: "8",
+    borderColor: "#abcdef",
+  });
+
+  assert.equal(group.width, "280px", "the pair is what gets sized");
+  assert.equal(group.marginLeft, "auto");
+  assert.equal(group.marginRight, "auto");
+  assert.equal(group.marginTop, "8px", "spacing stays on the group");
+  assert.equal(control.width, "100%", "the control fills the group, it is not sized again");
+  assert.equal(control.marginLeft, undefined, "the control must not be positioned twice");
+  assert.equal(control.borderColor, "#abcdef", "the control keeps its own look");
+});
+
+test("the group never carries text alignment -- that would drag the label", () => {
+  const { group, control } = fieldLayout(EMPTY_DESIGN, { width: "280px", textAlign: "center" });
+  assert.equal(group.textAlign, undefined);
+  // The value inside the box still follows the alignment.
+  assert.equal(control.textAlign, "center");
+});
+
+test("an unsized field is not given a width or margins", () => {
+  const { group, control } = fieldLayout(EMPTY_DESIGN, { textAlign: "right" });
+  assert.equal(group.width, undefined);
+  assert.equal(group.marginLeft, undefined);
+  assert.equal(control.width, undefined, "a full-width control stays full width");
 });
