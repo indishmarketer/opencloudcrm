@@ -9,6 +9,8 @@ import {
   contactTargetFor,
   defaultAddToContact,
   FORM_ELEMENT_PALETTE,
+  FORM_ELEMENT_TYPES,
+  NON_PALETTE_ELEMENT_TYPES,
   CONTACT_TARGET_LABELS,
 } from "../src/lib/formsShape.ts";
 import {
@@ -343,4 +345,49 @@ test("email verification is a free choice on every form, not pinned by a system 
   // systemRole is never taken from client input -- it is a server-side label
   // for built-in behaviour, and no longer a lock on editing or deleting.
   assert.equal(normalizeFormDefinition({ name: "Spoof", systemRole: "newsletter" }).systemRole, null);
+});
+
+// ── The palette must stay in step with the element list ─────────────────────
+// These exist because Full name, First name, Last name and Date were all
+// added to the shared element list while the editor kept its own hardcoded
+// copy of the palette -- so they were real everywhere except the one panel
+// you would drag them from.
+
+test("every element type is offered in the palette", () => {
+  const offered = new Set(FORM_ELEMENT_PALETTE.map((item) => item.type));
+  const missing = FORM_ELEMENT_TYPES.filter(
+    (type) => !offered.has(type) && !NON_PALETTE_ELEMENT_TYPES.includes(type),
+  );
+  assert.deepEqual(missing, [], `element types missing from the palette: ${missing.join(", ")}`);
+});
+
+test("the palette offers nothing that is not a real element type", () => {
+  const known = new Set(FORM_ELEMENT_TYPES);
+  for (const item of FORM_ELEMENT_PALETTE) {
+    assert.ok(known.has(item.type), `palette offers unknown type ${item.type}`);
+    assert.ok(item.label, `palette entry ${item.type} needs a label`);
+    assert.ok(["layout", "fields", "action"].includes(item.category), `${item.type} has no valid group`);
+  }
+});
+
+test("the name elements sit before the generic text input in the palette", () => {
+  const order = FORM_ELEMENT_PALETTE.filter((i) => i.category === "fields").map((i) => i.type);
+  for (const name of ["full_name", "first_name", "last_name"]) {
+    assert.ok(order.indexOf(name) > -1, `${name} must be a field`);
+    assert.ok(
+      order.indexOf(name) < order.indexOf("text_input"),
+      `${name} should come before the generic text input`,
+    );
+  }
+});
+
+test("every palette field type survives a round-trip to a saved field", () => {
+  // Catches an element that renders in the palette but normalizes away --
+  // the other half of the same divergence.
+  for (const item of FORM_ELEMENT_PALETTE) {
+    if (item.category !== "fields") continue;
+    const [element] = normalizeFormElements([{ id: "x", type: item.type, fieldKey: "k", fieldLabel: "L" }]);
+    assert.equal(element.type, item.type, `${item.type} must not be rewritten on save`);
+    assert.equal(elementsToFields([element]).length, 1, `${item.type} must produce a field`);
+  }
 });

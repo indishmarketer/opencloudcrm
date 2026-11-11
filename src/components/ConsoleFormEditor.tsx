@@ -26,6 +26,7 @@ import MediaLibraryPicker from "@/components/MediaLibraryPicker";
 import PageUrlPicker from "@/components/PageUrlPicker";
 import {
   CONTACT_TARGET_LABELS,
+  FORM_ELEMENT_PALETTE,
   isFieldElementType,
   resolveContactRouting,
   type FormCanvasElement,
@@ -42,6 +43,15 @@ import {
   elementWrapperStyle,
   hasCustomWidth,
 } from "@/lib/formElementStyles";
+
+/** Form-wide tokens applied to a preview container. */
+function designStyles(d: FormDesign): React.CSSProperties {
+  return {
+    backgroundColor: d.backgroundColor || undefined,
+    color: d.textColor || undefined,
+    fontFamily: d.fontFamily || undefined,
+  };
+}
 
 // Deterministic ID generator that avoids Math.random() in render
 let elementCounter = 0;
@@ -126,6 +136,15 @@ const EyeOffIcon = () => (
     <line x1="2" y1="2" x2="22" y2="22" />
   </svg>
 );
+const VERIFY_INPUT_ID = "__verify_input__";
+const VERIFY_BUTTON_ID = "__verify_button__";
+
+const ShieldIcon = () => (
+  <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+    <path d="m9 12 2 2 4-4" />
+  </svg>
+);
 const StyleIcon = () => (
   <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
     <circle cx="13.5" cy="6.5" r="2.5" />
@@ -163,6 +182,12 @@ function ElementIcon({ type, className = "h-5 w-5" }: { type: FormElementType; c
       return (
         <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
+        </svg>
+      );
+    case "date":
+      return (
+        <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
         </svg>
       );
     case "email":
@@ -250,39 +275,28 @@ function ElementIcon({ type, className = "h-5 w-5" }: { type: FormElementType; c
   }
 }
 
+/** Built from FORM_ELEMENT_PALETTE rather than listed again here.
+ *
+ * This panel used to carry its own hardcoded copy of the element list, so
+ * adding a type to the shared definition -- which is what the API, the
+ * normalizer and MCP all validate against -- left it invisible in the one
+ * place someone would actually drag it from. That is exactly how Full name,
+ * First name, Last name and Date came to exist everywhere except here. One
+ * list now, so the two cannot drift apart again. */
 const PALETTE_GROUPS: {
   group: string;
   items: { type: FormElementType; label: string }[];
-}[] = [
-  {
-    group: "Layout",
-    items: [
-      { type: "heading", label: "Heading" },
-      { type: "text", label: "Text" },
-      { type: "divider", label: "Divider" },
-    ],
-  },
-  {
-    group: "Fields",
-    items: [
-      { type: "text_input", label: "Text input" },
-      { type: "email", label: "Email" },
-      { type: "phone", label: "Phone" },
-      { type: "textarea", label: "Long text" },
-      { type: "select", label: "Dropdown" },
-      { type: "radio", label: "Single select" },
-      { type: "multiselect", label: "Multi select" },
-      { type: "checkbox", label: "Checkbox" },
-      { type: "country", label: "Country" },
-      { type: "address", label: "Address" },
-      { type: "number", label: "Number" },
-    ],
-  },
-  {
-    group: "Action",
-    items: [{ type: "button", label: "Button" }],
-  },
-];
+}[] = ([
+  ["Layout", "layout"],
+  ["Fields", "fields"],
+  ["Action", "action"],
+] as const).map(([group, category]) => ({
+  group,
+  items: FORM_ELEMENT_PALETTE.filter((item) => item.category === category).map(({ type, label }) => ({
+    type,
+    label,
+  })),
+}));
 
 function createElement(type: FormElementType): FormCanvasElement {
   const id = nextElementId();
@@ -340,12 +354,19 @@ function createElement(type: FormElementType): FormCanvasElement {
       return { id, type, fieldLabel: "Street Address", fieldKey: "address", fieldPlaceholder: "123 Main St, Suite 100", fieldRequired: false };
     case "number":
       return { id, type, fieldLabel: "Quantity / Amount", fieldKey: "quantity", fieldRequired: false };
+    case "date":
+      return { id, type, fieldLabel: "Date", fieldKey: "date", fieldRequired: false };
     case "button":
       return { id, type, buttonLabel: "Submit", buttonAlign: "full", buttonVariant: "primary" };
     case "divider":
       return { id, type, dividerSpacing: "md" };
     default:
-      return { id, type: "text_input", fieldLabel: "Text field", fieldKey: "field", fieldRequired: false };
+      // Keeps whatever type was asked for. This used to return
+      // `type: "text_input"`, so any element added to the shared palette
+      // without a case here was silently turned into a text field on drop --
+      // a bug that would be invisible until someone noticed their Date field
+      // was a plain text box.
+      return { id, type, fieldLabel: "Field", fieldKey: "field", fieldRequired: false };
   }
 }
 
@@ -365,6 +386,7 @@ function SizeStepper({
   min = 0,
   max = 2000,
   step = 1,
+  startAt = 0,
 }: {
   value: string;
   onChange: (val: string) => void;
@@ -372,14 +394,24 @@ function SizeStepper({
   min?: number;
   max?: number;
   step?: number;
+  /** Where the arrows begin when the field is still blank (inheriting).
+   * Stepping up from an empty Width used to produce "1px", which collapsed
+   * the input to a sliver on the very first click -- the arrows have to
+   * land somewhere usable, not at one pixel. */
+  startAt?: number;
 }) {
   const match = /^(-?[0-9]*\.?[0-9]+)(px|rem|em|%|vw|vh|ch)?$/.exec(value.trim());
   const amount = match ? Number(match[1]) : null;
   const unit = match?.[2] || "px";
 
   const nudge = (delta: number) => {
-    const base = amount ?? 0;
-    const next = Math.min(max, Math.max(min, Math.round((base + delta) * 100) / 100));
+    if (amount === null) {
+      // First touch of a blank field: adopt the sensible starting size
+      // instead of stepping away from zero.
+      onChange(`${Math.min(max, Math.max(min, startAt))}px`);
+      return;
+    }
+    const next = Math.min(max, Math.max(min, Math.round((amount + delta) * 100) / 100));
     onChange(`${next}${unit}`);
   };
 
@@ -447,13 +479,25 @@ function ElementLayoutPanel({
   showHeight: boolean;
 }) {
   const get = (key: keyof FormElementStyle) => String(style?.[key] ?? "");
-  const row = (label: string, key: keyof FormElementStyle, hint?: string, max?: number) => (
+  const row = (
+    label: string,
+    key: keyof FormElementStyle,
+    hint?: string,
+    opts?: { max?: number; step?: number; startAt?: number; min?: number },
+  ) => (
     <label className="grid gap-1 text-xs font-medium">
       <span className="flex items-baseline justify-between gap-2">
         {label}
         {hint && <span className="text-[10px] font-normal text-ink-soft">{hint}</span>}
       </span>
-      <SizeStepper value={get(key)} onChange={(val) => onChange({ [key]: val })} max={max} />
+      <SizeStepper
+        value={get(key)}
+        onChange={(val) => onChange({ [key]: val })}
+        max={opts?.max}
+        min={opts?.min}
+        step={opts?.step}
+        startAt={opts?.startAt}
+      />
     </label>
   );
 
@@ -465,15 +509,17 @@ function ElementLayoutPanel({
           Blank means inherit. Type a bare number for pixels, or add %, rem or em.
         </p>
       </div>
+      {/* Every arrow starts from a usable size and steps in sensible
+          increments, so a single click can never collapse an element. */}
       <div className="grid grid-cols-2 gap-2">
-        {row("Width", "width", "px / %")}
-        {showHeight ? row("Height", "height", "px") : <div />}
-        {row("Padding ↔", "paddingX", "px", 200)}
-        {row("Padding ↕", "paddingY", "px", 200)}
-        {row("Space above", "marginTop", "px", 400)}
-        {row("Space below", "marginBottom", "px", 400)}
-        {row("Font size", "fontSize", "px", 200)}
-        {row("Border width", "borderWidth", "px", 40)}
+        {row("Width", "width", "px / %", { min: 8, step: 10, startAt: 320 })}
+        {showHeight ? row("Height", "height", "px", { min: 8, step: 4, startAt: 44, max: 800 }) : <div />}
+        {row("Padding ↔", "paddingX", "px", { max: 200, step: 2, startAt: 16 })}
+        {row("Padding ↕", "paddingY", "px", { max: 200, step: 2, startAt: 12 })}
+        {row("Space above", "marginTop", "px", { max: 400, step: 4, startAt: 8 })}
+        {row("Space below", "marginBottom", "px", { max: 400, step: 4, startAt: 8 })}
+        {row("Font size", "fontSize", "px", { max: 200, min: 8, step: 1, startAt: 16 })}
+        {row("Border width", "borderWidth", "px", { max: 40, step: 1, startAt: 1 })}
       </div>
       <div className="grid gap-1 text-xs font-medium">
         <span>Font weight</span>
@@ -931,6 +977,76 @@ function SortableElementItem({
   );
 }
 
+/** The "Check your email" step, as a live canvas. It is not built from
+ * canvas elements -- it is a fixed screen the app renders after a visitor
+ * asks for a code -- so the only way to size and style it is to put it on
+ * its own canvas and let its two pieces be selected directly. Clicking the
+ * code box or the confirm button opens the same Layout & Size panel every
+ * element uses. */
+function VerifyCanvasPreview({
+  design,
+  selectedId,
+  onSelect,
+}: {
+  design: FormDesign;
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+}) {
+  const ring = (id: string) =>
+    selectedId === id
+      ? "outline outline-2 outline-offset-2 outline-ink"
+      : "outline outline-1 outline-offset-2 outline-transparent hover:outline-line";
+
+  return (
+    <div className="mx-auto w-full max-w-md" style={designStyles(design)}>
+      <h2 className="font-display text-2xl font-semibold text-ink">Check your email</h2>
+      <p className="mt-3 text-sm text-ink-soft">
+        We sent a 6-digit code to <strong>name@example.com</strong>. Enter it below, or just click the
+        confirmation link in that email — either one finishes the submission.
+      </p>
+
+      <div className="mt-6 space-y-4">
+        <button
+          type="button"
+          onClick={() => onSelect(VERIFY_INPUT_ID)}
+          className={`block w-full rounded-lg text-left ${ring(VERIFY_INPUT_ID)}`}
+          title="Code box"
+        >
+          <span
+            style={elementInputStyle(design, design.verifyInput)}
+            className="block w-full rounded-lg border border-line bg-paper px-4 py-3 text-center text-lg tracking-widest text-ink-soft"
+          >
+            123456
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => onSelect(VERIFY_BUTTON_ID)}
+          className={`${hasCustomWidth(design.verifyButton) ? "" : "block w-full"} rounded-full ${ring(VERIFY_BUTTON_ID)}`}
+          title="Confirm button"
+        >
+          <span
+            style={{
+              backgroundColor: design.buttonColor || "#0a0a0a",
+              color: design.buttonTextColor || "#ffffff",
+              ...elementButtonStyle(design, design.verifyButton),
+            }}
+            className={`${hasCustomWidth(design.verifyButton) ? "" : "w-full"} flex items-center justify-center rounded-full px-6 py-3 text-sm font-medium`}
+          >
+            Confirm and submit
+          </span>
+        </button>
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center gap-4 text-xs text-ink-soft">
+        <span className="underline">Send a new code</span>
+        <span className="underline">Change my answers</span>
+      </div>
+    </div>
+  );
+}
+
 function CanvasEndDropzone({ empty }: { empty: boolean }) {
   const { setNodeRef, isOver } = useDroppable({ id: "canvas-end" });
   return (
@@ -979,6 +1095,8 @@ export default function ConsoleFormEditor({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [rightTab, setRightTab] = useState<"inspector" | "style">("inspector");
   const [device, setDevice] = useState<"desktop" | "mobile">("desktop");
+  /** "form" edits the canvas; "verify" edits the "Check your email" step. */
+  const [canvasMode, setCanvasMode] = useState<"form" | "verify">("form");
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -1200,7 +1318,9 @@ export default function ConsoleFormEditor({
       ? resolveContactRouting({ type: selectedElement.type, addToContact: selectedElement.addToContact })
       : null;
   const isFormStyleSelected = selectedId === "__form_style__";
-  const isSidebarVisible = Boolean(selectedElement || isFormStyleSelected);
+  const verifyTarget =
+    selectedId === VERIFY_INPUT_ID ? "verifyInput" : selectedId === VERIFY_BUTTON_ID ? "verifyButton" : null;
+  const isSidebarVisible = Boolean(selectedElement || isFormStyleSelected || verifyTarget);
 
   const inputClass =
     "w-full rounded-lg border border-line bg-white px-3 py-2 text-xs text-ink outline-none transition-colors focus:border-ink";
@@ -1334,30 +1454,10 @@ export default function ConsoleFormEditor({
               </label>
 
               {verifyEmail && (
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <p className="text-xs font-semibold text-ink">Code box</p>
-                    <ElementLayoutPanel
-                      style={design.verifyInput}
-                      showHeight
-                      onChange={(patch) => {
-                        setDesign({ ...design, verifyInput: { ...design.verifyInput, ...patch } });
-                        setDirty(true);
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold text-ink">Confirm button</p>
-                    <ElementLayoutPanel
-                      style={design.verifyButton}
-                      showHeight
-                      onChange={(patch) => {
-                        setDesign({ ...design, verifyButton: { ...design.verifyButton, ...patch } });
-                        setDirty(true);
-                      }}
-                    />
-                  </div>
-                </div>
+                <p className="text-xs text-ink-soft">
+                  Style and size this step on its own canvas — the shield icon in the toolbar, beside the
+                  desktop and mobile preview.
+                </p>
               )}
             </div>
 
@@ -1562,6 +1662,23 @@ export default function ConsoleFormEditor({
         </div>
 
         <div className="flex shrink-0 items-center gap-1.5">
+          {/* Verification step editor. Its own canvas, because that screen is
+              not made of canvas elements -- it cannot be styled by selecting
+              something on the form. */}
+          <button
+            type="button"
+            onClick={() => {
+              setCanvasMode((mode) => (mode === "verify" ? "form" : "verify"));
+              setSelectedId(null);
+            }}
+            aria-label="Email verification step"
+            aria-pressed={canvasMode === "verify"}
+            title="Email verification step"
+            className={`${iconButton} ${canvasMode === "verify" ? "bg-paper-soft text-ink" : ""}`}
+          >
+            <ShieldIcon />
+          </button>
+
           {/* Working Desktop vs Mobile Viewport Switcher */}
           <div className="flex items-center gap-0.5 rounded-lg bg-paper-soft p-0.5">
             <button
@@ -1687,7 +1804,29 @@ export default function ConsoleFormEditor({
           </aside>
 
           {/* Center Canvas */}
-          {device === "desktop" ? (
+          {canvasMode === "verify" ? (
+            <main
+              onClick={() => setSelectedId(null)}
+              style={{
+                backgroundColor: design.backgroundColor || "#ffffff",
+                fontFamily: design.fontFamily || undefined,
+              }}
+              className="relative min-w-0 flex-1 h-full overflow-y-auto bg-white px-6 py-10 sm:px-12"
+            >
+              <div onClick={(e) => e.stopPropagation()}>
+                {!verifyEmail && (
+                  <div className="mx-auto mb-6 max-w-md rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+                    Email verification is currently off for this form, so visitors never see this step.
+                    Turn it on in Form Settings to use it.
+                  </div>
+                )}
+                <VerifyCanvasPreview design={design} selectedId={selectedId} onSelect={setSelectedId} />
+                <p className="mx-auto mt-8 max-w-md text-center text-xs text-ink-soft">
+                  Click the code box or the confirm button to size and style it.
+                </p>
+              </div>
+            </main>
+          ) : device === "desktop" ? (
             <main
               onClick={() => {
                 if (selectedId) setSelectedId(null);
@@ -1786,7 +1925,11 @@ export default function ConsoleFormEditor({
               {/* Header */}
               <div className="flex h-12 shrink-0 items-center justify-between border-b border-line px-4">
                 <span className="text-xs font-semibold uppercase tracking-wider text-ink">
-                  {isFormStyleSelected
+                  {verifyTarget
+                    ? verifyTarget === "verifyInput"
+                      ? "Code Box"
+                      : "Confirm Button"
+                    : isFormStyleSelected
                     ? "Form Style"
                     : selectedElement
                       ? `${selectedElement.type.replace("_", " ")} Element`
@@ -1834,6 +1977,29 @@ export default function ConsoleFormEditor({
               )}
 
               <div className="min-h-0 flex-1 overflow-y-auto p-4 space-y-4">
+                {/* 0. Verification step: the code box or the confirm button */}
+                {verifyTarget && (
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="text-sm font-semibold text-ink">
+                        {verifyTarget === "verifyInput" ? "Code box" : "Confirm button"}
+                      </h3>
+                      <p className="mt-0.5 text-xs text-ink-soft">
+                        Only affects the email verification step. Colours fall back to the form&apos;s own
+                        theme.
+                      </p>
+                    </div>
+                    <ElementLayoutPanel
+                      style={design[verifyTarget]}
+                      showHeight
+                      onChange={(patch) => {
+                        setDesign({ ...design, [verifyTarget]: { ...design[verifyTarget], ...patch } });
+                        setDirty(true);
+                      }}
+                    />
+                  </div>
+                )}
+
                 {/* 1. Global Form Style */}
                 {isFormStyleSelected && (
                   <div className="space-y-4">
@@ -2173,28 +2339,10 @@ export default function ConsoleFormEditor({
                                   <strong className="font-semibold text-ink">
                                     {CONTACT_TARGET_LABELS[selectedRouting.target]}
                                   </strong>
-                                  . Untick to keep this answer in the responses list only.
+                                  {selectedRouting.target === "detail" ? ", under this field's own label." : "."}
                                 </span>
                               </span>
                             </label>
-
-                            {selectedRouting.enabled && selectedRouting.target === "detail" && (
-                              <label className="grid gap-1.5 pl-6 text-xs font-medium">
-                                Detail name on the contact
-                                <input
-                                  value={selectedElement.contactDetailLabel || ""}
-                                  placeholder={selectedElement.fieldLabel || "Detail"}
-                                  onChange={(e) =>
-                                    updateElementProps(selectedElement.id, { contactDetailLabel: e.target.value })
-                                  }
-                                  className={inputClass}
-                                />
-                                <span className="text-[10px] text-ink-soft">
-                                  Shown under Details from forms on the contact, and deletable from there.
-                                  Re-submitting updates it rather than adding a second copy.
-                                </span>
-                              </label>
-                            )}
                           </div>
                         )}
                       </>

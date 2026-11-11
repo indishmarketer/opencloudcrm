@@ -104,27 +104,40 @@ export const FORM_FIELD_TYPES: { value: FormFieldType; label: string }[] = [
   { value: "date", label: "Date" },
 ];
 
-export type FormElementType =
-  | "heading"
-  | "text"
-  | "text_input"
-  | "full_name"
-  | "first_name"
-  | "last_name"
-  | "email"
-  | "phone"
-  | "textarea"
-  | "select"
-  | "radio"
-  | "multiselect"
-  | "checkbox"
-  | "country"
-  | "address"
-  | "number"
-  | "date"
-  | "hidden"
-  | "button"
-  | "divider";
+/** Every element type, as a runtime list so it can be iterated and tested.
+ * The type union is derived from it rather than written out separately --
+ * a second hand-maintained copy of this list is precisely how element types
+ * ended up existing in the API and in MCP while being undraggable in the
+ * editor. */
+export const FORM_ELEMENT_TYPES = [
+  "heading",
+  "text",
+  "full_name",
+  "first_name",
+  "last_name",
+  "text_input",
+  "email",
+  "phone",
+  "textarea",
+  "select",
+  "radio",
+  "multiselect",
+  "checkbox",
+  "country",
+  "address",
+  "number",
+  "date",
+  "hidden",
+  "button",
+  "divider",
+] as const;
+
+export type FormElementType = (typeof FORM_ELEMENT_TYPES)[number];
+
+/** The one type never offered in the palette: a field is made hidden with
+ * the "Hidden field" toggle on a normal element, not dragged in as its own
+ * thing. */
+export const NON_PALETTE_ELEMENT_TYPES: FormElementType[] = ["hidden"];
 
 export const FORM_ELEMENT_PALETTE: {
   type: FormElementType;
@@ -134,10 +147,10 @@ export const FORM_ELEMENT_PALETTE: {
 }[] = [
   { type: "heading", label: "Heading", category: "layout", description: "Title or section header" },
   { type: "text", label: "Paragraph", category: "layout", description: "Instructions, notes, or disclaimer" },
-  { type: "text_input", label: "Text input", category: "fields", description: "Single-line text field" },
   { type: "full_name", label: "Full name", category: "fields", description: "Goes to the contact's full name" },
   { type: "first_name", label: "First name", category: "fields", description: "Goes to the contact's first name" },
   { type: "last_name", label: "Last name", category: "fields", description: "Goes to the contact's last name" },
+  { type: "text_input", label: "Text input", category: "fields", description: "Single-line text field" },
   { type: "email", label: "Email", category: "fields", description: "Email address with validation" },
   { type: "phone", label: "Phone", category: "fields", description: "Phone number with country flag & code" },
   { type: "textarea", label: "Long text", category: "fields", description: "Multi-line text area" },
