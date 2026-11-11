@@ -627,27 +627,7 @@ export default function SavedForm({
   const firstButtonId = firstButton?.id;
   const challenge = <Turnstile key={turnstileNonce} onToken={handleToken} />;
 
-  /** Lines the challenge up with whatever the button is doing, so "Verified"
-   * sits directly above the button rather than pinned to the form's left
-   * edge while a centred button floats away from it. */
-  function challengeRow(el?: FormCanvasElement) {
-    // A full-width button starts at the left edge whatever its alignment
-    // says, so the challenge stays there with it.
-    const fullWidth = !el || (el.buttonAlign === "full" && !hasCustomWidth(el.elementStyle));
-    const align = fullWidth
-      ? "left"
-      : el.elementStyle?.textAlign ||
-        (el.buttonAlign === "center" ? "center" : el.buttonAlign === "right" ? "right" : "left");
-    return (
-      <div
-        className={`flex ${
-          align === "center" ? "justify-center" : align === "right" ? "justify-end" : "justify-start"
-        }`}
-      >
-        {challenge}
-      </div>
-    );
-  }
+
 
   function handleCountrySelect(countryCode: string) {
     if (!form) return;
@@ -759,7 +739,11 @@ export default function SavedForm({
               const fullWidth = el.buttonAlign === "full" && !hasCustomWidth(el.elementStyle);
               return (
                 <Fragment key={el.id}>
-                {el.id === firstButtonId && challengeRow(el)}
+                {/* The challenge and the button are one group, positioned by
+                    the button's alignment, with both pinned to the group's
+                    left edge -- so the challenge starts exactly where the
+                    button starts instead of being centred on its own. Same
+                    idea as a field's label sitting on its box's left edge. */}
                 <div
                   style={elementWrapperStyle(el.elementStyle)}
                   className={`flex ${
@@ -772,18 +756,21 @@ export default function SavedForm({
                           : "w-full"
                   } pt-2`}
                 >
-                  <button
-                    type="submit"
-                    disabled={status === "submitting" || !turnstileToken}
-                    className={`${fullWidth ? "w-full" : ""} ${
-                      el.elementStyle?.paddingX || el.elementStyle?.padding ? "" : "px-6"
-                    } ${
-                      el.elementStyle?.paddingY || el.elementStyle?.padding || el.elementStyle?.height ? "" : "py-3"
-                    } rounded-xl bg-ink text-sm font-medium text-paper transition-opacity hover:opacity-80 disabled:opacity-50`}
-                    style={buttonStyles(design, el.elementStyle)}
-                  >
-                    {status === "submitting" ? "Sending…" : el.buttonLabel || "Submit"}
-                  </button>
+                  <div className={`flex flex-col items-start gap-3 ${fullWidth ? "w-full" : ""}`}>
+                    {el.id === firstButtonId && challenge}
+                    <button
+                      type="submit"
+                      disabled={status === "submitting" || !turnstileToken}
+                      className={`${fullWidth ? "w-full" : ""} ${
+                        el.elementStyle?.paddingX || el.elementStyle?.padding ? "" : "px-6"
+                      } ${
+                        el.elementStyle?.paddingY || el.elementStyle?.padding || el.elementStyle?.height ? "" : "py-3"
+                      } rounded-xl bg-ink text-sm font-medium text-paper transition-opacity hover:opacity-80 disabled:opacity-50`}
+                      style={buttonStyles(design, el.elementStyle)}
+                    >
+                      {status === "submitting" ? "Sending…" : el.buttonLabel || "Submit"}
+                    </button>
+                  </div>
                 </div>
                 </Fragment>
               );
@@ -1000,7 +987,7 @@ export default function SavedForm({
               "Missing verification token" and no code was ever sent. */}
           {!firstButtonId && (
             <>
-              {challengeRow()}
+              {challenge}
               <button
                 type="submit"
                 disabled={status === "submitting" || !turnstileToken}
