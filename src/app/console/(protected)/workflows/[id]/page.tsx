@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
 export default async function WorkflowEditorPage({ params }: { params: Promise<{ id: string }> }) {
   const id = Number((await params).id);
   if (!Number.isInteger(id) || id < 1) notFound();
-  const [workflow, runs, emailTemplates, contentTemplates, rawWhatsAppTemplates, courses, segments, initialTestEmail] = await Promise.all([
+  const [workflow, runs, emailTemplates, contentTemplates, rawWhatsAppTemplates, courses, segments, forms, initialTestEmail] = await Promise.all([
     getWorkflow(id),
     pool.query(`SELECT id, status, error, created_at, finished_at, false AS legacy
       FROM automation_workflow_runs WHERE workflow_id = $1
@@ -29,6 +29,8 @@ export default async function WorkflowEditorPage({ params }: { params: Promise<{
     listWhatsAppTemplates().catch(() => []),
     pool.query("SELECT id, title FROM courses ORDER BY title"),
     pool.query("SELECT id, name FROM contact_segments ORDER BY is_system DESC, name"),
+    // Lets the custom_form.submitted trigger be narrowed to one form.
+    pool.query("SELECT id, name FROM forms ORDER BY name"),
     getAdminSessionEmail(),
   ]);
   if (!workflow) notFound();
@@ -46,5 +48,5 @@ export default async function WorkflowEditorPage({ params }: { params: Promise<{
     { value: emailAt("reach"), label: `Reach · ${emailAt("reach")}` },
     { value: emailAt("academy"), label: `Academy · ${emailAt("academy")}` },
   ];
-  return <ConsoleWorkflowCanvasFrame><WorkflowCanvas workflow={safeWorkflowRecord(workflow)} triggers={workflowTriggerOptions} initialRuns={runs.rows} emailTemplates={emailOptions} whatsappTemplates={whatsappOptions} courses={courses.rows} segments={segments.rows} fromAddresses={fromAddresses} initialTestEmail={initialTestEmail || ""} /></ConsoleWorkflowCanvasFrame>;
+  return <ConsoleWorkflowCanvasFrame><WorkflowCanvas workflow={safeWorkflowRecord(workflow)} triggers={workflowTriggerOptions} initialRuns={runs.rows} emailTemplates={emailOptions} whatsappTemplates={whatsappOptions} courses={courses.rows} segments={segments.rows} forms={forms.rows} fromAddresses={fromAddresses} initialTestEmail={initialTestEmail || ""} /></ConsoleWorkflowCanvasFrame>;
 }

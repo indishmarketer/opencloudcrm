@@ -30,7 +30,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     successText: form.successText,
     submissionAction: form.submissionAction,
     redirectUrl: form.redirectUrl,
-    verifyEmail: form.verifyEmail || Boolean(form.systemRole),
+    verifyEmail: form.verifyEmail,
     design: form.design,
   });
 }

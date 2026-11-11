@@ -20,6 +20,7 @@ type EmailTemplateOption = { value: string; label: string; kind: "fixed" | "libr
 type WhatsAppTemplateOption = { name: string; language: string; category: string; body: string; variableCount: number };
 type CourseOption = { id: number; title: string };
 type SegmentOption = { id: number; name: string };
+type FormOption = { id: number; name: string };
 type Run = { id: number; status: string; error: string | null; created_at: string; finished_at: string | null; legacy?: boolean };
 type TestStepResult = { nodeId: string; label: string; status: "passed" | "skipped" | "failed" | "sent"; message: string };
 type GraphSnapshot = { nodes: CanvasNode[]; edges: CanvasEdge[]; triggerType: "event" | "webhook"; triggerKey: string };
@@ -93,6 +94,7 @@ export default function WorkflowCanvas({
   whatsappTemplates,
   courses,
   segments,
+  forms,
   fromAddresses,
   initialTestEmail,
 }: {
@@ -103,6 +105,7 @@ export default function WorkflowCanvas({
   whatsappTemplates: WhatsAppTemplateOption[];
   courses: CourseOption[];
   segments: SegmentOption[];
+  forms: FormOption[];
   fromAddresses: { value: string; label: string }[];
   initialTestEmail: string;
 }) {
@@ -203,6 +206,9 @@ export default function WorkflowCanvas({
         ...node.data.config,
         triggerType: "event",
         triggerKey: value,
+        ...(value === "custom_form.submitted"
+          ? { formId: String(node.data.config.formId || "") }
+          : { formId: undefined }),
         ...(courseEvent(value) ? {
           courseId: String(node.data.config.courseId || ""),
           ...(value === "course.inactivity" ? { inactiveDays: Math.max(1, Math.min(365, Number(node.data.config.inactiveDays) || 3)) } : {}),
@@ -377,7 +383,7 @@ export default function WorkflowCanvas({
 
         <aside className="hidden w-80 shrink-0 overflow-y-auto border-l border-line bg-paper p-5 xl:block">
           {selectedNode ? (
-            <NodeSettings node={selectedNode} emailNodes={nodes.filter((item) => item.data.kind === "email")} onChange={updateSelected} triggerType={triggerType} triggerKey={triggerKey} triggers={triggers} onTriggerTypeChange={changeTriggerType} onTriggerKeyChange={changeTriggerKey} onRotateWebhook={() => void rotateWebhook()} webhookUrl={webhookUrl} emailTemplates={emailTemplates} whatsappTemplates={whatsappTemplates} courses={courses} segments={segments} fromAddresses={fromAddresses} />
+            <NodeSettings node={selectedNode} emailNodes={nodes.filter((item) => item.data.kind === "email")} onChange={updateSelected} triggerType={triggerType} triggerKey={triggerKey} triggers={triggers} onTriggerTypeChange={changeTriggerType} onTriggerKeyChange={changeTriggerKey} onRotateWebhook={() => void rotateWebhook()} webhookUrl={webhookUrl} emailTemplates={emailTemplates} whatsappTemplates={whatsappTemplates} courses={courses} segments={segments} forms={forms} fromAddresses={fromAddresses} />
           ) : (
             <div className="space-y-5">
               <p className="text-sm leading-6 text-ink-soft">Select a node to configure its trigger or action. Drag a node&apos;s output handle onto the canvas to add and connect the next step.</p>
@@ -400,7 +406,7 @@ export default function WorkflowCanvas({
   );
 }
 
-function NodeSettings({ node, emailNodes, onChange, triggerType, triggerKey, triggers, onTriggerTypeChange, onTriggerKeyChange, onRotateWebhook, webhookUrl, emailTemplates, whatsappTemplates, courses, segments, fromAddresses }: {
+function NodeSettings({ node, emailNodes, onChange, triggerType, triggerKey, triggers, onTriggerTypeChange, onTriggerKeyChange, onRotateWebhook, webhookUrl, emailTemplates, whatsappTemplates, courses, segments, forms, fromAddresses }: {
   node: CanvasNode;
   emailNodes: CanvasNode[];
   onChange: (patch: Partial<CanvasNodeData>) => void;
@@ -415,6 +421,7 @@ function NodeSettings({ node, emailNodes, onChange, triggerType, triggerKey, tri
   whatsappTemplates: WhatsAppTemplateOption[];
   courses: CourseOption[];
   segments: SegmentOption[];
+  forms: FormOption[];
   fromAddresses: { value: string; label: string }[];
 }) {
   const config = node.data.config;
@@ -432,6 +439,13 @@ function NodeSettings({ node, emailNodes, onChange, triggerType, triggerKey, tri
         {courseEvent(triggerKey) && <>
           <div><p className="mb-1.5 text-xs font-medium text-ink-soft">Course</p><BrandSelect value={String(config.courseId || "")} onChange={(value) => set("courseId", value)} options={[{ value: "", label: "Any course" }, ...courses.map((course) => ({ value: String(course.id), label: course.title }))]} searchable placeholder="Any course" /></div>
         </>}
+        {triggerKey === "custom_form.submitted" && (
+          <div>
+            <p className="mb-1.5 text-xs font-medium text-ink-soft">Form</p>
+            <BrandSelect value={String(config.formId || "")} onChange={(value) => set("formId", value)} options={[{ value: "", label: "Any form" }, ...forms.map((form) => ({ value: String(form.id), label: form.name }))]} searchable placeholder="Any form" />
+            <p className="mt-1.5 text-xs leading-5 text-ink-soft">Leave on &quot;Any form&quot; to run for every form submission. Choosing one form means only that form&apos;s submissions enter this workflow -- the same way a course trigger can be narrowed to one course.</p>
+          </div>
+        )}
         {triggerKey === "course.inactivity" && <>
           <label className="block text-xs font-medium text-ink-soft">Inactive for at least (days)<input type="number" min={1} max={365} step={1} value={String(config.inactiveDays ?? 3)} onChange={(event) => set("inactiveDays", Number(event.target.value))} className="mt-1.5 w-full rounded-lg border border-line px-3 py-2 text-sm text-ink outline-none focus:border-ink" /></label>
           <p className="text-xs leading-5 text-ink-soft">The course inactivity event is checked against the learner&apos;s last activity before this workflow starts. Add a Wait node for any additional reminder delay.</p>

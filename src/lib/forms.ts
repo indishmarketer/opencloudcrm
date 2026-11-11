@@ -126,7 +126,8 @@ export async function updateForm(id: number, input: Omit<FormDefinition, "id">):
 
   let fields = elementsToFields(elements);
   if (existing.isFixed) {
-    // Fixed forms (Sign up / Log in) preserve their fixed field structure
+    // The Sign up / Log in form preserves its fixed field structure; only
+    // its copy and design are editable.
     fields = existing.fields;
   }
 
@@ -160,8 +161,13 @@ export async function updateForm(id: number, input: Omit<FormDefinition, "id">):
 
 export async function deleteForm(id: number): Promise<boolean> {
   const form = await getFormById(id);
-  if (form?.isFixed || form?.systemRole) {
-    throw new Error("Forms used by built-in pages cannot be deleted.");
+  // Only the Sign up / Log in form is undeletable -- core auth plumbing
+  // depends on its field list existing. systemRole ('contact',
+  // 'newsletter') is a label for the extra behaviour a form carries, not a
+  // lock: those forms are ordinary forms the owner can delete, and the
+  // behaviour goes away with them.
+  if (form?.isFixed) {
+    throw new Error("The Sign up / Log in form cannot be deleted -- account access depends on it.");
   }
   const result = await pool.query("DELETE FROM forms WHERE id = $1", [id]);
   return (result.rowCount ?? 0) > 0;
@@ -181,12 +187,42 @@ export async function recordFormSubmission(input: {
   return result.rows[0].id;
 }
 
-export async function listFormSubmissions(
-  formId: number,
-): Promise<{ id: number; field_values: Record<string, string>; page_url: string; created_at: Date }[]> {
-  const result = await pool.query(
-    "SELECT id, field_values, page_url, created_at FROM form_submissions WHERE form_id = $1 ORDER BY created_at DESC LIMIT 200",
-    [formId],
+export type FormSubmissionRow = {
+  id: number;
+  field_values: Record<string, string>;
+  page_url: string;
+  created_at: Date;
+  contact_id: number | null;
+  contact_email: string | null;
+  contact_name: string | null;
+};
+
+export async function listFormSubmissions(formId: number, limit = 200): Promise<FormSubmissionRow[]> {
+  const result = await pool.query<FormSubmissionRow>(
+    `SELECT s.id, s.field_values, s.page_url, s.created_at, s.contact_id,
+            c.email AS contact_email, c.name AS contact_name
+     FROM form_submissions s LEFT JOIN contacts c ON c.id = s.contact_id
+     WHERE s.form_id = $1 ORDER BY s.created_at DESC LIMIT $2`,
+    [formId, Math.min(Math.max(limit, 1), 1000)],
   );
   return result.rows;
+}
+
+export async function countFormSubmissions(formId: number): Promise<number> {
+  const result = await pool.query<{ count: string }>(
+    "SELECT COUNT(*)::text AS count FROM form_submissions WHERE form_id = $1",
+    [formId],
+  );
+  return Number(result.rows[0]?.count || 0);
+}
+
+/** Deletes one recorded response. Any contact detail that came from it keeps
+ * its value (the FK is ON DELETE SET NULL) -- removing a response should not
+ * silently strip data the owner deliberately promoted onto a contact. */
+export async function deleteFormSubmission(formId: number, submissionId: number): Promise<boolean> {
+  const result = await pool.query("DELETE FROM form_submissions WHERE id = $1 AND form_id = $2", [
+    submissionId,
+    formId,
+  ]);
+  return (result.rowCount ?? 0) > 0;
 }

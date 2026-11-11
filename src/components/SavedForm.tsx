@@ -3,6 +3,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Turnstile from "@/components/Turnstile";
 import type { FormCanvasElement, FormDesign, FormField } from "@/lib/formsShape";
+import {
+  elementButtonStyle,
+  elementInputStyle,
+  elementTextStyle,
+  elementWrapperStyle,
+  hasCustomWidth,
+} from "@/lib/formElementStyles";
 import { listCountryDialOptions } from "@/lib/countryDialCodes";
 
 type PublicForm = {
@@ -40,25 +47,26 @@ function designStyles(d: FormDesign): React.CSSProperties {
   return styles;
 }
 
-function inputStyles(d: FormDesign, elStyle?: FormCanvasElement["elementStyle"]): React.CSSProperties {
-  const styles: React.CSSProperties = {};
-  if (elStyle?.borderColor || d.borderColor) styles.borderColor = elStyle?.borderColor || d.borderColor;
-  if (elStyle?.borderRadius || d.borderRadius) styles.borderRadius = elStyle?.borderRadius || d.borderRadius;
-  if (elStyle?.backgroundColor) styles.backgroundColor = elStyle.backgroundColor;
-  if (elStyle?.textColor) styles.color = elStyle.textColor;
-  return styles;
-}
-
-function buttonStyles(d: FormDesign, elStyle?: FormCanvasElement["elementStyle"]): React.CSSProperties {
-  const styles: React.CSSProperties = {};
-  if (elStyle?.backgroundColor || d.buttonColor) styles.backgroundColor = elStyle?.backgroundColor || d.buttonColor;
-  if (elStyle?.textColor || d.buttonTextColor) styles.color = elStyle?.textColor || d.buttonTextColor;
-  if (elStyle?.borderRadius || d.borderRadius) styles.borderRadius = elStyle?.borderRadius || d.borderRadius;
-  return styles;
-}
+/** Thin aliases kept so the many call sites below read the same as before;
+ * the real work (padding, size, spacing, typography, border) lives in
+ * src/lib/formElementStyles.ts and is shared with the console canvas. */
+const inputStyles = (d: FormDesign, elStyle?: FormCanvasElement["elementStyle"]) => elementInputStyle(d, elStyle);
+const buttonStyles = (d: FormDesign, elStyle?: FormCanvasElement["elementStyle"]) => elementButtonStyle(d, elStyle);
 
 const baseInputClass =
   "mt-2 w-full rounded-lg border border-line bg-paper px-4 py-3 text-sm outline-none focus:border-ink transition-colors";
+
+/** A field's own label follows its text colour and font size so restyling an
+ * element restyles the whole field, not just its input box. */
+function labelStyle(el: FormCanvasElement): React.CSSProperties {
+  return {
+    color: el.elementStyle?.textColor || undefined,
+    fontSize: el.elementStyle?.fontSize || undefined,
+    fontWeight: el.elementStyle?.fontWeight || undefined,
+    textAlign: el.elementStyle?.textAlign || undefined,
+    display: el.elementStyle?.textAlign ? "block" : undefined,
+  };
+}
 
 function CountryPicker({
   value,
@@ -286,10 +294,20 @@ export default function SavedForm({
   const [values, setValues] = useState<Record<string, string>>({});
   const [turnstileToken, setTurnstileToken] = useState("");
   const handleToken = useCallback((t: string) => setTurnstileToken(t), []);
+  /** A Turnstile token is single-use: the server spends it on the first
+   * request and a retry with the same one fails verification. Bumping this
+   * remounts the widget so a visitor who hits a validation error can submit
+   * again instead of being stuck on "Could not verify you're human". */
+  const [turnstileNonce, setTurnstileNonce] = useState(0);
+  const freshChallenge = useCallback(() => {
+    setTurnstileToken("");
+    setTurnstileNonce((n) => n + 1);
+  }, []);
 
   // OTP two-step state
   const [step, setStep] = useState<"form" | "otp">("form");
   const [otpEmail, setOtpEmail] = useState("");
+  const [otpNotice, setOtpNotice] = useState("");
   const otpCodeRef = useRef<HTMLInputElement>(null);
   const [selectedPhoneCountry, setSelectedPhoneCountry] = useState<Record<string, string>>({});
 
@@ -323,6 +341,47 @@ export default function SavedForm({
     setStatus("done");
   }
 
+  /** Sends the form to the server. Both flows post the same body -- with
+   * email verification on, the server answers with step:"verify-otp"
+   * instead of recording the submission, and the visitor gets the code
+   * screen. Either way a Turnstile token is required and spent. */
+  async function postForm(currentForm: PublicForm): Promise<boolean> {
+    setStatus("submitting");
+    setError("");
+    try {
+      const res = await fetch("/api/forms/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          formId,
+          pageUrl: window.location.href,
+          fields: values,
+          turnstileToken,
+          ...(currentForm.verifyEmail ? { step: "request-otp" as const } : {}),
+        }),
+      });
+      const body = (await res.json().catch(() => ({}))) as { error?: string; step?: string; email?: string };
+      if (!res.ok) throw new Error(body.error || "Something went wrong. Try again.");
+
+      if (body.step === "verify-otp") {
+        setOtpEmail(body.email || "");
+        setStep("otp");
+        setStatus("idle");
+        // Re-arm the challenge so "Send a new code" has a token of its own.
+        freshChallenge();
+        return true;
+      }
+      handleSuccess(currentForm);
+      return true;
+    } catch (err) {
+      setStatus("error");
+      setError(err instanceof Error ? err.message : "Something went wrong. Try again.");
+      // The token this attempt carried is spent either way.
+      freshChallenge();
+      return false;
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!form) return;
@@ -335,53 +394,8 @@ export default function SavedForm({
         setError("Please enter your email address.");
         return;
       }
-
-      setStatus("submitting");
-      setError("");
-      try {
-        const res = await fetch("/api/forms/submit", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            formId,
-            pageUrl: window.location.href,
-            fields: values,
-            turnstileToken,
-            step: "request-otp",
-          }),
-        });
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error((body as { error?: string }).error || "Something went wrong. Try again.");
-        }
-        setOtpEmail(emailValue);
-        setStep("otp");
-        setStatus("idle");
-      } catch (err) {
-        setStatus("error");
-        setError(err instanceof Error ? err.message : "Something went wrong. Try again.");
-      }
-      return;
     }
-
-    // Standard submit
-    setStatus("submitting");
-    setError("");
-    try {
-      const res = await fetch("/api/forms/submit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ formId, pageUrl: window.location.href, fields: values, turnstileToken }),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error((body as { error?: string }).error || "Something went wrong. Try again.");
-      }
-      handleSuccess(form);
-    } catch (err) {
-      setStatus("error");
-      setError(err instanceof Error ? err.message : "Something went wrong. Try again.");
-    }
+    await postForm(form);
   }
 
   async function handleVerifyOtp(e: React.FormEvent<HTMLFormElement>) {
@@ -436,7 +450,8 @@ export default function SavedForm({
       <div style={designStyles(design)}>
         <h2 className="font-display text-2xl font-semibold">Check your email</h2>
         <p className="mt-3 text-ink-soft">
-          We sent a verification code to <strong>{otpEmail}</strong>. Enter it below to submit your message.
+          We sent a 6-digit code to <strong>{otpEmail}</strong>. Enter it below, or just click the
+          confirmation link in that email — either one finishes your submission.
         </p>
         <form className="mt-6 space-y-4" onSubmit={handleVerifyOtp}>
           <input
@@ -451,6 +466,7 @@ export default function SavedForm({
             style={inputStyles(design)}
           />
           {error && <p className="text-sm text-red-600">{error}</p>}
+          {otpNotice && <p className="text-sm text-ink-soft">{otpNotice}</p>}
           <button
             type="submit"
             disabled={status === "submitting"}
@@ -460,6 +476,37 @@ export default function SavedForm({
             {status === "submitting" ? "Verifying…" : "Confirm and submit"}
           </button>
         </form>
+        <div className="mt-4 flex flex-wrap items-center gap-4 text-xs">
+          <button
+            type="button"
+            disabled={status === "submitting" || !turnstileToken}
+            onClick={async () => {
+              setOtpNotice("");
+              const sent = await postForm(form);
+              if (sent) setOtpNotice(`A new code is on its way to ${otpEmail}.`);
+            }}
+            className="underline text-ink-soft hover:text-ink disabled:opacity-50"
+          >
+            Send a new code
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setStep("form");
+              setError("");
+              setOtpNotice("");
+              setStatus("idle");
+              freshChallenge();
+            }}
+            className="underline text-ink-soft hover:text-ink"
+          >
+            Change my answers
+          </button>
+        </div>
+        {/* The resend above posts the form again, which needs its own token. */}
+        <div className="mt-3">
+          <Turnstile key={turnstileNonce} onToken={handleToken} />
+        </div>
       </div>
     );
   }
@@ -489,10 +536,10 @@ export default function SavedForm({
         <form className="space-y-4" onSubmit={handleSubmit}>
           {form.elements!.map((el) => {
             if (el.type === "heading") {
-              const hStyle = {
-                textAlign: el.headingAlign || "left",
-                color: el.elementStyle?.textColor || undefined,
-                fontSize: el.elementStyle?.fontSize || undefined,
+              const hStyle: React.CSSProperties = {
+                textAlign: el.elementStyle?.textAlign || el.headingAlign || "left",
+                ...elementTextStyle(design, el.elementStyle),
+                ...elementWrapperStyle(el.elementStyle),
               };
               if (el.headingLevel === "h1") {
                 return (
@@ -527,11 +574,11 @@ export default function SavedForm({
                 <p
                   key={el.id}
                   style={{
-                    textAlign: el.textAlign || "left",
-                    color: el.elementStyle?.textColor || undefined,
-                    fontSize: el.elementStyle?.fontSize || undefined,
+                    textAlign: el.elementStyle?.textAlign || el.textAlign || "left",
+                    ...elementTextStyle(design, el.elementStyle),
+                    ...elementWrapperStyle(el.elementStyle),
                   }}
-                  className={`text-sm ${el.textMuted ? "text-ink-soft" : "text-ink"}`}
+                  className={`text-sm whitespace-pre-wrap ${el.textMuted ? "text-ink-soft" : "text-ink"}`}
                 >
                   {el.textContent}
                 </p>
@@ -542,11 +589,19 @@ export default function SavedForm({
               return (
                 <div
                   key={el.id}
+                  style={elementWrapperStyle(el.elementStyle)}
                   className={
                     el.dividerSpacing === "lg" ? "py-4" : el.dividerSpacing === "sm" ? "py-1" : "py-2"
                   }
                 >
-                  <hr className="border-line" />
+                  <hr
+                    className="border-line"
+                    style={{
+                      borderColor: el.elementStyle?.borderColor || design.borderColor || undefined,
+                      borderTopWidth: el.elementStyle?.borderWidth || undefined,
+                      width: el.elementStyle?.width || undefined,
+                    }}
+                  />
                 </div>
               );
             }
@@ -564,9 +619,13 @@ export default function SavedForm({
             }
 
             if (el.type === "button") {
+              // A custom width wins over "full width": a visitor who set an
+              // explicit size meant that size, not the container's.
+              const fullWidth = el.buttonAlign === "full" && !hasCustomWidth(el.elementStyle);
               return (
                 <div
                   key={el.id}
+                  style={elementWrapperStyle(el.elementStyle)}
                   className={`flex ${
                     el.buttonAlign === "center"
                       ? "justify-center"
@@ -579,10 +638,12 @@ export default function SavedForm({
                 >
                   <button
                     type="submit"
-                    disabled={status === "submitting" || (!form.verifyEmail && !turnstileToken)}
-                    className={`${
-                      el.buttonAlign === "full" ? "w-full" : ""
-                    } rounded-xl bg-ink px-6 py-3 text-sm font-medium text-paper transition-opacity hover:opacity-80 disabled:opacity-50`}
+                    disabled={status === "submitting" || !turnstileToken}
+                    className={`${fullWidth ? "w-full" : ""} ${
+                      el.elementStyle?.paddingX || el.elementStyle?.padding ? "" : "px-6"
+                    } ${
+                      el.elementStyle?.paddingY || el.elementStyle?.padding || el.elementStyle?.height ? "" : "py-3"
+                    } rounded-xl bg-ink text-sm font-medium text-paper transition-opacity hover:opacity-80 disabled:opacity-50`}
                     style={buttonStyles(design, el.elementStyle)}
                   >
                     {status === "submitting" ? "Sending…" : el.buttonLabel || "Submit"}
@@ -599,8 +660,8 @@ export default function SavedForm({
 
             if (el.type === "country") {
               return (
-                <div key={el.id}>
-                  <label className="text-sm font-medium" htmlFor={inputId}>
+                <div key={el.id} style={elementWrapperStyle(el.elementStyle)}>
+                  <label className="text-sm font-medium" style={labelStyle(el)} htmlFor={inputId}>
                     {el.fieldLabel || "Country"}
                   </label>
                   <CountryPicker
@@ -618,8 +679,8 @@ export default function SavedForm({
 
             if (el.type === "phone") {
               return (
-                <div key={el.id}>
-                  <label className="text-sm font-medium" htmlFor={inputId}>
+                <div key={el.id} style={elementWrapperStyle(el.elementStyle)}>
+                  <label className="text-sm font-medium" style={labelStyle(el)} htmlFor={inputId}>
                     {el.fieldLabel || "Phone number"}
                   </label>
                   <PhoneFieldInput
@@ -640,8 +701,10 @@ export default function SavedForm({
 
             if (el.type === "radio") {
               return (
-                <div key={el.id} className="space-y-2">
-                  <span className="block text-sm font-medium">{el.fieldLabel || "Select an option"}</span>
+                <div key={el.id} className="space-y-2" style={elementWrapperStyle(el.elementStyle)}>
+                  <span className="block text-sm font-medium" style={labelStyle(el)}>
+                    {el.fieldLabel || "Select an option"}
+                  </span>
                   <div className="space-y-1.5 pt-0.5">
                     {choices.map((choice) => (
                       <label
@@ -669,8 +732,10 @@ export default function SavedForm({
             if (el.type === "multiselect") {
               const selectedList = val ? val.split(",").map((s) => s.trim()).filter(Boolean) : [];
               return (
-                <div key={el.id} className="space-y-2">
-                  <span className="block text-sm font-medium">{el.fieldLabel || "Select choices"}</span>
+                <div key={el.id} className="space-y-2" style={elementWrapperStyle(el.elementStyle)}>
+                  <span className="block text-sm font-medium" style={labelStyle(el)}>
+                    {el.fieldLabel || "Select choices"}
+                  </span>
                   <div className="space-y-1.5 pt-0.5">
                     {choices.map((choice) => {
                       const isChecked = selectedList.includes(choice);
@@ -701,9 +766,9 @@ export default function SavedForm({
             }
 
             return (
-              <div key={el.id}>
+              <div key={el.id} style={elementWrapperStyle(el.elementStyle)}>
                 {el.type !== "checkbox" && (
-                  <label className="text-sm font-medium" htmlFor={inputId}>
+                  <label className="text-sm font-medium" style={labelStyle(el)} htmlFor={inputId}>
                     {el.fieldLabel}
                   </label>
                 )}
@@ -755,7 +820,9 @@ export default function SavedForm({
                         ? "email"
                         : el.type === "number"
                           ? "number"
-                          : "text"
+                          : el.type === "date"
+                            ? "date"
+                            : "text"
                     }
                     required={el.fieldRequired}
                     placeholder={el.fieldPlaceholder}
@@ -770,13 +837,19 @@ export default function SavedForm({
           })}
 
           {status === "error" && <p className="text-sm text-red-600">{error}</p>}
-          {!form.verifyEmail && <Turnstile onToken={handleToken} />}
+          {/* Rendered for every form, verification on or off. The server
+              requires a Turnstile token on the first request of BOTH flows
+              -- the direct submit and the "send me a code" step -- so
+              hiding the widget on verification forms (which is what this
+              did) meant that request was always rejected with "Missing
+              verification token" and no code was ever sent. */}
+          <Turnstile key={turnstileNonce} onToken={handleToken} />
 
           {/* Fallback button if canvas has no button element */}
           {!form.elements!.some((e) => e.type === "button") && (
             <button
               type="submit"
-              disabled={status === "submitting" || (!form.verifyEmail && !turnstileToken)}
+              disabled={status === "submitting" || !turnstileToken}
               className="w-full rounded-xl bg-ink px-6 py-3 text-sm font-medium text-paper transition-opacity hover:opacity-80 disabled:opacity-50"
               style={buttonStyles(design)}
             >
@@ -872,10 +945,10 @@ export default function SavedForm({
                 );
               })}
             {status === "error" && <p className="text-sm text-red-600">{error}</p>}
-            {!form.verifyEmail && <Turnstile onToken={handleToken} />}
+            <Turnstile key={turnstileNonce} onToken={handleToken} />
             <button
               type="submit"
-              disabled={status === "submitting" || (!form.verifyEmail && !turnstileToken)}
+              disabled={status === "submitting" || !turnstileToken}
               className="rounded-full bg-ink px-6 py-3 text-sm font-medium text-paper transition-opacity hover:opacity-80 disabled:opacity-50"
               style={buttonStyles(design)}
             >

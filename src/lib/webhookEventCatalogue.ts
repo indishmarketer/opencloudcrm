@@ -5,7 +5,7 @@
  * at the real call site that observes the action (see that file's own doc
  * comment for the full pattern). */
 export const WEBHOOK_EVENT_TYPES = [
-  { key: "contact.created", label: "New contact identified", description: "A brand-new person entered the CRM (signup, newsletter, contact form, voice lead, etc.) for the first time." },
+  { key: "contact.created", label: "New contact identified", description: "A brand-new person entered the CRM (signup, newsletter, contact form, voice lead, etc.) for the first time. It fires from the contacts table itself, so it cannot tell you which form they came from -- to start a workflow from one specific form, use 'Custom form submitted' and pick that form." },
   { key: "user.verified", label: "Account email verified", description: "Someone verifies their email and their account becomes active." },
   { key: "newsletter.subscribed", label: "Newsletter subscribed", description: "Someone confirms a newsletter signup via the OTP code." },
   { key: "newsletter.unsubscribed", label: "Newsletter unsubscribed", description: "Someone unsubscribes from marketing email." },
@@ -30,7 +30,7 @@ export const WEBHOOK_EVENT_TYPES = [
   { key: "community.post_created", label: "Community post created", description: "Someone creates a forum post (General or PRO space)." },
   { key: "community.member_inactive", label: "Community member inactive", description: "An active community member has not created their first post." },
   { key: "lead_magnet.downloaded", label: "Free guide downloaded", description: "Someone verifies their email after requesting a free guide and reaches its download page." },
-  { key: "custom_form.submitted", label: "Custom form submitted", description: "Someone submits a form built in Console -> Forms; use the form name and field values in conditions and actions." },
+  { key: "custom_form.submitted", label: "Custom form submitted", description: "Someone submits a form built in Console -> Forms. Can be narrowed to one specific form, or left on any form; the payload carries form_id, form_name and every submitted field for use in conditions and actions." },
 ] as const;
 
 export type WebhookEventType = (typeof WEBHOOK_EVENT_TYPES)[number]["key"];

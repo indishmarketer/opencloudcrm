@@ -108,6 +108,22 @@ const STARTER_FLAG = "starter_pages_seeded";
 async function ensureStarterPages(): Promise<void> {
   const flag = await pool.query("SELECT 1 FROM site_settings WHERE key = $1", [STARTER_FLAG]);
   if (flag.rowCount) return;
+  // A starter "form" block can't name a form id at definition time -- the
+  // forms table is seeded by migration, so ids differ per deployment. Any
+  // starter form block is pointed at the seeded Contact form here; if that
+  // form has since been deleted (it is an ordinary, deletable form), the
+  // block seeds empty and the owner picks a form in the page editor.
+  const contactForm = await pool
+    .query<{ id: number }>("SELECT id FROM forms WHERE slug = 'contact' ORDER BY id LIMIT 1")
+    .catch(() => null);
+  const contactFormId = contactForm?.rows[0]?.id;
+  const withFormIds = (blocks: PageBlock[]): PageBlock[] =>
+    blocks.map((block) =>
+      block.type === "form" && !block.props?.savedFormId && contactFormId
+        ? { ...block, props: { ...block.props, savedFormId: String(contactFormId) } }
+        : block,
+    );
+
   for (const starter of STARTER_PAGES) {
     await pool.query(
       `INSERT INTO site_pages (kind, path, title, meta_title, meta_description, og_image, noindex, status, blocks, published, published_at, updated_by)
@@ -115,7 +131,7 @@ async function ensureStarterPages(): Promise<void> {
        ON CONFLICT (path) WHERE kind = 'page' DO NOTHING`,
       [
         starter.path, starter.title, starter.metaTitle, starter.metaDescription, starter.ogImage, starter.noindex,
-        JSON.stringify(starter.blocks),
+        JSON.stringify(withFormIds(starter.blocks)),
       ]
     );
   }

@@ -24,7 +24,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function StandaloneFormPage({ params }: Props) {
   const { slug } = await params;
   const form = await getFormBySlug(slug);
-  if (!form) notFound();
+  // The Sign up / Log in form is driven by the auth pages, not by this
+  // generic submit path -- its definition API refuses it, so without this
+  // guard /f/auth rendered a bare "Could not load this form" instead of a 404.
+  if (!form || form.isFixed) notFound();
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-16 sm:px-6">

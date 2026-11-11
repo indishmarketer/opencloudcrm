@@ -58,6 +58,10 @@ export function workflowReadinessIssues(graph: WorkflowGraph): string[] {
     const courseId = String(trigger?.data.config.courseId || "");
     if (courseId && (!Number.isInteger(Number(courseId)) || Number(courseId) < 1)) issues.push("Choose a valid course for this trigger.");
   }
+  if (trigger?.data.config.triggerKey === "custom_form.submitted") {
+    const formId = String(trigger?.data.config.formId || "");
+    if (formId && (!Number.isInteger(Number(formId)) || Number(formId) < 1)) issues.push("Choose a valid form for this trigger.");
+  }
   if (trigger?.data.config.triggerKey === "course.inactivity") {
     const inactiveDays = Number(trigger.data.config.inactiveDays ?? 3);
     if (!Number.isInteger(inactiveDays) || inactiveDays < 1 || inactiveDays > 365) issues.push("Set course inactivity from 1 to 365 days.");

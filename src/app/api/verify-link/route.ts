@@ -9,6 +9,8 @@ import {
   type GuidePayload,
 } from "@/lib/otpCompletion";
 import { SITE_URL } from "@/lib/siteMeta";
+import { getFormById } from "@/lib/forms";
+import { completeFormSubmission, FORM_SUBMIT_PURPOSE_PREFIX } from "@/lib/formSubmission";
 
 /** Completes whichever purpose a magic link belongs to. Only reachable via
  * POST (a real click on the confirm page's button), never GET -- so a
@@ -43,6 +45,34 @@ export async function POST(req: NextRequest) {
       return NextResponse.redirect(new URL("/verify?error=1", SITE_URL), { status: 303 });
     }
     await completeContactVerification(result.email, result.payload as unknown as ContactPayload);
+  } else if (result.purpose.startsWith(FORM_SUBMIT_PURPOSE_PREFIX)) {
+    // A saved form with email verification on. Until this branch existed, the
+    // magic link in a form's own verification email always failed -- the
+    // purpose fell through to the error redirect below, so the only way to
+    // finish was to go back to the original tab and type the code.
+    const formId = Number(result.purpose.slice(FORM_SUBMIT_PURPOSE_PREFIX.length));
+    const payload = result.payload as
+      | { fields?: Record<string, string>; pageUrl?: string; attribution?: Record<string, string | null>; ipCountry?: string | null }
+      | null;
+    if (!Number.isInteger(formId) || !payload?.fields) {
+      return NextResponse.redirect(new URL("/verify?error=1", SITE_URL), { status: 303 });
+    }
+    const form = await getFormById(formId);
+    if (!form || form.isFixed) {
+      return NextResponse.redirect(new URL("/verify?error=1", SITE_URL), { status: 303 });
+    }
+    await completeFormSubmission({
+      form,
+      values: payload.fields,
+      pageUrl: payload.pageUrl || "",
+      verifiedEmail: result.email,
+      attribution: payload.attribution,
+      ipCountry: payload.ipCountry,
+    });
+    if (form.submissionAction === "redirect" && form.redirectUrl) {
+      return NextResponse.redirect(new URL(form.redirectUrl, SITE_URL), { status: 303 });
+    }
+    return NextResponse.redirect(new URL(`/verify?done=1&purpose=form&form=${form.id}`, SITE_URL), { status: 303 });
   } else if (result.purpose === "guide") {
     if (!result.payload) {
       return NextResponse.redirect(new URL("/verify?error=1", SITE_URL), { status: 303 });

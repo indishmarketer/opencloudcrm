@@ -20,6 +20,118 @@ const MIME_BY_EXTENSION = {
   ".webp": "image/webp",
 };
 
+// Mirrors FORM_ELEMENT_STYLE_SCHEMA in src/lib/mcpTools.ts. Plain Node cannot
+// import the TypeScript source; the authoritative element vocabulary is
+// served as data by GET /api/v1/forms/element-types (the
+// list_form_element_types tool), which both transports call.
+const FORM_ELEMENT_STYLE_SCHEMA = z
+  .object({
+    width: z.string().optional().describe("CSS length: 240px, 50%, 20rem. Bare numbers are read as px."),
+    height: z.string().optional().describe("CSS length. On a button this is its real height."),
+    paddingX: z.string().optional().describe("Left/right padding."),
+    paddingY: z.string().optional().describe("Top/bottom padding."),
+    marginTop: z.string().optional().describe("Space above this element."),
+    marginBottom: z.string().optional().describe("Space below this element."),
+    fontSize: z.string().optional(),
+    fontWeight: z.string().optional().describe("300-800."),
+    borderWidth: z.string().optional(),
+    borderRadius: z.string().optional().describe("e.g. 0px, 12px, 9999px for a pill."),
+    backgroundColor: z.string().optional().describe("Any CSS colour."),
+    textColor: z.string().optional(),
+    borderColor: z.string().optional(),
+    textAlign: z.enum(["left", "center", "right"]).optional(),
+  })
+  .describe(
+    "Per-element layout and look. Applies to EVERY element type -- heading, paragraph, any input, button, divider -- not just buttons. Anything left out inherits the form's design tokens.",
+  );
+
+const FORM_ELEMENT_SCHEMA = z
+  .object({
+    id: z.string().optional().describe("Stable id. Generated when omitted."),
+    type: z
+      .enum([
+        "heading",
+        "text",
+        "text_input",
+        "email",
+        "phone",
+        "textarea",
+        "select",
+        "radio",
+        "multiselect",
+        "checkbox",
+        "country",
+        "address",
+        "number",
+        "date",
+        "hidden",
+        "button",
+        "divider",
+      ])
+      .describe("The element kind. This list is the complete set -- nothing else renders."),
+    headingText: z.string().optional().describe("heading only."),
+    headingLevel: z.enum(["h1", "h2", "h3", "h4"]).optional().describe("heading only."),
+    headingAlign: z.enum(["left", "center", "right"]).optional().describe("heading only."),
+    textContent: z.string().optional().describe("text (paragraph) only."),
+    textMuted: z.boolean().optional().describe("text only: secondary colour."),
+    textAlign: z.enum(["left", "center", "right"]).optional().describe("text only."),
+    fieldKey: z
+      .string()
+      .optional()
+      .describe("Submission key for field elements. Derived from the label when omitted."),
+    fieldLabel: z.string().optional(),
+    fieldPlaceholder: z.string().optional(),
+    fieldRequired: z.boolean().optional(),
+    fieldHidden: z.boolean().optional().describe("Collected silently (e.g. UTM capture) using fieldDefaultValue."),
+    fieldDefaultValue: z.string().optional(),
+    fieldOptions: z
+      .string()
+      .optional()
+      .describe("Choices for select / radio / multiselect: a JSON array string, or newline- or comma-separated."),
+    contactMapping: z
+      .enum(["none", "name", "email", "phone", "country", "detail"])
+      .optional()
+      .describe(
+        "Where this answer goes on the contact record. 'detail' saves it as a named extra detail shown on the contact's page. Omit to use the type-derived default (email/phone/country map themselves; a field named like a name maps to the contact name; everything else is 'none').",
+      ),
+    contactDetailLabel: z.string().optional().describe("Name for the contact detail when contactMapping is 'detail'."),
+    buttonLabel: z.string().optional().describe("button only."),
+    buttonAlign: z
+      .enum(["full", "left", "center", "right"])
+      .optional()
+      .describe("button only. An explicit elementStyle.width overrides 'full'."),
+    buttonVariant: z.enum(["primary", "outline"]).optional().describe("button only."),
+    dividerSpacing: z.enum(["sm", "md", "lg"]).optional().describe("divider only."),
+    elementStyle: FORM_ELEMENT_STYLE_SCHEMA.optional(),
+  })
+  .describe("One element on the form canvas. Order in the array is render order.");
+
+const FORM_DESIGN_SCHEMA = z
+  .object({
+    buttonColor: z.string().optional(),
+    buttonTextColor: z.string().optional(),
+    borderColor: z.string().optional(),
+    backgroundColor: z.string().optional(),
+    textColor: z.string().optional(),
+    borderRadius: z.string().optional(),
+    fontFamily: z.string().optional(),
+  })
+  .describe("Form-wide design tokens. Any element's elementStyle overrides these for that element.");
+
+const FORM_FIELD_SCHEMA = z.object({
+  key: z.string().optional(),
+  label: z.string().describe("Field label (or internal key for hidden fields)"),
+  type: z
+    .enum(["text", "email", "phone", "textarea", "select", "radio", "multiselect", "checkbox", "country", "address", "number", "date"])
+    .default("text"),
+  options: z.string().optional().describe("Choices for select/radio/multiselect."),
+  required: z.boolean().optional().default(false),
+  hidden: z.boolean().optional().default(false).describe("If true, hidden from visitors and submitted with defaultValue"),
+  defaultValue: z.string().optional().default("").describe("Value submitted for hidden fields (e.g. UTM parameters)"),
+  contactMapping: z.enum(["none", "name", "email", "phone", "country", "detail"]).optional(),
+  contactDetailLabel: z.string().optional(),
+});
+
 /** @param {string} apiBase e.g. https://example.com */
 /** @param {string} token the plaintext API token (sent as a Bearer header) */
 export function createTools(apiBase, token) {
@@ -471,102 +583,89 @@ export function createTools(apiBase, token) {
       handler: async (args) => call("/api/v1/directory/tools", { method: "POST", body: JSON.stringify(args) }),
     },
     {
+      name: "list_form_element_types",
+      description: "The complete form-authoring vocabulary: every element type that renders, every property each one takes, every per-element style key (width, height, padding, spacing, typography, border, colours -- available on ALL element types, not just buttons), and the contact-mapping options that decide which answers become data on the contact record. Read this before building or restyling a form with create_form / update_form; anything outside this vocabulary is dropped on save.",
+      inputSchema: {},
+      handler: async () => call("/api/v1/forms/element-types"),
+    },
+    {
       name: "list_forms",
-      description: "List all forms with field counts and submission counts. Forms can be standalone (/f/<slug>), embedded on pages, or opened as popups.",
+      description: "List all forms with their elements, fields, design tokens and submission counts. Forms can be standalone (/f/<slug>), embedded on pages, or opened as popups.",
       inputSchema: {},
       handler: async () => call("/api/v1/forms"),
     },
     {
       name: "get_form",
-      description: "Get one form by ID or slug, including its fields, design tokens, email verification setting, and submission count.",
+      description: "Get one form by ID or slug: its canvas elements with per-element styles, derived fields, design tokens, contact mappings, email verification setting and submission count.",
       inputSchema: { id: z.union([z.number().int().positive(), z.string()]).describe("Form ID or slug") },
       handler: async ({ id }) => call(`/api/v1/forms/${encodeURIComponent(id)}`),
     },
     {
       name: "create_form",
-      description: "Create a new reusable form. Can start completely blank with just a name, or include custom fields, design settings, and email verification.",
+      description: "Create a reusable form. Build it from `elements`, which is the real canvas: ordered headings, paragraphs, inputs, buttons and dividers, each freely styled through elementStyle (width, height, padding, spacing, typography, border, colours). Call list_form_element_types first for the full vocabulary. Can also start completely blank with just a name. `fields` is a simpler alternative to `elements` for a plain stack of inputs; pass one or the other, not both.",
       inputSchema: {
         name: z.string().describe("Internal name for the form"),
         slug: z.string().optional().describe("Optional URL-safe slug for standalone sharing at /f/<slug>"),
-        heading: z.string().optional().describe("Heading shown above the form"),
+        heading: z.string().optional().describe("Heading shown above the form (ignored when elements include a heading)"),
         introText: z.string().optional().describe("Introductory text shown below the heading"),
-        fields: z.array(z.object({
-          label: z.string().describe("Field label (or internal key for hidden fields)"),
-          type: z.enum(["text", "email", "phone", "textarea", "select", "checkbox", "number", "date"]).default("text"),
-          options: z.string().optional().describe("Comma-separated options for select dropdowns"),
-          required: z.boolean().optional().default(false),
-          hidden: z.boolean().optional().default(false).describe("If true, hidden from visitors and submitted with defaultValue"),
-          defaultValue: z.string().optional().default("").describe("Value submitted for hidden fields (e.g. UTM parameters)"),
-        })).optional().default([]),
+        source: z.string().optional().describe("Contact source label shown on every contact who submits this form"),
+        fields: z.array(FORM_FIELD_SCHEMA).optional().default([]),
         submitLabel: z.string().optional().describe("Button text (default: 'Submit')"),
         successHeading: z.string().optional().describe("Thank-you heading"),
         successText: z.string().optional().describe("Thank-you message"),
         notifyEmail: z.string().optional().describe("Email address to notify on submission"),
-        verifyEmail: z.boolean().optional().describe("Require 2-step OTP email verification before submitting"),
-        design: z.object({
-          buttonColor: z.string().optional(),
-          buttonTextColor: z.string().optional(),
-          borderColor: z.string().optional(),
-          backgroundColor: z.string().optional(),
-          textColor: z.string().optional(),
-          borderRadius: z.string().optional(),
-          fontFamily: z.string().optional(),
-        }).optional(),
+        verifyEmail: z.boolean().optional().describe("Send a 6-digit code and magic link to the email field, and only record the submission once it is confirmed. Requires a visible email element."),
+        design: FORM_DESIGN_SCHEMA.optional(),
         submissionAction: z.enum(["message", "redirect"]).optional().describe("Submission outcome: 'message' or 'redirect'"),
         redirectUrl: z.string().optional().describe("URL to redirect to if submissionAction is 'redirect'"),
-        elements: z.array(z.record(z.string(), z.unknown())).optional().describe("Canvas elements in order (heading, text, fields, button, divider)"),
+        elements: z.array(FORM_ELEMENT_SCHEMA).optional().describe("Canvas elements in render order. The preferred way to build a form."),
       },
       handler: async (args) => call("/api/v1/forms", { method: "POST", body: JSON.stringify(args) }),
     },
     {
       name: "update_form",
-      description: "Update an existing form by ID or slug. Any omitted fields retain their existing values.",
+      description: "Update a form by ID or slug. Omitted properties keep their current values. Passing `elements` replaces the whole canvas, so read the form with get_form first and send the full list back with your changes. Every element's elementStyle can be set here -- that is how a form is restyled or an element resized.",
       inputSchema: {
         id: z.union([z.number().int().positive(), z.string()]).describe("Form ID or slug"),
         name: z.string().optional(),
         slug: z.string().optional(),
         heading: z.string().optional(),
         introText: z.string().optional(),
-        fields: z.array(z.object({
-          key: z.string().optional(),
-          label: z.string(),
-          type: z.enum(["text", "email", "phone", "textarea", "select", "checkbox", "number", "date"]).default("text"),
-          options: z.string().optional(),
-          required: z.boolean().optional(),
-          hidden: z.boolean().optional(),
-          defaultValue: z.string().optional(),
-        })).optional(),
+        source: z.string().optional().describe("Contact source label shown on every contact who submits this form"),
+        fields: z.array(FORM_FIELD_SCHEMA).optional(),
         submitLabel: z.string().optional(),
         successHeading: z.string().optional(),
         successText: z.string().optional(),
         submissionAction: z.enum(["message", "redirect"]).optional().describe("Submission outcome: 'message' or 'redirect'"),
         redirectUrl: z.string().optional().describe("URL to redirect to if submissionAction is 'redirect'"),
-        elements: z.array(z.record(z.string(), z.unknown())).optional().describe("Canvas elements in order"),
+        elements: z.array(FORM_ELEMENT_SCHEMA).optional().describe("Canvas elements in render order. Replaces the existing canvas."),
         notifyEmail: z.string().optional(),
-        verifyEmail: z.boolean().optional(),
-        design: z.object({
-          buttonColor: z.string().optional(),
-          buttonTextColor: z.string().optional(),
-          borderColor: z.string().optional(),
-          backgroundColor: z.string().optional(),
-          textColor: z.string().optional(),
-          borderRadius: z.string().optional(),
-          fontFamily: z.string().optional(),
-        }).optional(),
+        verifyEmail: z.boolean().optional().describe("Two-step email verification. Can be turned on or off on any form, including the seeded Contact and Newsletter ones."),
+        design: FORM_DESIGN_SCHEMA.optional(),
       },
       handler: async ({ id, ...updates }) => call(`/api/v1/forms/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(updates) }),
     },
     {
       name: "delete_form",
-      description: "Permanently delete a form and its submissions by ID or slug.",
+      description: "Permanently delete a form and its recorded submissions by ID or slug. Every form can be deleted except Sign up / Log in, whose field list core account access depends on. Deleting the seeded Newsletter form also stops newsletter signups through it; deleting Contact stops messages being filed as contact submissions.",
       inputSchema: { id: z.union([z.number().int().positive(), z.string()]).describe("Form ID or slug") },
       handler: async ({ id }) => call(`/api/v1/forms/${encodeURIComponent(id)}`, { method: "DELETE" }),
     },
     {
       name: "list_form_submissions",
-      description: "List recorded submissions for a form by form ID or slug.",
+      description: "Every answer a form has collected, newest first, with the contact each response was matched to.",
       inputSchema: { id: z.union([z.number().int().positive(), z.string()]).describe("Form ID or slug") },
       handler: async ({ id }) => call(`/api/v1/forms/${encodeURIComponent(id)}/submissions`),
+    },
+    {
+      name: "delete_form_submission",
+      description: "Delete one recorded response. Any contact detail already promoted from it onto a contact record is kept -- remove those from the contact itself.",
+      inputSchema: {
+        id: z.union([z.number().int().positive(), z.string()]).describe("Form ID or slug"),
+        submissionId: z.number().int().positive().describe("The submission id, from list_form_submissions"),
+      },
+      handler: async ({ id, submissionId }) =>
+        call(`/api/v1/forms/${encodeURIComponent(id)}/submissions/${submissionId}`, { method: "DELETE" }),
     },
     {
       name: "place_form_on_page",

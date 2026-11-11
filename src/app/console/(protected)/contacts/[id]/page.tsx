@@ -10,10 +10,12 @@ import ContactActivity, {
 } from "@/components/ContactActivity";
 import ContactDeleteButton from "@/components/ContactDeleteButton";
 import ContactEditForm from "@/components/ContactEditForm";
+import ContactFormData from "@/components/ContactFormData";
 import ContactMarketingToggle from "@/components/ContactMarketingToggle";
 import ContactNotes from "@/components/ContactNotes";
 import ContactWhatsAppToggle from "@/components/ContactWhatsAppToggle";
 import { countryName } from "@/lib/countries";
+import { listContactFormDetails } from "@/lib/formSubmission";
 
 function parseContactId(id: string): { contactId: number | null; userId: number | null; email: string | null } {
   if (id.startsWith("c-")) {
@@ -58,11 +60,14 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
   if (!contact) notFound();
   const contactId = Number(contact.id);
   const formSubmissions = await pool.query<{
-    id: number; name: string; source: string; field_values: Record<string, string>;
+    id: number; form_id: number; name: string; source: string; field_values: Record<string, string>;
     fields: { key: string; label: string }[]; page_url: string; created_at: Date;
-  }>(`SELECT fs.id, f.name, f.source, fs.field_values, f.fields, fs.page_url, fs.created_at
+  }>(`SELECT fs.id, f.id AS form_id, f.name, f.source, fs.field_values, f.fields, fs.page_url, fs.created_at
       FROM form_submissions fs JOIN forms f ON f.id = fs.form_id
       WHERE fs.contact_id = $1 ORDER BY fs.created_at DESC LIMIT 50`, [contactId]);
+  // Answers a form was told to promote onto the contact itself, rather than
+  // leave sitting in the submission.
+  const contactFormDetails = await listContactFormDetails(contactId);
   const userId = contact.user_id ? Number(contact.user_id) : null;
   const guestEmail = contact.email as string;
 
@@ -354,24 +359,28 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
         replyToEmail={await getReplyToEmail()}
       />
 
-      {formSubmissions.rows.length > 0 && (
-        <section className="rounded-2xl border border-line bg-paper p-6">
-          <h2 className="font-display text-lg font-semibold">Form responses</h2>
-          <div className="mt-4 space-y-4">
-            {formSubmissions.rows.map((submission) => (
-              <div key={submission.id} className="rounded-xl border border-line p-4 text-sm">
-                <div className="font-medium">{submission.source || submission.name} · {onDate(submission.created_at)}</div>
-                <dl className="mt-3 grid gap-2 sm:grid-cols-2">
-                  {submission.fields.filter((field) => Object.hasOwn(submission.field_values, field.key)).map((field) => (
-                    <div key={field.key}><dt className="text-ink-soft">{field.label}</dt><dd className="whitespace-pre-wrap">{submission.field_values[field.key]}</dd></div>
-                  ))}
-                </dl>
-                {submission.page_url && <p className="mt-3 break-all text-xs text-ink-soft">{submission.page_url}</p>}
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
+      <ContactFormData
+        contactId={contactId}
+        details={contactFormDetails.map((detail) => ({
+          id: Number(detail.id),
+          field_key: detail.field_key,
+          label: detail.label || detail.field_key,
+          value: detail.value,
+          form_name: detail.form_name,
+          updated_at: new Date(detail.updated_at).toISOString(),
+        }))}
+        submissions={formSubmissions.rows.map((submission) => ({
+          id: Number(submission.id),
+          form_id: Number(submission.form_id),
+          form_name: submission.name,
+          source: submission.source || "",
+          page_url: submission.page_url || "",
+          created_at: new Date(submission.created_at).toISOString(),
+          answers: (submission.fields || [])
+            .filter((field) => Object.hasOwn(submission.field_values || {}, field.key))
+            .map((field) => ({ label: field.label || field.key, value: submission.field_values[field.key] })),
+        }))}
+      />
 
       <ContactActivity
         contactId={contactId}

@@ -2,28 +2,27 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { verifyTurnstile } from "@/lib/turnstile";
 import { checkRateLimit, privateRateLimitKey } from "@/lib/rateLimit";
-import { raiseInboxAlert } from "@/lib/systemAlerts";
-import { getFormById, recordFormSubmission } from "@/lib/forms";
-import { ensureContact, recordContactActivity } from "@/lib/contacts";
-import { sendEmail } from "@/lib/email";
-import { escapeHtml } from "@/lib/escapeHtml";
-import { emitWebhookEvent } from "@/lib/webhookEvents";
+import { getFormById } from "@/lib/forms";
 import { requestOtp, verifyOtp } from "@/lib/otp";
 import { getAttributionFromRequest } from "@/lib/attribution";
+import { completeFormSubmission, extractContactData, formSubmitPurpose } from "@/lib/formSubmission";
 import type { FormDefinition } from "@/lib/formsShape";
-import { pool } from "@/lib/db";
-import { completeContactVerification, completeNewsletterVerification } from "@/lib/otpCompletion";
 
-/** A Form element's submission.  Three modes, all validated below:
+/** A saved form's submission. Three modes, all validated below:
  *
- * - step:"request-otp" (verifyEmail forms only): validates fields, sends an
+ * - step:"request-otp" (email-verification forms): validates fields, sends an
  *   OTP to the email field, stashes the payload in the OTP record. No
  *   submission recorded yet.
- * - step:"verify-otp" (verifyEmail forms only): verifies the code, then
- *   records the submission from the stashed payload.
- * - (default) direct submit (non-OTP saved forms): validates against the
- *   form's own field list, records the submission immediately.
- */
+ * - step:"verify-otp": verifies the code, then records the submission from
+ *   the stashed payload. The magic link in the same email does the same thing
+ *   via /api/verify-link -- both end up in completeFormSubmission().
+ * - (default) direct submit: validates against the form's own field list and
+ *   records the submission immediately.
+ *
+ * Turnstile is required for the first request of either flow (the initial
+ * submit, or the OTP request), never for the verify step -- the token was
+ * already spent there, and possession of a code mailed to a real inbox is a
+ * stronger human signal than a challenge anyway. */
 
 function validatedValues(form: FormDefinition, submitted: Record<string, string>): { values: Record<string, string>; error?: string } {
   const choicesOf = (raw: string): string[] => {
@@ -38,6 +37,8 @@ function validatedValues(form: FormDefinition, submitted: Record<string, string>
     const value = field.hidden ? field.defaultValue : (submitted[field.key] || "").trim();
     if (field.required && !field.hidden && !value) return { values, error: `${field.label || "A required field"} is required.` };
     if (field.type === "email" && value && !z.email().safeParse(value).success) return { values, error: `Enter a valid ${field.label || "email"}.` };
+    if (field.type === "number" && value && !Number.isFinite(Number(value))) return { values, error: `${field.label || "This field"} must be a number.` };
+    if (field.type === "date" && value && Number.isNaN(Date.parse(value))) return { values, error: `${field.label || "This field"} must be a date.` };
     if (["select", "radio", "multiselect"].includes(field.type) && value && field.options) {
       const options = choicesOf(field.options);
       const selected = field.type === "multiselect" ? value.split(",").map((option) => option.trim()) : [value];
@@ -72,217 +73,101 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) return NextResponse.json({ error: "Invalid request." }, { status: 400 });
   const { formId, pageUrl, fields, turnstileToken, step, otpEmail, otpCode } = parsed.data;
 
-  // ── OTP verify step (no Turnstile needed -- the token was already checked in
-  //    request-otp; a separate verify is rate-limited below instead) ──────────
+  const form = await getFormById(formId);
+  if (!form) return NextResponse.json({ error: "This form no longer exists." }, { status: 404 });
+  if (form.isFixed) return NextResponse.json({ error: "This form is reserved for account access." }, { status: 400 });
+
+  // ── OTP verify step ──────────────────────────────────────────────────────
   if (step === "verify-otp") {
-    if (!formId || !otpEmail || !otpCode) {
+    if (!otpEmail || !otpCode) {
       return NextResponse.json({ error: "Invalid verification request." }, { status: 400 });
     }
     if (!(await checkRateLimit(`form-otp:${ip}`, 10, 10 * 60 * 1000))) {
       return NextResponse.json({ error: "Too many attempts. Try again later." }, { status: 429 });
     }
-    const purpose = `form-submit-${formId}`;
-    const result = await verifyOtp(otpEmail, otpCode, purpose);
+    const result = await verifyOtp(otpEmail, otpCode, formSubmitPurpose(formId));
     if (!result) {
       return NextResponse.json({ error: "Incorrect or expired code." }, { status: 400 });
     }
-    const payload = result.payload as { fields: Record<string, string>; pageUrl: string } | null;
+    const payload = result.payload as
+      | { fields: Record<string, string>; pageUrl: string; attribution?: Record<string, string | null>; ipCountry?: string | null }
+      | null;
     if (!payload) {
       return NextResponse.json({ error: "Verification expired. Please start over." }, { status: 400 });
     }
 
-    const form = await getFormById(formId);
-    if (!form) return NextResponse.json({ error: "This form no longer exists." }, { status: 404 });
-    if (form.isFixed) return NextResponse.json({ error: "This form is reserved for account access." }, { status: 400 });
+    // Re-validated rather than trusted: the stashed payload was validated
+    // against the form as it stood when the code was requested, and the form
+    // may have changed in the ten minutes since.
     const verified = validatedValues(form, payload.fields);
     if (verified.error) return NextResponse.json({ error: verified.error }, { status: 400 });
-    payload.fields = verified.values;
 
-    const nameField = form.fields.find(
-      (f) => (/name/i.test(f.key) || /name/i.test(f.label) || f.type === "text") && String(payload.fields[f.key] || "").trim()
-    );
-    const phoneField = form.fields.find(
-      (f) => (f.type === "phone" || /phone/i.test(f.key)) && String(payload.fields[f.key] || "").trim()
-    );
-    const countryField = form.fields.find(
-      (f) => (f.type === "country" || /country/i.test(f.key)) && String(payload.fields[f.key] || "").trim()
-    );
-    const contactName = nameField ? String(payload.fields[nameField.key]).trim() : null;
-    const contactPhone = phoneField ? String(payload.fields[phoneField.key]).trim() : null;
-    const contactCountry = countryField ? String(payload.fields[countryField.key]).trim() : null;
-
-    const contactId = await ensureContact({
-      email: otpEmail,
-      name: contactName,
-      phone: contactPhone,
-      phoneSource: contactPhone ? "form" : undefined,
-      country: contactCountry,
-      countrySource: contactCountry ? "form" : undefined,
-    });
-    const submissionId = await recordFormSubmission({
-      formId,
-      fieldValues: payload.fields,
+    await completeFormSubmission({
+      form,
+      values: verified.values,
       pageUrl: payload.pageUrl || pageUrl,
-      contactId,
+      verifiedEmail: otpEmail,
+      attribution: payload.attribution,
+      ipCountry: payload.ipCountry,
     });
-    if (contactId) await recordContactActivity({
-      email: otpEmail, activityType: "form_submitted", source: "form_submissions",
-      sourceRecordId: submissionId, metadata: { formId, formName: form.name, label: form.source || form.name, pageUrl: payload.pageUrl || pageUrl },
-    });
-    if (form.systemRole === "contact") {
-      const messageField = form.fields.find((field) => field.key === "message" || field.type === "textarea");
-      await completeContactVerification(otpEmail, {
-        name: contactName || "", message: messageField ? String(payload.fields[messageField.key] || "") : "",
-        attribution: (result.payload as { attribution?: Record<string, string | null> } | null)?.attribution,
-      });
-    }
-    if (form.systemRole === "newsletter") {
-      await pool.query(
-        `INSERT INTO newsletter_subscribers (email, name, source, verified)
-         VALUES ($1, $2, $3, false)
-         ON CONFLICT (email) DO UPDATE SET name = COALESCE(EXCLUDED.name, newsletter_subscribers.name)`,
-        [otpEmail, contactName, form.source || form.name],
-      );
-      await completeNewsletterVerification(otpEmail);
-    }
-
-    const detail =
-      form.fields.map((f) => `${f.label}: ${payload.fields[f.key] || ""}`).join("\n") +
-      (payload.pageUrl ? `\n\nSubmitted from: ${payload.pageUrl}` : "");
-
-    await raiseInboxAlert({
-      kind: "custom_form_submission",
-      dedupeKey: `custom_form_submission:${submissionId}`,
-      title: `New submission: ${form.name}`,
-      detail,
-      severity: "info",
-      link: `/console/forms/${formId}`,
-      notifyEmail: !form.notifyEmail,
-    });
-    if (form.notifyEmail) {
-      await sendEmail({
-        to: form.notifyEmail,
-        subject: `New submission: ${form.name}`,
-        html: `<p>New submission for <strong>${escapeHtml(form.name)}</strong>:</p><pre style="white-space:pre-wrap;font-family:inherit;">${escapeHtml(detail)}</pre>`,
-        critical: true,
-        category: "system",
-      }).catch(() => {});
-    }
-
-    await emitWebhookEvent({
-      eventType: "custom_form.submitted",
-      source: "form_submissions",
-      sourceRecordId: submissionId,
-      contactEmail: otpEmail,
-      data: { formId, formName: form.name, fields: payload.fields },
-    }).catch(() => {});
-
     return NextResponse.json({ ok: true });
   }
 
-  // ── Saved-form flow (with or without OTP request step) ───────────────────
-  if (formId) {
-    // Turnstile verification required for the initial submit / OTP request
-    if (!turnstileToken) return NextResponse.json({ error: "Missing verification token." }, { status: 400 });
-    const humanVerified = await verifyTurnstile(turnstileToken, ip === "unknown" ? undefined : ip);
-    if (!humanVerified) {
-      return NextResponse.json({ error: "Could not verify you're human." }, { status: 400 });
-    }
-
-    const form = await getFormById(formId);
-    if (!form) return NextResponse.json({ error: "This form no longer exists." }, { status: 404 });
-    if (form.isFixed) return NextResponse.json({ error: "This form is reserved for account access." }, { status: 400 });
-    const checked = validatedValues(form, fields);
-    if (checked.error) return NextResponse.json({ error: checked.error }, { status: 400 });
-    const values = checked.values;
-
-    // ── OTP request step ────────────────────────────────────────────────────
-    if (step === "request-otp" || form.verifyEmail || form.systemRole) {
-      const emailField = form.fields.find((f) => f.type === "email" && !f.hidden);
-      const emailValue = emailField ? String(values[emailField.key] || "").trim() : "";
-      if (!emailValue) {
-        return NextResponse.json({ error: "An email field is required for verification." }, { status: 400 });
-      }
-
-      if (!(await checkRateLimit(`form-otp-email:${privateRateLimitKey(emailValue)}`, 3, 60 * 60 * 1000))) {
-        return NextResponse.json({ error: "Too many attempts. Try again later." }, { status: 429 });
-      }
-
-      const attribution = getAttributionFromRequest(req);
-      const purpose = `form-submit-${formId}`;
-      const sent = await requestOtp(emailValue, purpose, { fields: values, pageUrl, attribution });
-      if (!sent) {
-        return NextResponse.json({ error: "We couldn't send the verification email. Please try again." }, { status: 502 });
-      }
-      return NextResponse.json({ ok: true });
-    }
-
-    // ── Standard (non-OTP) submit ───────────────────────────────────────────
-    const emailField = form.fields.find((f) => f.type === "email" && String(values[f.key] || "").trim());
-    const nameField = form.fields.find(
-      (f) => (/name/i.test(f.key) || /name/i.test(f.label) || f.type === "text") && String(values[f.key] || "").trim()
-    );
-    const phoneField = form.fields.find(
-      (f) => (f.type === "phone" || /phone/i.test(f.key)) && String(values[f.key] || "").trim()
-    );
-    const countryField = form.fields.find(
-      (f) => (f.type === "country" || /country/i.test(f.key)) && String(values[f.key] || "").trim()
-    );
-    const email = emailField ? String(values[emailField.key]).trim() : "";
-    const contactName = nameField ? String(values[nameField.key]).trim() : null;
-    const contactPhone = phoneField ? String(values[phoneField.key]).trim() : null;
-    const contactCountry = countryField ? String(values[countryField.key]).trim() : null;
-
-    const contactId = email
-      ? await ensureContact({
-          email,
-          name: contactName,
-          phone: contactPhone,
-          phoneSource: contactPhone ? "form" : undefined,
-          country: contactCountry,
-          countrySource: contactCountry ? "form" : undefined,
-        })
-      : null;
-
-    const submissionId = await recordFormSubmission({ formId, fieldValues: values, pageUrl, contactId });
-    if (contactId) await recordContactActivity({
-      email, activityType: "form_submitted", source: "form_submissions",
-      sourceRecordId: submissionId, metadata: { formId, formName: form.name, label: form.source || form.name, pageUrl },
-    });
-
-    const detail =
-      form.fields.map((f) => `${f.label}: ${values[f.key] || ""}`).join("\n") +
-      (pageUrl ? `\n\nSubmitted from: ${pageUrl}` : "");
-
-    await raiseInboxAlert({
-      kind: "custom_form_submission",
-      dedupeKey: `custom_form_submission:${submissionId}`,
-      title: `New submission: ${form.name}`,
-      detail,
-      severity: "info",
-      link: `/console/forms/${formId}`,
-      notifyEmail: !form.notifyEmail,
-    });
-    if (form.notifyEmail) {
-      await sendEmail({
-        to: form.notifyEmail,
-        subject: `New submission: ${form.name}`,
-        html: `<p>New submission for <strong>${escapeHtml(form.name)}</strong>:</p><pre style="white-space:pre-wrap;font-family:inherit;">${escapeHtml(detail)}</pre>`,
-        critical: true,
-        category: "system",
-      }).catch(() => {});
-    }
-
-    await emitWebhookEvent({
-      eventType: "custom_form.submitted",
-      source: "form_submissions",
-      sourceRecordId: submissionId,
-      contactEmail: email || null,
-      data: { formId, formName: form.name, fields: values },
-    }).catch(() => {});
-
-    return NextResponse.json({ ok: true });
+  // ── First request of either flow: Turnstile, then validate ───────────────
+  if (!turnstileToken) return NextResponse.json({ error: "Missing verification token." }, { status: 400 });
+  const humanVerified = await verifyTurnstile(turnstileToken, ip === "unknown" ? undefined : ip);
+  if (!humanVerified) {
+    return NextResponse.json({ error: "Could not verify you're human." }, { status: 400 });
   }
 
-  return NextResponse.json({ error: "Choose a form before submitting." }, { status: 400 });
+  const checked = validatedValues(form, fields);
+  if (checked.error) return NextResponse.json({ error: checked.error }, { status: 400 });
+  const values = checked.values;
+  const ipCountry = req.headers.get("cf-ipcountry");
+
+  // ── OTP request step ─────────────────────────────────────────────────────
+  // Driven only by the form's own verifyEmail setting, which the owner is now
+  // free to turn off on every form including the seeded Contact and
+  // Newsletter ones. (It used to be forced on for those two, so they could
+  // not be used as plain forms.)
+  if (form.verifyEmail) {
+    // The address to verify is the mapped contact email when there is one,
+    // but falls back to any visible email field: an owner is free to set an
+    // email field's contact mapping to "none" (keep it out of the CRM) and
+    // still want the submission verified.
+    const emailField = form.fields.find((f) => f.type === "email" && !f.hidden);
+    const emailValue =
+      extractContactData(form.fields, values).email ||
+      (emailField ? String(values[emailField.key] || "").trim() : "");
+    if (!emailValue) {
+      return NextResponse.json({ error: "An email field is required for verification." }, { status: 400 });
+    }
+
+    if (!(await checkRateLimit(`form-otp-email:${privateRateLimitKey(emailValue)}`, 5, 60 * 60 * 1000))) {
+      return NextResponse.json({ error: "Too many attempts. Try again later." }, { status: 429 });
+    }
+
+    const attribution = getAttributionFromRequest(req);
+    const sent = await requestOtp(emailValue, formSubmitPurpose(formId), {
+      formId,
+      fields: values,
+      pageUrl,
+      attribution,
+      ipCountry,
+    });
+    if (!sent) {
+      return NextResponse.json({ error: "We couldn't send the verification email. Please try again." }, { status: 502 });
+    }
+    return NextResponse.json({ ok: true, step: "verify-otp", email: emailValue });
+  }
+
+  // ── Standard (non-OTP) submit ────────────────────────────────────────────
+  await completeFormSubmission({
+    form,
+    values,
+    pageUrl,
+    attribution: getAttributionFromRequest(req),
+    ipCountry,
+  });
+  return NextResponse.json({ ok: true });
 }

@@ -22,6 +22,14 @@ const PURPOSE_COPY: Record<string, { heading: string; body: string; button: stri
     body: "One click and we'll take you straight to your download.",
     button: "Confirm and get my guide",
   },
+  /** Every saved form with email verification on uses the purpose
+   * `form-submit-<id>`, so its copy is matched by prefix below rather than
+   * by an exact key. */
+  form: {
+    heading: "Confirm your submission",
+    body: "One click and your answers are in.",
+    button: "Confirm and submit",
+  },
 };
 
 export default async function VerifyPage({
@@ -40,7 +48,9 @@ export default async function VerifyPage({
             ? "You're on the list. Check your inbox for the next issue."
             : purpose === "contact"
               ? "Your message is on its way to us. We'll get back to you shortly."
-              : "All done."}
+              : purpose === "form"
+                ? "Your submission has been recorded. Thanks!"
+                : "All done."}
         </p>
       </div>
     );
@@ -61,7 +71,8 @@ export default async function VerifyPage({
     );
   }
 
-  const copy = PURPOSE_COPY[peeked.purpose] || {
+  const copyKey = peeked.purpose.startsWith("form-submit-") ? "form" : peeked.purpose;
+  const copy = PURPOSE_COPY[copyKey] || {
     heading: "Confirm your email",
     body: "One click and you're done.",
     button: "Confirm",

@@ -152,9 +152,20 @@ export default function ConsoleForms({
   const [page, setPage] = useState(1);
 
   async function removeForm(form: FormWithSubmissions) {
-    if (form.isFixed || form.systemRole) return;
+    // Only the Sign up / Log in form is undeletable. Contact and Newsletter
+    // are ordinary forms.
+    if (form.isFixed) return;
     const ok = await confirm({
-      message: `Delete the form "${form.name}"? Any placed page blocks or links to /f/${form.slug || form.id} will stop working. This can't be undone.`,
+      message:
+        `Delete the form "${form.name}"? Its ${form.submissionCount} recorded ` +
+        `response${form.submissionCount === 1 ? "" : "s"} go with it, and any placed page blocks or ` +
+        `links to /f/${form.slug || form.id} will stop working.` +
+        (form.systemRole === "newsletter"
+          ? " New newsletter signups through this form will stop too."
+          : form.systemRole === "contact"
+            ? " Messages will stop being filed under Contact submissions."
+            : "") +
+        " This can't be undone.",
       confirmLabel: "Delete",
     });
     if (!ok) return;
@@ -206,7 +217,11 @@ export default function ConsoleForms({
               <td className="hidden px-4 py-3 sm:table-cell">
                 {row.isFixed ? (
                   <span className="rounded-full bg-paper-soft px-2.5 py-1 text-xs font-semibold text-ink-soft">
-                    System / Fixed
+                    Account form (fixed fields)
+                  </span>
+                ) : row.systemRole ? (
+                  <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-900">
+                    {row.systemRole === "newsletter" ? "Also subscribes" : "Also files a message"}
                   </span>
                 ) : row.slug ? (
                   <span className="rounded-full bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-800">
@@ -237,7 +252,13 @@ export default function ConsoleForms({
                     <EditIcon />
                     Edit
                   </Link>
-                  {!row.isFixed && !row.systemRole && (
+                  <Link href={`/console/forms/${row.id}/submissions`} className={button}>
+                    Responses
+                    {row.submissionCount > 0 && (
+                      <span className="rounded-full bg-paper-soft px-1.5 text-xs font-semibold">{row.submissionCount}</span>
+                    )}
+                  </Link>
+                  {!row.isFixed && (
                     <button
                       type="button"
                       onClick={() => removeForm(row)}

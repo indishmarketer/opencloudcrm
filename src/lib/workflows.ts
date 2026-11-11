@@ -602,6 +602,12 @@ export async function executeWorkflowTest(input: {
     course_slug: "sample-course",
     course_title: "Sample course",
     inactiveDays: trigger.data.config.inactiveDays || 3,
+    // So a custom_form.submitted workflow can be tested, including one
+    // narrowed to a single form -- its conditions read these paths.
+    form_id: trigger.data.config.formId || null,
+    form_name: "Sample form",
+    submission_id: null,
+    fields: {},
   };
   const payload: Record<string, unknown> = {
     event_type: input.triggerKey || "workflow.test",

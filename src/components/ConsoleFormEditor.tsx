@@ -23,13 +23,24 @@ import { CSS } from "@dnd-kit/utilities";
 import ConsoleModal from "@/components/ConsoleModal";
 import InkSelect from "@/components/InkSelect";
 import {
+  FORM_CONTACT_MAPPINGS,
   isFieldElementType,
+  resolveContactMapping,
   type FormCanvasElement,
+  type FormContactMapping,
   type FormDefinition,
   type FormDesign,
+  type FormElementStyle,
   type FormElementType,
   type FormSubmissionAction,
 } from "@/lib/formsShape";
+import {
+  elementButtonStyle,
+  elementInputStyle,
+  elementTextStyle,
+  elementWrapperStyle,
+  hasCustomWidth,
+} from "@/lib/formElementStyles";
 
 // Deterministic ID generator that avoids Math.random() in render
 let elementCounter = 0;
@@ -325,6 +336,189 @@ function createElement(type: FormElementType): FormCanvasElement {
 
 // ── Corner Radius Picker with Custom Input (Image 2 Fix) ────────────────────
 
+/** Shows on the canvas next to any field whose answer is copied onto the
+ * contact record, so the owner can see at a glance which answers become CRM
+ * data and which stay in the submission. */
+function contactMappingBadge(element: FormCanvasElement) {
+  if (!isFieldElementType(element.type)) return null;
+  const mapping = resolveContactMapping({
+    type: (element.type === "text_input" || element.type === "hidden" ? "text" : element.type) as never,
+    key: element.fieldKey,
+    label: element.fieldLabel,
+    contactMapping: element.contactMapping,
+  });
+  if (mapping === "none") return null;
+  const label = mapping === "detail" ? "→ contact detail" : `→ contact ${mapping}`;
+  return (
+    <span
+      title="This answer is saved onto the contact record"
+      className="shrink-0 rounded-full bg-paper-soft px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-ink-soft"
+    >
+      {label}
+    </span>
+  );
+}
+
+// ── Size stepper ──────────────────────────────────────────────────────────
+
+/** A length with arrows. Every element's Layout block is built from these,
+ * which is what gives a button (and now every other element) a real custom
+ * size instead of only an alignment choice: hold an arrow, watch the canvas
+ * resize live. The unit is kept as typed, so "50%" and "3rem" survive a
+ * round-trip; bare numbers are read as px by cssLength on save. */
+function SizeStepper({
+  value,
+  onChange,
+  placeholder,
+  min = 0,
+  max = 2000,
+  step = 1,
+}: {
+  value: string;
+  onChange: (val: string) => void;
+  placeholder?: string;
+  min?: number;
+  max?: number;
+  step?: number;
+}) {
+  const match = /^(-?[0-9]*\.?[0-9]+)(px|rem|em|%|vw|vh|ch)?$/.exec(value.trim());
+  const amount = match ? Number(match[1]) : null;
+  const unit = match?.[2] || "px";
+
+  const nudge = (delta: number) => {
+    const base = amount ?? 0;
+    const next = Math.min(max, Math.max(min, Math.round((base + delta) * 100) / 100));
+    onChange(`${next}${unit}`);
+  };
+
+  return (
+    <div className="flex items-stretch gap-1">
+      <input
+        value={value}
+        placeholder={placeholder || "auto"}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full rounded-lg border border-line bg-white px-2.5 py-1.5 text-xs text-ink outline-none transition-colors focus:border-ink"
+      />
+      <div className="flex shrink-0 flex-col overflow-hidden rounded-lg border border-line">
+        <button
+          type="button"
+          aria-label="Increase"
+          onClick={() => nudge(step)}
+          className="flex h-[15px] w-6 items-center justify-center text-[8px] leading-none text-ink-soft transition-colors hover:bg-paper-soft hover:text-ink"
+        >
+          ▲
+        </button>
+        <button
+          type="button"
+          aria-label="Decrease"
+          onClick={() => nudge(-step)}
+          className="flex h-[15px] w-6 items-center justify-center border-t border-line text-[8px] leading-none text-ink-soft transition-colors hover:bg-paper-soft hover:text-ink"
+        >
+          ▼
+        </button>
+      </div>
+      {value && (
+        <button
+          type="button"
+          aria-label="Clear"
+          title="Back to default"
+          onClick={() => onChange("")}
+          className="shrink-0 rounded-lg border border-line px-1.5 text-[10px] text-ink-soft transition-colors hover:border-ink hover:text-ink"
+        >
+          ✕
+        </button>
+      )}
+    </div>
+  );
+}
+
+const FONT_WEIGHT_OPTIONS = [
+  { value: "", label: "Theme default" },
+  { value: "300", label: "Light" },
+  { value: "400", label: "Regular" },
+  { value: "500", label: "Medium" },
+  { value: "600", label: "Semibold" },
+  { value: "700", label: "Bold" },
+  { value: "800", label: "Extrabold" },
+];
+
+/** The Layout & Size block, identical for every element type. Before this,
+ * only a button had any layout control at all (and only its alignment), so a
+ * heading, an input or a divider could not be padded, resized or spaced. */
+function ElementLayoutPanel({
+  style,
+  onChange,
+  showHeight,
+}: {
+  style: FormElementStyle | undefined;
+  onChange: (patch: Partial<FormElementStyle>) => void;
+  showHeight: boolean;
+}) {
+  const get = (key: keyof FormElementStyle) => String(style?.[key] ?? "");
+  const row = (label: string, key: keyof FormElementStyle, hint?: string, max?: number) => (
+    <label className="grid gap-1 text-xs font-medium">
+      <span className="flex items-baseline justify-between gap-2">
+        {label}
+        {hint && <span className="text-[10px] font-normal text-ink-soft">{hint}</span>}
+      </span>
+      <SizeStepper value={get(key)} onChange={(val) => onChange({ [key]: val })} max={max} />
+    </label>
+  );
+
+  return (
+    <div className="space-y-3 border-t border-line pt-4">
+      <div>
+        <h4 className="text-xs font-semibold uppercase tracking-wider text-ink">Layout &amp; Size</h4>
+        <p className="mt-0.5 text-[10px] text-ink-soft">
+          Blank means inherit. Type a bare number for pixels, or add %, rem or em.
+        </p>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        {row("Width", "width", "px / %")}
+        {showHeight ? row("Height", "height", "px") : <div />}
+        {row("Padding ↔", "paddingX", "px", 200)}
+        {row("Padding ↕", "paddingY", "px", 200)}
+        {row("Space above", "marginTop", "px", 400)}
+        {row("Space below", "marginBottom", "px", 400)}
+        {row("Font size", "fontSize", "px", 200)}
+        {row("Border width", "borderWidth", "px", 40)}
+      </div>
+      <div className="grid gap-1 text-xs font-medium">
+        <span>Font weight</span>
+        <InkSelect
+          value={get("fontWeight")}
+          onChange={(val) => onChange({ fontWeight: val })}
+          options={FONT_WEIGHT_OPTIONS}
+        />
+      </div>
+      <div className="grid gap-1 text-xs font-medium">
+        <span>Alignment</span>
+        <div className="grid grid-cols-4 gap-1">
+          {([
+            { value: "", label: "Auto" },
+            { value: "left", label: "Left" },
+            { value: "center", label: "Center" },
+            { value: "right", label: "Right" },
+          ] as const).map((option) => (
+            <button
+              key={option.value || "auto"}
+              type="button"
+              onClick={() => onChange({ textAlign: (option.value || undefined) as FormElementStyle["textAlign"] })}
+              className={`rounded-lg border py-1.5 text-[11px] font-medium transition-colors ${
+                (style?.textAlign || "") === option.value
+                  ? "border-ink bg-ink text-white"
+                  : "border-line bg-white text-ink hover:border-ink"
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CornerRadiusPicker({
   value,
   onChange,
@@ -452,18 +646,16 @@ function SortableElementItem({
     transition,
   };
 
-  const inputStyle = {
-    borderColor: element.elementStyle?.borderColor || design.borderColor || undefined,
-    borderRadius: element.elementStyle?.borderRadius || design.borderRadius || undefined,
-    backgroundColor: element.elementStyle?.backgroundColor || undefined,
-    color: element.elementStyle?.textColor || design.textColor || undefined,
-  };
-
+  // Built by the same helpers the live form uses, so the canvas is a true
+  // preview rather than a separate approximation of it.
+  const inputStyle = elementInputStyle(design, element.elementStyle);
   const buttonStyle = {
-    backgroundColor: element.elementStyle?.backgroundColor || design.buttonColor || "#0a0a0a",
-    color: element.elementStyle?.textColor || design.buttonTextColor || "#ffffff",
-    borderRadius: element.elementStyle?.borderRadius || design.borderRadius || undefined,
+    backgroundColor: design.buttonColor || "#0a0a0a",
+    color: design.buttonTextColor || "#ffffff",
+    ...elementButtonStyle(design, element.elementStyle),
   };
+  const textStyle = elementTextStyle(design, element.elementStyle);
+  const wrapperStyle = elementWrapperStyle(element.elementStyle);
 
   const choices = parseChoices(element.fieldOptions);
 
@@ -537,15 +729,12 @@ function SortableElementItem({
 
       {/* Live Preview with Direct Inline Canvas Editing */}
       {element.type === "heading" && (
-        <div style={{ textAlign: element.headingAlign || "left" }}>
+        <div style={{ textAlign: element.elementStyle?.textAlign || element.headingAlign || "left", ...wrapperStyle }}>
           <input
             value={element.headingText || ""}
             onChange={(e) => onUpdateProps({ headingText: e.target.value })}
             placeholder="Headline"
-            style={{
-              color: element.elementStyle?.textColor || undefined,
-              fontSize: element.elementStyle?.fontSize || undefined,
-            }}
+            style={textStyle}
             className={`w-full bg-transparent outline-none font-bold tracking-tight text-ink border-b border-transparent hover:border-line focus:border-ink ${
               element.headingLevel === "h1"
                 ? "text-2xl"
@@ -560,16 +749,13 @@ function SortableElementItem({
       )}
 
       {element.type === "text" && (
-        <div style={{ textAlign: element.textAlign || "left" }}>
+        <div style={{ textAlign: element.elementStyle?.textAlign || element.textAlign || "left", ...wrapperStyle }}>
           <textarea
             rows={2}
             value={element.textContent || ""}
             onChange={(e) => onUpdateProps({ textContent: e.target.value })}
             placeholder="Paragraph text"
-            style={{
-              color: element.elementStyle?.textColor || undefined,
-              fontSize: element.elementStyle?.fontSize || undefined,
-            }}
+            style={textStyle}
             className={`w-full resize-none bg-transparent outline-none text-sm border-b border-transparent hover:border-line focus:border-ink ${
               element.textMuted ? "text-ink-soft" : "text-ink"
             }`}
@@ -578,8 +764,18 @@ function SortableElementItem({
       )}
 
       {element.type === "divider" && (
-        <div className={element.dividerSpacing === "lg" ? "py-4" : element.dividerSpacing === "sm" ? "py-1" : "py-2"}>
-          <hr className="border-line" />
+        <div
+          style={wrapperStyle}
+          className={element.dividerSpacing === "lg" ? "py-4" : element.dividerSpacing === "sm" ? "py-1" : "py-2"}
+        >
+          <hr
+            className="border-line"
+            style={{
+              borderColor: element.elementStyle?.borderColor || design.borderColor || undefined,
+              borderTopWidth: element.elementStyle?.borderWidth || undefined,
+              width: element.elementStyle?.width || undefined,
+            }}
+          />
         </div>
       )}
 
@@ -598,14 +794,20 @@ function SortableElementItem({
 
       {/* Visible field elements */}
       {isFieldElementType(element.type) && !element.fieldHidden && element.type !== "hidden" && (
-        <div className="space-y-1.5">
+        <div className="space-y-1.5" style={wrapperStyle}>
           <div className="flex items-center gap-1">
             <input
               value={element.fieldLabel || ""}
               onChange={(e) => onUpdateProps({ fieldLabel: e.target.value })}
               placeholder="Field label"
+              style={{
+                color: element.elementStyle?.textColor || undefined,
+                fontSize: element.elementStyle?.fontSize || undefined,
+                fontWeight: element.elementStyle?.fontWeight || undefined,
+              }}
               className="bg-transparent text-sm font-medium text-ink outline-none border-b border-transparent hover:border-line focus:border-ink px-0.5"
             />
+            {contactMappingBadge(element)}
           </div>
 
           {element.type === "textarea" ? (
@@ -704,6 +906,7 @@ function SortableElementItem({
 
       {element.type === "button" && (
         <div
+          style={wrapperStyle}
           className={`flex ${
             element.buttonAlign === "center"
               ? "justify-center"
@@ -717,8 +920,12 @@ function SortableElementItem({
           <div
             style={buttonStyle}
             className={`${
-              element.buttonAlign === "full" ? "w-full text-center" : ""
-            } rounded-xl bg-ink px-6 py-2.5 text-sm font-medium text-paper shadow-sm`}
+              element.buttonAlign === "full" && !hasCustomWidth(element.elementStyle) ? "w-full text-center" : ""
+            } ${element.elementStyle?.paddingX || element.elementStyle?.padding ? "" : "px-6"} ${
+              element.elementStyle?.paddingY || element.elementStyle?.padding || element.elementStyle?.height
+                ? "flex items-center justify-center"
+                : "py-2.5"
+            } rounded-xl bg-ink text-sm font-medium text-paper shadow-sm`}
           >
             <input
               value={element.buttonLabel || ""}
@@ -773,7 +980,7 @@ export default function ConsoleFormEditor({
   const [successText, setSuccessText] = useState(initialForm.successText);
   const [notifyEmail, setNotifyEmail] = useState(initialForm.notifyEmail);
   const [source, setSource] = useState(initialForm.source);
-  const [verifyEmail, setVerifyEmail] = useState(initialForm.verifyEmail || Boolean(initialForm.systemRole));
+  const [verifyEmail, setVerifyEmail] = useState(initialForm.verifyEmail);
 
   // Editor Interaction State
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -991,6 +1198,20 @@ export default function ConsoleFormEditor({
   }
 
   const selectedElement = elements.find((el) => el.id === selectedId) || null;
+  /** The contact mapping actually in force for the selected field: its
+   * explicit choice, or the type-derived default for a field saved before
+   * this setting existed. */
+  const effectiveMapping: FormContactMapping =
+    selectedElement && isFieldElementType(selectedElement.type)
+      ? resolveContactMapping({
+          type: (selectedElement.type === "text_input" || selectedElement.type === "hidden"
+            ? "text"
+            : selectedElement.type) as never,
+          key: selectedElement.fieldKey,
+          label: selectedElement.fieldLabel,
+          contactMapping: selectedElement.contactMapping,
+        })
+      : "none";
   const isFormStyleSelected = selectedId === "__form_style__";
   const isSidebarVisible = Boolean(selectedElement || isFormStyleSelected);
 
@@ -1100,7 +1321,6 @@ export default function ConsoleFormEditor({
                 <input
                   type="checkbox"
                   checked={verifyEmail}
-                  disabled={Boolean(initialForm.systemRole)}
                   onChange={(e) => {
                     setVerifyEmail(e.target.checked);
                     setDirty(true);
@@ -1311,6 +1531,10 @@ export default function ConsoleFormEditor({
           >
             <StyleIcon />
           </button>
+
+          <a href={`/console/forms/${initialForm.id}/submissions`} className={`${button} hidden sm:inline-flex`}>
+            Responses
+          </a>
 
           {slug && (
             <a
@@ -1855,6 +2079,43 @@ export default function ConsoleFormEditor({
                             </span>
                           </label>
                         )}
+
+                        {/* Add to contact. Every submission is recorded in
+                            full either way -- this decides which answers
+                            also become data on the contact record itself. */}
+                        <div className="space-y-2 pt-3 border-t border-line">
+                          <div>
+                            <span className="text-xs font-semibold text-ink">Add to contact</span>
+                            <p className="mt-0.5 text-[10px] text-ink-soft">
+                              Where this answer lands on the contact record. Leave it off for answers you
+                              only want to read in the responses list.
+                            </p>
+                          </div>
+                          <InkSelect
+                            value={effectiveMapping}
+                            onChange={(val) =>
+                              updateElementProps(selectedElement.id, { contactMapping: val as FormContactMapping })
+                            }
+                            options={FORM_CONTACT_MAPPINGS}
+                          />
+                          {effectiveMapping === "detail" && (
+                            <label className="grid gap-1.5 text-xs font-medium">
+                              Detail name on the contact
+                              <input
+                                value={selectedElement.contactDetailLabel || ""}
+                                placeholder={selectedElement.fieldLabel || "Detail"}
+                                onChange={(e) =>
+                                  updateElementProps(selectedElement.id, { contactDetailLabel: e.target.value })
+                                }
+                                className={inputClass}
+                              />
+                              <span className="text-[10px] text-ink-soft">
+                                Shown under Details from forms on the contact, and deletable from there.
+                                Re-submitting updates it rather than adding a second copy.
+                              </span>
+                            </label>
+                          )}
+                        </div>
                       </>
                     )}
 
@@ -1869,7 +2130,7 @@ export default function ConsoleFormEditor({
                           />
                         </label>
                         <div className="grid gap-1.5 text-xs font-medium">
-                          <span>Button Width &amp; Alignment</span>
+                          <span>Alignment</span>
                           <InkSelect
                             value={selectedElement.buttonAlign || "full"}
                             onChange={(val) =>
@@ -1884,6 +2145,9 @@ export default function ConsoleFormEditor({
                               { value: "right", label: "Right aligned" },
                             ]}
                           />
+                          <span className="text-[10px] text-ink-soft">
+                            Set an exact Width or Height in Layout below to size the button yourself instead.
+                          </span>
                         </div>
                       </>
                     )}
@@ -1906,6 +2170,19 @@ export default function ConsoleFormEditor({
                         />
                       </div>
                     )}
+
+                    {/* The same Layout & Size block for every element type --
+                        a heading, an input, a divider and a button all get
+                        width, height, padding, spacing and typography. */}
+                    <ElementLayoutPanel
+                      style={selectedElement.elementStyle}
+                      showHeight={selectedElement.type !== "divider"}
+                      onChange={(patch) =>
+                        updateElementProps(selectedElement.id, {
+                          elementStyle: { ...selectedElement.elementStyle, ...patch },
+                        })
+                      }
+                    />
 
                     {!initialForm.isFixed && (
                       <div className="pt-4 border-t border-line">

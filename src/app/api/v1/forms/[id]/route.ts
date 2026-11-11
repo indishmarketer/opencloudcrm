@@ -44,7 +44,11 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     redirectUrl: typeof body.redirectUrl === "string" ? body.redirectUrl : existing.redirectUrl,
     notifyEmail: typeof body.notifyEmail === "string" ? body.notifyEmail : existing.notifyEmail,
     source: typeof body.source === "string" ? body.source : existing.source,
-    verifyEmail: existing.systemRole ? true : typeof body.verifyEmail === "boolean" ? body.verifyEmail : existing.verifyEmail,
+    // Freely toggleable on every form. It used to be pinned on for the
+    // seeded Contact and Newsletter forms, which meant they could never be
+    // used as plain forms, and -- because the Turnstile widget was hidden
+    // whenever verification was on -- their submit could not succeed at all.
+    verifyEmail: typeof body.verifyEmail === "boolean" ? body.verifyEmail : existing.verifyEmail,
     design: body.design !== undefined ? body.design : existing.design,
   };
   const normalized = normalizeFormDefinition(merged);
@@ -72,8 +76,11 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   const existing = await resolveForm(id);
   if (!existing) return NextResponse.json({ error: "Form not found." }, { status: 404 });
 
-  if (existing.isFixed || existing.systemRole) {
-    return NextResponse.json({ error: "Forms used by built-in pages cannot be deleted." }, { status: 403 });
+  if (existing.isFixed) {
+    return NextResponse.json(
+      { error: "The Sign up / Log in form cannot be deleted -- account access depends on it." },
+      { status: 403 },
+    );
   }
 
   try {

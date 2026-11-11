@@ -164,14 +164,17 @@ export const STARTER_PAGES: DefaultPage[] = [
     title: "Contact Us",
     metaDescription: "Get in touch with {{site_name}}.",
     blocks: [
-      block("contact-form", "contactForm", {
-        heading: "Contact us",
-        text: "Send us a message and we'll get back to you.",
-        messageLabel: "How can we help?",
-        showDetails: true,
+      // A saved form from Console -> Forms, not its own one-off form: the
+      // standalone "contactForm" block type was retired when the form
+      // builder took over (migration 180 rewrote every existing page to
+      // this shape). This definition was left behind on the old type, so
+      // seeding starter pages threw "Unknown block type". savedFormId is
+      // filled in at seed time from the Contact form's real id -- see
+      // ensureStarterPages in src/lib/sitePages.ts.
+      block("contact-form", "form", {
+        savedFormId: "",
+        showContactDetails: true,
         detailsHeading: "Contact information",
-        successHeading: "Thanks, got it.",
-        successText: "We'll get back to you shortly.",
       }),
     ],
   }),
