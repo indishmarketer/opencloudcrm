@@ -647,6 +647,24 @@ export function NestedElement({
 }) {
   const props = block.props as Props;
   switch (block.type) {
+    case "form":
+      // A form is placeable in a column like any other element. It was the
+      // one element the palette offered that a column refused.
+      return (
+        <RichBox props={props}>
+          <SavedFormBlock
+            formId={Number(str(props, "savedFormId")) || 0}
+            preview={editorEmpty}
+            designOverride={{
+              ...(str(props, "formBackgroundColor") ? { backgroundColor: str(props, "formBackgroundColor") } : {}),
+              ...(str(props, "formTextColor") ? { textColor: str(props, "formTextColor") } : {}),
+              ...(str(props, "formFieldBorderColor") ? { borderColor: str(props, "formFieldBorderColor") } : {}),
+              ...(str(props, "formButtonColor") ? { buttonColor: str(props, "formButtonColor") } : {}),
+              ...(str(props, "formButtonTextColor") ? { buttonTextColor: str(props, "formButtonTextColor") } : {}),
+            }}
+          />
+        </RichBox>
+      );
     case "richText":
       return <RichTextBlock props={props} nested editableHtml={editableHtml} />;
     case "heading":

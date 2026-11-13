@@ -688,6 +688,7 @@ export const BLOCK_DEFS: BlockDef[] = [
       color("formButtonColor", "Button color override"),
       color("formButtonTextColor", "Button text override"),
     ],
+    nestable: true,
     defaults: {
       savedFormId: "",
       formBackgroundColor: "",
