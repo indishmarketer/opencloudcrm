@@ -142,6 +142,34 @@ const GearIcon = () => (
   </svg>
 );
 
+/** Makes a column accept an element dragged in from the palette, instead of
+ * the "+ Add element" button being the only way to fill one. The droppable
+ * id carries the row and column so the drop handler knows where it landed;
+ * `column-drop` is not a valid block id, so it can never collide with one. */
+function ColumnDropzone({ rowId, columnIndex, empty }: { rowId: string; columnIndex: number; empty: boolean }) {
+  const { setNodeRef, isOver } = useDroppable({ id: `column-drop:${rowId}:${columnIndex}` });
+  return (
+    <div
+      ref={setNodeRef}
+      className={`rounded-lg border border-dashed transition-colors ${
+        isOver ? "border-ink bg-ink/5" : "border-transparent"
+      } ${empty ? "min-h-16" : "min-h-6"}`}
+    >
+      {isOver && <p className="py-2 text-center text-[11px] font-medium text-ink">Drop here</p>}
+    </div>
+  );
+}
+
+export function parseColumnDropId(id: string): { rowId: string; columnIndex: number } | null {
+  if (!id.startsWith("column-drop:")) return null;
+  const rest = id.slice("column-drop:".length);
+  const split = rest.lastIndexOf(":");
+  if (split < 1) return null;
+  const columnIndex = Number(rest.slice(split + 1));
+  if (!Number.isInteger(columnIndex) || columnIndex < 0) return null;
+  return { rowId: rest.slice(0, split), columnIndex };
+}
+
 function CanvasEndDropzone({ empty }: { empty: boolean }) {
   const { setNodeRef, isOver } = useDroppable({ id: "canvas-end" });
   return (
@@ -545,6 +573,7 @@ export default function ConsolePageEditor({
             />
           );
         })}
+        <ColumnDropzone rowId={rowId} columnIndex={columnIndex} empty={column.length === 0} />
         <AddElementButton onAdd={(type) => addElementToRow(rowId, columnIndex, type)} />
       </>
     );
@@ -621,6 +650,12 @@ export default function ConsolePageEditor({
     const data = active.data.current as { kind?: string; blockType?: string } | undefined;
 
     if (data?.kind === "palette" && data.blockType) {
+      // Dropped into one of a row's columns rather than onto the canvas.
+      const columnTarget = parseColumnDropId(String(over.id));
+      if (columnTarget) {
+        addElementToRow(columnTarget.rowId, columnTarget.columnIndex, data.blockType);
+        return;
+      }
       const index = over.id === "canvas-end" ? blocks.length : Math.max(0, blocks.findIndex((b) => b.id === over.id));
       const block = createInsertedBlock(data.blockType);
       update([...blocks.slice(0, index), block, ...blocks.slice(index)]);

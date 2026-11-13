@@ -515,7 +515,13 @@ export function HeadingBlock({ props, nested = false, editableText }: { props: P
 export function ButtonBlock({ props, nested = false, editableText }: { props: Props; nested?: boolean; editableText?: InlineEdit }) {
   const label = str(props, "label");
   const href = str(props, "href");
-  if ((!label || !href) && !editableText) return null;
+  // A button can open a saved form in a popup instead of navigating. The
+  // same mechanism Hero and CTA buttons already had -- it was simply never
+  // offered on the standalone Button, which is the one you reach for when
+  // you just want a button.
+  const popupFormId = str(props, "action") === "formPopup" ? Number(str(props, "formId")) || 0 : 0;
+  if (!label && !editableText) return null;
+  if (!popupFormId && !href && !editableText) return null;
   // "align" (this block's own content field) positions the button within
   // its box -- left/center/right -- a different concern from the Style
   // tab's textAlign, which only affects how the label's own text sits
@@ -552,6 +558,8 @@ export function ButtonBlock({ props, nested = false, editableText }: { props: Pr
         <span className={buttonShape} style={t}>
           <InlineTextInput edit={editableText} placeholder="Button text" autoWidth />
         </span>
+      ) : popupFormId ? (
+        <SavedFormPopup formId={popupFormId} buttonLabel={label} buttonClassName={buttonShape} buttonStyle={t} />
       ) : (
         <ButtonLink href={href} label={label} className={buttonShape} style={t} />
       )}
@@ -1326,11 +1334,20 @@ export function SocialIconsBlock({ props, nested = false }: { props: Props; nest
  * onto itself, which was a hardcoded second layout nobody could edit -- and
  * redundant, since "Contact details" is its own block and a Row with two
  * columns puts anything at all beside a form. */
-export function FormBlock({ props, form }: { props: Props; form?: React.ComponentProps<typeof SavedFormBlock>["initialForm"] }) {
+export function FormBlock({
+  props,
+  form,
+  preview = false,
+}: {
+  props: Props;
+  form?: React.ComponentProps<typeof SavedFormBlock>["initialForm"];
+  /** Set by the page editor's canvas -- see SavedForm's `preview`. */
+  preview?: boolean;
+}) {
   const formId = Number(str(props, "savedFormId")) || 0;
   return (
     <RichSection props={props} widthDefault={672}>
-      <SavedFormBlock formId={formId} initialForm={form} designOverride={{
+      <SavedFormBlock formId={formId} initialForm={form} preview={preview} designOverride={{
         ...(str(props, "formBackgroundColor") ? { backgroundColor: str(props, "formBackgroundColor") } : {}),
         ...(str(props, "formTextColor") ? { textColor: str(props, "formTextColor") } : {}),
         ...(str(props, "formFieldBorderColor") ? { borderColor: str(props, "formFieldBorderColor") } : {}),

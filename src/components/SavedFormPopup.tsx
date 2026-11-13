@@ -12,10 +12,14 @@ export default function SavedFormPopup({
   formId,
   buttonLabel,
   buttonClassName,
+  buttonStyle,
 }: {
   formId: number;
   buttonLabel: string;
   buttonClassName: string;
+  /** The block's own resolved styling (colour, size, radius), so a popup
+   * button looks identical to a linking one. */
+  buttonStyle?: React.CSSProperties;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -56,7 +60,7 @@ export default function SavedFormPopup({
 
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} className={buttonClassName}>
+      <button type="button" onClick={() => setOpen(true)} className={buttonClassName} style={buttonStyle}>
         {buttonLabel}
       </button>
       {open && typeof document !== "undefined" && createPortal(modalContent, document.body)}

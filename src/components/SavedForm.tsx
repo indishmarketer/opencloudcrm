@@ -303,10 +303,21 @@ export default function SavedForm({
   showHeading = true,
   designOverride,
   initialForm,
+  preview = false,
 }: {
   formId: number;
   showHeading?: boolean;
   designOverride?: Partial<FormDesign>;
+  /** Drawn inside the page editor, where the form is a picture of itself
+   * and never submitted. No bot challenge is loaded.
+   *
+   * This is not cosmetic. Turnstile renders its own Cloudflare-hosted
+   * iframe, and the editor's mobile preview is itself an about:blank
+   * iframe -- a challenge nested in there cannot complete, so Cloudflare
+   * showed its own "page could not load / reload to try again" screen and
+   * took the whole preview down with it. That is why mobile preview failed
+   * on exactly the pages that embed a form and nowhere else. */
+  preview?: boolean;
   /** The definition, already resolved on the server. Supplied by every
    * server-rendered placement (a page section, the /f/<slug> page), so the
    * form draws with the page instead of showing "Loading…" while the
@@ -318,7 +329,9 @@ export default function SavedForm({
   const [status, setStatus] = useState<"idle" | "submitting" | "done" | "error">("idle");
   const [error, setError] = useState("");
   const [values, setValues] = useState<Record<string, string>>({});
-  const [turnstileToken, setTurnstileToken] = useState("");
+  // In a preview there is no challenge to pass, so the submit button must
+  // not sit permanently disabled waiting for a token that never arrives.
+  const [turnstileToken, setTurnstileToken] = useState(preview ? "preview" : "");
   const handleToken = useCallback((t: string) => setTurnstileToken(t), []);
   /** A Turnstile token is single-use: the server spends it on the first
    * request and a retry with the same one fails verification. Bumping this
@@ -419,7 +432,7 @@ export default function SavedForm({
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!form) return;
+    if (!form || preview) return;
 
     if (form.verifyEmail) {
       const emailField = form.fields.find((f) => f.type === "email" && !f.hidden);
@@ -646,7 +659,7 @@ export default function SavedForm({
   // stranded below the button when the button is not the last element.
   const firstButton = form.elements?.find((e) => e.type === "button");
   const firstButtonId = firstButton?.id;
-  const challenge = <Turnstile key={turnstileNonce} onToken={handleToken} />;
+  const challenge = preview ? null : <Turnstile key={turnstileNonce} onToken={handleToken} />;
 
 
 

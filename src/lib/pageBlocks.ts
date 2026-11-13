@@ -98,7 +98,17 @@ export type PageBlock = { id: string; type: string; props: Record<string, unknow
 type TextOptions = { max?: number; placeholder?: string; help?: string };
 const text = (key: string, label: string, extra: TextOptions = {}): FieldDef => ({ key, label, kind: "text", ...extra });
 const textarea = (key: string, label: string, extra: TextOptions = {}): FieldDef => ({ key, label, kind: "textarea", ...extra });
-const link = (key: string, label: string, help?: string): FieldDef => ({ key, label, kind: "link", help, placeholder: "/contact or https://..." });
+const link = (key: string, label: string, help?: string): FieldDef => ({
+  key,
+  label,
+  kind: "link",
+  // Jumping to a section on the same page is already supported end to end --
+  // every section has an "Anchor id" in its Style tab and renders it as a
+  // real id, and a #hash href survives validation -- but nothing said so, so
+  // it was invisible.
+  help: help ?? "A page (/contact), a full https:// link, or #section-id to jump to a section on this page -- set that id under the target section's Style tab, Anchor id.",
+  placeholder: "/contact, https://... or #section-id",
+});
 const image = (key: string, label: string): FieldDef => ({ key, label, kind: "image" });
 const color = (key: string, label: string, help?: string): FieldDef => ({ key, label, kind: "color", help });
 const code = (key: string, label: string, help?: string, max?: number): FieldDef => ({ key, label, kind: "code", help, max });
@@ -338,13 +348,15 @@ export const BLOCK_DEFS: BlockDef[] = [
     styleModel: "rich",
     fields: [
       text("label", "Button text", { max: 60 }),
+      select("action", "Button opens", [["link", "A link"], ["formPopup", "A saved form, as a popup"]]),
       link("href", "Link"),
+      formPicker("formId", "Saved form", "Only when \"Button opens\" is set to a popup. The popup shows this form exactly as it is built in Console -> Forms."),
       select("style", "Style", [["primary", "Filled"], ["outline", "Outlined"]]),
       select("align", "Alignment", [["left", "Left"], ["center", "Center"], ["right", "Right"]]),
       color("buttonColor", "Button colour", "Fill for a filled button, border for an outlined one. Blank follows the theme -- which is dark, so a button on a dark section needs a colour set here to be visible."),
       color("buttonTextColor", "Button text colour"),
     ],
-    defaults: { label: "Click here", href: "/contact", style: "primary", align: "left", buttonColor: "", buttonTextColor: "", fontSize: 14, fontWeight: "medium", textAlign: "center" },
+    defaults: { label: "Click here", action: "link", href: "/contact", formId: "", style: "primary", align: "left", buttonColor: "", buttonTextColor: "", fontSize: 14, fontWeight: "medium", textAlign: "center" },
     nestable: true,
   },
   {
