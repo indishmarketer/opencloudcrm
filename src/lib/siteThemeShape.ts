@@ -24,6 +24,18 @@ export type SiteTheme = {
   paperSoft: string;
   inkSoft: string;
   line: string;
+  /** The brand colour: primary buttons, links and focus rings.
+   *
+   * The palette had only neutrals, so a brand had no way to be anything but
+   * black on white -- a site with a signature colour could not express it
+   * here at all. It defaults to `ink`, so every existing install is
+   * pixel-identical until someone actually picks a colour. */
+  accent: string;
+  /** The readable colour for text sitting on top of `accent`. */
+  accentOn: string;
+  /** A pale wash of the brand colour, for tinted surfaces and soft
+   * backgrounds. Defaults to `paperSoft`, again changing nothing. */
+  accentSoft: string;
   inkGradient: Gradient;
   paperGradient: Gradient;
 };
@@ -34,6 +46,9 @@ export const DEFAULT_SITE_THEME: SiteTheme = {
   paperSoft: "#f5f5f4",
   inkSoft: "#4b4b4b",
   line: "#e2e2e0",
+  accent: "#0a0a0a",
+  accentOn: "#ffffff",
+  accentSoft: "#f5f5f4",
   inkGradient: { from: "#0a0a0a", via: "#262626", to: "#0a0a0a", angle: 160 },
   paperGradient: { from: "#ffffff", via: "#f5f5f4", to: "#ececea", angle: 160 },
 };
@@ -67,6 +82,9 @@ export function normalizeSiteTheme(input: unknown, fallback: SiteTheme = DEFAULT
     paperSoft: hex(raw.paperSoft, fallback.paperSoft),
     inkSoft: hex(raw.inkSoft, fallback.inkSoft),
     line: hex(raw.line, fallback.line),
+    accent: hex(raw.accent, fallback.accent),
+    accentOn: hex(raw.accentOn, fallback.accentOn),
+    accentSoft: hex(raw.accentSoft, fallback.accentSoft),
     inkGradient: normalizeGradient(raw.inkGradient, fallback.inkGradient),
     paperGradient: normalizeGradient(raw.paperGradient, fallback.paperGradient),
   };
@@ -80,5 +98,5 @@ export function gradientCss(g: Gradient): string {
  * overrides globals.css's static :root defaults and the two gradient
  * utility classes with this deployment's live theme. */
 export function siteThemeCss(theme: SiteTheme): string {
-  return `:root { --ink: ${theme.ink}; --paper: ${theme.paper}; --paper-soft: ${theme.paperSoft}; --ink-soft: ${theme.inkSoft}; --line: ${theme.line}; } .bg-ink-gradient { background: ${gradientCss(theme.inkGradient)}; } .bg-paper-gradient { background: ${gradientCss(theme.paperGradient)}; }`;
+  return `:root { --ink: ${theme.ink}; --paper: ${theme.paper}; --paper-soft: ${theme.paperSoft}; --ink-soft: ${theme.inkSoft}; --line: ${theme.line}; --accent: ${theme.accent}; --accent-on: ${theme.accentOn}; --accent-soft: ${theme.accentSoft}; } .bg-ink-gradient { background: ${gradientCss(theme.inkGradient)}; } .bg-paper-gradient { background: ${gradientCss(theme.paperGradient)}; }`;
 }

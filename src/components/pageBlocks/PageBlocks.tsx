@@ -122,7 +122,7 @@ function renderBlock(block: PageBlock, props: Props, business: ResolvedBusiness,
     case "workflowDemo": return <WorkflowDemoBlock props={props} />;
     case "integrations": return <IntegrationsBlock props={props} />;
     case "featuredOn": return <FeaturedOnBlock props={props} />;
-    case "form": return <FormBlock props={props} business={business} />;
+    case "form": return <FormBlock props={props} />;
     case "contactDetails": return <ContactDetailsBlock props={props} business={business} />;
     case "businessDetails": return <BusinessDetailsBlock props={props} business={business} />;
     case "spacer": return <SpacerBlock props={props} />;

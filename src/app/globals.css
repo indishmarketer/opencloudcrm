@@ -8,6 +8,11 @@
   --ink: #0a0a0a;
   --ink-soft: #4b4b4b;
   --line: #e2e2e0;
+  /* The brand colour. Defaults to ink so an unconfigured site is unchanged;
+     Console -> Site Settings -> Theme overrides these live. */
+  --accent: #0a0a0a;
+  --accent-on: #ffffff;
+  --accent-soft: #f5f5f4;
 }
 
 @theme inline {
@@ -16,6 +21,9 @@
   --color-ink: var(--ink);
   --color-ink-soft: var(--ink-soft);
   --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-on: var(--accent-on);
+  --color-accent-soft: var(--accent-soft);
   --font-display: var(--font-display);
   --font-body: var(--font-body);
 }

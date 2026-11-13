@@ -138,7 +138,7 @@ export function renderLiveBlock(
     case "featuredOn":
       return <FeaturedOnBlock props={props} editorEmpty />;
     case "form":
-      return <FormBlock props={props} business={business} />;
+      return <FormBlock props={props} />;
     case "contactDetails":
       return <ContactDetailsBlock props={props} business={business} />;
     case "businessDetails":

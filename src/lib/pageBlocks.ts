@@ -322,8 +322,8 @@ export const BLOCK_DEFS: BlockDef[] = [
       select(
         "level",
         "Heading level",
-        [["h2", "H2 -- large"], ["h3", "H3 -- medium"], ["h4", "H4 -- small"]],
-        "The semantic heading tag (matters for SEO/accessibility) and its default size. For a specific pixel size instead, use \"Text size\" in the Style tab -- that always wins over this default."
+        [["h1", "H1 -- the page's main heading"], ["h2", "H2 -- large"], ["h3", "H3 -- medium"], ["h4", "H4 -- small"]],
+        "The semantic heading tag (matters for SEO/accessibility) and its default size. Use H1 once per page for its main heading -- that lets you design the page's opening heading yourself instead of having to keep a Page header section for it. For a specific pixel size, use \"Text size\" in the Style tab -- that always wins over this default."
       ),
     ],
     defaults: { text: "A heading", level: "h2", fontSize: 32, fontWeight: "semibold" },
@@ -668,8 +668,6 @@ export const BLOCK_DEFS: BlockDef[] = [
     styleModel: "rich",
     fields: [
       formPicker("savedFormId", "Choose form", "Fields and submission behavior are managed in Console → Forms. This page controls the form's placement and section style."),
-      toggle("showContactDetails", "Show business contact details beside the form"),
-      text("detailsHeading", "Contact details heading", { max: 120 }),
       color("formBackgroundColor", "Form background override"),
       color("formTextColor", "Form text override"),
       color("formFieldBorderColor", "Field border override"),
@@ -678,8 +676,6 @@ export const BLOCK_DEFS: BlockDef[] = [
     ],
     defaults: {
       savedFormId: "",
-      showContactDetails: false,
-      detailsHeading: "Contact information",
       formBackgroundColor: "",
       formTextColor: "",
       formFieldBorderColor: "",

@@ -171,11 +171,7 @@ export const STARTER_PAGES: DefaultPage[] = [
       // seeding starter pages threw "Unknown block type". savedFormId is
       // filled in at seed time from the Contact form's real id -- see
       // ensureStarterPages in src/lib/sitePages.ts.
-      block("contact-form", "form", {
-        savedFormId: "",
-        showContactDetails: true,
-        detailsHeading: "Contact information",
-      }),
+      block("contact-form", "form", { savedFormId: "" }),
     ],
   }),
 ];

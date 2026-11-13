@@ -104,6 +104,23 @@ export default function ConsoleSiteTheme({ initialTheme }: { initialTheme: SiteT
           <ColorInput label="Line (borders, rules)" value={theme.line} onChange={(v) => setTheme((t) => ({ ...t, line: v }))} />
         </div>
 
+        {/* The brand colour. Left equal to Ink it changes nothing, which is
+            why every existing site looks the same until one is chosen. */}
+        <div className="space-y-3 rounded-xl border border-line bg-paper p-4">
+          <div>
+            <h3 className="text-sm font-semibold text-ink">Brand colour</h3>
+            <p className="mt-0.5 text-xs text-ink-soft">
+              Used for primary buttons, links and focus rings. Leave it the same as Ink for a plain
+              black-and-white site.
+            </p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <ColorInput label="Accent (brand)" value={theme.accent} onChange={(v) => setTheme((t) => ({ ...t, accent: v }))} />
+            <ColorInput label="Accent text (on the brand colour)" value={theme.accentOn} onChange={(v) => setTheme((t) => ({ ...t, accentOn: v }))} />
+            <ColorInput label="Accent soft (tinted brand surfaces)" value={theme.accentSoft} onChange={(v) => setTheme((t) => ({ ...t, accentSoft: v }))} />
+          </div>
+        </div>
+
         <GradientFields label="Dark gradient (bg-ink-gradient)" value={theme.inkGradient} onChange={(g) => setTheme((t) => ({ ...t, inkGradient: g }))} />
         <GradientFields label="Light gradient (bg-paper-gradient)" value={theme.paperGradient} onChange={(g) => setTheme((t) => ({ ...t, paperGradient: g }))} />
 

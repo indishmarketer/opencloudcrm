@@ -472,7 +472,14 @@ export function HeadingBlock({ props, nested = false, editableText }: { props: P
   const text = str(props, "text");
   if (!text && !editableText) return null;
   const level = str(props, "level");
-  const Heading = (level === "h3" ? "h3" : level === "h4" ? "h4" : "h2") as "h2" | "h3" | "h4";
+  // H1 is offered so a page can carry its main heading on an ordinary,
+  // fully styleable Heading block instead of being forced to keep a Page
+  // header section just to have one.
+  const Heading = (level === "h1" ? "h1" : level === "h3" ? "h3" : level === "h4" ? "h4" : "h2") as
+    | "h1"
+    | "h2"
+    | "h3"
+    | "h4";
   const t = richTextStyle(props);
   const el = (
     <Heading className="font-display" style={t}>
@@ -1271,25 +1278,21 @@ export function SocialIconsBlock({ props, nested = false }: { props: Props; nest
   );
 }
 
-export function FormBlock({ props, business }: { props: Props; business: ResolvedBusiness }) {
+/** Just the form. It used to be able to staple a business-details sidebar
+ * onto itself, which was a hardcoded second layout nobody could edit -- and
+ * redundant, since "Contact details" is its own block and a Row with two
+ * columns puts anything at all beside a form. */
+export function FormBlock({ props }: { props: Props }) {
   const formId = Number(str(props, "savedFormId")) || 0;
   return (
-    <RichSection props={props} widthDefault={bool(props, "showContactDetails") ? 1152 : 672}>
-      <div className={bool(props, "showContactDetails") ? "grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.55fr)]" : ""}>
-        <SavedFormBlock formId={formId} designOverride={{
-          ...(str(props, "formBackgroundColor") ? { backgroundColor: str(props, "formBackgroundColor") } : {}),
-          ...(str(props, "formTextColor") ? { textColor: str(props, "formTextColor") } : {}),
-          ...(str(props, "formFieldBorderColor") ? { borderColor: str(props, "formFieldBorderColor") } : {}),
-          ...(str(props, "formButtonColor") ? { buttonColor: str(props, "formButtonColor") } : {}),
-          ...(str(props, "formButtonTextColor") ? { buttonTextColor: str(props, "formButtonTextColor") } : {}),
-        }} />
-        {bool(props, "showContactDetails") && (
-          <aside className="h-fit rounded-2xl border border-line bg-paper-soft p-6">
-            {str(props, "detailsHeading") && <h2 className="font-display text-xl font-semibold">{str(props, "detailsHeading")}</h2>}
-            <div className="mt-6"><BusinessContactDetails business={business} /></div>
-          </aside>
-        )}
-      </div>
+    <RichSection props={props} widthDefault={672}>
+      <SavedFormBlock formId={formId} designOverride={{
+        ...(str(props, "formBackgroundColor") ? { backgroundColor: str(props, "formBackgroundColor") } : {}),
+        ...(str(props, "formTextColor") ? { textColor: str(props, "formTextColor") } : {}),
+        ...(str(props, "formFieldBorderColor") ? { borderColor: str(props, "formFieldBorderColor") } : {}),
+        ...(str(props, "formButtonColor") ? { buttonColor: str(props, "formButtonColor") } : {}),
+        ...(str(props, "formButtonTextColor") ? { buttonTextColor: str(props, "formButtonTextColor") } : {}),
+      }} />
     </RichSection>
   );
 }

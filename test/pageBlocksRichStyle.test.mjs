@@ -17,8 +17,13 @@ test("a newly dropped form waits for a saved form and exposes no field editor", 
   const form = createBlock("form");
   const definition = BLOCK_DEFS.find((block) => block.type === "form");
   assert.equal(form.props.savedFormId, "");
-  assert.deepEqual(definition.fields.map((field) => field.key), ["savedFormId", "showContactDetails", "detailsHeading", "formBackgroundColor", "formTextColor", "formFieldBorderColor", "formButtonColor", "formButtonTextColor"]);
+  // A form block is the form and its styling, nothing else. It used to be
+  // able to staple a business-details sidebar onto itself -- a second,
+  // hardcoded layout nobody could edit, and redundant beside the
+  // "contactDetails" block and a two-column Row.
+  assert.deepEqual(definition.fields.map((field) => field.key), ["savedFormId", "formBackgroundColor", "formTextColor", "formFieldBorderColor", "formButtonColor", "formButtonTextColor"]);
   assert.equal("customFields" in form.props, false);
+  assert.equal("showContactDetails" in form.props, false);
 });
 
 test("every real element type is either on the rich style model or has a documented reason not to be", () => {
