@@ -18,6 +18,7 @@ import { SortableContext, arrayMove, sortableKeyboardCoordinates, verticalListSo
 import ConsoleModal from "@/components/ConsoleModal";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { FieldGroup, MergeTagHint } from "@/components/PageBlockFields";
+import { isOverridableStyleField, mobileOverridesOf } from "@/lib/mobileOverrides";
 import BlockTypePicker from "@/components/pageEditor/BlockTypePicker";
 import ElementsPalette from "@/components/pageEditor/ElementsPalette";
 import { AddElementButton, NestedElementFrame, TopBlockFrame } from "@/components/pageEditor/LiveBlockFrame";
@@ -188,6 +189,7 @@ function SettingsPanel({
   description,
   contentFields,
   styleFieldsList,
+  device,
   props,
   onChangeProps,
   linkOptions,
@@ -202,6 +204,9 @@ function SettingsPanel({
   description: string;
   contentFields: ReturnType<typeof styleFields>;
   styleFieldsList: ReturnType<typeof styleFields>;
+  /** Which device the canvas is showing -- the Style tab edits the mobile
+   * overrides instead of the base design while in mobile preview. */
+  device: Device;
   props: Record<string, unknown>;
   onChangeProps: (next: Record<string, unknown>) => void;
   linkOptions: string[];
@@ -286,7 +291,59 @@ function SettingsPanel({
         )
       ) : (
         <div className="space-y-4">
-          <FieldGroup fields={styleFieldsList} values={props} onChange={onChangeProps} linkOptions={linkOptions} />
+          {/* In mobile preview the Style tab edits the block's mobile
+              overrides, not its desktop design: a value changed here is
+              stored beside the desktop one and only applies below the
+              breakpoint, so the two devices stop fighting over one number. */}
+          {device === "mobile" && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+              <p className="font-semibold">Editing the mobile version</p>
+              <p className="mt-0.5">
+                These values apply on phones only. Anything you leave alone keeps following the desktop
+                design.
+              </p>
+              {Object.keys(mobileOverridesOf(props)).length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = { ...props };
+                    delete next.mobile;
+                    onChangeProps(next);
+                  }}
+                  className="mt-2 rounded-full border border-amber-300 px-2.5 py-1 text-[11px] font-medium hover:border-amber-600"
+                >
+                  Reset mobile to match desktop
+                </button>
+              )}
+            </div>
+          )}
+          <FieldGroup
+            fields={styleFieldsList}
+            values={device === "mobile" ? { ...props, ...mobileOverridesOf(props) } : props}
+            onChange={(next) => {
+              if (device !== "mobile") {
+                onChangeProps(next);
+                return;
+              }
+              // Record only the keys that now differ from the desktop value,
+              // so the override bag stays exactly "what was changed on
+              // mobile" and a later desktop edit still flows through for
+              // everything else.
+              const overrides: Record<string, unknown> = { ...mobileOverridesOf(props) };
+              for (const field of styleFieldsList) {
+                if (!isOverridableStyleField(field)) continue;
+                const value = next[field.key];
+                if (value === undefined) continue;
+                if (JSON.stringify(value) === JSON.stringify(props[field.key])) delete overrides[field.key];
+                else overrides[field.key] = value;
+              }
+              const updated = { ...props };
+              if (Object.keys(overrides).length) updated.mobile = overrides;
+              else delete updated.mobile;
+              onChangeProps(updated);
+            }}
+            linkOptions={linkOptions}
+          />
         </div>
       )}
     </div>
@@ -1006,6 +1063,7 @@ export default function ConsolePageEditor({
                             canMoveDown={i < blocks.length - 1}
                             editing={nodeEditingFor(block.id)}
                             inlineEdit={topInlineEditFor(block)}
+                            device="mobile"
                           />
                         ))}
                       </SortableContext>
@@ -1062,6 +1120,7 @@ export default function ConsolePageEditor({
                   description={blockSummary(settingsTarget.def)}
                   contentFields={settingsTarget.def.fields}
                   styleFieldsList={styleFields(settingsTarget.def)}
+                  device={device}
                   props={settingsTarget.props}
                   onChangeProps={settingsTarget.onChangeProps}
                   linkOptions={linkOptions}

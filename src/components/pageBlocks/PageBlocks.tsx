@@ -4,6 +4,7 @@ import { getBusiness, type ResolvedBusiness } from "@/lib/businessProfile";
 import { getSiteIdentity, resolveSiteName } from "@/lib/siteIdentity";
 import { getPublicFormViews, type PublicFormView } from "@/lib/forms";
 import { getPopupsByIds, type Popup } from "@/lib/popups";
+import { mobileOverrideCss, mobileClassFor } from "@/lib/mobileOverrides";
 import { applyMergeTags, blockFields, getBlockDef, type FieldDef, type PageBlock } from "@/lib/pageBlocks";
 import { escapeHtml } from "@/lib/escapeHtml";
 import CustomBlock from "@/components/pageBlocks/CustomBlock";
@@ -194,12 +195,19 @@ export default async function PageBlocks({ blocks, builtIn }: { blocks: PageBloc
   ]);
   const vars = mergeVars(business, resolveSiteName(identity));
   const htmlVars = Object.fromEntries(Object.entries(vars).map(([k, v]) => [k, escapeHtml(v)]));
+  // One <style> for the whole page, holding only the values someone changed
+  // while in mobile preview. Empty -- and so absent -- on a page that has
+  // none, which is most of them. An inline style cannot carry a media
+  // query, which is why these are classes rather than more inline styles.
+  const mobileCss = mobileOverrideCss(blocks);
   return (
     <>
+      {mobileCss && <style dangerouslySetInnerHTML={{ __html: mobileCss }} />}
       {blocks.map((block) => {
         const def = getBlockDef(block.type);
         if (!def) return null;
-        const props = resolveBlockProps(block, vars, htmlVars);
+        const resolved = resolveBlockProps(block, vars, htmlVars);
+        const props = resolved.mobile ? { ...resolved, mobileClass: mobileClassFor(block.id) } : resolved;
         return <Fragment key={block.id}>{renderBlock(block, props, business, builtIn, forms, popups)}</Fragment>;
       })}
     </>

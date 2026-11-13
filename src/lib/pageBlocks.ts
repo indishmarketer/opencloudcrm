@@ -15,6 +15,8 @@
 
 import { safeHref, SOCIAL_PLATFORMS } from "@/lib/siteChromeShape";
 import { escapeHtml } from "@/lib/escapeHtml";
+import { normalizeColorValue } from "@/lib/colorValue";
+import { isOverridableStyleField } from "@/lib/mobileOverrides";
 
 export type FieldKind = "text" | "textarea" | "richtext" | "link" | "image" | "select" | "iconPicker" | "formPicker" | "popupPicker" | "number" | "toggle" | "list" | "color" | "code" | "datetime";
 
@@ -1219,11 +1221,10 @@ function normalizeField(field: FieldDef, value: unknown, fallback: unknown, sani
     }
     case "toggle":
       return typeof value === "boolean" ? value : typeof fallback === "boolean" ? fallback : false;
-    case "color": {
-      const v = typeof value === "string" ? value.trim() : "";
-      if (HEX_COLOR_RE.test(v)) return v;
-      return typeof fallback === "string" && HEX_COLOR_RE.test(fallback) ? fallback : "";
-    }
+    // A hex colour or a gradient token -- see src/lib/colorValue.ts for why
+    // a gradient is a fixed token rather than raw CSS.
+    case "color":
+      return normalizeColorValue(value, fallback);
     // Deliberately unsanitized, unlike "richtext" -- this is a power-user
     // escape hatch for embed codes/custom scripts, gated the same way
     // every other write to a page already is (an authenticated admin
@@ -1321,6 +1322,20 @@ export function normalizeBlock(raw: unknown, sanitizeHtml: (html: string) => str
   for (const field of blockFields(def)) {
     props[field.key] = normalizeField(field, rawProps[field.key], defaults[field.key], sanitizeHtml);
   }
+  // Values deliberately changed while in mobile preview, kept beside the
+  // desktop design rather than replacing it -- see src/lib/mobileOverrides.ts.
+  // Each one is run through the same field validator as its desktop twin, so
+  // a mobile value can never be something a desktop value could not be.
+  const mobileRaw = rawProps.mobile && typeof rawProps.mobile === "object" && !Array.isArray(rawProps.mobile)
+    ? (rawProps.mobile as Record<string, unknown>)
+    : {};
+  const mobile: Record<string, unknown> = {};
+  for (const field of blockFields(def)) {
+    if (!isOverridableStyleField(field)) continue;
+    if (mobileRaw[field.key] === undefined) continue;
+    mobile[field.key] = normalizeField(field, mobileRaw[field.key], defaults[field.key], sanitizeHtml);
+  }
+  if (Object.keys(mobile).length) props.mobile = mobile;
   if (type === "row") {
     const columnCount = Number(props.columns) || 2;
     const rawItems = Array.isArray(rawProps.items) ? rawProps.items : [];

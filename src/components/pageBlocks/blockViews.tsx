@@ -45,6 +45,7 @@ import IntegrationIcons from "@/components/IntegrationIcons";
 import FeaturedOn from "@/components/FeaturedOn";
 import GuidePopup from "@/components/GuidePopup";
 import SavedFormPopup from "@/components/SavedFormPopup";
+import { solidColorOf, surfaceStyle, textColorStyle } from "@/lib/colorValue";
 import PopupTrigger from "@/components/pageBlocks/PopupTrigger";
 import type { PopupSettings } from "@/lib/popupsShape";
 import SavedFormBlock from "@/components/pageBlocks/SavedFormBlock";
@@ -146,8 +147,8 @@ export function Section({ props, children, width = "max-w-6xl" }: { props: Props
   return (
     <section
       id={str(props, "anchor") || undefined}
-      className={`${background} ${spacing} ${margin} ${radius}`.trim()}
-      style={backgroundColor ? { backgroundColor } : undefined}
+      className={`${background} ${spacing} ${margin} ${radius} ${str(props, "mobileClass")}`.trim()}
+      style={surfaceStyle(backgroundColor)}
     >
       <div className={`mx-auto ${innerWidth} ${paddingX}`}>{children}</div>
     </section>
@@ -170,7 +171,7 @@ function ElementBox({ props, children }: { props: Props; children: React.ReactNo
     .join(" ");
   const backgroundColor = str(props, "backgroundColor");
   return (
-    <div className={className} style={backgroundColor ? { backgroundColor } : undefined}>
+    <div className={`${className} ${str(props, "mobileClass")}`.trim()} style={surfaceStyle(backgroundColor)}>
       {children}
     </div>
   );
@@ -269,7 +270,7 @@ function richBoxStyle(props: Props): React.CSSProperties {
     borderRadius: `${num(props, "borderRadius", 0)}px`,
   };
   const bg = str(props, "backgroundColor");
-  if (bg) style.backgroundColor = bg;
+  Object.assign(style, surfaceStyle(bg) ?? {});
   return style;
 }
 
@@ -279,8 +280,9 @@ function richTextStyle(props: Props): React.CSSProperties {
     fontSize: `${num(props, "fontSize", 16)}px`,
     fontWeight: FONT_WEIGHT_CSS[str(props, "fontWeight")] ?? 400,
   };
-  const color = str(props, "textColor");
-  if (color) style.color = color;
+  // A gradient on text is painted behind the glyphs and clipped to them;
+  // a solid colour is just a colour. Either way it is one call.
+  Object.assign(style, textColorStyle(str(props, "textColor")) ?? {});
   return style;
 }
 
@@ -294,7 +296,9 @@ function RichSection({ props, children, widthDefault = 720 }: { props: Props; ch
   const { paddingLeft, paddingRight, ...outer } = box;
   const maxW = num(props, "maxWidth", 0);
   return (
-    <section id={str(props, "anchor") || undefined} style={outer}>
+    // mobileClass is injected by the renderer for a block that has mobile
+    // overrides; it is the hook the page's one media-query rule targets.
+    <section id={str(props, "anchor") || undefined} className={str(props, "mobileClass") || undefined} style={outer}>
       <div style={{ maxWidth: `${maxW > 0 ? maxW : widthDefault}px`, marginLeft: "auto", marginRight: "auto", paddingLeft, paddingRight }}>
         {children}
       </div>
@@ -374,7 +378,7 @@ export function HeroView({ props, activeLeadMagnet }: { props: Props; activeLead
     <section
       id={str(props, "anchor") || undefined}
       className={`relative overflow-hidden ${dark ? "bg-ink text-paper" : "bg-paper-gradient text-ink"}`}
-      style={backgroundColor ? { backgroundColor } : undefined}
+      style={surfaceStyle(backgroundColor)}
     >
       {backgroundImage ? (
         <>
@@ -553,17 +557,18 @@ export function ButtonBlock({
   const t: React.CSSProperties = { ...richTextStyle(props) };
   if (fill) {
     if (outlined) {
-      t.borderColor = fill;
-      t.color = labelColor || fill;
+      // A border cannot hold a gradient, so an outlined button takes the
+      // gradient's middle stop for its edge.
+      t.borderColor = solidColorOf(fill);
+      t.color = labelColor ? solidColorOf(labelColor) : solidColorOf(fill);
     } else {
-      t.backgroundColor = fill;
-      t.borderColor = fill;
-      t.color = labelColor || undefined;
+      Object.assign(t, surfaceStyle(fill) ?? {});
+      t.borderColor = solidColorOf(fill);
+      if (labelColor) t.color = solidColorOf(labelColor);
     }
   } else if (labelColor) {
-    t.color = labelColor;
+    t.color = solidColorOf(labelColor);
   }
-  if (labelColor) t.color = labelColor;
   // While editing the label in place, this renders as a plain <span>, not
   // a real <a>/<Link> -- clicking into the text to edit it must never
   // navigate away, href or not.

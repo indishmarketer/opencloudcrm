@@ -1,3 +1,9 @@
+import {
+  MOBILE_OVERRIDABLE_KEYS,
+  mobileOverrideCss,
+  normalizeMobileOverrides,
+  propsForDevice,
+} from "../src/lib/mobileOverrides.ts";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { BLOCK_DEFS, createBlock, normalizeBlock, styleFields, RICH_STYLE_FIELDS } from "../src/lib/pageBlocks.ts";
@@ -89,4 +95,51 @@ test("every new element type normalizes cleanly from a bare {type} with no props
 test("only one block type is offered for Custom design (embed does not duplicate the old customCode confusion)", () => {
   const offered = BLOCK_DEFS.filter((d) => d.category === "Custom design" && !d.deprecated && !d.internal);
   assert.deepEqual(offered.map((d) => d.type), ["custom"]);
+});
+
+// ── Mobile overrides must stay in step with the style fields ───────────────
+// MOBILE_OVERRIDABLE_KEYS is written out by hand rather than derived from
+// RICH_STYLE_FIELDS, because pageBlocks imports mobileOverrides and reading
+// that array across the cycle at module top level would see it undefined.
+// This is the guard that makes the duplication safe.
+
+test("every overridable style field is listed for mobile, and nothing else is", () => {
+  const styleKeys = RICH_STYLE_FIELDS.map((f) => f.key).filter((k) => k !== "anchor").sort();
+  assert.deepEqual(
+    [...MOBILE_OVERRIDABLE_KEYS].sort(),
+    styleKeys,
+    "MOBILE_OVERRIDABLE_KEYS has drifted from RICH_STYLE_FIELDS",
+  );
+  // anchor identifies a section; it is not styling and must never be
+  // device-specific, or a #link would break on one device only.
+  assert.ok(!MOBILE_OVERRIDABLE_KEYS.includes("anchor"));
+});
+
+test("a mobile override layers over the desktop value without replacing it", () => {
+  const props = { fontSize: 32, paddingY: 48, textAlign: "left", mobile: { fontSize: 20 } };
+  assert.equal(propsForDevice(props, "desktop").fontSize, 32, "desktop is untouched by a mobile value");
+  assert.equal(propsForDevice(props, "mobile").fontSize, 20, "mobile uses its own value");
+  assert.equal(propsForDevice(props, "mobile").paddingY, 48, "and inherits everything it did not override");
+});
+
+test("content keys cannot ride in through the mobile bag", () => {
+  // Two devices showing different copy is a content problem, not a layout
+  // one -- only style keys are accepted.
+  const cleaned = normalizeMobileOverrides({ fontSize: 18, text: "Different on phones", href: "/evil" });
+  assert.deepEqual(cleaned, { fontSize: 18 });
+});
+
+test("a page with no overrides emits no mobile CSS at all", () => {
+  assert.equal(mobileOverrideCss([{ id: "a", type: "heading", props: { fontSize: 32 } }]), "");
+});
+
+test("overrides become one scoped media-query rule per block, columns included", () => {
+  const css = mobileOverrideCss([
+    { id: "a", type: "heading", props: { mobile: { fontSize: 20 } } },
+    { id: "r", type: "row", props: { items: [[{ id: "c", type: "heading", props: { mobile: { paddingY: 8 } } }]] } },
+  ]);
+  assert.match(css, /@media \(max-width:767px\)/);
+  assert.match(css, /\.pm-a\{/);
+  assert.match(css, /font-size:20px !important/);
+  assert.match(css, /\.pm-c\{/, "an element inside a column gets its rule too");
 });

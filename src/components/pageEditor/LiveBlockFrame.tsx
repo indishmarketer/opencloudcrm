@@ -6,6 +6,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { BLOCK_DEFS, getBlockDef, type PageBlock } from "@/lib/pageBlocks";
 import type { PageEditorLiveData } from "@/lib/pageEditorLiveData";
+import { propsForDevice } from "@/lib/mobileOverrides";
 import CustomBlock, { type CustomBlockEditing } from "@/components/pageBlocks/CustomBlock";
 import {
   AlertBlock,
@@ -85,9 +86,12 @@ export function renderLiveBlock(
   /** Only for the block currently selected, and only for a type that has
    * one unambiguous text field worth editing in place -- see InlineEdit's
    * own doc comment in blockViews.tsx. */
-  inlineEdit?: InlineEdit
+  inlineEdit?: InlineEdit,
+  /** Mobile preview renders the block's mobile overrides laid over its
+   * desktop design, so the canvas shows what a phone will actually show. */
+  device: "desktop" | "mobile" = "desktop"
 ): React.ReactNode {
-  const props = block.props as Props;
+  const props = propsForDevice(block.props as Record<string, unknown>, device) as Props;
   const business = liveData.business;
   switch (block.type) {
     case "hero":
@@ -326,6 +330,7 @@ export function TopBlockFrame({
   canMoveDown,
   editing,
   inlineEdit,
+  device = "desktop",
 }: {
   block: PageBlock;
   liveData: PageEditorLiveData;
@@ -333,6 +338,8 @@ export function TopBlockFrame({
   onSelect: () => void;
   onDuplicate?: () => void;
   onDelete: () => void;
+  /** Which canvas this is drawn on; mobile applies the block's overrides. */
+  device?: "desktop" | "mobile";
   renderColumn?: RenderColumn;
   /** Passed for the selected "custom" block while Elements mode is open. */
   editing?: CustomBlockEditing;
@@ -393,7 +400,7 @@ export function TopBlockFrame({
         </>
       }
     >
-      {renderLiveBlock(block, liveData, renderColumn, editing, inlineEdit)}
+      {renderLiveBlock(block, liveData, renderColumn, editing, inlineEdit, device)}
     </SelectableNode>
   );
 }

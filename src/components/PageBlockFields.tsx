@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import RichTextEditor from "@/components/RichTextEditor";
+import { DEFAULT_GRADIENT, formatGradient, parseGradient } from "@/lib/colorValue";
 import BrandSelect from "@/components/BrandSelect";
 import MediaLibraryPicker from "@/components/MediaLibraryPicker";
 import AnchoredPopover from "@/components/AnchoredPopover";
@@ -195,22 +196,87 @@ function FormPickerField({ value, onChange }: { value: string; onChange: (v: str
 
 const HEX_COLOR_RE = /^#[0-9a-fA-F]{3}([0-9a-fA-F]{3}([0-9a-fA-F]{2})?)?$/;
 
+/** Every colour field is either a solid colour or a gradient -- the same
+ * control, two modes, so a gradient is available anywhere a colour is
+ * rather than only on the handful of places that happened to support one.
+ * A gradient on a border or an SVG stroke falls back to its middle stop,
+ * since CSS gives those no gradient. */
 function ColorField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const gradient = parseGradient(value);
+  const mode: "solid" | "gradient" = gradient ? "gradient" : "solid";
   const swatch = HEX_COLOR_RE.test(value) ? value : "#000000";
+  const g = gradient ?? DEFAULT_GRADIENT;
+  const setGradient = (next: Partial<typeof g>) => onChange(formatGradient({ ...g, ...next }));
+
   return (
-    <div className="flex items-center gap-2">
-      <input
-        type="color"
-        value={swatch}
-        onChange={(e) => onChange(e.target.value)}
-        aria-label="Pick a color"
-        className="h-10 w-12 shrink-0 cursor-pointer rounded-lg border border-line bg-paper p-1"
-      />
-      <input value={value} onChange={(e) => onChange(e.target.value)} placeholder="#000000" className={inputClass} />
-      {value && (
-        <button type="button" onClick={() => onChange("")} className={`${smallButton} shrink-0`}>
-          Clear
-        </button>
+    <div className="space-y-2">
+      <div className="flex items-center gap-1 rounded-lg bg-paper-soft p-0.5">
+        {(["solid", "gradient"] as const).map((m) => (
+          <button
+            key={m}
+            type="button"
+            onClick={() => onChange(m === "gradient" ? formatGradient(g) : HEX_COLOR_RE.test(value) ? value : "")}
+            className={`flex-1 rounded-md px-2 py-1 text-xs font-medium capitalize transition-colors ${
+              mode === m ? "bg-white text-ink shadow-sm" : "text-ink-soft hover:text-ink"
+            }`}
+          >
+            {m}
+          </button>
+        ))}
+      </div>
+
+      {mode === "solid" ? (
+        <div className="flex items-center gap-2">
+          <input
+            type="color"
+            value={swatch}
+            onChange={(e) => onChange(e.target.value)}
+            aria-label="Pick a color"
+            className="h-10 w-12 shrink-0 cursor-pointer rounded-lg border border-line bg-paper p-1"
+          />
+          <input value={value} onChange={(e) => onChange(e.target.value)} placeholder="#000000" className={inputClass} />
+          {value && (
+            <button type="button" onClick={() => onChange("")} className={`${smallButton} shrink-0`}>
+              Clear
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <div
+            className="h-10 w-full rounded-lg border border-line"
+            style={{ backgroundImage: `linear-gradient(${g.angle}deg, ${g.from} 0%, ${g.via} 55%, ${g.to} 100%)` }}
+            aria-hidden="true"
+          />
+          <div className="grid grid-cols-3 gap-2">
+            {(["from", "via", "to"] as const).map((stop) => (
+              <label key={stop} className="grid gap-1 text-[10px] font-medium uppercase tracking-wide text-ink-soft">
+                {stop}
+                <input
+                  type="color"
+                  value={g[stop]}
+                  onChange={(e) => setGradient({ [stop]: e.target.value })}
+                  aria-label={`Gradient ${stop} colour`}
+                  className="h-9 w-full cursor-pointer rounded-lg border border-line bg-paper p-1"
+                />
+              </label>
+            ))}
+          </div>
+          <label className="grid gap-1 text-xs font-medium">
+            Angle ({g.angle}&deg;)
+            <input
+              type="range"
+              min={0}
+              max={360}
+              value={g.angle}
+              onChange={(e) => setGradient({ angle: Number(e.target.value) })}
+              className="w-full accent-ink"
+            />
+          </label>
+          <button type="button" onClick={() => onChange("")} className={smallButton}>
+            Clear
+          </button>
+        </div>
       )}
     </div>
   );
