@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getFormBySlug } from "@/lib/forms";
+import { getFormBySlug, publicFormView } from "@/lib/forms";
 import SavedForm from "@/components/SavedForm";
 import type { Metadata } from "next";
 
@@ -29,9 +29,11 @@ export default async function StandaloneFormPage({ params }: Props) {
   // guard /f/auth rendered a bare "Could not load this form" instead of a 404.
   if (!form || form.isFixed) notFound();
 
+  // The definition is already in hand here, so hand it straight to the
+  // form rather than making the browser ask for it again.
   return (
     <div className="mx-auto max-w-2xl px-4 py-16 sm:px-6">
-      <SavedForm formId={form.id} showHeading />
+      <SavedForm formId={form.id} showHeading initialForm={publicFormView(form)} />
     </div>
   );
 }

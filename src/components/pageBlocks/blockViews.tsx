@@ -1300,11 +1300,11 @@ export function SocialIconsBlock({ props, nested = false }: { props: Props; nest
  * onto itself, which was a hardcoded second layout nobody could edit -- and
  * redundant, since "Contact details" is its own block and a Row with two
  * columns puts anything at all beside a form. */
-export function FormBlock({ props }: { props: Props }) {
+export function FormBlock({ props, form }: { props: Props; form?: React.ComponentProps<typeof SavedFormBlock>["initialForm"] }) {
   const formId = Number(str(props, "savedFormId")) || 0;
   return (
     <RichSection props={props} widthDefault={672}>
-      <SavedFormBlock formId={formId} designOverride={{
+      <SavedFormBlock formId={formId} initialForm={form} designOverride={{
         ...(str(props, "formBackgroundColor") ? { backgroundColor: str(props, "formBackgroundColor") } : {}),
         ...(str(props, "formTextColor") ? { textColor: str(props, "formTextColor") } : {}),
         ...(str(props, "formFieldBorderColor") ? { borderColor: str(props, "formFieldBorderColor") } : {}),

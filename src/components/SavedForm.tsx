@@ -302,12 +302,18 @@ export default function SavedForm({
   formId,
   showHeading = true,
   designOverride,
+  initialForm,
 }: {
   formId: number;
   showHeading?: boolean;
   designOverride?: Partial<FormDesign>;
+  /** The definition, already resolved on the server. Supplied by every
+   * server-rendered placement (a page section, the /f/<slug> page), so the
+   * form draws with the page instead of showing "Loading…" while the
+   * browser fetches what the server already had. */
+  initialForm?: PublicForm;
 }) {
-  const [form, setForm] = useState<PublicForm | null>(null);
+  const [form, setForm] = useState<PublicForm | null>(initialForm ?? null);
   const [loadError, setLoadError] = useState(false);
   const [status, setStatus] = useState<"idle" | "submitting" | "done" | "error">("idle");
   const [error, setError] = useState("");
@@ -338,6 +344,8 @@ export default function SavedForm({
   const [selectedPhoneCountry, setSelectedPhoneCountry] = useState<Record<string, string>>({});
 
   useEffect(() => {
+    // Already have it from the server: nothing to fetch, nothing to wait for.
+    if (initialForm) return;
     fetch(`/api/forms/${formId}`)
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((data: PublicForm) => {
@@ -357,7 +365,7 @@ export default function SavedForm({
         if (Object.keys(presets).length) setValues((v) => ({ ...presets, ...v }));
       })
       .catch(() => setLoadError(true));
-  }, [formId]);
+  }, [formId, initialForm]);
 
   function handleSuccess(currentForm: PublicForm) {
     if (currentForm.submissionAction === "redirect" && currentForm.redirectUrl) {
@@ -476,7 +484,20 @@ export default function SavedForm({
   }
 
   if (loadError) return <p className="text-sm text-red-600">Could not load this form.</p>;
-  if (!form) return <p className="text-sm text-ink-soft">Loading…</p>;
+  // Only reachable when no server-rendered definition was supplied -- the
+  // page editor's canvas. A skeleton shaped like a form reads as the form
+  // arriving, rather than as the page having failed.
+  if (!form) {
+    return (
+      <div className="animate-pulse space-y-4" aria-busy="true" aria-label="Loading form">
+        <div className="h-4 w-1/3 rounded bg-line" />
+        <div className="h-11 w-full rounded-lg bg-line/60" />
+        <div className="h-4 w-1/4 rounded bg-line" />
+        <div className="h-11 w-full rounded-lg bg-line/60" />
+        <div className="h-11 w-32 rounded-xl bg-line" />
+      </div>
+    );
+  }
 
   const design = { ...(form.design || {}), ...designOverride };
 

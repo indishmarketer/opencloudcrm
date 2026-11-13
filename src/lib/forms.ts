@@ -203,6 +203,58 @@ export type FormSubmissionRow = {
   contact_name: string | null;
 };
 
+/** The render-safe shape SavedForm needs. Shared by GET /api/forms/[id]
+ * and by server rendering, so a form drawn on the server and one fetched
+ * by the browser can never disagree. notifyEmail is deliberately absent --
+ * it is the one non-public field. */
+export type PublicFormView = {
+  id: number;
+  heading: string;
+  introText: string;
+  fields: FormField[];
+  elements: FormCanvasElement[];
+  submitLabel: string;
+  successHeading: string;
+  successText: string;
+  successImage: string;
+  submissionAction: FormSubmissionAction;
+  redirectUrl: string;
+  verifyEmail: boolean;
+  design: FormDesign;
+};
+
+export function publicFormView(form: FormDefinition): PublicFormView {
+  return {
+    id: form.id,
+    heading: form.heading,
+    introText: form.introText,
+    fields: form.fields,
+    elements: form.elements,
+    submitLabel: form.submitLabel,
+    successHeading: form.successHeading,
+    successText: form.successText,
+    successImage: form.successImage,
+    submissionAction: form.submissionAction,
+    redirectUrl: form.redirectUrl,
+    verifyEmail: form.verifyEmail,
+    design: form.design,
+  };
+}
+
+/** Several forms at once, for a page that embeds more than one. Missing or
+ * fixed ids are simply absent from the map. */
+export async function getPublicFormViews(ids: number[]): Promise<Record<number, PublicFormView>> {
+  const wanted = [...new Set(ids.filter((id) => Number.isInteger(id) && id > 0))];
+  if (wanted.length === 0) return {};
+  const result = await pool.query<FormRow>("SELECT * FROM forms WHERE id = ANY($1::int[])", [wanted]);
+  const out: Record<number, PublicFormView> = {};
+  for (const row of result.rows) {
+    const form = toDefinition(row);
+    if (!form.isFixed) out[form.id] = publicFormView(form);
+  }
+  return out;
+}
+
 export async function listFormSubmissions(formId: number, limit = 200): Promise<FormSubmissionRow[]> {
   const result = await pool.query<FormSubmissionRow>(
     `SELECT s.id, s.field_values, s.page_url, s.created_at, s.contact_id,

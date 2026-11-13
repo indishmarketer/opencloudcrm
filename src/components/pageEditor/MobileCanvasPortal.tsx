@@ -20,6 +20,11 @@ import { createPortal } from "react-dom";
 export default function MobileCanvasPortal({ children }: { children: React.ReactNode }) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [mountNode, setMountNode] = useState<HTMLElement | null>(null);
+  /** The iframe never became usable. Rather than leave a dead frame showing
+   * the browser's own "can't be loaded" page, the canvas falls back to
+   * rendering inline at the same width -- breakpoints then read as desktop,
+   * which is a worse preview but still a working editor. */
+  const [unavailable, setUnavailable] = useState(false);
   const setUpRef = useRef(false);
 
   useEffect(() => {
@@ -28,7 +33,14 @@ export default function MobileCanvasPortal({ children }: { children: React.React
 
     function setup() {
       if (setUpRef.current) return;
-      const doc = iframe!.contentDocument;
+      // contentDocument throws or returns null if the frame was blocked
+      // (a CSP frame-src policy, an extension, a sandboxed context).
+      let doc: Document | null = null;
+      try {
+        doc = iframe!.contentDocument;
+      } catch {
+        doc = null;
+      }
       if (!doc) return;
       setUpRef.current = true;
 
@@ -48,14 +60,35 @@ export default function MobileCanvasPortal({ children }: { children: React.React
       setMountNode(root);
     }
 
-    if (iframe.contentDocument?.readyState === "complete") setup();
+    try {
+      if (iframe.contentDocument?.readyState === "complete") setup();
+    } catch {
+      /* Blocked frame -- the timeout below takes over. */
+    }
     iframe.addEventListener("load", setup);
-    return () => iframe.removeEventListener("load", setup);
+    // If it has not come up by now it is not going to.
+    const giveUp = setTimeout(() => {
+      if (!setUpRef.current) setUnavailable(true);
+    }, 2000);
+    return () => {
+      clearTimeout(giveUp);
+      iframe.removeEventListener("load", setup);
+    };
   }, []);
+
+  if (unavailable) return <div className="min-h-[700px] w-full bg-white">{children}</div>;
 
   return (
     <>
-      <iframe ref={iframeRef} title="Mobile canvas" className="h-full min-h-[700px] w-full border-0 bg-white" />
+      <iframe
+        ref={iframeRef}
+        title="Mobile canvas"
+        // An explicit about:blank is the well-defined same-origin blank
+        // document; a bare src-less iframe is handled inconsistently once a
+        // frame-src policy is in play.
+        src="about:blank"
+        className="h-full min-h-[700px] w-full border-0 bg-white"
+      />
       {mountNode && createPortal(children, mountNode)}
     </>
   );
