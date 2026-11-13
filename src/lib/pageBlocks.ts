@@ -16,7 +16,7 @@
 import { safeHref, SOCIAL_PLATFORMS } from "@/lib/siteChromeShape";
 import { escapeHtml } from "@/lib/escapeHtml";
 
-export type FieldKind = "text" | "textarea" | "richtext" | "link" | "image" | "select" | "iconPicker" | "formPicker" | "number" | "toggle" | "list" | "color" | "code" | "datetime";
+export type FieldKind = "text" | "textarea" | "richtext" | "link" | "image" | "select" | "iconPicker" | "formPicker" | "popupPicker" | "number" | "toggle" | "list" | "color" | "code" | "datetime";
 
 type BaseField = { key: string; label: string; help?: string };
 export type FieldDef =
@@ -25,6 +25,7 @@ export type FieldDef =
   | (BaseField & { kind: "link" | "image"; placeholder?: string })
   | (BaseField & { kind: "select" | "iconPicker"; options: { value: string; label: string }[] })
   | (BaseField & { kind: "formPicker" })
+  | (BaseField & { kind: "popupPicker" })
   | (BaseField & { kind: "number"; min: number; max: number })
   | (BaseField & { kind: "toggle" })
   | (BaseField & { kind: "list"; itemLabel: string; max: number; fields: FieldDef[] })
@@ -138,6 +139,7 @@ const iconPicker = (key: string, label: string, options: [string, string][], hel
  * itself (see FormPickerField in PageBlockFields.tsx), same pattern as the
  * media-library-backed `image` kind. */
 const formPicker = (key: string, label: string, help?: string): FieldDef => ({ key, label, kind: "formPicker", help });
+const popupPicker = (key: string, label: string, help?: string): FieldDef => ({ key, label, kind: "popupPicker", help });
 const count = (key: string, label: string, max = 12): FieldDef => ({ key, label, kind: "number", min: 1, max });
 const dimension = (key: string, label: string, max: number, help?: string): FieldDef => ({ key, label, kind: "number", min: 0, max, help });
 
@@ -348,15 +350,16 @@ export const BLOCK_DEFS: BlockDef[] = [
     styleModel: "rich",
     fields: [
       text("label", "Button text", { max: 60 }),
-      select("action", "Button opens", [["link", "A link"], ["formPopup", "A saved form, as a popup"]]),
+      select("action", "Button opens", [["link", "A link"], ["popup", "A popup"], ["formPopup", "A saved form, as a popup"]]),
       link("href", "Link"),
-      formPicker("formId", "Saved form", "Only when \"Button opens\" is set to a popup. The popup shows this form exactly as it is built in Console -> Forms."),
+      popupPicker("popupId", "Popup", "Only when \"Button opens\" is set to \"A popup\". Design popups in Console -> Popups -- a popup holds any elements you like, including an embedded form."),
+      formPicker("formId", "Saved form", "Only when \"Button opens\" is set to \"A saved form\". Shows that form on its own, with no other content."),
       select("style", "Style", [["primary", "Filled"], ["outline", "Outlined"]]),
       select("align", "Alignment", [["left", "Left"], ["center", "Center"], ["right", "Right"]]),
       color("buttonColor", "Button colour", "Fill for a filled button, border for an outlined one. Blank follows the theme -- which is dark, so a button on a dark section needs a colour set here to be visible."),
       color("buttonTextColor", "Button text colour"),
     ],
-    defaults: { label: "Click here", action: "link", href: "/contact", formId: "", style: "primary", align: "left", buttonColor: "", buttonTextColor: "", fontSize: 14, fontWeight: "medium", textAlign: "center" },
+    defaults: { label: "Click here", action: "link", href: "/contact", popupId: "", formId: "", style: "primary", align: "left", buttonColor: "", buttonTextColor: "", fontSize: 14, fontWeight: "medium", textAlign: "center" },
     nestable: true,
   },
   {
@@ -1204,7 +1207,8 @@ function normalizeField(field: FieldDef, value: unknown, fallback: unknown, sani
     // choices come from the live `forms` table. Stored as a numeric-id
     // string ("" when none chosen yet); the actual id is validated when
     // the block is rendered/submitted against, not here.
-    case "formPicker": {
+    case "formPicker":
+    case "popupPicker": {
       const v = typeof value === "number" ? String(value) : value;
       return typeof v === "string" && /^\d*$/.test(v) ? v : typeof fallback === "string" ? fallback : "";
     }

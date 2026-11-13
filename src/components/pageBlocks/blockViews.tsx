@@ -45,6 +45,8 @@ import IntegrationIcons from "@/components/IntegrationIcons";
 import FeaturedOn from "@/components/FeaturedOn";
 import GuidePopup from "@/components/GuidePopup";
 import SavedFormPopup from "@/components/SavedFormPopup";
+import PopupTrigger from "@/components/pageBlocks/PopupTrigger";
+import type { PopupSettings } from "@/lib/popupsShape";
 import SavedFormBlock from "@/components/pageBlocks/SavedFormBlock";
 import CountdownTimer from "@/components/CountdownTimer";
 import BusinessContactDetails from "@/components/BusinessContactDetails";
@@ -512,7 +514,20 @@ export function HeadingBlock({ props, nested = false, editableText }: { props: P
   );
 }
 
-export function ButtonBlock({ props, nested = false, editableText }: { props: Props; nested?: boolean; editableText?: InlineEdit }) {
+export function ButtonBlock({
+  props,
+  nested = false,
+  editableText,
+  popup,
+}: {
+  props: Props;
+  nested?: boolean;
+  editableText?: InlineEdit;
+  /** The designed popup this button opens, already rendered by the caller.
+   * Supplied as a node for the same reason the form is: this file is shared
+   * with the public site and the dialog is a client component. */
+  popup?: { settings: PopupSettings; content: React.ReactNode };
+}) {
   const label = str(props, "label");
   const href = str(props, "href");
   // A button can open a saved form in a popup instead of navigating. The
@@ -521,7 +536,7 @@ export function ButtonBlock({ props, nested = false, editableText }: { props: Pr
   // you just want a button.
   const popupFormId = str(props, "action") === "formPopup" ? Number(str(props, "formId")) || 0 : 0;
   if (!label && !editableText) return null;
-  if (!popupFormId && !href && !editableText) return null;
+  if (!popup && !popupFormId && !href && !editableText) return null;
   // "align" (this block's own content field) positions the button within
   // its box -- left/center/right -- a different concern from the Style
   // tab's textAlign, which only affects how the label's own text sits
@@ -558,6 +573,15 @@ export function ButtonBlock({ props, nested = false, editableText }: { props: Pr
         <span className={buttonShape} style={t}>
           <InlineTextInput edit={editableText} placeholder="Button text" autoWidth />
         </span>
+      ) : popup ? (
+        <PopupTrigger
+          buttonLabel={label}
+          buttonClassName={buttonShape}
+          buttonStyle={t}
+          settings={popup.settings}
+        >
+          {popup.content}
+        </PopupTrigger>
       ) : popupFormId ? (
         <SavedFormPopup formId={popupFormId} buttonLabel={label} buttonClassName={buttonShape} buttonStyle={t} />
       ) : (

@@ -3,6 +3,7 @@ import { SITE_NAME } from "@/config/brand";
 import { getBusiness, type ResolvedBusiness } from "@/lib/businessProfile";
 import { getSiteIdentity, resolveSiteName } from "@/lib/siteIdentity";
 import { getPublicFormViews, type PublicFormView } from "@/lib/forms";
+import { getPopupsByIds, type Popup } from "@/lib/popups";
 import { applyMergeTags, blockFields, getBlockDef, type FieldDef, type PageBlock } from "@/lib/pageBlocks";
 import { escapeHtml } from "@/lib/escapeHtml";
 import CustomBlock from "@/components/pageBlocks/CustomBlock";
@@ -24,6 +25,7 @@ import {
   FeaturedOnBlock,
   FormBlock,
   HeadingBlock,
+  NestedElement as PopupElement,
   HeroBlock,
   IconBlock,
   ImageBlock,
@@ -103,7 +105,25 @@ function renderBlock(
   business: ResolvedBusiness,
   builtIn: React.ReactNode,
   forms: Record<number, PublicFormView>,
+  popups: Record<number, Popup>,
 ) {
+  const popupFor = (p: Props) => {
+    if (p.action !== "popup") return undefined;
+    const found = popups[Number(p.popupId) || 0];
+    if (!found) return undefined;
+    // The popup's own elements, rendered with the same renderer the page
+    // uses, so anything valid on a page is valid in a popup.
+    return {
+      settings: found.settings,
+      content: (
+        <>
+          {found.blocks.map((el) => (
+            <PopupElement key={el.id} block={el} />
+          ))}
+        </>
+      ),
+    };
+  };
   switch (block.type) {
     case "hero": return <HeroBlock props={props} />;
     case "pageHeader": return <PageHeaderBlock props={props} />;
@@ -114,7 +134,7 @@ function renderBlock(
     case "video": return <VideoBlock props={props} />;
     case "cta": return <CtaBlock props={props} />;
     case "heading": return <HeadingBlock props={props} />;
-    case "button": return <ButtonBlock props={props} />;
+    case "button": return <ButtonBlock props={props} popup={popupFor(props)} />;
     case "icon": return <IconBlock props={props} />;
     case "row": return <RowBlock props={props} />;
     case "custom": return <CustomBlock props={props} blockId={block.id} />;
@@ -165,10 +185,12 @@ export default async function PageBlocks({ blocks, builtIn }: { blocks: PageBloc
   // /f/<slug> and in the editor -- while the server already had everything
   // needed to draw it.
   const formIds = collectFormIds(blocks);
-  const [business, identity, forms] = await Promise.all([
+  const popupIds = collectPopupIds(blocks);
+  const [business, identity, forms, popups] = await Promise.all([
     getBusiness(),
     getSiteIdentity(),
     formIds.length ? getPublicFormViews(formIds).catch(() => ({})) : Promise.resolve({}),
+    popupIds.length ? getPopupsByIds(popupIds).catch(() => ({})) : Promise.resolve({}),
   ]);
   const vars = mergeVars(business, resolveSiteName(identity));
   const htmlVars = Object.fromEntries(Object.entries(vars).map(([k, v]) => [k, escapeHtml(v)]));
@@ -178,10 +200,30 @@ export default async function PageBlocks({ blocks, builtIn }: { blocks: PageBloc
         const def = getBlockDef(block.type);
         if (!def) return null;
         const props = resolveBlockProps(block, vars, htmlVars);
-        return <Fragment key={block.id}>{renderBlock(block, props, business, builtIn, forms)}</Fragment>;
+        return <Fragment key={block.id}>{renderBlock(block, props, business, builtIn, forms, popups)}</Fragment>;
       })}
     </>
   );
+}
+
+/** Popup ids opened by any button on the page, columns included. */
+function collectPopupIds(blocks: PageBlock[]): number[] {
+  const ids: number[] = [];
+  const walk = (list: PageBlock[]) => {
+    for (const block of list) {
+      const props = block.props as Props;
+      if (block.type === "button" && props?.action === "popup") {
+        const id = Number(props.popupId) || 0;
+        if (id) ids.push(id);
+      }
+      const items = (block.props as { items?: unknown })?.items;
+      if (Array.isArray(items)) {
+        for (const column of items) if (Array.isArray(column)) walk(column as PageBlock[]);
+      }
+    }
+  };
+  walk(blocks);
+  return ids;
 }
 
 /** Form ids anywhere in the tree, including inside a Row's columns. */

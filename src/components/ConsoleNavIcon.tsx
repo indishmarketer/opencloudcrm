@@ -85,6 +85,13 @@ const PATHS: Record<string, React.ReactNode> = {
       <rect x="13.5" y="13" width="7.5" height="7.5" rx="1.5" />
     </>
   ),
+  "/console/popups": (
+    <>
+      <rect x="2.5" y="4" width="19" height="13" rx="2" opacity="0.35" />
+      <rect x="6" y="8" width="15" height="12" rx="2" />
+      <path d="M9.5 12.5h8M9.5 16h5" />
+    </>
+  ),
   "/console/forms": (
     <>
       <rect x="4" y="2.5" width="16" height="19" rx="2" />
