@@ -243,6 +243,35 @@ const TableOfContentsBlock = Node.create({
   },
 });
 
+// Toolbar glyphs. A formatting bar reads as icons -- the page editor's
+// sidebar is ~340px wide, so word labels wrapped into a block of text that
+// looked like prose rather than controls.
+const ListIcon = () => (
+  <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+    <path d="M8 6h13M8 12h13M8 18h13" /><circle cx="3.5" cy="6" r="1.2" fill="currentColor" /><circle cx="3.5" cy="12" r="1.2" fill="currentColor" /><circle cx="3.5" cy="18" r="1.2" fill="currentColor" />
+  </svg>
+);
+const OrderedListIcon = () => (
+  <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+    <path d="M9 6h12M9 12h12M9 18h12M3 5h1v4M3 9h2" /><path d="M3 15.5c0-.6.4-1 1-1s1 .4 1 1-2 1.5-2 3h3" />
+  </svg>
+);
+const LinkIcon = () => (
+  <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+    <path d="M10 13a5 5 0 0 0 7.5.5l2-2a5 5 0 0 0-7-7l-1 1" /><path d="M14 11a5 5 0 0 0-7.5-.5l-2 2a5 5 0 0 0 7 7l1-1" />
+  </svg>
+);
+const QuoteIcon = () => (
+  <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M6 17h3l2-4V7H5v6h3zM15 17h3l2-4V7h-6v6h3z" />
+  </svg>
+);
+const ImageIcon = () => (
+  <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="4" width="18" height="16" rx="2" /><circle cx="8.5" cy="9.5" r="1.5" /><path d="m21 16-5-5L5 20" />
+  </svg>
+);
+
 function ToolButton({
   label,
   active,
@@ -1255,6 +1284,7 @@ export default function RichTextEditor({
   canvasHeader,
   onDeletePost,
   imageUploadUrl = "/api/console/email/image-upload",
+  textOnly = false,
 }: {
   value: string;
   onChange: (html: string) => void;
@@ -1270,6 +1300,10 @@ export default function RichTextEditor({
   /** Defaults to the email content upload route so existing callers
    * (campaigns, automation, transactional templates) are unaffected. */
   imageUploadUrl?: string;
+  /** Trims the toolbar to text formatting only -- no headings, colours,
+   * button or code block. For a page's Text element, where the page builder
+   * already has a Heading element and a Style tab for colour. */
+  textOnly?: boolean;
 }) {
   const [promptOpen, setPromptOpen] = useState(false);
   const [buttonPromptOpen, setButtonPromptOpen] = useState(false);
@@ -1404,63 +1438,91 @@ export default function RichTextEditor({
         <div className="flex flex-wrap items-center gap-1 border-b border-line bg-paper-soft p-2">
         <button
           type="button"
+          title="Bold"
+          aria-label="Bold"
           onClick={() => editor.chain().focus().toggleBold().run()}
           className={btnClass(editor.isActive("bold"))}
         >
-          Bold
+          <span className="font-black">B</span>
         </button>
         <button
           type="button"
+          title="Italic"
+          aria-label="Italic"
           onClick={() => editor.chain().focus().toggleItalic().run()}
           className={btnClass(editor.isActive("italic"))}
         >
-          Italic
+          <span className="font-serif text-base italic">I</span>
         </button>
         <button
           type="button"
+          title="Underline"
+          aria-label="Underline"
           onClick={() => editor.chain().focus().toggleUnderline().run()}
           className={btnClass(editor.isActive("underline"))}
         >
-          Underline
+          <span className="underline">U</span>
         </button>
         <button
           type="button"
+          title="Bulleted list"
+          aria-label="Bulleted list"
           onClick={() => editor.chain().focus().toggleBulletList().run()}
           className={btnClass(editor.isActive("bulletList"))}
         >
-          Bullet list
+          <ListIcon />
         </button>
         <button
           type="button"
+          title="Numbered list"
+          aria-label="Numbered list"
+          onClick={() => editor.chain().focus().toggleOrderedList().run()}
+          className={btnClass(editor.isActive("orderedList"))}
+        >
+          <OrderedListIcon />
+        </button>
+        <button
+          type="button"
+          title="Add link"
+          aria-label="Add link"
           onClick={() => setPromptOpen(true)}
           className={btnClass(editor.isActive("link"))}
         >
-          Link
+          <LinkIcon />
         </button>
-        <button type="button" onClick={() => setButtonPromptOpen(true)} className={btnClass(false)}>
-          Button
-        </button>
+        {!textOnly && (
+          <button type="button" title="Insert button" onClick={() => setButtonPromptOpen(true)} className={btnClass(false)}>
+            Button
+          </button>
+        )}
         <button
           type="button"
+          title="Block quote"
+          aria-label="Block quote"
           onClick={() => editor.chain().focus().toggleBlockquote().run()}
           className={btnClass(editor.isActive("blockquote"))}
         >
-          Quote
+          <QuoteIcon />
         </button>
+        {!textOnly && (
+          <button
+            type="button"
+            title="Code block"
+            onClick={() => editor.chain().focus().toggleCodeBlock().run()}
+            className={btnClass(editor.isActive("codeBlock"))}
+          >
+            Code
+          </button>
+        )}
         <button
           type="button"
-          onClick={() => editor.chain().focus().toggleCodeBlock().run()}
-          className={btnClass(editor.isActive("codeBlock"))}
-        >
-          Code
-        </button>
-        <button
-          type="button"
+          title="Insert image"
+          aria-label="Insert image"
           onClick={() => setImagePromptOpen(true)}
           disabled={uploading}
           className={`${btnClass(false)} disabled:opacity-50`}
         >
-          {uploading ? "Uploading..." : "Image"}
+          {uploading ? "…" : <ImageIcon />}
         </button>
         {variables && variables.length > 0 && (
           <div className="ml-1 flex items-center gap-1.5 text-xs text-ink-soft">
@@ -1478,37 +1540,44 @@ export default function RichTextEditor({
             </div>
           </div>
         )}
-        <div className="mx-1 h-5 w-px bg-line" />
-        {([1, 2, 3] as const).map((level) => (
-          <button
-            key={level}
-            type="button"
-            onClick={() => editor.chain().focus().toggleHeading({ level }).run()}
-            className={btnClass(editor.isActive("heading", { level }))}
-          >
-            H{level}
-          </button>
-        ))}
-        <div className="mx-1 h-5 w-px bg-line" />
-        {BRAND_COLORS.map((c) => (
-          <button
-            key={c.value}
-            type="button"
-            onClick={() => editor.chain().focus().setColor(c.value).run()}
-            title={c.label}
-            className={`h-7 w-7 rounded-full border-2 transition-transform ${
-              editor.isActive("textStyle", { color: c.value }) ? "scale-110 border-ink" : "border-line"
-            }`}
-            style={{ backgroundColor: c.value }}
-          />
-        ))}
-        <button
-          type="button"
-          onClick={() => editor.chain().focus().unsetColor().run()}
-          className="rounded-md px-2 py-1.5 text-xs font-medium text-ink-soft hover:bg-paper-soft"
-        >
-          Reset color
-        </button>
+        {/* Headings and colours are hidden for a page's Text element: the
+            page builder has its own Heading element and a Style tab, so
+            offering a second way to do both here only competed with them. */}
+        {!textOnly && (
+          <>
+            <div className="mx-1 h-5 w-px bg-line" />
+            {([1, 2, 3] as const).map((level) => (
+              <button
+                key={level}
+                type="button"
+                onClick={() => editor.chain().focus().toggleHeading({ level }).run()}
+                className={btnClass(editor.isActive("heading", { level }))}
+              >
+                H{level}
+              </button>
+            ))}
+            <div className="mx-1 h-5 w-px bg-line" />
+            {BRAND_COLORS.map((c) => (
+              <button
+                key={c.value}
+                type="button"
+                onClick={() => editor.chain().focus().setColor(c.value).run()}
+                title={c.label}
+                className={`h-7 w-7 rounded-full border-2 transition-transform ${
+                  editor.isActive("textStyle", { color: c.value }) ? "scale-110 border-ink" : "border-line"
+                }`}
+                style={{ backgroundColor: c.value }}
+              />
+            ))}
+            <button
+              type="button"
+              onClick={() => editor.chain().focus().unsetColor().run()}
+              className="rounded-md px-2 py-1.5 text-xs font-medium text-ink-soft hover:bg-paper-soft"
+            >
+              Reset color
+            </button>
+          </>
+        )}
         </div>
       )}
       <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImagePick} className="hidden" />

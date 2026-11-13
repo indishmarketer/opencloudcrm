@@ -83,7 +83,7 @@ function resizeRowItems(props: Record<string, unknown>): Record<string, unknown>
  * text field (Cards, Hero...) or it isn't worth the inert/anchor-swap care
  * inline editing needs yet (richText's HTML, Countdown's heading sharing a
  * box with its own CTA button). */
-const INLINE_TEXT_FIELD: Record<string, string> = { heading: "text", button: "label", icon: "label", image: "caption", video: "caption" };
+const INLINE_TEXT_FIELD: Record<string, string> = { heading: "text", richText: "html", button: "label", icon: "label", image: "caption", video: "caption" };
 
 function inlineTextEdit(block: PageBlock, selected: boolean, onChangeProps: (next: Record<string, unknown>) => void): InlineEdit | undefined {
   const key = INLINE_TEXT_FIELD[block.type];

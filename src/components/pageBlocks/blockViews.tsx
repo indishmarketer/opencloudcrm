@@ -457,9 +457,27 @@ export function PageHeaderBlock({ props }: { props: Props }) {
   );
 }
 
-export function RichTextBlock({ props, nested = false }: { props: Props; nested?: boolean }) {
+export function RichTextBlock({
+  props,
+  nested = false,
+  editableHtml,
+}: {
+  props: Props;
+  nested?: boolean;
+  /** Selected on the canvas: the already-rendered editor, shown in place of
+   * the static HTML so the text is written where it appears rather than in
+   * a box in the sidebar. Passed in as a node because this file is shared
+   * with the public site and must not import the editor itself. */
+  editableHtml?: React.ReactNode;
+}) {
   const t = richTextStyle(props);
-  const content = <div className="page-richtext" style={t} dangerouslySetInnerHTML={{ __html: str(props, "html") }} />;
+  const content = editableHtml ? (
+    <div className="page-richtext" style={t}>
+      {editableHtml}
+    </div>
+  ) : (
+    <div className="page-richtext" style={t} dangerouslySetInnerHTML={{ __html: str(props, "html") }} />
+  );
   if (nested) return <RichBox props={props}>{content}</RichBox>;
   return (
     <RichSection props={props} widthDefault={str(props, "width") === "wide" ? 1152 : 720}>

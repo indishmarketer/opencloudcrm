@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import InlineRichText from "@/components/pageEditor/InlineRichText";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { BLOCK_DEFS, getBlockDef, type PageBlock } from "@/lib/pageBlocks";
@@ -94,7 +95,7 @@ export function renderLiveBlock(
     case "pageHeader":
       return <PageHeaderBlock props={props} />;
     case "richText":
-      return <RichTextBlock props={props} />;
+      return <RichTextBlock props={props} editableHtml={inlineEdit ? <InlineRichText edit={inlineEdit} /> : undefined} />;
     case "heading":
       return <HeadingBlock props={props} editableText={inlineEdit} />;
     case "button":
