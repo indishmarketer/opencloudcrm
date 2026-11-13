@@ -521,8 +521,28 @@ export function ButtonBlock({ props, nested = false, editableText }: { props: Pr
   // tab's textAlign, which only affects how the label's own text sits
   // inside it.
   const alignClass = str(props, "align") === "center" ? "justify-center" : str(props, "align") === "right" ? "justify-end" : "justify-start";
-  const buttonShape = str(props, "style") === "outline" ? BUTTON_OUTLINE_SHAPE : BUTTON_DARK_SHAPE;
-  const t = richTextStyle(props);
+  const outlined = str(props, "style") === "outline";
+  const buttonShape = outlined ? BUTTON_OUTLINE_SHAPE : BUTTON_DARK_SHAPE;
+  // A button had no colour of its own, so it was always the theme's dark
+  // fill -- invisible on a dark section, with no way to change it. A filled
+  // button colours its background, an outlined one its border; the label
+  // follows buttonTextColor, or the fill colour when outlined.
+  const fill = str(props, "buttonColor");
+  const labelColor = str(props, "buttonTextColor");
+  const t: React.CSSProperties = { ...richTextStyle(props) };
+  if (fill) {
+    if (outlined) {
+      t.borderColor = fill;
+      t.color = labelColor || fill;
+    } else {
+      t.backgroundColor = fill;
+      t.borderColor = fill;
+      t.color = labelColor || undefined;
+    }
+  } else if (labelColor) {
+    t.color = labelColor;
+  }
+  if (labelColor) t.color = labelColor;
   // While editing the label in place, this renders as a plain <span>, not
   // a real <a>/<Link> -- clicking into the text to edit it must never
   // navigate away, href or not.
@@ -603,10 +623,16 @@ const ROW_COLUMNS: Record<string, string> = { "2": "md:grid-cols-2", "3": "sm:gr
 export function NestedElement({
   block,
   editableText,
+  editableHtml,
   editorEmpty = false,
 }: {
   block: PageBlock;
   editableText?: InlineEdit;
+  /** The rendered rich-text editor for a selected Text element inside a
+   * column, so it is written in place just like one in a full-width
+   * section. Passed in as a node: this file is shared with the public site
+   * and must not import the editor. */
+  editableHtml?: React.ReactNode;
   /** See EmptyBlockPlaceholder's doc comment -- only the editor's own
    * NestedElementFrame call site passes this. */
   editorEmpty?: boolean;
@@ -614,7 +640,7 @@ export function NestedElement({
   const props = block.props as Props;
   switch (block.type) {
     case "richText":
-      return <RichTextBlock props={props} nested />;
+      return <RichTextBlock props={props} nested editableHtml={editableHtml} />;
     case "heading":
       return <HeadingBlock props={props} nested editableText={editableText} />;
     case "image":

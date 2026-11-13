@@ -265,7 +265,15 @@ export function SelectableNode({
         onSelect();
       }}
       className={`${isTop ? "group" : "group/el"} relative cursor-pointer outline -outline-offset-2 transition-[outline-color] ${
-        selected ? "outline-2 outline-ink" : "outline-2 outline-transparent hover:outline-ink/30"
+        selected
+          ? // An ink outline with a white halo just outside it. On a light
+            // section the ink line reads and the halo is invisible; on a
+            // dark section the ink line disappears into the background and
+            // the halo is what you see. Either way the selection is
+            // visible, which a single ink outline was not -- selecting
+            // anything inside a black section showed nothing at all.
+            "outline-2 outline-ink shadow-[0_0_0_4px_rgba(255,255,255,0.9)]"
+          : "outline-2 outline-transparent hover:outline-ink/30 hover:shadow-[0_0_0_3px_rgba(255,255,255,0.55)]"
       } ${isDragging ? "z-10 opacity-60" : ""}`}
     >
       {/* A custom section in Elements mode keeps its links live rather
@@ -440,7 +448,12 @@ export function NestedElementFrame({
         </>
       }
     >
-      <NestedElement block={block} editableText={inlineEdit} editorEmpty />
+      <NestedElement
+        block={block}
+        editableText={inlineEdit}
+        editableHtml={block.type === "richText" && inlineEdit ? <InlineRichText edit={inlineEdit} /> : undefined}
+        editorEmpty
+      />
     </SelectableNode>
   );
 }

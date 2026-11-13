@@ -341,8 +341,10 @@ export const BLOCK_DEFS: BlockDef[] = [
       link("href", "Link"),
       select("style", "Style", [["primary", "Filled"], ["outline", "Outlined"]]),
       select("align", "Alignment", [["left", "Left"], ["center", "Center"], ["right", "Right"]]),
+      color("buttonColor", "Button colour", "Fill for a filled button, border for an outlined one. Blank follows the theme -- which is dark, so a button on a dark section needs a colour set here to be visible."),
+      color("buttonTextColor", "Button text colour"),
     ],
-    defaults: { label: "Click here", href: "/contact", style: "primary", align: "left", fontSize: 14, fontWeight: "medium", textAlign: "center" },
+    defaults: { label: "Click here", href: "/contact", style: "primary", align: "left", buttonColor: "", buttonTextColor: "", fontSize: 14, fontWeight: "medium", textAlign: "center" },
     nestable: true,
   },
   {

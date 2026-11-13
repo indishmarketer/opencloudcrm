@@ -5,6 +5,7 @@ import { useEditor, EditorContent, NodeViewWrapper, ReactNodeViewRenderer, React
 import StarterKit from "@tiptap/starter-kit";
 import TiptapLink from "@tiptap/extension-link";
 import Underline from "@tiptap/extension-underline";
+import TextAlign from "@tiptap/extension-text-align";
 import { Color } from "@tiptap/extension-color";
 import { TextStyle } from "@tiptap/extension-text-style";
 import TiptapImage from "@tiptap/extension-image";
@@ -259,6 +260,14 @@ const OrderedListIcon = () => (
 const LinkIcon = () => (
   <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
     <path d="M10 13a5 5 0 0 0 7.5.5l2-2a5 5 0 0 0-7-7l-1 1" /><path d="M14 11a5 5 0 0 0-7.5-.5l-2 2a5 5 0 0 0 7 7l1-1" />
+  </svg>
+);
+const AlignIcon = ({ side }: { side: "left" | "center" | "right" }) => (
+  <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+    <path d="M4 6h16" />
+    <path d={side === "left" ? "M4 12h10" : side === "right" ? "M10 12h10" : "M7 12h10"} />
+    <path d="M4 18h16" />
+    <path d={side === "left" ? "M4 15h10" : side === "right" ? "M10 15h10" : "M7 15h10"} opacity="0" />
   </svg>
 );
 const QuoteIcon = () => (
@@ -1319,6 +1328,9 @@ export default function RichTextEditor({
       StarterKit,
       Link.configure({ openOnClick: false }),
       Underline,
+      // Alignment applies to the block types that can actually hold a line
+      // of text; it writes a text-align style the sanitizer already allows.
+      TextAlign.configure({ types: ["heading", "paragraph"] }),
       TextStyle,
       Color,
       // Blog images always render at the full content width, not their own
@@ -1465,6 +1477,29 @@ export default function RichTextEditor({
         </button>
         <button
           type="button"
+          title="Strikethrough"
+          aria-label="Strikethrough"
+          onClick={() => editor.chain().focus().toggleStrike().run()}
+          className={btnClass(editor.isActive("strike"))}
+        >
+          <span className="line-through">S</span>
+        </button>
+        <div className="mx-1 h-5 w-px bg-line" />
+        {(["left", "center", "right"] as const).map((side) => (
+          <button
+            key={side}
+            type="button"
+            title={`Align ${side}`}
+            aria-label={`Align ${side}`}
+            onClick={() => editor.chain().focus().setTextAlign(side).run()}
+            className={btnClass(editor.isActive({ textAlign: side }))}
+          >
+            <AlignIcon side={side} />
+          </button>
+        ))}
+        <div className="mx-1 h-5 w-px bg-line" />
+        <button
+          type="button"
           title="Bulleted list"
           aria-label="Bulleted list"
           onClick={() => editor.chain().focus().toggleBulletList().run()}
@@ -1514,16 +1549,21 @@ export default function RichTextEditor({
             Code
           </button>
         )}
-        <button
-          type="button"
-          title="Insert image"
-          aria-label="Insert image"
-          onClick={() => setImagePromptOpen(true)}
-          disabled={uploading}
-          className={`${btnClass(false)} disabled:opacity-50`}
-        >
-          {uploading ? "…" : <ImageIcon />}
-        </button>
+        {/* A page's Text element has an Image element beside it in the
+            palette, so an inline image here would be a second way to do the
+            same thing. Email and blog editors have no such element. */}
+        {!textOnly && (
+          <button
+            type="button"
+            title="Insert image"
+            aria-label="Insert image"
+            onClick={() => setImagePromptOpen(true)}
+            disabled={uploading}
+            className={`${btnClass(false)} disabled:opacity-50`}
+          >
+            {uploading ? "…" : <ImageIcon />}
+          </button>
+        )}
         {variables && variables.length > 0 && (
           <div className="ml-1 flex items-center gap-1.5 text-xs text-ink-soft">
             Insert field
