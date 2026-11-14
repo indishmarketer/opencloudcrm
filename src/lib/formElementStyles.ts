@@ -114,8 +114,9 @@ export function elementInputStyle(design: FormDesign, style?: FormElementStyle):
   // Placeholder colour can't go on an inline `style` -- CSS only exposes it
   // through ::placeholder -- so it rides along as a CSS variable that the
   // shared `.form-field-input::placeholder` rule in globals.css reads.
-  if (style?.placeholderColor) {
-    (out as Record<string, string>)["--ph-color"] = style.placeholderColor;
+  const placeholderColor = style?.placeholderColor || design.placeholderColor;
+  if (placeholderColor) {
+    (out as Record<string, string>)["--ph-color"] = placeholderColor;
   }
   return out;
 }

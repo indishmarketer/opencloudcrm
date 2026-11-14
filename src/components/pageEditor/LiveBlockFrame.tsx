@@ -405,10 +405,15 @@ export function TopBlockFrame({
   );
 }
 
-/** One element inside a row's column, with its own smaller selection
- * outline and a compact reorder/delete toolbar (click-based -- see
- * RowColumnsEditor's removal note on why nested reordering isn't
- * drag-and-drop). */
+/** One element inside a row's column (or a popup's flat element list),
+ * with its own smaller selection outline and a compact toolbar.
+ *
+ * Reordering is click-based (move up/down) by default -- a row's columns
+ * never opted into drag-and-drop here. `sortable: true` (only the popup
+ * editor passes it, which has no columns to disambiguate between) also
+ * calls useSortable and adds a drag handle; `useSortable` is called
+ * unconditionally either way (rules of hooks), just left unused when
+ * `sortable` is false, which keeps row-column behaviour exactly as it was. */
 export function NestedElementFrame({
   block,
   selected,
@@ -419,6 +424,8 @@ export function NestedElementFrame({
   canMoveUp,
   canMoveDown,
   inlineEdit,
+  sortable = false,
+  device = "desktop",
 }: {
   block: PageBlock;
   selected: boolean;
@@ -432,8 +439,20 @@ export function NestedElementFrame({
    * worth editing in place -- see InlineEdit's doc comment in
    * blockViews.tsx. */
   inlineEdit?: InlineEdit;
+  /** Adds a drag handle (and real @dnd-kit sortable behaviour) alongside
+   * the move up/down buttons. The caller still needs its own DndContext/
+   * SortableContext/onDragEnd -- this only wires the one element's hook. */
+  sortable?: boolean;
+  /** Which device's overrides to preview -- mirrors TopBlockFrame/
+   * renderLiveBlock's own `device` for a top-level block. */
+  device?: "desktop" | "mobile";
 }) {
   const def = getBlockDef(block.type);
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: block.id,
+    disabled: !sortable,
+  });
+  const previewBlock = device === "mobile" ? { ...block, props: propsForDevice(block.props, device) } : block;
   return (
     <SelectableNode
       depth="nested"
@@ -441,8 +460,23 @@ export function NestedElementFrame({
       onSelect={onSelect}
       label={def?.label || block.type}
       inert={!inlineEdit}
+      dragProps={sortable ? { ref: setNodeRef, style: { transform: CSS.Transform.toString(transform), transition } } : undefined}
+      isDragging={sortable ? isDragging : undefined}
       actions={
         <>
+          {sortable && (
+            <button
+              type="button"
+              {...attributes}
+              {...listeners}
+              onClick={(e) => e.stopPropagation()}
+              aria-label="Drag to reorder"
+              title="Drag to reorder"
+              className={`${toolbarButton} cursor-grab touch-none active:cursor-grabbing`}
+            >
+              <GripIcon />
+            </button>
+          )}
           <button type="button" disabled={!canMoveUp} onClick={stop(onMoveUp)} aria-label="Move up" className={toolbarButton}>
             ▲
           </button>
@@ -456,7 +490,7 @@ export function NestedElementFrame({
       }
     >
       <NestedElement
-        block={block}
+        block={previewBlock}
         editableText={inlineEdit}
         editableHtml={block.type === "richText" && inlineEdit ? <InlineRichText edit={inlineEdit} /> : undefined}
         editorEmpty

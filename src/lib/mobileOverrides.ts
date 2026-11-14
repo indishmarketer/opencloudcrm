@@ -94,6 +94,50 @@ const CSS_PROPERTY: Record<string, (value: unknown) => string | null> = {
     const weights: Record<string, string> = { normal: "400", medium: "500", semibold: "600", bold: "700" };
     return typeof v === "string" && weights[v] ? `font-weight:${weights[v]}` : null;
   },
+  // Missing before -- a mobile override for this key produced no CSS at
+  // all, silently. Solid colours only; a gradient text colour (see
+  // src/lib/colorValue.ts) still isn't overridable per-device.
+  textColor: (v) => (typeof v === "string" && v ? `color:${v}` : null),
+};
+
+/** Which selector a property's override rule needs, because of WHERE each
+ * styleModel:"rich" block (richBoxStyle/richTextStyle in blockViews.tsx)
+ * actually puts that inline style -- not always the same element
+ * `mobileClass` is on:
+ *
+ *  - "self": backgroundColor, paddingY, marginTop/Bottom, borderRadius sit
+ *    directly on the block's own outer wrapper (RichSection/Section), the
+ *    same element that carries the generated class. A plain `.pm-x` rule
+ *    reaches them.
+ *  - "child": maxWidth and paddingX sit on RichSection's one inner content
+ *    div, not the outer wrapper itself -- `.pm-x` alone never matched them,
+ *    so the override silently did nothing. `.pm-x > div` reaches that one
+ *    specific child without touching anything deeper.
+ *  - "descendant": textAlign, fontSize, fontWeight and textColor are
+ *    text-level properties each block applies on whichever element
+ *    actually holds its text (richTextStyle), which can be nested two or
+ *    more levels inside the wrapper (e.g. RichTextBlock's own
+ *    ".page-richtext" div). These are also CSS-inherited properties, so a
+ *    wildcard descendant selector is both necessary (nothing shallower
+ *    reaches every block type's own markup) and safe (an inline element
+ *    like <a>/<strong> either ignores text-align or would inherit the
+ *    same value anyway) -- the one exception is deliberately-formatted
+ *    rich text (a hand-coloured or hand-bolded word) nested inside a Text
+ *    element that also carries a mobile font-weight/colour override,
+ *    which this would now also re-paint; accepted, since the alternative
+ *    is the override doing nothing at all. */
+const SELECTOR_SCOPE: Record<string, "self" | "child" | "descendant"> = {
+  backgroundColor: "self",
+  paddingY: "self",
+  marginTop: "self",
+  marginBottom: "self",
+  borderRadius: "self",
+  maxWidth: "child",
+  paddingX: "child",
+  textAlign: "descendant",
+  fontSize: "descendant",
+  fontWeight: "descendant",
+  textColor: "descendant",
 };
 
 /** The <style> body for every block that has mobile overrides. Returns ""
@@ -105,15 +149,20 @@ export function mobileOverrideCss(blocks: PageBlock[]): string {
   const walk = (list: PageBlock[]) => {
     for (const block of list) {
       const overrides = mobileOverridesOf(block.props as Record<string, unknown>);
-      const declarations = Object.entries(overrides)
-        .map(([key, value]) => CSS_PROPERTY[key]?.(value) ?? null)
-        .filter((d): d is string => Boolean(d));
-      if (declarations.length) {
+      const byScope: Record<"self" | "child" | "descendant", string[]> = { self: [], child: [], descendant: [] };
+      for (const [key, value] of Object.entries(overrides)) {
+        const declaration = CSS_PROPERTY[key]?.(value);
+        if (!declaration) continue;
+        const scope = SELECTOR_SCOPE[key] ?? "self";
         // !important because the same values are also written as inline
         // styles for desktop, and an inline style outranks any class.
-        const body = declarations.map((d) => d.split(";").map((p) => `${p} !important`).join(";")).join(";");
-        rules.push(`.${mobileClassFor(block.id)}{${body}}`);
+        byScope[scope].push(...declaration.split(";").map((p) => `${p} !important`));
       }
+      const cls = mobileClassFor(block.id);
+      if (byScope.self.length) rules.push(`.${cls}{${byScope.self.join(";")}}`);
+      if (byScope.child.length) rules.push(`.${cls}>div{${byScope.child.join(";")}}`);
+      if (byScope.descendant.length) rules.push(`.${cls},.${cls} *{${byScope.descendant.join(";")}}`);
+
       const items = (block.props as { items?: unknown }).items;
       if (Array.isArray(items)) {
         for (const column of items) if (Array.isArray(column)) walk(column as PageBlock[]);

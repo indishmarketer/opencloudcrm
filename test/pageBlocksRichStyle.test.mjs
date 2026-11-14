@@ -139,7 +139,38 @@ test("overrides become one scoped media-query rule per block, columns included",
     { id: "r", type: "row", props: { items: [[{ id: "c", type: "heading", props: { mobile: { paddingY: 8 } } }]] } },
   ]);
   assert.match(css, /@media \(max-width:767px\)/);
-  assert.match(css, /\.pm-a\{/);
+  assert.match(css, /\.pm-a/);
   assert.match(css, /font-size:20px !important/);
-  assert.match(css, /\.pm-c\{/, "an element inside a column gets its rule too");
+  // paddingY lives directly on the block's own wrapper -- the plain self
+  // selector -- unlike fontSize below.
+  assert.match(css, /\.pm-c\{padding-top:8px !important;padding-bottom:8px !important\}/, "an element inside a column gets its rule too");
+});
+
+// ── Regression: the override must reach wherever the inline style actually
+// is, not just the block's own wrapper element ─────────────────────────────
+// richBoxStyle/richTextStyle (blockViews.tsx) don't put every inline style
+// on the same element RichSection's mobileClass goes on -- text-level
+// properties land two levels deeper, on whichever element actually holds
+// the block's text. A plain `.pm-x{text-align:center!important}` rule can
+// never beat that inline style: CSS inheritance only supplies a value for
+// a property the descendant doesn't already declare itself, and the
+// descendant's own (non-important) inline style is a direct declaration,
+// not an inherited one -- `!important` on an ANCESTOR cannot out-rank it.
+// This silently no-opped every mobile textAlign/fontSize/fontWeight/
+// textColor override until fixed.
+test("text-level overrides (textAlign, fontSize, fontWeight, textColor) reach descendants, not just the block's own wrapper", () => {
+  const css = mobileOverrideCss([
+    { id: "a", type: "richText", props: { mobile: { textAlign: "center", textColor: "#ffffff" } } },
+  ]);
+  assert.match(css, /\.pm-a,\.pm-a \*\{text-align:center !important;color:#ffffff !important\}/);
+});
+
+test("maxWidth and paddingX land on RichSection's one inner content div, not the outer wrapper", () => {
+  const css = mobileOverrideCss([{ id: "a", type: "richText", props: { mobile: { maxWidth: 480, paddingX: 12 } } }]);
+  assert.match(css, /\.pm-a>div\{max-width:480px !important;padding-left:12px !important;padding-right:12px !important\}/);
+});
+
+test("a textColor mobile override actually produces a declaration (it used to be silently dropped: no CSS_PROPERTY handler existed for it)", () => {
+  const css = mobileOverrideCss([{ id: "a", type: "richText", props: { mobile: { textColor: "#111111" } } }]);
+  assert.match(css, /color:#111111 !important/);
 });

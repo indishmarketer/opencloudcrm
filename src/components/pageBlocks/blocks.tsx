@@ -3,6 +3,7 @@ import { pool } from "@/lib/db";
 import { getActiveLeadMagnet } from "@/lib/leadMagnets";
 import { getCuratedReviewers } from "@/lib/curatedReviews";
 import { HeroView, LatestCoursesView, LatestPostsView, ReviewsView, num, str, type CourseSummary, type Props } from "@/components/pageBlocks/blockViews";
+import type { PopupSettings } from "@/lib/popupsShape";
 
 /** Thin server-only wrapper around blockViews.tsx: the handful of blocks
  * that fetch their own live data (DB queries, next/headers-adjacent code)
@@ -15,9 +16,15 @@ import { HeroView, LatestCoursesView, LatestPostsView, ReviewsView, num, str, ty
  * prop) instead of importing this file. */
 export * from "@/components/pageBlocks/blockViews";
 
-export async function HeroBlock({ props }: { props: Props }) {
+export async function HeroBlock({
+  props,
+  popup,
+}: {
+  props: Props;
+  popup?: { settings: PopupSettings; content: React.ReactNode };
+}) {
   const activeLeadMagnet = str(props, "primaryAction") === "leadMagnet" ? await getActiveLeadMagnet().catch(() => null) : null;
-  return <HeroView props={props} activeLeadMagnet={activeLeadMagnet} />;
+  return <HeroView props={props} activeLeadMagnet={activeLeadMagnet} popup={popup} />;
 }
 
 export async function LatestPostsBlock({ props }: { props: Props }) {

@@ -44,8 +44,8 @@ import WorkflowDemo from "@/components/WorkflowDemo";
 import IntegrationIcons from "@/components/IntegrationIcons";
 import FeaturedOn from "@/components/FeaturedOn";
 import GuidePopup from "@/components/GuidePopup";
-import SavedFormPopup from "@/components/SavedFormPopup";
-import { solidColorOf, surfaceStyle, textColorStyle } from "@/lib/colorValue";
+import { isColorDark, solidColorOf, surfaceStyle, textColorStyle } from "@/lib/colorValue";
+import type { FormDesign } from "@/lib/formsShape";
 import PopupTrigger from "@/components/pageBlocks/PopupTrigger";
 import RichTextPopupHost from "@/components/pageBlocks/RichTextPopupHost";
 import type { PopupSettings } from "@/lib/popupsShape";
@@ -359,7 +359,16 @@ function ButtonLink({ href, label, className, style }: { href: string; label: st
  * (the public renderer fetches it server-side; the editor canvas is handed
  * it once, pre-fetched, alongside the page) since this component itself
  * has to stay a plain sync function to be usable from client code. */
-export function HeroView({ props, activeLeadMagnet }: { props: Props; activeLeadMagnet: LeadMagnet | null }) {
+export function HeroView({
+  props,
+  activeLeadMagnet,
+  popup,
+}: {
+  props: Props;
+  activeLeadMagnet: LeadMagnet | null;
+  /** See ButtonBlock's doc comment. */
+  popup?: { settings: PopupSettings; content: React.ReactNode };
+}) {
   const dark = str(props, "theme") !== "light";
   const image = str(props, "image");
   const backgroundImage = str(props, "backgroundImage");
@@ -367,7 +376,6 @@ export function HeroView({ props, activeLeadMagnet }: { props: Props; activeLead
   const primaryLabel = str(props, "primaryLabel");
   const primaryAction = str(props, "primaryAction");
   const guide = primaryAction === "leadMagnet" ? activeLeadMagnet : null;
-  const formPopupId = primaryAction === "formPopup" ? Number(str(props, "primaryFormId")) || 0 : 0;
   const primaryClass = dark
     ? "rounded-full bg-paper px-6 py-3 text-center text-sm font-medium text-ink transition-opacity hover:opacity-80"
     : BUTTON_DARK;
@@ -427,8 +435,10 @@ export function HeroView({ props, activeLeadMagnet }: { props: Props; activeLead
                   buttonLabel={primaryLabel}
                   buttonClassName={primaryClass}
                 />
-              ) : formPopupId && primaryLabel ? (
-                <SavedFormPopup formId={formPopupId} buttonLabel={primaryLabel} buttonClassName={primaryClass} />
+              ) : popup && primaryLabel ? (
+                <PopupTrigger buttonLabel={primaryLabel} buttonClassName={primaryClass} settings={popup.settings}>
+                  {popup.content}
+                </PopupTrigger>
               ) : (
                 <ButtonLink href={str(props, "primaryHref")} label={primaryLabel} className={primaryClass} />
               )}
@@ -543,13 +553,8 @@ export function ButtonBlock({
 }) {
   const label = str(props, "label");
   const href = str(props, "href");
-  // A button can open a saved form in a popup instead of navigating. The
-  // same mechanism Hero and CTA buttons already had -- it was simply never
-  // offered on the standalone Button, which is the one you reach for when
-  // you just want a button.
-  const popupFormId = str(props, "action") === "formPopup" ? Number(str(props, "formId")) || 0 : 0;
   if (!label && !editableText) return null;
-  if (!popup && !popupFormId && !href && !editableText) return null;
+  if (!popup && !href && !editableText) return null;
   // "align" (this block's own content field) positions the button within
   // its box -- left/center/right -- a different concern from the Style
   // tab's textAlign, which only affects how the label's own text sits
@@ -596,8 +601,6 @@ export function ButtonBlock({
         >
           {popup.content}
         </PopupTrigger>
-      ) : popupFormId ? (
-        <SavedFormPopup formId={popupFormId} buttonLabel={label} buttonClassName={buttonShape} buttonStyle={t} />
       ) : (
         <ButtonLink href={href} label={label} className={buttonShape} style={t} />
       )}
@@ -698,13 +701,7 @@ export function NestedElement({
           <SavedFormBlock
             formId={Number(str(props, "savedFormId")) || 0}
             preview={editorEmpty}
-            designOverride={{
-              ...(str(props, "formBackgroundColor") ? { backgroundColor: str(props, "formBackgroundColor") } : {}),
-              ...(str(props, "formTextColor") ? { textColor: str(props, "formTextColor") } : {}),
-              ...(str(props, "formFieldBorderColor") ? { borderColor: str(props, "formFieldBorderColor") } : {}),
-              ...(str(props, "formButtonColor") ? { buttonColor: str(props, "formButtonColor") } : {}),
-              ...(str(props, "formButtonTextColor") ? { buttonTextColor: str(props, "formButtonTextColor") } : {}),
-            }}
+            designOverride={formDesignOverride(props)}
           />
         </RichBox>
       );
@@ -1092,18 +1089,25 @@ export function CountdownBlock({ props, nested = false, editorEmpty = false }: {
   );
 }
 
-export function CtaBlock({ props }: { props: Props }) {
+export function CtaBlock({
+  props,
+  popup,
+}: {
+  props: Props;
+  /** See ButtonBlock's doc comment. */
+  popup?: { settings: PopupSettings; content: React.ReactNode };
+}) {
   const primaryLabel = str(props, "buttonLabel");
-  const buttonAction = str(props, "buttonAction");
-  const formPopupId = buttonAction === "formPopup" ? Number(str(props, "buttonFormId")) || 0 : 0;
   const buttons = (light: boolean) => (
     <div className="flex flex-col gap-3 sm:flex-row">
-      {formPopupId && primaryLabel ? (
-        <SavedFormPopup
-          formId={formPopupId}
+      {popup && primaryLabel ? (
+        <PopupTrigger
           buttonLabel={primaryLabel}
           buttonClassName={light ? "rounded-full bg-paper px-6 py-3 text-center text-sm font-medium text-ink transition-opacity hover:opacity-80" : BUTTON_DARK}
-        />
+          settings={popup.settings}
+        >
+          {popup.content}
+        </PopupTrigger>
       ) : (
         <ButtonLink
           href={str(props, "buttonHref")}
@@ -1397,6 +1401,40 @@ export function SocialIconsBlock({ props, nested = false }: { props: Props; nest
   );
 }
 
+/** A Form element's "override the form's colours" fields, turned into a
+ * FormDesign patch -- shared by a top-level Form section and one placed
+ * inside a Row's column or a popup (NestedElement's "form" case below),
+ * which otherwise built this same object twice.
+ *
+ * Only the background is really a free choice; text, placeholder and
+ * button colours default to whichever reads on it instead of making
+ * someone pick four more colours and land on an invisible button -- which
+ * is exactly what used to happen: a button had no colour of its own, so
+ * it fell back to the theme's default dark fill regardless of what the
+ * card itself was just overridden to. An explicit value in any of the
+ * other four fields still wins over its derived default. The button is
+ * deliberately the inverse of the card (light card -> dark button, dark
+ * card -> light button, with the button's own label flipped again to read
+ * on ITS fill) rather than matching the text colour -- a same-colour
+ * button on a same-colour card has no visible edge. */
+function formDesignOverride(props: Props): Partial<FormDesign> {
+  const bg = str(props, "formBackgroundColor");
+  const dark = bg ? isColorDark(bg) : null;
+  const auto = (explicit: string, onLight: string, onDark: string) =>
+    explicit || (dark === null ? "" : dark ? onDark : onLight);
+  const textColor = auto(str(props, "formTextColor"), "#0a0a0a", "#ffffff");
+  const buttonColor = auto(str(props, "formButtonColor"), "#0a0a0a", "#ffffff");
+  const buttonTextColor = auto(str(props, "formButtonTextColor"), "#ffffff", "#0a0a0a");
+  const borderColor = str(props, "formFieldBorderColor");
+  return {
+    ...(bg ? { backgroundColor: bg } : {}),
+    ...(textColor ? { textColor, placeholderColor: textColor } : {}),
+    ...(borderColor ? { borderColor } : {}),
+    ...(buttonColor ? { buttonColor } : {}),
+    ...(buttonTextColor ? { buttonTextColor } : {}),
+  };
+}
+
 /** Just the form. It used to be able to staple a business-details sidebar
  * onto itself, which was a hardcoded second layout nobody could edit -- and
  * redundant, since "Contact details" is its own block and a Row with two
@@ -1414,13 +1452,7 @@ export function FormBlock({
   const formId = Number(str(props, "savedFormId")) || 0;
   return (
     <RichSection props={props} widthDefault={672}>
-      <SavedFormBlock formId={formId} initialForm={form} preview={preview} designOverride={{
-        ...(str(props, "formBackgroundColor") ? { backgroundColor: str(props, "formBackgroundColor") } : {}),
-        ...(str(props, "formTextColor") ? { textColor: str(props, "formTextColor") } : {}),
-        ...(str(props, "formFieldBorderColor") ? { borderColor: str(props, "formFieldBorderColor") } : {}),
-        ...(str(props, "formButtonColor") ? { buttonColor: str(props, "formButtonColor") } : {}),
-        ...(str(props, "formButtonTextColor") ? { buttonTextColor: str(props, "formButtonTextColor") } : {}),
-      }} />
+      <SavedFormBlock formId={formId} initialForm={form} preview={preview} designOverride={formDesignOverride(props)} />
     </RichSection>
   );
 }

@@ -95,3 +95,27 @@ export function solidColorOf(value: unknown): string {
   if (g) return g.via;
   return HEX_RE.test(v) ? v : "";
 }
+
+/** True when a colour reads as dark -- relative luminance (the same
+ * weighting the WCAG contrast formula uses: green reads brighter to the
+ * eye than red or blue at the same numeric value) below 0.5. A gradient
+ * resolves to its middle stop first (solidColorOf); anything that isn't a
+ * real hex colour (blank, a CSS variable, garbage) returns `fallbackDark`
+ * unchanged rather than guessing.
+ *
+ * Used wherever a widget we don't fully control the markup of (Turnstile's
+ * own "Verified" text, for one) needs to know whether it's sitting on a
+ * light or dark surface, since it can't just inherit `color` from its
+ * container the way ordinary text does. */
+export function isColorDark(value: unknown, fallbackDark = false): boolean {
+  const hex = solidColorOf(value);
+  if (!HEX_RE.test(hex)) return fallbackDark;
+  let h = hex.slice(1);
+  if (h.length === 3 || h.length === 4) h = h.slice(0, 3).split("").map((c) => c + c).join("");
+  else h = h.slice(0, 6);
+  const r = parseInt(h.slice(0, 2), 16) / 255;
+  const g = parseInt(h.slice(2, 4), 16) / 255;
+  const b = parseInt(h.slice(4, 6), 16) / 255;
+  const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
+  return luminance < 0.5;
+}

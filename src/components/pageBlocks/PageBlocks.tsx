@@ -135,21 +135,25 @@ function renderBlock(
   forms: Record<number, PublicFormView>,
   resolvedPopups: Record<number, { settings: Popup["settings"]; content: React.ReactNode }>,
 ) {
-  const popupFor = (p: Props) => {
-    if (p.action !== "popup") return undefined;
-    return resolvedPopups[Number(p.popupId) || 0];
+  // Every block whose own button can open a popup names its action/id pair
+  // differently (Button: action/popupId, Hero: primaryAction/primaryPopupId,
+  // CTA: buttonAction/buttonPopupId) -- one lookup, parameterised, rather
+  // than three near-identical inline checks.
+  const popupFor = (p: Props, actionKey: string, idKey: string) => {
+    if (p[actionKey] !== "popup") return undefined;
+    return resolvedPopups[Number(p[idKey]) || 0];
   };
   switch (block.type) {
-    case "hero": return <HeroBlock props={props} />;
+    case "hero": return <HeroBlock props={props} popup={popupFor(props, "primaryAction", "primaryPopupId")} />;
     case "pageHeader": return <PageHeaderBlock props={props} />;
     case "richText": return <RichTextBlock props={props} popups={resolvedPopups} />;
     case "cards": return <CardsBlock props={props} />;
     case "split": return <SplitBlock props={props} />;
     case "image": return <ImageBlock props={props} />;
     case "video": return <VideoBlock props={props} />;
-    case "cta": return <CtaBlock props={props} />;
+    case "cta": return <CtaBlock props={props} popup={popupFor(props, "buttonAction", "buttonPopupId")} />;
     case "heading": return <HeadingBlock props={props} />;
-    case "button": return <ButtonBlock props={props} popup={popupFor(props)} />;
+    case "button": return <ButtonBlock props={props} popup={popupFor(props, "action", "popupId")} />;
     case "icon": return <IconBlock props={props} />;
     case "row": return <RowBlock props={props} popups={resolvedPopups} />;
     case "custom": return <CustomBlock props={props} blockId={block.id} />;
@@ -252,6 +256,14 @@ function collectPopupIds(blocks: PageBlock[]): number[] {
       const props = block.props as Props;
       if (block.type === "button" && props?.action === "popup") {
         const id = Number(props.popupId) || 0;
+        if (id) ids.push(id);
+      }
+      if (block.type === "hero" && props?.primaryAction === "popup") {
+        const id = Number(props.primaryPopupId) || 0;
+        if (id) ids.push(id);
+      }
+      if (block.type === "cta" && props?.buttonAction === "popup") {
+        const id = Number(props.buttonPopupId) || 0;
         if (id) ids.push(id);
       }
       if (block.type === "richText") {

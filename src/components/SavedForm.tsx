@@ -14,6 +14,7 @@ import {
   splitBoxStyle,
 } from "@/lib/formElementStyles";
 import { listCountryDialOptions } from "@/lib/countryDialCodes";
+import { isColorDark } from "@/lib/colorValue";
 
 type PublicForm = {
   id: number;
@@ -540,6 +541,18 @@ export default function SavedForm({
   }
 
   const design = { ...(form.design || {}), ...designOverride };
+  // Turnstile renders its own markup (an iframe plus our "Verifying…" /
+  // "Verified" status line), so it can't just inherit `color` from
+  // whatever section it sits in the way ordinary text does -- it needs to
+  // be told. Prefer the form's own background; when that's left blank
+  // (inheriting the page/popup's own background instead), a light text
+  // colour is the next-best signal that this form was deliberately styled
+  // for a dark surface.
+  const formIsDark = design.backgroundColor
+    ? isColorDark(design.backgroundColor)
+    : design.textColor
+      ? !isColorDark(design.textColor)
+      : false;
 
   if (status === "done") {
     // The confirmation is a centred popup over the page rather than text
@@ -693,7 +706,7 @@ export default function SavedForm({
             </div>
             {resendArmed && (
               <div className="mt-3">
-                <Turnstile key={turnstileNonce} onToken={handleToken} />
+                <Turnstile key={turnstileNonce} onToken={handleToken} dark={formIsDark} />
               </div>
             )}
           </div>
@@ -711,7 +724,7 @@ export default function SavedForm({
   // stranded below the button when the button is not the last element.
   const firstButton = form.elements?.find((e) => e.type === "button");
   const firstButtonId = firstButton?.id;
-  const challenge = preview ? null : <Turnstile key={turnstileNonce} onToken={handleToken} />;
+  const challenge = preview ? null : <Turnstile key={turnstileNonce} onToken={handleToken} dark={formIsDark} />;
 
 
 
@@ -1177,7 +1190,7 @@ export default function SavedForm({
                 );
               })}
             {status === "error" && <p className="text-sm text-red-600">{error}</p>}
-            <Turnstile key={turnstileNonce} onToken={handleToken} />
+            <Turnstile key={turnstileNonce} onToken={handleToken} dark={formIsDark} />
             <button
               type="submit"
               disabled={status === "submitting" || !turnstileToken}

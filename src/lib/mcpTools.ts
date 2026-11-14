@@ -193,6 +193,7 @@ const FORM_DESIGN_SCHEMA = z
     borderColor: z.string().optional(),
     backgroundColor: z.string().optional(),
     textColor: z.string().optional(),
+    placeholderColor: z.string().optional().describe("Form-wide fallback for a field's placeholder colour; a field's own placeholderColor still wins."),
     borderRadius: z.string().optional(),
     fontFamily: z.string().optional(),
     verifyInput: FORM_ELEMENT_STYLE_SCHEMA.optional().describe("Size and look of the 6-digit code box on the verification step."),

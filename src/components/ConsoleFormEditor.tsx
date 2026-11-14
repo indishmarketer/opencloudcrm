@@ -1386,17 +1386,6 @@ export default function ConsoleFormEditor({
         </div>
       )}
 
-      {imagePicker && (
-        <MediaLibraryPicker
-          onSelect={(url) => {
-            setSuccessImage(url);
-            setDirty(true);
-            setImagePicker(false);
-          }}
-          onClose={() => setImagePicker(false)}
-        />
-      )}
-
       {/* Form Settings Modal */}
       {settingsOpen && (
         <ConsoleModal title="Form Settings" onClose={() => setSettingsOpen(false)} wide>
@@ -1642,6 +1631,23 @@ export default function ConsoleFormEditor({
             </label>
           </div>
         </ConsoleModal>
+      )}
+
+      {/* Rendered after Form Settings, not before it -- these two modals
+          are siblings, not nested, even though this one is only ever
+          opened from a field inside that one. Neither uses a portal
+          (ConsoleModal's own doc comment), so with equal z-index, whichever
+          renders later in the DOM paints on top; this used to render
+          first and sat uselessly behind the settings modal that opened it. */}
+      {imagePicker && (
+        <MediaLibraryPicker
+          onSelect={(url) => {
+            setSuccessImage(url);
+            setDirty(true);
+            setImagePicker(false);
+          }}
+          onClose={() => setImagePicker(false)}
+        />
       )}
 
       {/* Top Header */}

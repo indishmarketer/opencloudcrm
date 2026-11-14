@@ -312,6 +312,10 @@ export type FormDesign = {
   borderColor: string;
   backgroundColor: string;
   textColor: string;
+  /** Form-wide fallback for a field's placeholder, the same way textColor
+   * is the form-wide fallback for a field's label/value colour -- see
+   * elementInputStyle. A field's own placeholderColor still wins. */
+  placeholderColor: string;
   borderRadius: string;
   fontFamily: string;
   /** The "Check your email" step is not made of canvas elements, so its code
@@ -327,6 +331,7 @@ export const EMPTY_FORM_DESIGN: FormDesign = {
   borderColor: "",
   backgroundColor: "",
   textColor: "",
+  placeholderColor: "",
   borderRadius: "",
   fontFamily: "",
 };
@@ -737,6 +742,7 @@ function normalizeDesign(input: unknown): FormDesign {
     borderColor: str(raw.borderColor),
     backgroundColor: str(raw.backgroundColor),
     textColor: str(raw.textColor),
+    placeholderColor: str(raw.placeholderColor),
     borderRadius: str(raw.borderRadius),
     fontFamily: str(raw.fontFamily),
     // Only present when actually set, so an untouched form's design stays
