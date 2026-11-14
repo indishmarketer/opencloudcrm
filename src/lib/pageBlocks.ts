@@ -35,7 +35,7 @@ export type FieldDef =
   | (BaseField & { kind: "code"; max?: number })
   | (BaseField & { kind: "datetime" });
 
-export type BlockCategory = "Headers" | "Content" | "Media" | "Calls to action" | "Live content" | "Forms" | "Business" | "Layout" | "Custom design";
+export type BlockCategory = "Headers" | "Content" | "Media" | "Calls to action" | "Live content" | "Forms" | "Business" | "Layout" | "Directory" | "Custom design";
 
 /** The real axis the Add-section palette groups by -- not `category`
  * (which is a content-topic label like "Media" or "Forms" that a primitive
@@ -381,16 +381,45 @@ export const BLOCK_DEFS: BlockDef[] = [
   },
   {
     type: "row",
-    label: "Columns",
-    description: "A row of 2-4 columns, each holding its own small elements (text, image, video, button, spacer). Build it visually in the canvas, or set props.items to an array of column arrays over the API/MCP.",
+    label: "Section / columns",
+    description: "A section with 1-4 columns. Add and edit individual elements inside each column.",
     category: "Layout",
     group: "element",
     styleModel: "rich",
     fields: [
-      select("columns", "Columns", [["2", "2"], ["3", "3"], ["4", "4"]]),
+      select("columns", "Columns", [["1", "1"], ["2", "2"], ["3", "3"], ["4", "4"]]),
       select("gap", "Gap between columns", [["sm", "Small"], ["md", "Medium"], ["lg", "Large"]]),
     ],
-    defaults: { columns: "2", gap: "md", items: [[], []], paddingY: 48, paddingX: 24 },
+    defaults: { columns: "2", gap: "md", sectionWidth: "full", backgroundImage: "", backgroundPattern: "none", patternColor: "#303030", items: [[], []], paddingY: 48, paddingX: 24 },
+  },
+  {
+    type: "directorySearch",
+    label: "Tool search",
+    description: "Search input and submit-tool button for the tools directory.",
+    category: "Directory", group: "element", styleModel: "rich", nestable: true,
+    fields: [text("placeholder", "Search placeholder", { max: 160 }), text("submitLabel", "Submit button", { max: 80 })],
+    defaults: { placeholder: "Search tools...", submitLabel: "Submit your tool", paddingY: 0, paddingX: 0 },
+  },
+  {
+    type: "directoryLogos",
+    label: "Tool logos",
+    description: "Live rolling logos from published tools.",
+    category: "Directory", group: "element", styleModel: "rich", nestable: true,
+    fields: [], defaults: { paddingY: 0, paddingX: 0 },
+  },
+  {
+    type: "directoryCategories",
+    label: "Tool categories",
+    description: "Live category links from published tools.",
+    category: "Directory", group: "element", styleModel: "rich", nestable: true,
+    fields: [], defaults: { paddingY: 0, paddingX: 0 },
+  },
+  {
+    type: "directoryResults",
+    label: "Tool listings",
+    description: "Live filters, tool cards and pagination.",
+    category: "Directory", group: "element", styleModel: "rich",
+    fields: [], defaults: { paddingY: 48, paddingX: 24, maxWidth: 1152 },
   },
   {
     type: "cards",
@@ -1004,21 +1033,11 @@ export const BLOCK_DEFS: BlockDef[] = [
   {
     type: "builtIn",
     label: "Page's own content",
-    description: "Where this built-in page's own content appears. Move or remove it as a section. On Tools directory, edit its hero text and heading tags here; tool listings and categories are managed separately.",
+    description: "Where this built-in page's own content appears.",
     category: "Layout",
     group: "element",
-    fields: [
-      text("eyebrow", "Small label above headline", { max: 120 }),
-      select("eyebrowTag", "Small label HTML tag", [["p", "Paragraph"], ["h1", "H1"], ["h2", "H2"], ["h3", "H3"]], "After deleting the separate Page title, choose H1 here and H2 for the large headline to keep one main heading."),
-      text("heading", "Large headline", { max: 180 }),
-      select("headingTag", "Large headline HTML tag", [["h1", "H1"], ["h2", "H2"], ["h3", "H3"], ["p", "Paragraph"]]),
-      textarea("text", "Directory description", { max: 600 }),
-      text("searchPlaceholder", "Search placeholder", { max: 160 }),
-      text("submitLabel", "Submit button", { max: 80 }),
-      textarea("listingNote", "Listing note", { max: 400, help: "Use {{price}} to insert the current paid listing price." }),
-      text("categoriesHeading", "Categories heading", { max: 120 }),
-    ],
-    defaults: { eyebrow: "", eyebrowTag: "p", heading: "", headingTag: "h1", text: "", searchPlaceholder: "", submitLabel: "", listingNote: "", categoriesHeading: "" },
+    fields: [],
+    defaults: {},
     internal: true,
   },
 ];
@@ -1047,7 +1066,7 @@ function ownStyleDefaults(def: BlockDef): Record<string, unknown> {
 }
 
 export function blockFields(def: BlockDef): FieldDef[] {
-  return hasSectionFields(def) ? [...def.fields, ...ownStyleFields(def)] : def.fields;
+  return hasSectionFields(def) ? [...def.fields, ...styleFields(def)] : def.fields;
 }
 
 /** The Style tab's fields for a block (background/spacing/anchor plus the
@@ -1056,7 +1075,15 @@ export function blockFields(def: BlockDef): FieldDef[] {
  * blockFields() does for one combined list. [] when the block has neither
  * (spacer, the built-in content marker). */
 export function styleFields(def: BlockDef): FieldDef[] {
-  return hasSectionFields(def) ? ownStyleFields(def) : [];
+  if (!hasSectionFields(def)) return [];
+  if (def.type !== "row") return ownStyleFields(def);
+  return [
+    ...ownStyleFields(def),
+    select("sectionWidth", "Section width", [["full", "Full width"], ["contained", "Centered box"]]),
+    image("backgroundImage", "Background image"),
+    select("backgroundPattern", "Background pattern", [["none", "None"], ["grid", "Grid lines"]]),
+    color("patternColor", "Grid line color"),
+  ];
 }
 
 /** What the console shows for a block type. `description` is written for

@@ -5,6 +5,7 @@ import { sanitizeBlogHtml } from "@/lib/sanitizeBlogHtml";
 import { getBusiness } from "@/lib/businessProfile";
 import { getSiteIdentity, resolveSiteName } from "@/lib/siteIdentity";
 import { normalizeBlocks, applyMergeTags, BlockValidationError, type PageBlock } from "@/lib/pageBlocks";
+import { upgradeDirectoryBlocks } from "@/lib/directoryPageBlocks";
 import { mergeVars } from "@/components/pageBlocks/PageBlocks";
 import {
   BUILT_IN_PAGES,
@@ -62,8 +63,8 @@ function fromRow(row: Row): SitePage {
     ogImage: row.og_image,
     noindex: row.noindex,
     status: row.status,
-    blocks: row.blocks || [],
-    published: row.published,
+    blocks: row.path === "/tools" ? upgradeDirectoryBlocks(row.blocks || []) : row.blocks || [],
+    published: row.published && row.path === "/tools" ? { ...row.published, blocks: upgradeDirectoryBlocks(row.published.blocks) } : row.published,
     createdAt: row.created_at.toISOString(),
     updatedAt: row.updated_at.toISOString(),
     publishedAt: row.published_at ? row.published_at.toISOString() : null,
@@ -181,7 +182,7 @@ async function readPublishedPage(path: string): Promise<(PageSnapshot & { id: nu
     const result = await pool.query<Row>(`SELECT ${COLUMNS} FROM site_pages WHERE kind = 'page' AND path = $1`, [path]);
     const row = result.rows[0];
     if (row && row.status === "published" && row.published) {
-      const snapshot = { ...row.published, id: Number(row.id) };
+      const snapshot = { ...row.published, blocks: path === "/tools" ? upgradeDirectoryBlocks(row.published.blocks) : row.published.blocks, id: Number(row.id) };
       lastKnownGoodPages().set(path, snapshot);
       return snapshot;
     }

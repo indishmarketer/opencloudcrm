@@ -14,9 +14,9 @@ export type DirectoryPageHero = {
 
 export const DEFAULT_DIRECTORY_HERO: DirectoryPageHero = {
   eyebrow: "Tools & software directory",
-  eyebrowTag: "p",
+  eyebrowTag: "h1",
   heading: "Find the tool that does the job",
-  headingTag: "h1",
+  headingTag: "h2",
   text: "{{count}} AI agents, automations, CRMs and open source tools we have vetted or built with. Search by what you need, filter by category and price. No pay-to-rank listings.",
   searchPlaceholder: "Search 'CRM', 'free API', 'email tool'...",
   submitLabel: "Submit your tool",

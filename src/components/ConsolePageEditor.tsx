@@ -40,7 +40,7 @@ import {
 } from "@/lib/pageBlocks";
 import type { SitePage } from "@/lib/sitePagesShape";
 import type { PageEditorLiveData } from "@/lib/pageEditorLiveData";
-import { directoryHeroFromBlocks } from "@/lib/directoryPageHero";
+import { DirectoryProvider, type DirectoryData } from "@/components/DirectoryBlocks";
 
 const button =
   "rounded-lg border border-line px-3.5 py-2 text-sm font-medium text-ink transition-colors hover:border-ink disabled:cursor-not-allowed disabled:opacity-50";
@@ -60,6 +60,7 @@ type Selection = { path: string[] } | null;
 type Device = "desktop" | "mobile";
 
 const TOP_LEVEL_DEFS = BLOCK_DEFS.filter((d) => !d.deprecated);
+const EMPTY_DIRECTORY: DirectoryData = { tools: [], categories: [], heroLogos: [], priceLabel: "" };
 
 function rowColumns(row: PageBlock): PageBlock[][] {
   return Array.isArray(row.props.items) ? (row.props.items as PageBlock[][]) : [];
@@ -632,7 +633,7 @@ export default function ConsolePageEditor({
           );
         })}
         <ColumnDropzone rowId={rowId} columnIndex={columnIndex} empty={column.length === 0} />
-        <AddElementButton onAdd={(type) => addElementToRow(rowId, columnIndex, type)} />
+        <AddElementButton directory={page.path === "/tools"} onAdd={(type) => addElementToRow(rowId, columnIndex, type)} />
       </>
     );
   }
@@ -752,9 +753,7 @@ export default function ConsolePageEditor({
       ? {
           key: selectedTopBlock.id,
           def: getBlockDef(selectedTopBlock.type),
-          props: selectedTopBlock.type === "builtIn" && page.path === "/tools"
-            ? { ...selectedTopBlock.props, ...directoryHeroFromBlocks([selectedTopBlock]) }
-            : selectedTopBlock.props,
+          props: selectedTopBlock.props,
           onChangeProps: (next: Record<string, unknown>) =>
             update(blocks.map((b) => (b.id === selectedTopBlock.id ? { ...b, props: selectedTopBlock.type === "row" ? resizeRowItems(next) : next } : b))),
           onDelete: () => void removeBlock(selectedTopBlock),
@@ -786,7 +785,8 @@ export default function ConsolePageEditor({
       : undefined;
 
   return (
-    <div className="flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-white text-ink">
+    <DirectoryProvider data={liveData.directory ?? EMPTY_DIRECTORY}>
+      <div className="flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-white text-ink">
       {dialog}
       {confirmLeave && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center bg-ink/40 px-6">
@@ -824,7 +824,7 @@ export default function ConsolePageEditor({
       {picker && (
         <BlockTypePicker
           title="Add section"
-          defs={TOP_LEVEL_DEFS.filter((d) => !d.internal || (page.builtIn && !hasBuiltInBlock))}
+          defs={TOP_LEVEL_DEFS.filter((d) => (page.path === "/tools" || d.category !== "Directory") && (!d.internal || (page.builtIn && !hasBuiltInBlock && page.path !== "/tools")))}
           onPick={addBlock}
           onClose={() => setPicker(false)}
         />
@@ -1033,7 +1033,7 @@ export default function ConsolePageEditor({
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto p-3">
               <ElementsPalette
-                defs={TOP_LEVEL_DEFS.filter((d) => !d.internal)}
+                defs={TOP_LEVEL_DEFS.filter((d) => !d.internal && (page.path === "/tools" || d.category !== "Directory"))}
                 onPick={(type) => {
                   addBlock(type);
                   setPaletteOpen(false);
@@ -1123,7 +1123,7 @@ export default function ConsolePageEditor({
                   settingsKey={settingsTarget.key}
                   title={settingsTarget.def.label}
                   description={blockSummary(settingsTarget.def)}
-                  contentFields={settingsTarget.def.type === "builtIn" && page.path !== "/tools" ? [] : settingsTarget.def.fields}
+                  contentFields={settingsTarget.def.fields}
                   styleFieldsList={styleFields(settingsTarget.def)}
                   device={device}
                   props={settingsTarget.props}
@@ -1146,6 +1146,7 @@ export default function ConsolePageEditor({
           )}
         </DragOverlay>
       </DndContext>
-    </div>
+      </div>
+    </DirectoryProvider>
   );
 }

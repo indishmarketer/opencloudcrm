@@ -8,11 +8,13 @@
  *
  * BUILT_IN_PAGES are app routes that have their own functionality (the
  * course list, the tools directory, the legal pages...). They render these
- * default sections until someone edits them; the "builtIn" block marks
- * where the route's own content goes. Editing creates a row; "Reset to
+ * default sections until someone edits them; most use a "builtIn" marker
+ * for route content, while the tools directory uses editable sections.
+ * Editing creates a row; "Reset to
  * default" deletes it again. They can't be deleted, only reset. */
 
 import type { PageBlock } from "@/lib/pageBlocks";
+import { directoryPageBlocks } from "@/lib/directoryPageBlocks";
 import type { PageSnapshot } from "@/lib/sitePagesShape";
 
 const SECTION = { background: "default", spacing: "normal", anchor: "" };
@@ -220,7 +222,7 @@ export const BUILT_IN_PAGES: DefaultPage[] = [
     metaTitle: "Tools & Software Directory",
     blocks: [
       block("tools-header", "pageHeader", { eyebrow: "", heading: "Tools directory", text: "A curated directory of useful tools.", align: "left", spacing: "compact" }),
-      block("tools-directory", "builtIn"),
+      ...directoryPageBlocks(),
     ],
   }),
   page("/webinars", "Webinars", {

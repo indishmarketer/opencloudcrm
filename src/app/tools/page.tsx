@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import ToolsDirectoryContent from "@/components/ToolsDirectoryContent";
-import { BuiltInPage, builtInPageMetadata } from "@/components/pageBlocks/SitePageView";
+import { builtInPageMetadata } from "@/components/pageBlocks/SitePageView";
 import { getPublishedPage } from "@/lib/sitePages";
 
 const baseMetadata: Metadata = {
@@ -26,9 +26,5 @@ export default async function ToolsDirectoryPage({
   const page = await getPublishedPage("/tools");
   if (!page) notFound();
   const { pricing, category } = await searchParams;
-  return (
-    <BuiltInPage path="/tools">
-      <ToolsDirectoryContent blocks={page.blocks} pricing={pricing} category={category} />
-    </BuiltInPage>
-  );
+  return <ToolsDirectoryContent blocks={page.blocks} pricing={pricing} category={category} />;
 }

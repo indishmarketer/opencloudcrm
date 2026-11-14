@@ -18,16 +18,16 @@ export default async function PagePreview({ params }: { params: Promise<{ id: st
       <div className="sticky top-[65px] z-40 bg-amber-100 px-6 py-2 text-center text-sm text-amber-900">
         Preview of unpublished changes. Visitors still see the last published version.
       </div>
-      <SitePageView
+      {page.path === "/tools" ? <ToolsDirectoryContent blocks={page.blocks} /> : <SitePageView
         page={page}
-        builtIn={page.path === "/tools" ? <ToolsDirectoryContent blocks={page.blocks} /> : (
+        builtIn={(
           <div className="mx-auto max-w-6xl px-6 py-10">
             <div className="rounded-2xl border border-dashed border-line p-8 text-center text-sm text-ink-soft">
               This page&apos;s own content (its list, form or policy text) appears here.
             </div>
           </div>
         )}
-      />
+      />}
     </>
   );
 }

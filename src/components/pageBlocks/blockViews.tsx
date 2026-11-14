@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DirectoryCategoriesBlock, DirectoryLogosBlock, DirectorySearchBlock } from "@/components/DirectoryBlocks";
 import {
   Award,
   Bell,
@@ -272,6 +273,18 @@ function richBoxStyle(props: Props): React.CSSProperties {
   };
   const bg = str(props, "backgroundColor");
   Object.assign(style, surfaceStyle(bg) ?? {});
+  const backgroundImage = str(props, "backgroundImage");
+  const grid = str(props, "backgroundPattern") === "grid";
+  const gridColor = str(props, "patternColor") || "#303030";
+  const layers = [
+    ...(grid ? [`linear-gradient(to right, ${gridColor} 1px, transparent 1px)`, `linear-gradient(to bottom, ${gridColor} 1px, transparent 1px)`] : []),
+    ...(backgroundImage ? [`url(${JSON.stringify(backgroundImage)})`] : []),
+  ];
+  if (layers.length) {
+    style.backgroundImage = layers.join(", ");
+    style.backgroundSize = [...(grid ? ["58px 58px", "58px 58px"] : []), ...(backgroundImage ? ["cover"] : [])].join(", ");
+    style.backgroundPosition = "center";
+  }
   return style;
 }
 
@@ -292,10 +305,15 @@ function richTextStyle(props: Props): React.CSSProperties {
  * narrow/normal/wide/full enum. `widthDefault` is the sensible width for
  * this element type when the user hasn't set one (e.g. a Text block
  * reads better narrow than a full-width Image does). */
-function RichSection({ props, children, widthDefault = 720 }: { props: Props; children: React.ReactNode; widthDefault?: number }) {
+function RichSection({ props, children, widthDefault = 720, contained = false }: { props: Props; children: React.ReactNode; widthDefault?: number; contained?: boolean }) {
   const box = richBoxStyle(props);
   const { paddingLeft, paddingRight, ...outer } = box;
   const maxW = num(props, "maxWidth", 0);
+  if (contained) {
+    outer.maxWidth = `${maxW > 0 ? maxW : widthDefault}px`;
+    outer.marginLeft = "auto";
+    outer.marginRight = "auto";
+  }
   return (
     // mobileClass is injected by the renderer for a block that has mobile
     // overrides; it is the hook the page's one media-query rule targets.
@@ -670,7 +688,7 @@ export function IconBlock({ props, nested = false, editableText }: { props: Prop
 }
 
 const ROW_GAP: Record<string, string> = { sm: "gap-4", md: "gap-8", lg: "gap-12" };
-const ROW_COLUMNS: Record<string, string> = { "2": "md:grid-cols-2", "3": "sm:grid-cols-2 lg:grid-cols-3", "4": "md:grid-cols-2 lg:grid-cols-4" };
+const ROW_COLUMNS: Record<string, string> = { "1": "grid-cols-1", "2": "md:grid-cols-2", "3": "sm:grid-cols-2 lg:grid-cols-3", "4": "md:grid-cols-2 lg:grid-cols-4" };
 
 /** Dispatches a nested element inside a row's column -- a small subset of
  * the full block switch in blocks.tsx, restricted to `nestable: true`
@@ -702,6 +720,9 @@ export function NestedElement({
 }) {
   const props = block.props as Props;
   switch (block.type) {
+    case "directorySearch": return <DirectorySearchBlock props={props} />;
+    case "directoryLogos": return <DirectoryLogosBlock props={props} />;
+    case "directoryCategories": return <DirectoryCategoriesBlock props={props} />;
     case "form":
       // A form is placeable in a column like any other element. It was the
       // one element the palette offered that a column refused.
@@ -802,7 +823,7 @@ export function RowBlock({
   const renderCol =
     renderColumn ?? ((column: PageBlock[]) => column.map((block) => <NestedElement key={block.id} block={block} popups={popups} />));
   return (
-    <RichSection props={props} widthDefault={1152}>
+    <RichSection props={props} widthDefault={1152} contained={str(props, "sectionWidth") === "contained"}>
       <div className={`grid ${gap} ${columns}`}>
         {items.map((column, i) => (
           <div

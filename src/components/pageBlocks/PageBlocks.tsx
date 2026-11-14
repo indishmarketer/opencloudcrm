@@ -8,6 +8,7 @@ import { mobileOverrideCss, mobileClassFor } from "@/lib/mobileOverrides";
 import { applyMergeTags, blockFields, getBlockDef, type FieldDef, type PageBlock } from "@/lib/pageBlocks";
 import { escapeHtml } from "@/lib/escapeHtml";
 import CustomBlock from "@/components/pageBlocks/CustomBlock";
+import { DirectoryResultsBlock } from "@/components/DirectoryBlocks";
 import {
   AlertBlock,
   AudioBlock,
@@ -163,6 +164,7 @@ function renderBlock(
     case "button": return <ButtonBlock props={props} popup={popupFor(props, "action", "popupId")} />;
     case "icon": return <IconBlock props={props} />;
     case "row": return <RowBlock props={props} popups={resolvedPopups} />;
+    case "directoryResults": return <DirectoryResultsBlock props={props} />;
     case "custom": return <CustomBlock props={props} blockId={block.id} />;
     case "customCode": return <CustomCodeBlock props={props} />;
     case "countdown": return <CountdownBlock props={props} />;

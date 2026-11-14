@@ -2,28 +2,38 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { BUILT_IN_PAGES } from "../src/lib/defaultPages.ts";
 import { normalizeBlocks } from "../src/lib/pageBlocks.ts";
-import { directoryHeroFromBlocks, directoryHeroText, directoryListingNote } from "../src/lib/directoryPageHero.ts";
+import { upgradeDirectoryBlocks } from "../src/lib/directoryPageBlocks.ts";
 
 const identity = (value) => value;
 
-test("the tools page keeps its removable title section and live content marker", () => {
+test("tools directory has independent editable hero, listings and categories sections", () => {
   const page = BUILT_IN_PAGES.find((entry) => entry.path === "/tools");
-  assert.deepEqual(page.blocks.map((block) => block.type), ["pageHeader", "builtIn"]);
+  assert.deepEqual(page.blocks.map((block) => block.type), ["pageHeader", "row", "directoryResults", "row"]);
+  const [hero, categories] = [page.blocks[1], page.blocks[3]];
+  assert.equal(hero.props.columns, "1");
+  assert.deepEqual(hero.props.items[0].map((block) => block.type), ["heading", "heading", "richText", "directorySearch", "richText", "directoryLogos"]);
+  assert.equal(hero.props.items[0][0].props.level, "h1");
+  assert.equal(hero.props.items[0][1].props.level, "h2");
+  assert.deepEqual(categories.props.items[0].map((block) => block.type), ["heading", "directoryCategories"]);
+  assert.deepEqual(normalizeBlocks(page.blocks, identity, { allowBuiltIn: true }).map((block) => block.type), page.blocks.map((block) => block.type));
 });
 
-test("directory hero copy and heading tags survive a page save", () => {
-  const blocks = normalizeBlocks([{ id: "tools-directory", type: "builtIn", props: {
-    eyebrow: "Tools & Software Directory", eyebrowTag: "h1",
-    heading: "Find the tool that does the job", headingTag: "h2",
-    text: "Browse {{count}} tools", searchPlaceholder: "Find software", submitLabel: "Add a tool",
-    listingNote: "Reviewed listings cost {{price}}", categoriesHeading: "Browse categories",
-  } }], identity, { allowBuiltIn: true });
-  assert.deepEqual(directoryHeroFromBlocks(blocks), {
-    eyebrow: "Tools & Software Directory", eyebrowTag: "h1",
-    heading: "Find the tool that does the job", headingTag: "h2",
-    text: "Browse {{count}} tools", searchPlaceholder: "Find software", submitLabel: "Add a tool",
-    listingNote: "Reviewed listings cost {{price}}", categoriesHeading: "Browse categories",
-  });
-  assert.equal(directoryHeroText(directoryHeroFromBlocks(blocks).text, 90), "Browse 90 tools");
-  assert.equal(directoryListingNote(directoryHeroFromBlocks(blocks).listingNote, "$5"), "Reviewed listings cost $5");
+test("an old directory marker becomes editable sections without losing saved copy or other sections", () => {
+  const before = [
+    { id: "tools-header", type: "pageHeader", props: { heading: "Custom title" } },
+    { id: "tools-directory", type: "builtIn", props: {
+      eyebrow: "Software & tools", eyebrowTag: "h1",
+      heading: "Find your tool", headingTag: "h2", text: "Browse helpful tools",
+      searchPlaceholder: "Find software", submitLabel: "Add a tool",
+      listingNote: "Reviewed listings cost the current fee", categoriesHeading: "Browse categories",
+    } },
+  ];
+  const after = upgradeDirectoryBlocks(before);
+  assert.deepEqual(after.map((block) => block.type), ["pageHeader", "row", "directoryResults", "row"]);
+  assert.equal(after[0], before[0]);
+  assert.equal(after[1].props.items[0][0].props.text, "Software & tools");
+  assert.equal(after[1].props.items[0][1].props.level, "h2");
+  assert.equal(after[1].props.items[0][3].props.placeholder, "Find software");
+  assert.equal(after[3].props.items[0][0].props.text, "Browse categories");
+  assert.deepEqual(upgradeDirectoryBlocks(after), after);
 });
