@@ -239,7 +239,7 @@ export async function sendEmail({
   // Every email gets the same responsive, dark-mode-safe document shell --
   // applied here, once, so no call site (current or future) can forget it
   // or accidentally send an unstyled fragment.
-  outgoingHtml = wrapEmailHtml(outgoingHtml, { serif: resolvedCategory === "campaign" });
+  outgoingHtml = wrapEmailHtml(outgoingHtml, { serif: resolvedCategory === "campaign", brandName: business.brand || SITE_NAME });
 
   const sendOpts = {
     to,

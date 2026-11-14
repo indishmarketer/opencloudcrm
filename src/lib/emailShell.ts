@@ -9,12 +9,21 @@
 // auto-dark-mode-inverted -- targeting them is the standard, documented
 // way to force colors back for an email that's meant to always be light.
 import { SITE_NAME } from "@/config/brand";
+import { escapeHtml } from "@/lib/escapeHtml";
 
 const BRAND_FONT = "Helvetica, Arial, sans-serif";
 const SERIF_FONT = "Georgia, 'Times New Roman', Times, serif";
 
-export function wrapEmailHtml(bodyHtml: string, opts?: { serif?: boolean }): string {
+export function wrapEmailHtml(bodyHtml: string, opts?: { serif?: boolean; brandName?: string }): string {
   const bodyFont = opts?.serif ? SERIF_FONT : BRAND_FONT;
+  // SITE_NAME is a NEXT_PUBLIC_ constant, frozen into the image at build
+  // time -- it's the generic "My Business" placeholder on every self-host
+  // that hasn't set that env var. sendEmail() already fetches the real,
+  // live business name (business.brand, from the DB) for the footer right
+  // next to where it calls this function, but never passed it in here, so
+  // the brand strip at the top of every single email showed the frozen
+  // placeholder regardless of what the owner had actually set.
+  const brandName = escapeHtml(opts?.brandName || SITE_NAME);
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -47,7 +56,7 @@ export function wrapEmailHtml(bodyHtml: string, opts?: { serif?: boolean }): str
       <table role="presentation" width="600" cellpadding="0" cellspacing="0" bgcolor="#ffffff" class="email-container force-card" style="max-width:600px;width:100%;background:#ffffff;border-radius:16px;">
         <tr>
           <td class="email-padding" style="padding:32px 40px 4px 40px;font-family:${BRAND_FONT};">
-            <span class="force-brand" style="font-size:15px;font-weight:700;letter-spacing:0.02em;color:#0a0a0a;">${SITE_NAME}</span>
+            <span class="force-brand" style="font-size:15px;font-weight:700;letter-spacing:0.02em;color:#0a0a0a;">${brandName}</span>
             <div style="margin-top:10px;width:48px;height:3px;background:#dc2626;line-height:3px;font-size:0;">&nbsp;</div>
           </td>
         </tr>
