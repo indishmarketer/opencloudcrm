@@ -30,7 +30,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "subject and bodyHtml are required." }, { status: 400 });
   }
   try {
-    await updateEmailTemplate(key, { subject, bodyHtml, fromEmail, trackOpens });
+    await updateEmailTemplate(key, { subject, bodyHtml, fromEmail, trackOpens, blocks: null });
     return NextResponse.json({ ok: true });
   } catch (error) {
     if (error instanceof EmailTemplateUpdateError) {

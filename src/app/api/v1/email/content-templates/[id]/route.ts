@@ -25,7 +25,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   if (!name) return NextResponse.json({ error: "Give this template a name." }, { status: 400 });
 
   const actor = auth.via === "session" ? auth.email : "api";
-  const template = await updateContentTemplate(id, { name, subject, bodyHtml }, actor);
+  const template = await updateContentTemplate(id, { name, subject, bodyHtml, blocks: null }, actor);
   if (!template) return NextResponse.json({ error: "Template not found." }, { status: 404 });
   return NextResponse.json({ template });
 }

@@ -2,8 +2,8 @@ import { pool } from "@/lib/db";
 import { getBusiness } from "@/lib/businessProfile";
 import { SITE_NAME } from "@/config/brand";
 import { escapeHtml } from "@/lib/escapeHtml";
-import { normalizeEmailBlocks, type EmailBlock } from "@/lib/emailBlocks";
-import { renderEmailBlocksToHtml } from "@/lib/emailBlocksRender";
+import type { EmailBlock } from "@/lib/emailBlocks";
+import { resolveEmailBodySave } from "@/lib/emailBlockSave";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -198,8 +198,7 @@ export async function updateEmailTemplate(
 ): Promise<void> {
   const { subject: rawSubject, fromEmail, trackOpens } = input;
   const subject = rawSubject;
-  const blocks = input.blocks !== undefined ? normalizeEmailBlocks(input.blocks) : null;
-  const bodyHtml = input.blocks !== undefined ? renderEmailBlocksToHtml(blocks || []) : input.bodyHtml;
+  const { blocks, bodyHtml } = resolveEmailBodySave(input);
   if (!subject.trim() || !bodyHtml.trim()) {
     throw new EmailTemplateUpdateError("subject and bodyHtml are required.");
   }
@@ -227,10 +226,10 @@ export async function updateEmailTemplate(
   const result = await pool.query(
     `UPDATE email_templates
      SET subject = $1, body_html = $2, from_email = COALESCE($3, from_email), track_opens = COALESCE($4, track_opens),
-         blocks_json = COALESCE($6::jsonb, blocks_json), updated_at = now()
+         blocks_json = CASE WHEN $7::boolean THEN $6::jsonb ELSE blocks_json END, updated_at = now()
      WHERE key = $5
      RETURNING key`,
-    [subject, bodyHtml, fromEmail || null, typeof trackOpens === "boolean" ? trackOpens : null, key, blocksParam]
+    [subject, bodyHtml, fromEmail || null, typeof trackOpens === "boolean" ? trackOpens : null, key, blocksParam, input.blocks !== undefined]
   );
   if (result.rowCount === 0) throw new EmailTemplateUpdateError("Template not found.", 404);
 }

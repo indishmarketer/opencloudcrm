@@ -27,14 +27,14 @@ import type { EmailBlock } from "@/lib/emailBlocks";
  * be HTML-safe). Duplicated rather than imported: that file also imports
  * the DB pool, which this pure-render module must never pull in. */
 function applyVars(text: string, vars: Record<string, string>): string {
-  return text.replace(/\{\{(\w+)\}\}/g, (_, key) => vars[key] ?? "");
+  return text.replace(/\{\{(\w+)\}\}/g, (match, key) => vars[key] ?? match);
 }
 
 /** Absolute links only -- unlike pageBlocks.ts's safeHref, a relative
  * "/contact" is useless once the markup leaves the site inside an email. */
 function safeEmailHref(value: unknown): string {
   const href = typeof value === "string" ? value.trim().slice(0, 500) : "";
-  return /^(https:\/\/|mailto:|tel:)/i.test(href) ? href : "";
+  return /^(https:\/\/|mailto:|tel:)/i.test(href) || /^\{\{\w+\}\}$/.test(href) ? href : "";
 }
 
 function str(props: Record<string, unknown>, key: string, fallback = ""): string {

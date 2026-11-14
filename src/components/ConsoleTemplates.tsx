@@ -59,8 +59,8 @@ function InlineEditor({ row, siteHost, onSaved }: { row: TemplateRow; siteHost: 
       ? `/api/console/email/content-templates/${row.id}`
       : `/api/console/email/templates/${encodeURIComponent(row.key)}`;
     const payload = row.kind === "content"
-      ? { name, subject, bodyHtml }
-      : { subject, bodyHtml, fromEmail, trackOpens };
+      ? { name, subject, bodyHtml, blocks: null }
+      : { subject, bodyHtml, fromEmail, trackOpens, blocks: null };
     const res = await fetch(url, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },

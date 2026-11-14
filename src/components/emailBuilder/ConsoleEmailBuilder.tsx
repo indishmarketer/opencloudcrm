@@ -200,7 +200,7 @@ export default function ConsoleEmailBuilder({
    * whichever way it was last written. Ignored once Visual mode's blocks
    * become the save's source of truth again. */
   initialBodyHtml: string;
-  onSave: (next: { subject: string; blocks: EmailBlock[]; bodyHtml: string }) => Promise<{ ok: boolean; error?: string }>;
+  onSave: (next: { subject: string; blocks: EmailBlock[] | null; bodyHtml: string }) => Promise<{ ok: boolean; error?: string }>;
   backHref: string;
   backLabel: string;
   /** Live values, so the Footer block's preview (style-only, never part
@@ -220,6 +220,9 @@ export default function ConsoleEmailBuilder({
   const [composerMode, setComposerMode] = useState<"visual" | "classic" | "html">(
     initialBlocks.length > 0 ? "visual" : "classic"
   );
+  // Existing HTML templates have no block layout. Keep that source intact
+  // until the owner explicitly converts it into an editable visual block.
+  const [bodySource, setBodySource] = useState<"visual" | "html">(initialBlocks.length > 0 ? "visual" : "html");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [device, setDevice] = useState<"desktop" | "mobile">("desktop");
   const [mode, setMode] = useState<"edit" | "preview">("edit");
@@ -238,6 +241,7 @@ export default function ConsoleEmailBuilder({
     (next: EmailBlock[]) => {
       setHistory((curr) => ({ past: [...curr.past.slice(-20), blocks], future: [] }));
       setBlocks(next);
+      setBodySource("visual");
       setDirty(true);
     },
     [blocks],
@@ -247,6 +251,7 @@ export default function ConsoleEmailBuilder({
     const prev = history.past[history.past.length - 1];
     setHistory((curr) => ({ past: curr.past.slice(0, -1), future: [blocks, ...curr.future] }));
     setBlocks(prev);
+    setBodySource("visual");
     setDirty(true);
   }, [blocks, history.past]);
   const redo = useCallback(() => {
@@ -254,6 +259,7 @@ export default function ConsoleEmailBuilder({
     const next = history.future[0];
     setHistory((curr) => ({ past: [...curr.past, blocks], future: curr.future.slice(1) }));
     setBlocks(next);
+    setBodySource("visual");
     setDirty(true);
   }, [blocks, history.future]);
 
@@ -273,25 +279,30 @@ export default function ConsoleEmailBuilder({
   const save = useCallback(async () => {
     setBusy(true);
     setError("");
-    // Whichever mode is active when you hit Save is what's authoritative:
-    // Visual saves its blocks (and their rendered HTML, for anything that
-    // only reads body_html); Classic/HTML save the freeform HTML and clear
-    // the blocks, so a stale block layout can't silently come back later.
-    const payload = composerMode === "visual"
+    // Save the last content source actually edited. Looking at another tab
+    // must not replace a template's body or change its stored format.
+    const payload = bodySource === "visual"
       ? { subject, blocks, bodyHtml: renderEmailBlocksToHtml(blocks, {}) }
-      : { subject, blocks: [], bodyHtml: freeformHtml };
+      : { subject, blocks: null, bodyHtml: freeformHtml };
     const result = await onSave(payload).catch((e) => ({ ok: false, error: e instanceof Error ? e.message : "Could not save." }));
     setBusy(false);
     if (!result.ok) {
       setError(result.error || "Could not save this email.");
       return false;
     }
+    if (bodySource === "visual") {
+      setFreeformHtml(payload.bodyHtml);
+    } else {
+      setBlocks([]);
+      setSelectedId(null);
+      setHistory({ past: [], future: [] });
+    }
     setDirty(false);
     setMessage("Saved.");
     setTimeout(() => setMessage(""), 2500);
     router.refresh();
     return true;
-  }, [blocks, subject, composerMode, freeformHtml, onSave, router]);
+  }, [blocks, subject, freeformHtml, onSave, router, bodySource]);
 
   const saveRef = useRef(save);
   const undoRef = useRef(undo);
@@ -354,7 +365,7 @@ export default function ConsoleEmailBuilder({
   }
 
   const previewVars = PREVIEW_SAMPLE_VARS;
-  const bodyHtml = composerMode === "visual" ? renderEmailBlocksToHtml(blocks, previewVars) : freeformHtml;
+  const bodyHtml = bodySource === "visual" ? renderEmailBlocksToHtml(blocks, previewVars) : freeformHtml;
   const fullHtml = wrapEmailHtml(bodyHtml);
   const footerBlock = blocks.find((b) => b.type === "footer");
   void businessName; void businessAddress; // reserved for the footer preview, wired in Phase 4
@@ -448,15 +459,13 @@ export default function ConsoleEmailBuilder({
               key={tab.id}
               type="button"
               onClick={() => {
-                if (tab.id !== "visual" && composerMode === "visual") {
-                  // First time leaving Visual: seed the freeform text with
-                  // what the blocks currently render, so Classic/HTML don't
-                  // open blank. Nothing is deleted yet -- that only happens
-                  // on Save, see save() above.
+                if (tab.id === composerMode) return;
+                if (tab.id !== "visual" && composerMode === "visual" && bodySource === "visual") {
+                  // A block layout has its own HTML representation. An old
+                  // HTML-only template must retain its original source.
                   setFreeformHtml(renderEmailBlocksToHtml(blocks, {}));
                 }
                 setComposerMode(tab.id);
-                setDirty(true);
               }}
               className={`rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors ${
                 composerMode === tab.id ? "bg-ink text-paper" : "text-ink-soft hover:text-ink"
@@ -465,9 +474,9 @@ export default function ConsoleEmailBuilder({
               {tab.label}
             </button>
           ))}
-          {composerMode !== "visual" && blocks.length > 0 && (
+          {composerMode !== "visual" && bodySource === "visual" && blocks.length > 0 && (
             <span className="ml-2 text-xs text-ink-soft">
-              Saving here replaces your visual blocks with this HTML.
+              Editing here replaces your visual blocks with HTML when saved.
             </span>
           )}
         </div>
@@ -495,6 +504,7 @@ export default function ConsoleEmailBuilder({
               value={freeformHtml}
               onChange={(html) => {
                 setFreeformHtml(html);
+                setBodySource("html");
                 setDirty(true);
               }}
             />
@@ -506,12 +516,25 @@ export default function ConsoleEmailBuilder({
             value={freeformHtml}
             onChange={(e) => {
               setFreeformHtml(e.target.value);
+              setBodySource("html");
               setDirty(true);
             }}
             spellCheck={false}
             className="h-full min-h-[60vh] w-full rounded-xl border border-line bg-white p-4 font-mono text-xs text-ink outline-none focus:border-ink"
             placeholder="<p>Write the full email HTML here...</p>"
           />
+        </main>
+      ) : bodySource === "html" && freeformHtml.trim() ? (
+        <main className="min-h-0 flex-1 overflow-y-auto bg-paper-soft p-6">
+          <div className="mx-auto max-w-[640px] rounded-xl border border-line bg-white p-5 shadow-sm">
+            <h2 className="text-sm font-semibold text-ink">Existing HTML content</h2>
+            <p className="mt-1 text-xs leading-5 text-ink-soft">This template was written in Classic or HTML. Its content is preserved when you switch modes. Edit it there, or convert it into one visual text block to start a block layout. Conversion may change some formatting when you save.</p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button type="button" onClick={() => setComposerMode("classic")} className={button}>Edit in Classic</button>
+              <button type="button" onClick={() => { const textBlock = createEmailBlock("text"); const block = { ...textBlock, props: { ...textBlock.props, html: freeformHtml } }; change([block]); setSelectedId(block.id); }} className={primaryButton}>Convert to visual block</button>
+            </div>
+            <iframe title="Existing email content" srcDoc={wrapEmailHtml(freeformHtml)} className="mt-5 h-[520px] w-full rounded-lg border border-line bg-white" />
+          </div>
         </main>
       ) : (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={() => setActiveDragLabel(null)}>

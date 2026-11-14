@@ -71,6 +71,14 @@ test("merge tags substitute in heading/text/button, raw (not auto-escaped, match
   assert.ok(html.includes("Hi Jo"));
 });
 
+test("saving visual blocks keeps unresolved merge tags and template links", () => {
+  const heading = { id: "a", type: "heading", props: { ...getEmailBlockDef("heading").defaults, text: "Hi {{first_name}}" } };
+  const button = { id: "b", type: "button", props: { ...getEmailBlockDef("button").defaults, label: "Open course", href: "{{course_url}}" } };
+  const html = renderEmailBlocksToHtml([heading, button]);
+  assert.ok(html.includes("{{first_name}}"));
+  assert.ok(html.includes('href="{{course_url}}"'));
+});
+
 test("heading/button text is HTML-escaped -- a stray angle bracket in a merge-tag value can't inject markup", () => {
   const heading = getEmailBlockDef("heading");
   const block = { id: "a", type: "heading", props: { ...heading.defaults, text: "Hi {{name}}" } };

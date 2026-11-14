@@ -38,10 +38,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ ke
     return NextResponse.json({ error: "subject and bodyHtml are required." }, { status: 400 });
   }
   try {
-    // Present only for a save from the visual builder -- omitted (not an
-    // empty array) for the plain-editor save, same convention as the
-    // content-templates endpoint.
-    const blocksParam = Array.isArray(blocks) ? blocks : undefined;
+    // Null selects Classic/HTML; an array selects Visual; omission keeps
+    // the current stored layout.
+    const blocksParam = blocks === null ? null : Array.isArray(blocks) ? blocks : undefined;
     await updateEmailTemplate(key, { subject, bodyHtml, fromEmail, trackOpens, blocks: blocksParam });
     const template = await getRawEmailTemplate(key);
     return NextResponse.json({ ok: true, template });

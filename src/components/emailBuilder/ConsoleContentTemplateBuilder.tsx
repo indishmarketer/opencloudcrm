@@ -4,12 +4,8 @@ import ConsoleEmailBuilder from "@/components/emailBuilder/ConsoleEmailBuilder";
 import type { EmailContentTemplate } from "@/lib/emailContentTemplates";
 import type { EmailBlock } from "@/lib/emailBlocks";
 
-/** Thin wrapper: fetches/saves a Library template (email_content_templates)
- * through ConsoleEmailBuilder. A template with no blocks_json yet (every
- * one that exists before the builder did) starts the builder with an
- * empty canvas -- its existing hand-written body_html is left completely
- * untouched until this save actually happens; opening this page alone
- * changes nothing. */
+/** Fetches/saves a Library template through the shared composer. HTML-only
+ * templates retain their source until the owner explicitly converts them. */
 export default function ConsoleContentTemplateBuilder({
   template,
   businessName,
