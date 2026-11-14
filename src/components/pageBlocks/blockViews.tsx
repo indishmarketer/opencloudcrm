@@ -311,7 +311,16 @@ function RichSection({ props, children, widthDefault = 720 }: { props: Props; ch
  * row's column. No max-width centering (the column already constrains
  * width), same as ElementBox. */
 function RichBox({ props, children }: { props: Props; children: React.ReactNode }) {
-  return <div style={richBoxStyle(props)}>{children}</div>;
+  // mobileClass is injected by the renderer for a nested block that has
+  // mobile overrides -- see RichSection's identical comment. Unlike
+  // ElementBox (the old-system equivalent, which already had this), this
+  // was missing entirely: a mobile override on a richText/heading/button/
+  // etc. element dropped inside a Row's column had no class to attach to,
+  // so it silently did nothing -- confirmed live on a page built from
+  // Columns (text + image side by side), where a mobile-only alignment
+  // change on the text never took effect, while the exact same change on
+  // a top-level (non-columned) page worked.
+  return <div style={richBoxStyle(props)} className={str(props, "mobileClass") || undefined}>{children}</div>;
 }
 
 function SectionHeading({ heading, text, link }: { heading: string; text?: string; link?: { href: string; label: string } }) {
@@ -968,9 +977,20 @@ export function ImageBlock({
   const t = richTextStyle(props);
   const figure = (
     <figure>
-      <div className="relative aspect-[1200/650] w-full overflow-hidden rounded-2xl">
-        <BlockImage src={image} alt={str(props, "alt")} sizes={nested ? "(min-width: 768px) 33vw, 100vw" : full ? "(min-width: 1152px) 1152px, 100vw" : "(min-width: 896px) 896px, 100vw"} className="object-cover" />
-      </div>
+      {/* The standalone Image element is "show my picture", not a card
+          thumbnail -- unlike every other BlockImage call site in this file
+          (cards, hero, testimonials...), which legitimately want a fixed
+          crop for grid alignment, this one has to show the whole image.
+          BlockImage's `fill` mode needs a container with a fixed aspect
+          ratio, which is exactly what was forcing every image into a
+          1200:650 letterbox and cropping anything taller/squarer than
+          that -- confirmed live, the top of a taller image was cut off.
+          A plain <img> sizes itself from the real file, at any ratio,
+          with no server-side optimization (next/image's one trade-off
+          here), same as how rich text's own inserted images already work
+          (see .page-richtext img in globals.css). */}
+      {/* eslint-disable-next-line @next/next/no-img-element -- intentionally not next/image: see comment above */}
+      <img src={image} alt={str(props, "alt")} className="block h-auto w-full rounded-2xl" />
       {(str(props, "caption") || editableText) && (
         <figcaption className="mt-3 text-ink-soft" style={t}>
           {editableText ? <InlineTextInput edit={editableText} placeholder="Caption" /> : str(props, "caption")}

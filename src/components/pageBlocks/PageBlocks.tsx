@@ -94,7 +94,14 @@ function resolveBlockProps(block: PageBlock, vars: Record<string, string>, htmlV
   const out = resolveProps(blockFields(def), block.props, vars, htmlVars);
   if (block.type === "row" && Array.isArray(block.props.items)) {
     out.items = (block.props.items as PageBlock[][]).map((column) =>
-      column.map((item) => ({ ...item, props: resolveBlockProps(item, vars, htmlVars) }))
+      column.map((item) => {
+        const itemProps = resolveBlockProps(item, vars, htmlVars);
+        // Same mobileClass injection the top-level block loop does below --
+        // a nested element's own mobile overrides need the same hook, or
+        // the generated CSS rule (mobileOverrideCss already walks into
+        // columns) has no class in the rendered DOM to attach to.
+        return { ...item, props: itemProps.mobile ? { ...itemProps, mobileClass: mobileClassFor(item.id) } : itemProps };
+      })
     );
   }
   return out;
