@@ -46,6 +46,11 @@ const PATHS: Record<string, string> = {
   breadcrumbs: "M3 12h3l2-4 2 8 2-8 2 4h7",
   audio: "M4 10v4 M8 7v10 M12 4v16 M16 7v10 M20 10v4",
   logo: "M5 4h14v12l-7 4-7-4Z M9 9h6v4H9z",
+  // Email builder's own block types, reusing this same icon set (see
+  // ConsoleEmailBuilder.tsx) rather than keeping a second icon map.
+  text: "M4 6h16 M4 11h16 M4 16h10",
+  columns: "M3 4h8v16H3z M13 4h8v16h-8z",
+  footer: "M3 5h18v12H3z M3 17h18 M7 20h10",
 };
 
 const DEFAULT_PATH = "M5 5h14v14H5z";

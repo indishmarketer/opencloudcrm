@@ -24,7 +24,13 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const bodyHtml = typeof body.bodyHtml === "string" ? body.bodyHtml : "";
   if (!name) return NextResponse.json({ error: "Give this template a name." }, { status: 400 });
 
-  const template = await updateContentTemplate(id, { name, subject, bodyHtml }, email);
+  // Present only for a save from ConsoleEmailBuilder (the visual editor) --
+  // omitted (not an empty array) for the plain rich-text editor's save, so
+  // updateContentTemplate can tell "no blocks here" from "deleted every
+  // block."
+  const blocks = Array.isArray(body.blocks) ? body.blocks : undefined;
+
+  const template = await updateContentTemplate(id, { name, subject, bodyHtml, blocks }, email);
   if (!template) return NextResponse.json({ error: "Template not found." }, { status: 404 });
   return NextResponse.json({ template });
 }

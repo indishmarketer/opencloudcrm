@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import RichTextEditor from "@/components/RichTextEditor";
 import { useConfirm } from "@/components/ConfirmDialog";
@@ -178,6 +179,13 @@ export default function ConsoleEmailLibrary({ templates }: { templates: EmailCon
                   <p className="mt-1 text-xs text-ink-soft">{template.subject || "No subject set"}</p>
                 </button>
                 <div className="flex shrink-0 items-center gap-2">
+                  <Link
+                    href={`/console/email/library/${template.id}/builder`}
+                    className="rounded-full border border-line px-3 py-1.5 text-xs font-medium text-ink transition-colors hover:border-ink"
+                    title="Design this email's layout, colours and elements visually"
+                  >
+                    Design visually
+                  </Link>
                   <button
                     type="button"
                     onClick={() => setEditingId(isEditing ? null : template.id)}
