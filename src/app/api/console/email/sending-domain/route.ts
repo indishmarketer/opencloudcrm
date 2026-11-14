@@ -14,13 +14,7 @@ export async function PATCH(req: NextRequest) {
   if (!isAdmin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json().catch(() => null);
-  // Merge onto the current settings rather than replacing wholesale -- the
-  // sending-domain field and the branding fields are edited from separate
-  // parts of the same page/component, so a save from one must not reset
-  // the other back to defaults.
-  const current = await getEmailSettings();
-  const merged = { ...current, ...(body && typeof body === "object" ? body : {}) };
-  const settings = normalizeEmailSettings(merged);
+  const settings = normalizeEmailSettings(body);
   const error = validateEmailSettings(settings);
   if (error) return NextResponse.json({ error }, { status: 400 });
 

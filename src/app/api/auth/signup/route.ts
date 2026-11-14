@@ -2,10 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { pool, withTransaction } from "@/lib/db";
 import { createEmailVerificationToken, safeRedirectPath } from "@/lib/auth";
-import { sendEmail } from "@/lib/email";
-import { getEmailTemplateOptional, applyTemplateVars } from "@/lib/emailTemplates";
 import { firstNameOf } from "@/lib/emailAutomation";
-import { escapeHtml } from "@/lib/escapeHtml";
+import { emitWebhookEvent } from "@/lib/webhookEvents";
 import { verifyTurnstile } from "@/lib/turnstile";
 import { generateUniqueUsername } from "@/lib/community";
 import { getAttributionFromRequest } from "@/lib/attribution";
@@ -157,32 +155,20 @@ export async function POST(req: NextRequest) {
   const dest = safeRedirectPath(redirect);
   const verifyUrl = `${SITE_URL}/api/auth/verify-email?token=${token}&redirect=${encodeURIComponent(dest)}`;
 
-  const tpl = await getEmailTemplateOptional("email-verification");
-  const vars = { first_name: escapeHtml(firstNameOf(name)), verify_url: verifyUrl };
-  const emailResult = tpl
-    ? await sendEmail({
-        to: user.email,
-        subject: applyTemplateVars(tpl.subject, vars),
-        html: applyTemplateVars(tpl.body_html, vars),
-        from: tpl.from_email,
-        critical: tpl.critical,
-        templateKey: tpl.key,
-        category: "fixed",
-        trackOpens: tpl.track_opens,
-      })
-    : { ok: false };
-
-  // Account exists either way (so a duplicate signup attempt correctly
-  // 409s), but if the verification email itself failed to send (or isn't
-  // configured at all), tell the user now instead of leaving them stuck
-  // waiting for an email that never arrived -- they can retry via
-  // /api/auth/resend-verification later.
-  if (!emailResult.ok) {
-    return NextResponse.json(
-      { ok: false, error: "Account created, but the confirmation email couldn't be sent. Try resending it from the login page in a moment." },
-      { status: 502 }
-    );
-  }
+  // No more direct send -- this is now a real, self-built automation
+  // (trigger "Account created (needs verification)"). Nothing emails the
+  // new user until that automation exists; the account itself is already
+  // created regardless, same as course.enrolled never depends on its own
+  // notification succeeding.
+  emitWebhookEvent({
+    eventType: "account.verification_requested",
+    source: "users",
+    sourceRecordId: user.id,
+    contactEmail: user.email,
+    contactName: name,
+    userId: user.id,
+    data: { verify_url: verifyUrl, first_name: firstNameOf(name) },
+  }).catch(() => {});
 
   return NextResponse.json({ ok: true, needsVerification: true });
 }

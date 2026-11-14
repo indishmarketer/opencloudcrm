@@ -14,12 +14,10 @@ export default function ConsoleContentTemplateBuilder({
   template,
   businessName,
   businessAddress,
-  branding,
 }: {
   template: EmailContentTemplate;
   businessName: string;
   businessAddress: string;
-  branding: { enabled: boolean; align: "left" | "center"; accentColor: string; backgroundColor: string };
 }) {
   return (
     <ConsoleEmailBuilder
@@ -30,7 +28,6 @@ export default function ConsoleContentTemplateBuilder({
       backLabel="All templates"
       businessName={businessName}
       businessAddress={businessAddress}
-      branding={branding}
       onSave={async ({ subject, blocks, bodyHtml }) => {
         const res = await fetch(`/api/console/email/content-templates/${template.id}`, {
           method: "PATCH",

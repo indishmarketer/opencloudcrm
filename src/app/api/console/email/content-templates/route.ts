@@ -16,8 +16,9 @@ export async function POST(req: NextRequest) {
   const name = typeof body.name === "string" ? body.name.trim() : "";
   const subject = typeof body.subject === "string" ? body.subject : "";
   const bodyHtml = typeof body.bodyHtml === "string" ? body.bodyHtml : "";
+  const category = body.category === "transactional" ? "transactional" : "marketing";
   if (!name) return NextResponse.json({ error: "Give this template a name." }, { status: 400 });
 
-  const template = await createContentTemplate({ name, subject, bodyHtml }, email);
+  const template = await createContentTemplate({ name, subject, bodyHtml, category }, email);
   return NextResponse.json({ template }, { status: 201 });
 }

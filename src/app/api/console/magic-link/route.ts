@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createMagicLinkToken } from "@/lib/auth";
 import { isAuthorizedConsoleEmail } from "@/lib/consoleAdmins";
-import { sendEmail, isEmailProviderConfigured } from "@/lib/email";
-import { getEmailTemplateOptional, applyTemplateVars } from "@/lib/emailTemplates";
+import { isEmailProviderConfigured } from "@/lib/email";
+import { emitWebhookEvent } from "@/lib/webhookEvents";
 import { checkRateLimit, privateRateLimitKey } from "@/lib/rateLimit";
 import { requestOrigin } from "@/lib/requestOrigin";
 
@@ -41,9 +41,9 @@ export async function POST(req: NextRequest) {
     // the real, usable link to the server's own logs (visible in Coolify's
     // Runtime Logs, same place deploy issues have already been diagnosed
     // from all session) instead of silently trying and failing to email
-    // it. Never happens once a provider is configured -- sendEmail's own
-    // "no provider" branch below would otherwise just log a generic
-    // warning with nothing actionable in it.
+    // it. This pre-existing safety net is kept exactly as it was --
+    // nothing about converting the normal path to an automation should be
+    // able to lock an admin out of their own console.
     if (!isEmailProviderConfigured()) {
       console.warn(
         `\n==================== CONSOLE LOGIN LINK ====================\n` +
@@ -58,42 +58,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
-    const tpl = await getEmailTemplateOptional("magic-link-login");
-    if (!tpl) {
-      // Same reasoning as the no-provider-configured branch above: this is
-      // the ONE email deleting it can never lock an admin out of, so fall
-      // back to the exact same logged-link mechanism.
-      console.warn(
-        `\n==================== CONSOLE LOGIN LINK ====================\n` +
-        `The "Console login link" email has been deleted, so this\n` +
-        `couldn't be emailed to ${normalized}. Open it directly to log in:\n\n` +
-        `${link}\n\n` +
-        `It expires soon and is single-use. Recreate the email in\n` +
-        `Console -> Email -> Library to stop seeing this message.\n` +
-        `==============================================================\n`
-      );
-      return NextResponse.json({ ok: true });
-    }
-    const vars = { link };
-    // This template's from_email seeds to a *@example.com placeholder
-    // (migrations 001/032/066) that's never a real, deliverable sender for
-    // ANY deployment -- and this is the one email a fresh self-host needs
-    // before anyone can log in to customize it via Console -> Email ->
-    // Templates. Fall back to sendEmail's own EMAIL_FROM/SITE_URL-derived
-    // default instead of forcing that placeholder through, so console
-    // login works out of the box on every self-host. An admin who already
-    // changed this template's sender to something real keeps it.
-    const isPlaceholderSender = /@example\.com$/i.test(tpl.from_email);
-    await sendEmail({
-      to: normalized,
-      subject: applyTemplateVars(tpl.subject, vars),
-      html: applyTemplateVars(tpl.body_html, vars),
-      from: isPlaceholderSender ? undefined : tpl.from_email,
-      critical: tpl.critical,
-      templateKey: tpl.key,
-      category: "fixed",
-      trackOpens: tpl.track_opens,
-    });
+    // Real, self-built automation now (trigger "Console login link
+    // requested"). Add a condition on contact.email to restrict this to
+    // one specific admin address if that's all you want it going to.
+    emitWebhookEvent({
+      eventType: "console_admin.login_link_requested",
+      source: "console_admins",
+      sourceRecordId: normalized,
+      contactEmail: normalized,
+      data: { link, email: normalized },
+    }).catch(() => {});
   }
 
   return NextResponse.json({ ok: true });

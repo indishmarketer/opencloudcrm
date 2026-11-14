@@ -4,5 +4,5 @@ import { getEmailSettings } from "@/lib/emailSettings";
 
 export default async function EmailSendingPage() {
   const settings = await getEmailSettings();
-  return <ConsoleEmailSending defaultDomain={SITE_HOSTNAME} settings={settings} />;
+  return <ConsoleEmailSending defaultDomain={SITE_HOSTNAME} sendingDomain={settings.sendingDomain} />;
 }

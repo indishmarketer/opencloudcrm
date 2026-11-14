@@ -2,6 +2,8 @@ import { pool } from "@/lib/db";
 import { getBusiness } from "@/lib/businessProfile";
 import { SITE_NAME } from "@/config/brand";
 import { escapeHtml } from "@/lib/escapeHtml";
+import { normalizeEmailBlocks, type EmailBlock } from "@/lib/emailBlocks";
+import { renderEmailBlocksToHtml } from "@/lib/emailBlocksRender";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -16,6 +18,11 @@ export type EmailTemplate = {
   critical: boolean;
   track_opens: boolean;
   allowed_vars: string[];
+  /** The visual builder's structured blocks, same as
+   * email_content_templates.blocks_json (migration 184) -- NULL means this
+   * row was never opened in the builder; body_html is hand-written and is
+   * the source of truth. */
+  blocks_json: EmailBlock[] | null;
 };
 
 /** Raw {{var}} substitution -- does NOT escape values. Every var passed in
@@ -36,7 +43,7 @@ export function applyTemplateVars(text: string, vars: Record<string, string>): s
  * itself and reports 404. */
 export async function getEmailTemplate(key: string): Promise<EmailTemplate> {
   const result = await pool.query<EmailTemplate>(
-    `SELECT key, category, label, description, subject, body_html, from_email, critical, track_opens, allowed_vars
+    `SELECT key, category, label, description, subject, body_html, from_email, critical, track_opens, allowed_vars, blocks_json
      FROM email_templates WHERE key = $1`,
     [key]
   );
@@ -65,7 +72,7 @@ export async function getEmailTemplate(key: string): Promise<EmailTemplate> {
  * etc. -- see each call site's own comment). */
 export async function getEmailTemplateOptional(key: string): Promise<EmailTemplate | null> {
   const result = await pool.query<EmailTemplate>(
-    `SELECT key, category, label, description, subject, body_html, from_email, critical, track_opens, allowed_vars
+    `SELECT key, category, label, description, subject, body_html, from_email, critical, track_opens, allowed_vars, blocks_json
      FROM email_templates WHERE key = $1`,
     [key]
   );
@@ -82,10 +89,23 @@ export async function getEmailTemplateOptional(key: string): Promise<EmailTempla
 
 export async function listEmailTemplates(): Promise<EmailTemplate[]> {
   const result = await pool.query<EmailTemplate>(
-    `SELECT key, category, label, description, subject, body_html, from_email, critical, track_opens, allowed_vars
+    `SELECT key, category, label, description, subject, body_html, from_email, critical, track_opens, allowed_vars, blocks_json
      FROM email_templates ORDER BY category, label`
   );
   return result.rows;
+}
+
+/** Loads one row exactly as stored, for the console's own editors --
+ * unlike getEmailTemplate/getEmailTemplateOptional, this does NOT resolve
+ * {{site_name}}, since an admin editing the content should see and keep
+ * the literal placeholder, not today's resolved value. */
+export async function getRawEmailTemplate(key: string): Promise<EmailTemplate | null> {
+  const result = await pool.query<EmailTemplate>(
+    `SELECT key, category, label, description, subject, body_html, from_email, critical, track_opens, allowed_vars, blocks_json
+     FROM email_templates WHERE key = $1`,
+    [key]
+  );
+  return result.rows[0] || null;
 }
 
 export class EmailTemplateUpdateError extends Error {
@@ -119,12 +139,7 @@ export class EmailTemplateCreateError extends Error {
  * (nothing in this app treats any key as permanent), this list exists only
  * so a self-hoster can bring one back once it's gone. */
 export const SYSTEM_EMAIL_DEFS = [
-  { key: "email-verification", label: "Account email verification", description: "Sent on signup to verify a new account's email address.", allowedVars: ["first_name", "verify_url"], defaultSubject: "Confirm your email", defaultBody: "<p>Hi {{first_name}},</p><p>Confirm your email to activate your account:</p><p><a href=\"{{verify_url}}\">Verify my email</a></p>" },
-  { key: "password-reset", label: "Password reset", description: "Sent when someone requests a password reset link.", allowedVars: ["first_name", "reset_url"], defaultSubject: "Reset your password", defaultBody: "<p>Hi {{first_name}},</p><p>Reset your password here:</p><p><a href=\"{{reset_url}}\">Reset password</a></p>" },
-  { key: "magic-link-login", label: "Console login link", description: "Sent to a console admin signing in via a one-time link instead of a password.", allowedVars: ["link"], defaultSubject: "Your console login link", defaultBody: "<p>Click to log in:</p><p><a href=\"{{link}}\">Log in to the console</a></p>" },
   { key: "otp-code", label: "Verification code (OTP)", description: "Sent to confirm an email address with a short code or magic link (contact form, newsletter, etc).", allowedVars: ["code", "magic_link_url"], defaultSubject: "Your verification code", defaultBody: "<p>Your code: <strong>{{code}}</strong></p><p>Or click: <a href=\"{{magic_link_url}}\">Confirm now</a></p>" },
-  { key: "account-email-change", label: "Account email change confirmation", description: "Sent to a new address when someone changes their account email.", allowedVars: ["confirm_url", "current_email"], defaultSubject: "Confirm your new email address", defaultBody: "<p>Confirm this is your new email address (replacing {{current_email}}):</p><p><a href=\"{{confirm_url}}\">Confirm new email</a></p>" },
-  { key: "console-admin-invite", label: "Console admin invite", description: "Sent when an existing admin invites a new console admin.", allowedVars: ["invited_by", "login_url"], defaultSubject: "You've been invited to the console", defaultBody: "<p>{{invited_by}} invited you to the console.</p><p><a href=\"{{login_url}}\">Log in</a></p>" },
   { key: "contact-form-reply", label: "Contact form reply envelope", description: "The envelope used when an admin replies to a contact form message -- {{message}} is the admin's own typed reply.", allowedVars: ["name", "message"], defaultSubject: "Re: your message", defaultBody: "<p>Hi {{name}},</p><p>{{message}}</p>" },
   { key: "review-question-to-author", label: "Review question envelope", description: "The envelope used when an admin asks a reviewer a question -- {{note}} is the admin's own typed question.", allowedVars: ["name", "note"], defaultSubject: "A question about your review", defaultBody: "<p>Hi {{name}},</p><p>{{note}}</p>" },
   { key: "webinar-guest-signin", label: "Webinar guest sign-in link", description: "Sent to a guest registering for a webinar without an existing account, to verify and sign them in.", allowedVars: ["first_name", "webinar_title", "verify_url"], defaultSubject: "Confirm your spot in {{webinar_title}}", defaultBody: "<p>Hi {{first_name}},</p><p>Confirm your email to join {{webinar_title}}:</p><p><a href=\"{{verify_url}}\">Confirm and join</a></p>" },
@@ -158,7 +173,7 @@ export async function createSystemEmailTemplate(key: string): Promise<EmailTempl
   const result = await pool.query<EmailTemplate>(
     `INSERT INTO email_templates (key, category, label, description, subject, body_html, from_email, critical, track_opens, allowed_vars)
      VALUES ($1, 'system', $2, $3, $4, $5, 'info@example.com', false, true, $6)
-     RETURNING key, category, label, description, subject, body_html, from_email, critical, track_opens, allowed_vars`,
+     RETURNING key, category, label, description, subject, body_html, from_email, critical, track_opens, allowed_vars, blocks_json`,
     [def.key, def.label, def.description, def.defaultSubject, def.defaultBody, def.allowedVars]
   );
   return result.rows[0];
@@ -170,9 +185,21 @@ export async function createSystemEmailTemplate(key: string): Promise<EmailTempl
  * above for how a deleted system email comes back. */
 export async function updateEmailTemplate(
   key: string,
-  input: { subject: string; bodyHtml: string; fromEmail?: string | null; trackOpens?: boolean | null }
+  input: {
+    subject: string;
+    bodyHtml: string;
+    fromEmail?: string | null;
+    trackOpens?: boolean | null;
+    /** Present only when saved from the visual builder -- omit entirely
+     * (not an empty array) for a plain-editor save, same convention as
+     * emailContentTemplates.ts's resolveBody. */
+    blocks?: unknown;
+  }
 ): Promise<void> {
-  const { subject, bodyHtml, fromEmail, trackOpens } = input;
+  const { subject: rawSubject, fromEmail, trackOpens } = input;
+  const subject = rawSubject;
+  const blocks = input.blocks !== undefined ? normalizeEmailBlocks(input.blocks) : null;
+  const bodyHtml = input.blocks !== undefined ? renderEmailBlocksToHtml(blocks || []) : input.bodyHtml;
   if (!subject.trim() || !bodyHtml.trim()) {
     throw new EmailTemplateUpdateError("subject and bodyHtml are required.");
   }
@@ -196,12 +223,14 @@ export async function updateEmailTemplate(
     throw new EmailTemplateUpdateError(`Unsupported placeholder: {{${invalidVars[0]}}}`);
   }
 
+  const blocksParam = blocks ? JSON.stringify(blocks) : null;
   const result = await pool.query(
     `UPDATE email_templates
-     SET subject = $1, body_html = $2, from_email = COALESCE($3, from_email), track_opens = COALESCE($4, track_opens), updated_at = now()
+     SET subject = $1, body_html = $2, from_email = COALESCE($3, from_email), track_opens = COALESCE($4, track_opens),
+         blocks_json = COALESCE($6::jsonb, blocks_json), updated_at = now()
      WHERE key = $5
      RETURNING key`,
-    [subject, bodyHtml, fromEmail || null, typeof trackOpens === "boolean" ? trackOpens : null, key]
+    [subject, bodyHtml, fromEmail || null, typeof trackOpens === "boolean" ? trackOpens : null, key, blocksParam]
   );
   if (result.rowCount === 0) throw new EmailTemplateUpdateError("Template not found.", 404);
 }

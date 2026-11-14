@@ -11,7 +11,7 @@ import { SITE_URL } from "@/lib/liveSiteUrl";
 import { getReplyToEmail } from "@/lib/businessProfile";
 import { getBusiness } from "@/lib/businessProfile";
 import { escapeHtml } from "@/lib/escapeHtml";
-import { resolveEmailDomain, getEmailSettings } from "@/lib/emailSettings";
+import { resolveEmailDomain } from "@/lib/emailSettings";
 
 const SITE_HOSTNAME = new URL(SITE_URL).hostname.replace(/^www\./, "");
 
@@ -238,16 +238,9 @@ export async function sendEmail({
   }
   // Every email gets the same responsive, dark-mode-safe document shell --
   // applied here, once, so no call site (current or future) can forget it
-  // or accidentally send an unstyled fragment.
-  const emailSettings = await getEmailSettings();
-  outgoingHtml = wrapEmailHtml(outgoingHtml, {
-    serif: resolvedCategory === "campaign",
-    brandName: business.brand || SITE_NAME,
-    brandingEnabled: emailSettings.brandingEnabled,
-    brandingAlign: emailSettings.brandingAlign,
-    accentColor: emailSettings.brandingAccentColor,
-    backgroundColor: emailSettings.brandingBackgroundColor,
-  });
+  // or accidentally send an unstyled fragment. Purely technical -- no
+  // branding, no forced header. The content is exactly what was written.
+  outgoingHtml = wrapEmailHtml(outgoingHtml);
 
   const sendOpts = {
     to,

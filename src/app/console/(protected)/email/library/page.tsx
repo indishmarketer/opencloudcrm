@@ -1,41 +1,43 @@
 import { listContentTemplates } from "@/lib/emailContentTemplates";
-import { canDeleteEmailTemplate, listEmailTemplates, SYSTEM_EMAIL_DEFS } from "@/lib/emailTemplates";
-import ConsoleEmailLibrary from "@/components/ConsoleEmailLibrary";
-import ConsoleEmailTemplates from "@/components/ConsoleEmailTemplates";
+import { listEmailTemplates, SYSTEM_EMAIL_DEFS } from "@/lib/emailTemplates";
+import ConsoleTemplates, { type ContentTemplateRow, type FixedTemplateRow } from "@/components/ConsoleTemplates";
 import { SITE_HOSTNAME } from "@/lib/liveSiteUrl";
 import { resolveEmailDomain } from "@/lib/emailSettings";
 
-export default async function EmailLibraryPage() {
+export default async function EmailTemplatesPage() {
   const [contentTemplates, fixedTemplates, siteHost] = await Promise.all([
     listContentTemplates(),
     listEmailTemplates(),
     resolveEmailDomain(SITE_HOSTNAME),
   ]);
-  const fixed = fixedTemplates.map((template) => ({
-    ...template,
-    deletable: canDeleteEmailTemplate(template),
+  const content: ContentTemplateRow[] = contentTemplates.map((t) => ({
+    kind: "content",
+    id: t.id,
+    name: t.name,
+    subject: t.subject,
+    body_html: t.body_html,
+    category: t.category,
+  }));
+  const fixed: FixedTemplateRow[] = fixedTemplates.map((t) => ({
+    kind: "fixed",
+    key: t.key,
+    label: t.label,
+    description: t.description,
+    subject: t.subject,
+    body_html: t.body_html,
+    from_email: t.from_email,
+    track_opens: t.track_opens,
+    allowed_vars: t.allowed_vars,
   }));
   return (
-    <div className="space-y-10">
-      <div>
-        <p className="mb-6 max-w-2xl text-sm text-ink-soft">
-          Reusable email content. Write one here, then pick it from a campaign, an automation step, or when emailing a
-          contact directly instead of starting from a blank page. Picking one just copies its subject and content in —
-          edit freely afterward, nothing stays linked back here.
-        </p>
-        <ConsoleEmailLibrary templates={contentTemplates} />
-      </div>
-      <div className="border-t border-line pt-8">
-        <h2 className="font-display text-lg font-semibold">Fixed emails</h2>
-        <p className="mt-1 max-w-2xl text-sm text-ink-soft">
-          Emails that a specific action elsewhere in the app sends by key (signup, login, course access, bookings,
-          and so on), as opposed to the free-standing content above. Nothing here is hardcoded or protected — every
-          one can be edited or permanently deleted, and a deleted one can be recreated below.
-        </p>
-        <div className="mt-4">
-          <ConsoleEmailTemplates templates={fixed} siteHost={siteHost} systemDefs={SYSTEM_EMAIL_DEFS as unknown as { key: string; label: string; description: string }[]} />
-        </div>
-      </div>
+    <div>
+      <p className="mb-6 max-w-2xl text-sm text-ink-soft">
+        Every email this site can send -- broadcast campaigns and reusable content on one side, emails bound to a
+        specific action (signup, course access, bookings, and anything you build in Automation) on the other.
+        Nothing is hardcoded: every template here is fully editable and deletable, and can be written in whichever
+        mode you prefer -- Visual blocks, Classic rich text, or raw HTML.
+      </p>
+      <ConsoleTemplates contentTemplates={content} fixedTemplates={fixed} systemDefs={SYSTEM_EMAIL_DEFS as unknown as { key: string; label: string; description: string }[]} siteHost={siteHost} />
     </div>
   );
 }

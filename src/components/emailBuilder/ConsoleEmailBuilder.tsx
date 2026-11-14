@@ -193,7 +193,6 @@ export default function ConsoleEmailBuilder({
   backLabel,
   businessName,
   businessAddress,
-  branding,
 }: {
   initialSubject: string;
   initialBlocks: EmailBlock[];
@@ -204,9 +203,6 @@ export default function ConsoleEmailBuilder({
   onSave: (next: { subject: string; blocks: EmailBlock[]; bodyHtml: string }) => Promise<{ ok: boolean; error?: string }>;
   backHref: string;
   backLabel: string;
-  /** So the preview matches what will actually send -- see
-   * Console -> Email -> Sending -> Branding. */
-  branding: { enabled: boolean; align: "left" | "center"; accentColor: string; backgroundColor: string };
   /** Live values, so the Footer block's preview (style-only, never part
    * of body_html -- see emailBlocksRender.ts) shows what will actually
    * render instead of a guess. */
@@ -359,15 +355,9 @@ export default function ConsoleEmailBuilder({
 
   const previewVars = PREVIEW_SAMPLE_VARS;
   const bodyHtml = composerMode === "visual" ? renderEmailBlocksToHtml(blocks, previewVars) : freeformHtml;
-  const fullHtml = wrapEmailHtml(bodyHtml, {
-    brandName: businessName,
-    brandingEnabled: branding.enabled,
-    brandingAlign: branding.align,
-    accentColor: branding.accentColor,
-    backgroundColor: branding.backgroundColor,
-  });
+  const fullHtml = wrapEmailHtml(bodyHtml);
   const footerBlock = blocks.find((b) => b.type === "footer");
-  void businessAddress; // reserved for the footer preview, wired in Phase 4
+  void businessName; void businessAddress; // reserved for the footer preview, wired in Phase 4
 
   return (
     <div className="flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-white text-ink">

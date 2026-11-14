@@ -35,7 +35,7 @@ export default async function WorkflowEditorPage({ params }: { params: Promise<{
   ]);
   if (!workflow) notFound();
   const emailOptions = [
-    ...emailTemplates.map((template) => ({ value: `fixed:${template.key}`, label: `Fixed · ${template.label}`, kind: "fixed" as const, key: template.key, subject: template.subject, body: template.body_html, critical: template.critical })),
+    ...emailTemplates.map((template) => ({ value: `fixed:${template.key}`, label: `Transactional · ${template.label}`, kind: "fixed" as const, key: template.key, subject: template.subject, body: template.body_html, critical: template.critical })),
     ...contentTemplates.map((template) => ({ value: `library:${template.id}`, label: `Email Library · ${template.name}`, kind: "library" as const, key: String(template.id), subject: template.subject, body: template.body_html, critical: false })),
   ];
   const whatsappOptions = rawWhatsAppTemplates.filter((template) => template.status === "APPROVED" && template.category !== "AUTHENTICATION").map((template) => ({

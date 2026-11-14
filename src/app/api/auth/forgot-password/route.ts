@@ -3,11 +3,8 @@ import { pool } from "@/lib/db";
 import { createPasswordResetToken } from "@/lib/auth";
 import { checkRateLimit, privateRateLimitKey } from "@/lib/rateLimit";
 import { verifyTurnstile } from "@/lib/turnstile";
-import { sendEmail } from "@/lib/email";
-import { getEmailTemplateOptional, applyTemplateVars } from "@/lib/emailTemplates";
 import { firstNameOf } from "@/lib/emailAutomation";
-import { escapeHtml } from "@/lib/escapeHtml";
-import { raiseAlert } from "@/lib/systemAlerts";
+import { emitWebhookEvent } from "@/lib/webhookEvents";
 import { SITE_URL } from "@/lib/liveSiteUrl";
 import { z } from "zod";
 
@@ -48,35 +45,18 @@ export async function POST(req: NextRequest) {
   if (!user) return genericResponse();
 
   const token = await createPasswordResetToken(user.id, user.email);
-  const tpl = await getEmailTemplateOptional("password-reset");
-  if (tpl) {
-    const vars = {
-      first_name: escapeHtml(firstNameOf(user.name)),
-      reset_url: `${SITE_URL}/reset-password?token=${token}`,
-    };
-    await sendEmail({
-      to: user.email,
-      subject: applyTemplateVars(tpl.subject, vars),
-      html: applyTemplateVars(tpl.body_html, vars),
-      from: tpl.from_email,
-      critical: tpl.critical,
-      templateKey: tpl.key,
-      category: "fixed",
-      trackOpens: tpl.track_opens,
-    });
-  } else {
-    // Keep the generic response identical either way (anti-enumeration),
-    // but the owner needs to know this is broken -- a deleted
-    // "Password reset" template means nobody can reset a forgotten password.
-    raiseAlert({
-      kind: "missing_email_template",
-      dedupeKey: "missing_email_template:password-reset",
-      severity: "critical",
-      title: "The \"Password reset\" email has been deleted",
-      detail: "Someone just requested a password reset and no email went out. Recreate it in Email -> Library.",
-      link: "/console/email/library",
-    }).catch(() => {});
-  }
+  // Real, self-built automation now (trigger "Password reset requested") --
+  // no direct send. The generic response stays identical either way, so
+  // this still can't be used to enumerate accounts.
+  emitWebhookEvent({
+    eventType: "account.password_reset_requested",
+    source: "users",
+    sourceRecordId: user.id,
+    contactEmail: user.email,
+    contactName: user.name,
+    userId: user.id,
+    data: { reset_url: `${SITE_URL}/reset-password?token=${token}`, first_name: firstNameOf(user.name) },
+  }).catch(() => {});
 
   return genericResponse();
 }

@@ -1,6 +1,5 @@
 import { pool } from "@/lib/db";
-import { getEmailTemplateOptional, applyTemplateVars } from "@/lib/emailTemplates";
-import { escapeHtml } from "@/lib/escapeHtml";
+import { emitWebhookEvent } from "@/lib/webhookEvents";
 import { SITE_URL } from "@/lib/liveSiteUrl";
 
 export type ConsoleAdmin = { id: number; email: string; invited_by: string | null; created_at: string };
@@ -41,34 +40,17 @@ export async function inviteConsoleAdmin(
     [normalized, invitedBy]
   );
 
-  // Fire-and-forget: the invite itself (the DB row, which is what actually
-  // grants access) is already committed. Don't make the owner's UI sit
-  // waiting on an external email API before showing the new row.
-  //
-  // Dynamic import, not a top-level one: email.ts pulls in auth.ts (for the
-  // unsubscribe/open-tracking token helpers), which imports next/headers --
-  // a Next.js-runtime-only export that plain `node --test` can't resolve.
-  // A top-level import would make isConsoleOwner/isAuthorizedConsoleEmail
-  // (used by anything checking admin access, including outside Next's
-  // runtime) drag that whole chain in just to load this module.
-  const tpl = await getEmailTemplateOptional("console-admin-invite");
-  if (tpl) {
-    const vars = { invited_by: escapeHtml(invitedBy), login_url: `${SITE_URL}/console/login` };
-    const { sendEmail } = await import("@/lib/email");
-    sendEmail({
-      to: normalized,
-      subject: applyTemplateVars(tpl.subject, vars),
-      html: applyTemplateVars(tpl.body_html, vars),
-      from: tpl.from_email,
-      critical: tpl.critical,
-      templateKey: tpl.key,
-      category: "fixed",
-      trackOpens: tpl.track_opens,
-    }).catch((err) => console.error("Console admin invite email failed:", err));
-  }
-  // The DB row above is the actual access grant -- an invite with no
-  // email sent is still a real invite; the new admin can request their own
-  // console login link to get in (see magic-link-login).
+  // Real, self-built automation now (trigger "Console admin invited") --
+  // no direct send. The DB row above is the actual access grant -- an
+  // invite with no email sent is still a real invite; the new admin can
+  // request their own console login link to get in (see magic-link-login).
+  emitWebhookEvent({
+    eventType: "console_admin.invited",
+    source: "console_admins",
+    sourceRecordId: normalized,
+    contactEmail: normalized,
+    data: { invited_by: invitedBy, login_url: `${SITE_URL}/console/login` },
+  }).catch(() => {});
 
   return { ok: true };
 }

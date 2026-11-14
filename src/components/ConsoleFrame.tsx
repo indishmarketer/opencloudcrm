@@ -38,6 +38,7 @@ export default function ConsoleFrame({
     /^\/console\/forms\/[^/]+$/.test(pathname) ||
     /^\/console\/popups\/[^/]+$/.test(pathname) ||
     /^\/console\/email-builder\/[^/]+$/.test(pathname) ||
+    /^\/console\/email-builder\/fixed\/[^/]+$/.test(pathname) ||
     /^\/console\/workflows\/[^/]+$/.test(pathname) ||
     /^\/console\/courses\/[^/]+\/page-sections$/.test(pathname) ||
     /^\/console\/directory\/tools\/[^/]+\/page-sections$/.test(pathname);

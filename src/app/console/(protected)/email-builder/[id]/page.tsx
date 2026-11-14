@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
 import { getContentTemplate } from "@/lib/emailContentTemplates";
 import { getBusiness } from "@/lib/businessProfile";
-import { getEmailSettings } from "@/lib/emailSettings";
 import ConsoleContentTemplateBuilder from "@/components/emailBuilder/ConsoleContentTemplateBuilder";
 
 // Deliberately NOT nested under src/app/console/(protected)/email/ -- that
@@ -16,18 +15,12 @@ export default async function EmailBuilderPage({ params }: { params: Promise<{ i
   if (!Number.isInteger(id)) notFound();
   const template = await getContentTemplate(id);
   if (!template) notFound();
-  const [business, emailSettings] = await Promise.all([getBusiness(), getEmailSettings()]);
+  const business = await getBusiness();
   return (
     <ConsoleContentTemplateBuilder
       template={template}
       businessName={business.brand || ""}
       businessAddress={business.addressShort || ""}
-      branding={{
-        enabled: emailSettings.brandingEnabled,
-        align: emailSettings.brandingAlign,
-        accentColor: emailSettings.brandingAccentColor,
-        backgroundColor: emailSettings.brandingBackgroundColor,
-      }}
     />
   );
 }

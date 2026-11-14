@@ -541,7 +541,7 @@ export function createMcpTools(authHeader: string): ToolDef[] {
     },
     {
       name: "list_email_templates",
-      description: "List the fixed emails this deployment sends, each bound to a specific action in the app (verification, password reset, login links, course access, bookings, and so on). All are editable and deletable.",
+      description: "List the fixed emails this deployment sends, each bound to a specific action in the app (course access, bookings, tool submissions, and so on). All are editable and deletable. Account/security emails (signup verification, password reset, console login, admin invite) are no longer here -- they're real Workflow automations now, triggered by events like 'Account created (needs verification)'.",
       inputSchema: {},
       handler: async () => unwrap(emailListGET(fakeRequest(authHeader))),
     },

@@ -22,6 +22,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const name = typeof body.name === "string" ? body.name.trim() : "";
   const subject = typeof body.subject === "string" ? body.subject : "";
   const bodyHtml = typeof body.bodyHtml === "string" ? body.bodyHtml : "";
+  const category = body.category === "marketing" || body.category === "transactional" ? body.category : undefined;
   if (!name) return NextResponse.json({ error: "Give this template a name." }, { status: 400 });
 
   // Present only for a save from ConsoleEmailBuilder (the visual editor) --
@@ -30,7 +31,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   // block."
   const blocks = Array.isArray(body.blocks) ? body.blocks : undefined;
 
-  const template = await updateContentTemplate(id, { name, subject, bodyHtml, blocks }, email);
+  const template = await updateContentTemplate(id, { name, subject, bodyHtml, category, blocks }, email);
   if (!template) return NextResponse.json({ error: "Template not found." }, { status: 404 });
   return NextResponse.json({ template });
 }
