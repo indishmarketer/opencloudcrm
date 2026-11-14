@@ -9,7 +9,7 @@ export default function ConsoleMobileNav({
   groups,
   isOwner,
 }: {
-  groups: { title: string; links: { href: string; label: string; badge?: number }[] }[];
+  groups: { title: string; links: { href: string; label: string; badge?: number; hidden?: boolean }[] }[];
   isOwner: boolean;
 }) {
   const [open, setOpen] = useState(false);
@@ -62,7 +62,7 @@ export default function ConsoleMobileNav({
                   {group.title}
                 </p>
                 <div className="mt-2 flex flex-col gap-1">
-                  {group.links.map((link) => (
+                  {group.links.filter((link) => !link.hidden).map((link) => (
                     <Link
                       key={link.href}
                       href={link.href}

@@ -209,6 +209,17 @@ export type FormCanvasElement = {
 export type FormElementStyle = {
   backgroundColor?: string;
   textColor?: string;
+  /** A field's own <label>. Falls back to textColor, then the form's own
+   * textColor, so an untouched field keeps its current look -- this only
+   * matters once someone wants the label a different colour than the value
+   * typed into the box (e.g. a light label on a dark field). */
+  labelColor?: string;
+  /** The placeholder shown before anything is typed. Unlike every other
+   * colour here, this can't go on an inline style -- CSS only exposes it
+   * through the ::placeholder pseudo-element -- so it travels as a CSS
+   * variable (--ph-color) that a shared .form-field-input::placeholder rule
+   * in globals.css reads. See src/lib/formElementStyles.ts. */
+  placeholderColor?: string;
   borderColor?: string;
   borderWidth?: string;
   borderRadius?: string;
@@ -243,6 +254,8 @@ export const FORM_ELEMENT_STYLE_KEYS = [
   { key: "borderRadius", label: "Corner radius", control: "radius" },
   { key: "backgroundColor", label: "Background colour", control: "color" },
   { key: "textColor", label: "Text colour", control: "color" },
+  { key: "labelColor", label: "Label colour", control: "color" },
+  { key: "placeholderColor", label: "Placeholder colour", control: "color" },
   { key: "borderColor", label: "Border colour", control: "color" },
   { key: "textAlign", label: "Text alignment", control: "align" },
 ] as const;
@@ -693,6 +706,8 @@ export function normalizeElementStyle(input: unknown): FormElementStyle | undefi
   return {
     backgroundColor: str(raw.backgroundColor) || undefined,
     textColor: str(raw.textColor) || undefined,
+    labelColor: str(raw.labelColor) || undefined,
+    placeholderColor: str(raw.placeholderColor) || undefined,
     borderColor: str(raw.borderColor) || undefined,
     borderWidth: cssLength(raw.borderWidth),
     borderRadius: str(raw.borderRadius) || undefined,

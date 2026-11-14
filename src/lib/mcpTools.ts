@@ -110,6 +110,8 @@ const FORM_ELEMENT_STYLE_SCHEMA = z
     borderRadius: z.string().optional().describe("e.g. 0px, 12px, 9999px for a pill."),
     backgroundColor: z.string().optional().describe("Any CSS colour."),
     textColor: z.string().optional(),
+    labelColor: z.string().optional().describe("A field's own <label>. Falls back to textColor, then the form's."),
+    placeholderColor: z.string().optional().describe("The placeholder text shown before anything is typed."),
     borderColor: z.string().optional(),
     textAlign: z.enum(["left", "center", "right"]).optional(),
   })

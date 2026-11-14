@@ -111,6 +111,12 @@ export function elementInputStyle(design: FormDesign, style?: FormElementStyle):
   // the text hanging off one edge of a centred box.
   if (style?.textAlign) out.textAlign = style.textAlign;
   if (style) applyBox(out, style);
+  // Placeholder colour can't go on an inline `style` -- CSS only exposes it
+  // through ::placeholder -- so it rides along as a CSS variable that the
+  // shared `.form-field-input::placeholder` rule in globals.css reads.
+  if (style?.placeholderColor) {
+    (out as Record<string, string>)["--ph-color"] = style.placeholderColor;
+  }
   return out;
 }
 

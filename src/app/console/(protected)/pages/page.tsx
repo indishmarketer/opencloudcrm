@@ -4,6 +4,7 @@ import { listPagesWithBuiltIns } from "@/lib/sitePages";
 import { BUILT_IN_PATHS } from "@/lib/defaultPages";
 import { hasUnpublishedChanges } from "@/lib/sitePagesShape";
 import ConsolePages, { type PageRow } from "@/components/ConsolePages";
+import ConsolePagesTabs from "@/components/ConsolePagesTabs";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Pages | Console" };
@@ -62,6 +63,7 @@ export default async function ConsolePagesPage({ searchParams }: { searchParams:
           behind them, so their address can&apos;t move, but everything else about them is yours to edit or remove.
         </p>
       </div>
+      <ConsolePagesTabs />
       {!rows ? (
         <p className="rounded-xl bg-amber-50 p-4 text-sm text-amber-900">
           Pages couldn&apos;t be loaded. If you just upgraded, run the database migrations (<code>npm run migrate</code>) and reload.

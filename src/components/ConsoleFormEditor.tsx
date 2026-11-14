@@ -842,7 +842,7 @@ function SortableElementItem({
               onChange={(e) => onUpdateProps({ fieldLabel: e.target.value })}
               placeholder="Field label"
               style={{
-                color: element.elementStyle?.textColor || undefined,
+                color: element.elementStyle?.labelColor || element.elementStyle?.textColor || design.textColor || undefined,
                 fontSize: element.elementStyle?.fontSize || undefined,
                 fontWeight: element.elementStyle?.fontWeight || undefined,
                 // Always left, matching the live form: alignment positions
@@ -860,7 +860,7 @@ function SortableElementItem({
               placeholder={element.fieldPlaceholder || "Type here…"}
               rows={3}
               style={inputStyle}
-              className="block w-full resize-none rounded-xl border border-line bg-paper px-3.5 py-2.5 text-sm outline-none cursor-default"
+              className="form-field-input block w-full resize-none rounded-xl border border-line bg-paper px-3.5 py-2.5 text-sm outline-none cursor-default"
             />
           ) : element.type === "phone" ? (
             <div className="flex gap-2">
@@ -879,7 +879,7 @@ function SortableElementItem({
                 readOnly
                 placeholder={element.fieldPlaceholder || "98765 43210"}
                 style={inputStyle}
-                className="flex-1 rounded-xl border border-line bg-paper px-3.5 py-2.5 text-sm outline-none cursor-default"
+                className="form-field-input flex-1 rounded-xl border border-line bg-paper px-3.5 py-2.5 text-sm outline-none cursor-default"
               />
             </div>
           ) : element.type === "country" ? (
@@ -934,7 +934,14 @@ function SortableElementItem({
           ) : element.type === "checkbox" ? (
             <div className="flex items-center gap-2 pt-1">
               <input type="checkbox" disabled className="h-4 w-4 rounded border-line accent-ink" />
-              <span className="text-sm text-ink-soft">{element.fieldLabel || "Checkbox agreement"}</span>
+              <span
+                className="text-sm text-ink-soft"
+                style={{
+                  color: element.elementStyle?.labelColor || element.elementStyle?.textColor || design.textColor || undefined,
+                }}
+              >
+                {element.fieldLabel || "Checkbox agreement"}
+              </span>
             </div>
           ) : (
             <input
@@ -942,7 +949,7 @@ function SortableElementItem({
               readOnly
               placeholder={element.fieldPlaceholder || "Enter text…"}
               style={inputStyle}
-              className="block w-full rounded-xl border border-line bg-paper px-3.5 py-2.5 text-sm outline-none cursor-default"
+              className="form-field-input block w-full rounded-xl border border-line bg-paper px-3.5 py-2.5 text-sm outline-none cursor-default"
             />
           )}
         </div>
@@ -2605,6 +2612,93 @@ export default function ConsoleFormEditor({
                     {/* Input Field Style */}
                     {isFieldElementType(selectedElement.type) && selectedElement.type !== "hidden" && (
                       <>
+                        <label className="grid gap-1.5 text-xs font-medium">
+                          Input Text Color
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="color"
+                              value={selectedElement.elementStyle?.textColor || design.textColor || "#0a0a0a"}
+                              onChange={(e) =>
+                                updateElementProps(selectedElement.id, {
+                                  elementStyle: { ...selectedElement.elementStyle, textColor: e.target.value },
+                                })
+                              }
+                              className="h-8 w-8 cursor-pointer rounded border border-line"
+                            />
+                            <input
+                              value={selectedElement.elementStyle?.textColor || ""}
+                              placeholder={design.textColor || "#0a0a0a"}
+                              onChange={(e) =>
+                                updateElementProps(selectedElement.id, {
+                                  elementStyle: { ...selectedElement.elementStyle, textColor: e.target.value },
+                                })
+                              }
+                              className={inputClass}
+                            />
+                          </div>
+                        </label>
+
+                        <label className="grid gap-1.5 text-xs font-medium">
+                          Label Color
+                          <p className="font-normal text-ink-soft">
+                            The field&apos;s own label -- independent of the value typed into the box, so a light label
+                            can sit on a dark field.
+                          </p>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="color"
+                              value={
+                                selectedElement.elementStyle?.labelColor ||
+                                selectedElement.elementStyle?.textColor ||
+                                design.textColor ||
+                                "#0a0a0a"
+                              }
+                              onChange={(e) =>
+                                updateElementProps(selectedElement.id, {
+                                  elementStyle: { ...selectedElement.elementStyle, labelColor: e.target.value },
+                                })
+                              }
+                              className="h-8 w-8 cursor-pointer rounded border border-line"
+                            />
+                            <input
+                              value={selectedElement.elementStyle?.labelColor || ""}
+                              placeholder={selectedElement.elementStyle?.textColor || design.textColor || "#0a0a0a"}
+                              onChange={(e) =>
+                                updateElementProps(selectedElement.id, {
+                                  elementStyle: { ...selectedElement.elementStyle, labelColor: e.target.value },
+                                })
+                              }
+                              className={inputClass}
+                            />
+                          </div>
+                        </label>
+
+                        <label className="grid gap-1.5 text-xs font-medium">
+                          Placeholder Color
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="color"
+                              value={selectedElement.elementStyle?.placeholderColor || "#9a9690"}
+                              onChange={(e) =>
+                                updateElementProps(selectedElement.id, {
+                                  elementStyle: { ...selectedElement.elementStyle, placeholderColor: e.target.value },
+                                })
+                              }
+                              className="h-8 w-8 cursor-pointer rounded border border-line"
+                            />
+                            <input
+                              value={selectedElement.elementStyle?.placeholderColor || ""}
+                              placeholder="Browser default"
+                              onChange={(e) =>
+                                updateElementProps(selectedElement.id, {
+                                  elementStyle: { ...selectedElement.elementStyle, placeholderColor: e.target.value },
+                                })
+                              }
+                              className={inputClass}
+                            />
+                          </div>
+                        </label>
+
                         <label className="grid gap-1.5 text-xs font-medium">
                           Input Border Color
                           <div className="flex items-center gap-2">

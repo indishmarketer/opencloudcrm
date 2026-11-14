@@ -426,3 +426,10 @@ body {
 .page-richtext :where(blockquote) { border-left: 3px solid var(--line); padding-left: 1rem; font-style: italic; }
 .page-richtext :where(img) { border-radius: 12px; max-width: 100%; height: auto; }
 .page-richtext :where(strong) { color: var(--ink); }
+
+/* A form field's placeholder colour can't go through an inline `style` --
+   CSS only exposes it via ::placeholder -- so it travels as the --ph-color
+   variable (set inline per field) and this one shared rule reads it. Used
+   by both the live form (SavedForm.tsx) and the console canvas preview
+   (ConsoleFormEditor.tsx). */
+.form-field-input::placeholder { color: var(--ph-color, inherit); opacity: 1; }

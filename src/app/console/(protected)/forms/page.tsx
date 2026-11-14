@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getAdminSession } from "@/lib/auth";
 import ConsoleForms from "@/components/ConsoleForms";
+import ConsolePagesTabs from "@/components/ConsolePagesTabs";
 import { listForms } from "@/lib/forms";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +19,7 @@ export default async function ConsoleFormsPage() {
           Create and customize forms with drag-and-drop elements, independent styling, and shareable links.
         </p>
       </div>
+      <ConsolePagesTabs />
       <ConsoleForms forms={forms} />
     </div>
   );

@@ -47,6 +47,7 @@ import GuidePopup from "@/components/GuidePopup";
 import SavedFormPopup from "@/components/SavedFormPopup";
 import { solidColorOf, surfaceStyle, textColorStyle } from "@/lib/colorValue";
 import PopupTrigger from "@/components/pageBlocks/PopupTrigger";
+import RichTextPopupHost from "@/components/pageBlocks/RichTextPopupHost";
 import type { PopupSettings } from "@/lib/popupsShape";
 import SavedFormBlock from "@/components/pageBlocks/SavedFormBlock";
 import CountdownTimer from "@/components/CountdownTimer";
@@ -467,6 +468,7 @@ export function RichTextBlock({
   props,
   nested = false,
   editableHtml,
+  popups,
 }: {
   props: Props;
   nested?: boolean;
@@ -475,14 +477,21 @@ export function RichTextBlock({
    * a box in the sidebar. Passed in as a node because this file is shared
    * with the public site and must not import the editor itself. */
   editableHtml?: React.ReactNode;
+  /** Resolved by PageBlocks.tsx (same map a Button's "opens a popup" action
+   * uses) -- only reaches here, and only costs a client component, when a
+   * hyperlink inside this block's own html was set to open one. */
+  popups?: Record<number, { settings: PopupSettings; content: React.ReactNode }>;
 }) {
   const t = richTextStyle(props);
+  const html = str(props, "html");
   const content = editableHtml ? (
     <div className="page-richtext" style={t}>
       {editableHtml}
     </div>
+  ) : popups && html.includes("data-popup-id") ? (
+    <RichTextPopupHost className="page-richtext" style={t} html={html} popups={popups} />
   ) : (
-    <div className="page-richtext" style={t} dangerouslySetInnerHTML={{ __html: str(props, "html") }} />
+    <div className="page-richtext" style={t} dangerouslySetInnerHTML={{ __html: html }} />
   );
   if (nested) return <RichBox props={props}>{content}</RichBox>;
   return (
@@ -662,6 +671,7 @@ export function NestedElement({
   editableText,
   editableHtml,
   editorEmpty = false,
+  popups,
 }: {
   block: PageBlock;
   editableText?: InlineEdit;
@@ -673,6 +683,10 @@ export function NestedElement({
   /** See EmptyBlockPlaceholder's doc comment -- only the editor's own
    * NestedElementFrame call site passes this. */
   editorEmpty?: boolean;
+  /** See RichTextBlock's doc comment -- threaded through so a Text element
+   * inside a Row's column, or inside a popup's own content, can open a
+   * popup from a hyperlink too. */
+  popups?: Record<number, { settings: PopupSettings; content: React.ReactNode }>;
 }) {
   const props = block.props as Props;
   switch (block.type) {
@@ -695,7 +709,7 @@ export function NestedElement({
         </RichBox>
       );
     case "richText":
-      return <RichTextBlock props={props} nested editableHtml={editableHtml} />;
+      return <RichTextBlock props={props} nested editableHtml={editableHtml} popups={popups} />;
     case "heading":
       return <HeadingBlock props={props} nested editableText={editableText} />;
     case "image":
@@ -756,12 +770,17 @@ export function NestedElement({
 export function RowBlock({
   props,
   renderColumn,
+  popups,
 }: {
   props: Props;
   /** The editor overrides this to wrap each element in a select/hover
    * overlay and append its own "+ Add element" control; the default is
    * exactly what the public site renders. */
   renderColumn?: (column: PageBlock[], columnIndex: number) => React.ReactNode;
+  /** See RichTextBlock's doc comment. Only used by the default (public
+   * site) column renderer -- the editor's own renderColumn wires this up
+   * itself if it ever needs to. */
+  popups?: Record<number, { settings: PopupSettings; content: React.ReactNode }>;
 }) {
   const items = Array.isArray(props.items) ? (props.items as PageBlock[][]) : [];
   // Editor mode is signalled by renderColumn being passed at all (the
@@ -774,7 +793,8 @@ export function RowBlock({
   if (!isEditor && !items.some((column) => column.length > 0)) return null;
   const columns = ROW_COLUMNS[str(props, "columns")] ?? ROW_COLUMNS["2"];
   const gap = ROW_GAP[str(props, "gap")] ?? ROW_GAP.md;
-  const renderCol = renderColumn ?? ((column: PageBlock[]) => column.map((block) => <NestedElement key={block.id} block={block} />));
+  const renderCol =
+    renderColumn ?? ((column: PageBlock[]) => column.map((block) => <NestedElement key={block.id} block={block} popups={popups} />));
   return (
     <RichSection props={props} widthDefault={1152}>
       <div className={`grid ${gap} ${columns}`}>

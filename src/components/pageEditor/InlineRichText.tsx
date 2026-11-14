@@ -23,6 +23,7 @@ export default function InlineRichText({ edit }: { edit: InlineEdit }) {
         value={edit.value}
         onChange={edit.onChange}
         textOnly
+        allowPopupLinks
         imageUploadUrl="/api/console/pages/image-upload"
       />
     </div>

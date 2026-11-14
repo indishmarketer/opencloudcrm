@@ -35,7 +35,10 @@ function initialsFromEmail(email: string): string {
   return initials || "?";
 }
 
-type NavGroup = { title: string; links: { href: string; label: string; badge?: number }[] };
+type NavGroup = {
+  title: string;
+  links: { href: string; label: string; badge?: number; hidden?: boolean }[];
+};
 
 export default function ConsoleSidebar({
   groups,
@@ -95,7 +98,7 @@ export default function ConsoleSidebar({
               <p className="px-2 text-xs font-semibold uppercase tracking-wider text-ink-soft">{group.title}</p>
             )}
             <div className={`flex flex-col ${collapsed ? "gap-1" : "mt-2 gap-1"}`}>
-              {group.links.map((link) => {
+              {group.links.filter((link) => !link.hidden).map((link) => {
                 const active = pathname === link.href || (link.href !== "/console" && pathname.startsWith(`${link.href}/`));
                 return (
                   <Link

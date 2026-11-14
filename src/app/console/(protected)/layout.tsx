@@ -43,8 +43,12 @@ const baseNavGroups = [
       { href: "/console/courses", label: "Courses" },
       { href: "/console/directory", label: "Tools directory" },
       { href: "/console/lead-magnets", label: "Free guides" },
-      { href: "/console/forms", label: "Forms" },
-      { href: "/console/popups", label: "Popups" },
+      // Forms and Popups are tabs inside Pages now (ConsolePagesTabs), not
+      // their own sidebar rows -- kept here, just hidden, so they stay
+      // searchable via ConsoleSearch, which builds its index from these
+      // same groups before ConsoleSidebar/ConsoleMobileNav filter them out.
+      { href: "/console/forms", label: "Forms", hidden: true },
+      { href: "/console/popups", label: "Popups", hidden: true },
     ],
   },
   {

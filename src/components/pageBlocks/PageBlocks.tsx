@@ -100,35 +100,49 @@ function resolveBlockProps(block: PageBlock, vars: Record<string, string>, htmlV
   return out;
 }
 
+/** Every referenced popup, rendered once with the same element renderer the
+ * page itself uses (so anything valid on a page is valid inside a popup),
+ * keyed by id. Shared by a Button's "opens a popup" action and a rich-text
+ * hyperlink set to "Open a popup" -- one resolved map, built once per page
+ * render, rather than re-rendering a popup's blocks for every link that
+ * opens it. */
+function resolvePopups(popups: Record<number, Popup>): Record<number, { settings: Popup["settings"]; content: React.ReactNode }> {
+  const out: Record<number, { settings: Popup["settings"]; content: React.ReactNode }> = {};
+  for (const [idStr, found] of Object.entries(popups)) {
+    out[Number(idStr)] = {
+      settings: found.settings,
+      // `out` is read lazily (React doesn't render this until the whole
+      // map has been built), so a popup whose own text links to another
+      // popup resolves correctly regardless of which one this loop
+      // happened to build first.
+      content: (
+        <>
+          {found.blocks.map((el) => (
+            <PopupElement key={el.id} block={el} popups={out} />
+          ))}
+        </>
+      ),
+    };
+  }
+  return out;
+}
+
 function renderBlock(
   block: PageBlock,
   props: Props,
   business: ResolvedBusiness,
   builtIn: React.ReactNode,
   forms: Record<number, PublicFormView>,
-  popups: Record<number, Popup>,
+  resolvedPopups: Record<number, { settings: Popup["settings"]; content: React.ReactNode }>,
 ) {
   const popupFor = (p: Props) => {
     if (p.action !== "popup") return undefined;
-    const found = popups[Number(p.popupId) || 0];
-    if (!found) return undefined;
-    // The popup's own elements, rendered with the same renderer the page
-    // uses, so anything valid on a page is valid in a popup.
-    return {
-      settings: found.settings,
-      content: (
-        <>
-          {found.blocks.map((el) => (
-            <PopupElement key={el.id} block={el} />
-          ))}
-        </>
-      ),
-    };
+    return resolvedPopups[Number(p.popupId) || 0];
   };
   switch (block.type) {
     case "hero": return <HeroBlock props={props} />;
     case "pageHeader": return <PageHeaderBlock props={props} />;
-    case "richText": return <RichTextBlock props={props} />;
+    case "richText": return <RichTextBlock props={props} popups={resolvedPopups} />;
     case "cards": return <CardsBlock props={props} />;
     case "split": return <SplitBlock props={props} />;
     case "image": return <ImageBlock props={props} />;
@@ -137,7 +151,7 @@ function renderBlock(
     case "heading": return <HeadingBlock props={props} />;
     case "button": return <ButtonBlock props={props} popup={popupFor(props)} />;
     case "icon": return <IconBlock props={props} />;
-    case "row": return <RowBlock props={props} />;
+    case "row": return <RowBlock props={props} popups={resolvedPopups} />;
     case "custom": return <CustomBlock props={props} blockId={block.id} />;
     case "customCode": return <CustomCodeBlock props={props} />;
     case "countdown": return <CountdownBlock props={props} />;
@@ -195,6 +209,7 @@ export default async function PageBlocks({ blocks, builtIn }: { blocks: PageBloc
   ]);
   const vars = mergeVars(business, resolveSiteName(identity));
   const htmlVars = Object.fromEntries(Object.entries(vars).map(([k, v]) => [k, escapeHtml(v)]));
+  const resolvedPopups = resolvePopups(popups);
   // One <style> for the whole page, holding only the values someone changed
   // while in mobile preview. Empty -- and so absent -- on a page that has
   // none, which is most of them. An inline style cannot carry a media
@@ -208,13 +223,28 @@ export default async function PageBlocks({ blocks, builtIn }: { blocks: PageBloc
         if (!def) return null;
         const resolved = resolveBlockProps(block, vars, htmlVars);
         const props = resolved.mobile ? { ...resolved, mobileClass: mobileClassFor(block.id) } : resolved;
-        return <Fragment key={block.id}>{renderBlock(block, props, business, builtIn, forms, popups)}</Fragment>;
+        return <Fragment key={block.id}>{renderBlock(block, props, business, builtIn, forms, resolvedPopups)}</Fragment>;
       })}
     </>
   );
 }
 
-/** Popup ids opened by any button on the page, columns included. */
+/** Every `data-popup-id="N"` a rich-text hyperlink carries. A plain regex
+ * over the saved HTML, same spirit as collectFormIds/collectPopupIds
+ * walking the block tree -- no HTML parser needed just to pull out one
+ * attribute. */
+function popupIdsInHtml(html: unknown): number[] {
+  if (typeof html !== "string" || !html.includes("data-popup-id")) return [];
+  const ids: number[] = [];
+  for (const match of html.matchAll(/data-popup-id="(\d+)"/g)) {
+    const id = Number(match[1]);
+    if (id) ids.push(id);
+  }
+  return ids;
+}
+
+/** Popup ids opened by any button or rich-text hyperlink on the page,
+ * columns included. */
 function collectPopupIds(blocks: PageBlock[]): number[] {
   const ids: number[] = [];
   const walk = (list: PageBlock[]) => {
@@ -223,6 +253,9 @@ function collectPopupIds(blocks: PageBlock[]): number[] {
       if (block.type === "button" && props?.action === "popup") {
         const id = Number(props.popupId) || 0;
         if (id) ids.push(id);
+      }
+      if (block.type === "richText") {
+        ids.push(...popupIdsInHtml(props?.html));
       }
       const items = (block.props as { items?: unknown })?.items;
       if (Array.isArray(items)) {

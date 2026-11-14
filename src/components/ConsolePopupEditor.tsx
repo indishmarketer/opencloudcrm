@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FieldGroup } from "@/components/PageBlockFields";
+import ElementsPalette from "@/components/pageEditor/ElementsPalette";
 import { NestedElementFrame } from "@/components/pageEditor/LiveBlockFrame";
 import {
   BLOCK_DEFS,
@@ -152,18 +153,8 @@ export default function ConsolePopupEditor({
       </header>
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
-        <aside className="w-[200px] shrink-0 space-y-1.5 overflow-y-auto border-r border-line p-3">
-          <p className="px-0.5 text-[10px] font-semibold uppercase tracking-wider text-ink-soft">Elements</p>
-          {elementDefs.map((def) => (
-            <button
-              key={def.type}
-              type="button"
-              onClick={() => addElement(def.type)}
-              className="w-full rounded-lg border border-line px-2.5 py-2 text-left text-xs font-medium text-ink transition-colors hover:border-ink hover:bg-paper-soft"
-            >
-              {def.label}
-            </button>
-          ))}
+        <aside className="w-[220px] shrink-0 overflow-y-auto border-r border-line p-3">
+          <ElementsPalette defs={elementDefs} onPick={addElement} />
         </aside>
 
         {/* The canvas shows the popup at its real width, over a dimmed
@@ -309,8 +300,8 @@ export default function ConsolePopupEditor({
                 />
               </label>
               <p className="text-xs text-ink-soft">
-                Open this popup from any page: add a Button, set &quot;Button opens&quot; to &quot;A popup&quot;, then pick
-                this one.
+                Open this popup from any page: add a Button and set &quot;Button opens&quot; to &quot;A popup&quot;, or
+                select text and add a link set to &quot;Open a popup&quot; -- then pick this one.
               </p>
             </>
           )}

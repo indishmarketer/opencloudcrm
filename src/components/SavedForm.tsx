@@ -60,7 +60,7 @@ const buttonStyles = (d: FormDesign, elStyle?: FormCanvasElement["elementStyle"]
 // `block` keeps an input that has been given an explicit width on its own
 // line, under its label, rather than letting it flow inline beside it.
 const baseInputClass =
-  "mt-2 block w-full rounded-lg border border-line bg-paper px-4 py-3 text-sm outline-none focus:border-ink transition-colors";
+  "form-field-input mt-2 block w-full rounded-lg border border-line bg-paper px-4 py-3 text-sm outline-none focus:border-ink transition-colors";
 
 /** A field's own label follows its text colour and font size so restyling an
  * element restyles the whole field, not just its input box.
@@ -74,11 +74,17 @@ const baseInputClass =
  * input given an explicit width becomes inline-block -- so narrowing a field
  * used to pull its input up onto the same line as its label instead of
  * keeping it underneath. */
-function labelStyle(el: FormCanvasElement): React.CSSProperties {
+function labelStyle(design: FormDesign, el: FormCanvasElement): React.CSSProperties {
   return {
     display: "block",
     textAlign: "left",
-    color: el.elementStyle?.textColor || undefined,
+    // labelColor overrides independently of the value typed into the box
+    // (textColor) -- the two used to be the same knob, which made a label
+    // light enough to read on a dark field also force the typed value's
+    // colour. Both fall back to the form's own text colour, same as every
+    // other element, so an untouched field still follows a form-wide dark
+    // theme instead of staying uncoloured.
+    color: el.elementStyle?.labelColor || el.elementStyle?.textColor || design.textColor || undefined,
     fontSize: el.elementStyle?.fontSize || undefined,
     fontWeight: el.elementStyle?.fontWeight || undefined,
   };
@@ -251,7 +257,7 @@ function PhoneFieldInput({
           const num = e.target.value;
           onChange(num ? `${dialCode} ${num.trim()}` : "");
         }}
-        className="flex-1 rounded-lg border border-line bg-paper px-4 py-3 text-sm outline-none transition-colors focus:border-ink"
+        className="form-field-input flex-1 rounded-lg border border-line bg-paper px-4 py-3 text-sm outline-none transition-colors focus:border-ink"
         style={phonePaint}
       />
 
@@ -355,6 +361,27 @@ export default function SavedForm({
   const [resendArmed, setResendArmed] = useState(false);
   const otpCodeRef = useRef<HTMLInputElement>(null);
   const [selectedPhoneCountry, setSelectedPhoneCountry] = useState<Record<string, string>>({});
+
+  /** The code screen floats as a popup (see the `step === "otp"` render
+   * below) -- Escape closes it the same way the X does, back to the form
+   * the visitor already filled in rather than a dead end. */
+  const closeOtp = useCallback(() => {
+    setStep("form");
+    setError("");
+    setOtpNotice("");
+    setStatus("idle");
+    setResendArmed(false);
+    freshChallenge();
+  }, [freshChallenge]);
+
+  useEffect(() => {
+    if (step !== "otp") return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeOtp();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [step, closeOtp]);
 
   useEffect(() => {
     // Already have it from the server: nothing to fetch, nothing to wait for.
@@ -579,75 +606,100 @@ export default function SavedForm({
   }
 
   if (step === "otp") {
+    // A true floating popup, not text quietly replacing the form in place --
+    // same reasoning and the same chrome as the `done` step above: a
+    // centred bg-paper/text-ink card over the page, so it is always legible
+    // regardless of the section it's sitting in (a dark hero, for example),
+    // with a close-X that backs out to the form rather than a dead end.
+    if (typeof document === "undefined") return null;
     return (
-      <div style={designStyles(design)}>
-        <h2 className="font-display text-2xl font-semibold">Check your email</h2>
-        <p className="mt-3 text-ink-soft">
-          We sent a 6-digit code to <strong>{otpEmail}</strong>. Enter it below, or just click the
-          confirmation link in that email — either one finishes your submission.
-        </p>
-        <form className="mt-6 space-y-4" onSubmit={handleVerifyOtp}>
-          <input
-            ref={otpCodeRef}
-            name="code"
-            type="text"
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            required
-            placeholder="123456"
-            className="block w-full rounded-lg border border-line bg-paper px-4 py-3 text-center text-lg tracking-widest outline-none focus:border-ink"
-            style={elementInputStyle(design, design.verifyInput)}
-          />
-          {error && <p className="text-sm text-red-600">{error}</p>}
-          {otpNotice && <p className="text-sm text-ink-soft">{otpNotice}</p>}
-          <button
-            type="submit"
-            disabled={status === "submitting"}
-            className={`block ${hasCustomWidth(design.verifyButton) ? "" : "w-full"} rounded-full bg-ink px-6 py-3 text-sm font-medium text-paper transition-opacity hover:opacity-80 disabled:opacity-50`}
-            style={elementButtonStyle(design, design.verifyButton)}
+      createPortal(
+        <div
+          className="fixed inset-0 z-[120] flex items-center justify-center bg-ink/50 px-6 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={`saved-form-${form.id}-otp`}
+          onClick={closeOtp}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={designStyles(design)}
+            className="relative w-full max-w-md rounded-2xl border border-line bg-paper p-8 text-ink shadow-2xl"
           >
-            {status === "submitting" ? "Verifying…" : "Confirm and submit"}
-          </button>
-        </form>
-        <div className="mt-4 flex flex-wrap items-center gap-4 text-xs">
-          <button
-            type="button"
-            disabled={status === "submitting" || resendArmed}
-            onClick={() => {
-              setOtpNotice("");
-              setError("");
-              // Resending posts the whole form again, which needs a token of
-              // its own. The challenge is mounted only for that moment --
-              // the code screen should not sit there showing "Verified" for
-              // something the visitor already passed on the previous step.
-              setResendArmed(true);
-              freshChallenge();
-            }}
-            className="underline text-ink-soft hover:text-ink disabled:opacity-50"
-          >
-            {resendArmed ? "Sending…" : "Send a new code"}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setStep("form");
-              setError("");
-              setOtpNotice("");
-              setStatus("idle");
-              setResendArmed(false);
-              freshChallenge();
-            }}
-            className="underline text-ink-soft hover:text-ink"
-          >
-            Change my answers
-          </button>
-        </div>
-        {resendArmed && (
-          <div className="mt-3">
-            <Turnstile key={turnstileNonce} onToken={handleToken} />
+            <button
+              type="button"
+              onClick={closeOtp}
+              aria-label="Close"
+              className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-paper-soft text-ink-soft transition-colors hover:bg-line hover:text-ink"
+            >
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+
+            <h2 id={`saved-form-${form.id}-otp`} className="font-display text-2xl font-semibold">
+              Check your email
+            </h2>
+            <p className="mt-3 text-ink-soft">
+              We sent a 6-digit code to <strong>{otpEmail}</strong>. Enter it below, or just click the
+              confirmation link in that email — either one finishes your submission.
+            </p>
+            <form className="mt-6 space-y-4" onSubmit={handleVerifyOtp}>
+              <input
+                ref={otpCodeRef}
+                name="code"
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                required
+                placeholder="123456"
+                className="form-field-input block w-full rounded-lg border border-line bg-paper px-4 py-3 text-center text-lg tracking-widest text-ink outline-none focus:border-ink"
+                style={elementInputStyle(design, design.verifyInput)}
+              />
+              {error && <p className="text-sm text-red-600">{error}</p>}
+              {otpNotice && <p className="text-sm text-ink-soft">{otpNotice}</p>}
+              <button
+                type="submit"
+                disabled={status === "submitting"}
+                className={`block ${hasCustomWidth(design.verifyButton) ? "" : "w-full"} rounded-full bg-ink px-6 py-3 text-sm font-medium text-paper transition-opacity hover:opacity-80 disabled:opacity-50`}
+                style={elementButtonStyle(design, design.verifyButton)}
+              >
+                {status === "submitting" ? "Verifying…" : "Confirm and submit"}
+              </button>
+            </form>
+            <div className="mt-4 flex flex-wrap items-center gap-4 text-xs">
+              <button
+                type="button"
+                disabled={status === "submitting" || resendArmed}
+                onClick={() => {
+                  setOtpNotice("");
+                  setError("");
+                  // Resending posts the whole form again, which needs a token
+                  // of its own. The challenge is mounted only for that
+                  // moment -- the code screen should not sit there showing
+                  // "Verified" for something the visitor already passed on
+                  // the previous step.
+                  setResendArmed(true);
+                  freshChallenge();
+                }}
+                className="underline text-ink-soft hover:text-ink disabled:opacity-50"
+              >
+                {resendArmed ? "Sending…" : "Send a new code"}
+              </button>
+              <button type="button" onClick={closeOtp} className="underline text-ink-soft hover:text-ink">
+                Change my answers
+              </button>
+            </div>
+            {resendArmed && (
+              <div className="mt-3">
+                <Turnstile key={turnstileNonce} onToken={handleToken} />
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </div>,
+        document.body,
+      )
     );
   }
 
@@ -822,7 +874,7 @@ export default function SavedForm({
             if (el.type === "country") {
               return (
                 <div key={el.id} style={fieldGroup}>
-                  <label className="text-sm font-medium" style={labelStyle(el)} htmlFor={inputId}>
+                  <label className="text-sm font-medium" style={labelStyle(design, el)} htmlFor={inputId}>
                     {el.fieldLabel || "Country"}
                   </label>
                   <CountryPicker
@@ -841,7 +893,7 @@ export default function SavedForm({
             if (el.type === "phone") {
               return (
                 <div key={el.id} style={fieldGroup}>
-                  <label className="text-sm font-medium" style={labelStyle(el)} htmlFor={inputId}>
+                  <label className="text-sm font-medium" style={labelStyle(design, el)} htmlFor={inputId}>
                     {el.fieldLabel || "Phone number"}
                   </label>
                   <PhoneFieldInput
@@ -863,7 +915,7 @@ export default function SavedForm({
             if (el.type === "radio") {
               return (
                 <div key={el.id} className="space-y-2" style={fieldGroup}>
-                  <span className="block text-sm font-medium" style={labelStyle(el)}>
+                  <span className="block text-sm font-medium" style={labelStyle(design, el)}>
                     {el.fieldLabel || "Select an option"}
                   </span>
                   <div className="space-y-1.5 pt-0.5">
@@ -894,7 +946,7 @@ export default function SavedForm({
               const selectedList = val ? val.split(",").map((s) => s.trim()).filter(Boolean) : [];
               return (
                 <div key={el.id} className="space-y-2" style={fieldGroup}>
-                  <span className="block text-sm font-medium" style={labelStyle(el)}>
+                  <span className="block text-sm font-medium" style={labelStyle(design, el)}>
                     {el.fieldLabel || "Select choices"}
                   </span>
                   <div className="space-y-1.5 pt-0.5">
@@ -929,7 +981,7 @@ export default function SavedForm({
             return (
               <div key={el.id} style={fieldGroup}>
                 {el.type !== "checkbox" && (
-                  <label className="text-sm font-medium" style={labelStyle(el)} htmlFor={inputId}>
+                  <label className="text-sm font-medium" style={labelStyle(design, el)} htmlFor={inputId}>
                     {el.fieldLabel}
                   </label>
                 )}
@@ -962,7 +1014,11 @@ export default function SavedForm({
                     ))}
                   </select>
                 ) : el.type === "checkbox" ? (
-                  <label className="inline-flex items-center gap-2 text-sm font-medium" htmlFor={inputId}>
+                  <label
+                    className="inline-flex items-center gap-2 text-sm font-medium"
+                    style={labelStyle(design, el)}
+                    htmlFor={inputId}
+                  >
                     <input
                       id={inputId}
                       type="checkbox"

@@ -18,6 +18,7 @@ import { Placeholder } from "@tiptap/extensions/placeholder";
 import { Extension, Node, nodePasteRule, type Editor } from "@tiptap/core";
 import { Suggestion, type SuggestionProps } from "@tiptap/suggestion";
 import BrandSelect from "@/components/BrandSelect";
+import PopupPickerField from "@/components/PopupPickerField";
 
 // Brand colors only -- owner's explicit rule: no free-form color picker,
 // just black (default ink) and red (accent), nothing else.
@@ -640,6 +641,18 @@ const Link = TiptapLink.extend({
         parseHTML: (element: HTMLElement) => element.getAttribute("rel"),
         renderHTML: (attributes: { rel?: string | null }) => (attributes.rel ? { rel: attributes.rel } : {}),
       },
+      // A link can open a designed popup instead of navigating -- the same
+      // choice a Button element already offers. Stored as data-popup-id so
+      // the public renderer (PageBlocks.tsx's collectPopupIds,
+      // RichTextPopupHost) can find it in the saved HTML without any schema
+      // beyond a plain <a>, and href stays "#" so the link never navigates
+      // if JS is unavailable.
+      popupId: {
+        default: null,
+        parseHTML: (element: HTMLElement) => element.getAttribute("data-popup-id"),
+        renderHTML: (attributes: { popupId?: string | null }) =>
+          attributes.popupId ? { "data-popup-id": attributes.popupId, href: "#" } : {},
+      },
     };
   },
 });
@@ -763,25 +776,100 @@ const REL_OPTIONS = [
   { value: "noopener noreferrer sponsored", label: "Sponsored" },
 ];
 
-function LinkPrompt({ editor, onClose, showRelOptions }: { editor: Editor; onClose: () => void; showRelOptions: boolean }) {
+/** URL vs. Popup -- the same toggle in both LinkPrompt and LinkBubble, kept
+ * to one small component so they can't drift. Popup mode reuses
+ * PopupPickerField, the exact fetch-list-plus-"+New" UI a Button element's
+ * "opens a popup" action already uses. */
+function LinkModeFields({
+  allowPopup,
+  mode,
+  setMode,
+  url,
+  setUrl,
+  popupId,
+  setPopupId,
+  autoFocusUrl,
+}: {
+  allowPopup: boolean;
+  mode: "url" | "popup";
+  setMode: (m: "url" | "popup") => void;
+  url: string;
+  setUrl: (v: string) => void;
+  popupId: string;
+  setPopupId: (v: string) => void;
+  autoFocusUrl?: boolean;
+}) {
+  const urlInputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (autoFocusUrl && mode === "url") {
+      urlInputRef.current?.focus();
+      urlInputRef.current?.select();
+    }
+  }, [autoFocusUrl, mode]);
+
+  return (
+    <>
+      {allowPopup && (
+        <div className="mb-3 flex gap-1 rounded-lg bg-paper-soft p-1 text-xs font-medium">
+          {(["url", "popup"] as const).map((m) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => setMode(m)}
+              className={`flex-1 rounded-md py-1.5 transition-colors ${
+                mode === m ? "bg-white text-ink shadow-sm" : "text-ink-soft hover:text-ink"
+              }`}
+            >
+              {m === "url" ? "Link to a URL" : "Open a popup"}
+            </button>
+          ))}
+        </div>
+      )}
+      {mode === "popup" ? (
+        <PopupPickerField value={popupId} onChange={setPopupId} />
+      ) : (
+        <input
+          ref={urlInputRef}
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          placeholder="https://..."
+          className="w-full rounded-lg border border-line bg-paper px-3 py-2 text-sm outline-none focus:border-ink"
+        />
+      )}
+    </>
+  );
+}
+
+function LinkPrompt({
+  editor,
+  onClose,
+  showRelOptions,
+  allowPopup = false,
+}: {
+  editor: Editor;
+  onClose: () => void;
+  showRelOptions: boolean;
+  allowPopup?: boolean;
+}) {
   const wasActive = editor.isActive("link");
   const current = editor.getAttributes("link");
   const currentRel = typeof current.rel === "string" ? current.rel : "";
-  const [url, setUrl] = useState((current.href as string) || "");
+  const currentPopupId = typeof current.popupId === "string" ? current.popupId : "";
+  const [mode, setMode] = useState<"url" | "popup">(currentPopupId ? "popup" : "url");
+  const [url, setUrl] = useState(currentPopupId ? "" : (current.href as string) || "");
+  const [popupId, setPopupId] = useState(currentPopupId);
   const [rel, setRel] = useState(
     currentRel.includes("sponsored") ? REL_OPTIONS[2].value
       : currentRel.includes("nofollow") ? REL_OPTIONS[1].value
       : REL_OPTIONS[0].value
   );
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    inputRef.current?.focus();
-    inputRef.current?.select();
-  }, []);
 
   function submit() {
-    if (url.trim()) {
+    if (mode === "popup") {
+      if (popupId) {
+        editor.chain().focus().extendMarkRange("link").setLink({ href: "#", popupId } as Parameters<Editor["commands"]["setLink"]>[0]).run();
+      }
+    } else if (url.trim()) {
       editor.chain().focus().extendMarkRange("link").setLink({ href: url.trim(), rel: showRelOptions ? rel : undefined }).run();
     }
     onClose();
@@ -798,16 +886,20 @@ function LinkPrompt({ editor, onClose, showRelOptions }: { editor: Editor; onClo
         className="w-full max-w-sm rounded-2xl border border-line bg-paper p-6 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <p className="text-sm font-medium">Link URL</p>
-        <input
-          ref={inputRef}
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && submit()}
-          placeholder="https://..."
-          className="mt-2 w-full rounded-lg border border-line bg-paper px-3 py-2 text-sm outline-none focus:border-ink"
-        />
-        {showRelOptions && (
+        <p className="text-sm font-medium">{mode === "popup" ? "Popup" : "Link URL"}</p>
+        <div className="mt-2">
+          <LinkModeFields
+            allowPopup={allowPopup}
+            mode={mode}
+            setMode={setMode}
+            url={url}
+            setUrl={setUrl}
+            popupId={popupId}
+            setPopupId={setPopupId}
+            autoFocusUrl
+          />
+        </div>
+        {mode === "url" && showRelOptions && (
           <>
             <p className="mt-4 text-sm font-medium">Link type</p>
             <div className="mt-2 flex flex-col gap-1.5">
@@ -856,15 +948,20 @@ function LinkBubble({
   bubble,
   editor,
   showRelOptions,
+  allowPopup = false,
   onClose,
 }: {
-  bubble: { pos: number; href: string; rel: string; rect: DOMRect };
+  bubble: { pos: number; href: string; rel: string; popupId: string; rect: DOMRect };
   editor: Editor;
   showRelOptions: boolean;
+  allowPopup?: boolean;
   onClose: () => void;
 }) {
+  const isPopup = Boolean(bubble.popupId);
   const [editing, setEditing] = useState(false);
-  const [url, setUrl] = useState(bubble.href);
+  const [mode, setMode] = useState<"url" | "popup">(isPopup ? "popup" : "url");
+  const [url, setUrl] = useState(isPopup ? "" : bubble.href);
+  const [popupId, setPopupId] = useState(bubble.popupId);
   const [rel, setRel] = useState(
     bubble.rel.includes("sponsored") ? REL_OPTIONS[2].value
       : bubble.rel.includes("nofollow") ? REL_OPTIONS[1].value
@@ -888,8 +985,13 @@ function LinkBubble({
   }, [onClose]);
 
   function save() {
-    if (!url.trim()) return;
-    editor.chain().focus().setTextSelection(bubble.pos).extendMarkRange("link").setLink({ href: url.trim(), rel: showRelOptions ? rel : undefined }).run();
+    if (mode === "popup") {
+      if (!popupId) return;
+      editor.chain().focus().setTextSelection(bubble.pos).extendMarkRange("link").setLink({ href: "#", popupId } as Parameters<Editor["commands"]["setLink"]>[0]).run();
+    } else {
+      if (!url.trim()) return;
+      editor.chain().focus().setTextSelection(bubble.pos).extendMarkRange("link").setLink({ href: url.trim(), rel: showRelOptions ? rel : undefined }).run();
+    }
     onClose();
   }
 
@@ -909,15 +1011,16 @@ function LinkBubble({
     >
       {editing ? (
         <div>
-          <input
-            value={url}
-            onChange={(event) => setUrl(event.target.value)}
-            onKeyDown={(event) => event.key === "Enter" && save()}
-            autoFocus
-            placeholder="https://..."
-            className="w-full rounded-md border border-line px-2.5 py-1.5 text-sm outline-none focus:border-ink"
+          <LinkModeFields
+            allowPopup={allowPopup}
+            mode={mode}
+            setMode={setMode}
+            url={url}
+            setUrl={setUrl}
+            popupId={popupId}
+            setPopupId={setPopupId}
           />
-          {showRelOptions && (
+          {mode === "url" && showRelOptions && (
             <div className="mt-2 flex flex-col gap-1">
               {REL_OPTIONS.map((option) => (
                 <label key={option.value} className="flex items-center gap-2 text-xs">
@@ -934,7 +1037,11 @@ function LinkBubble({
         </div>
       ) : (
         <div className="flex items-center gap-2">
-          <a href={bubble.href} target="_blank" rel="noopener noreferrer" className="min-w-0 flex-1 truncate text-sm text-ink underline">{bubble.href}</a>
+          {isPopup ? (
+            <span className="min-w-0 flex-1 truncate text-sm text-ink">Opens a popup</span>
+          ) : (
+            <a href={bubble.href} target="_blank" rel="noopener noreferrer" className="min-w-0 flex-1 truncate text-sm text-ink underline">{bubble.href}</a>
+          )}
           <button type="button" onClick={() => setEditing(true)} aria-label="Edit link" title="Edit link" className="shrink-0 rounded-md p-1.5 text-ink-soft hover:bg-paper-soft hover:text-ink">
             <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
           </button>
@@ -1294,6 +1401,7 @@ export default function RichTextEditor({
   onDeletePost,
   imageUploadUrl = "/api/console/email/image-upload",
   textOnly = false,
+  allowPopupLinks = false,
 }: {
   value: string;
   onChange: (html: string) => void;
@@ -1313,13 +1421,21 @@ export default function RichTextEditor({
    * button or code block. For a page's Text element, where the page builder
    * already has a Heading element and a Style tab for colour. */
   textOnly?: boolean;
+  /** Lets the Link prompt open a popup instead of a URL. Only meaningful
+   * where the saved HTML is rendered through PageBlocks.tsx (a page's or a
+   * popup's own Text element) -- that is the only renderer that resolves
+   * data-popup-id into a floating dialog. Email, automation and blog
+   * content are not, so this stays off there. */
+  allowPopupLinks?: boolean;
 }) {
   const [promptOpen, setPromptOpen] = useState(false);
   const [buttonPromptOpen, setButtonPromptOpen] = useState(false);
   const [imagePromptOpen, setImagePromptOpen] = useState(false);
   const [blogImagePickerOpen, setBlogImagePickerOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [linkBubble, setLinkBubble] = useState<{ pos: number; href: string; rel: string; rect: DOMRect } | null>(null);
+  const [linkBubble, setLinkBubble] = useState<
+    { pos: number; href: string; rel: string; popupId: string; rect: DOMRect } | null
+  >(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pendingImageHref = useRef<string | null>(null);
 
@@ -1387,6 +1503,7 @@ export default function RichTextEditor({
               pos,
               href: anchor.getAttribute("href") || "",
               rel: anchor.getAttribute("rel") || "",
+              popupId: anchor.getAttribute("data-popup-id") || "",
               rect: anchor.getBoundingClientRect(),
             });
             return true;
@@ -1626,10 +1743,21 @@ export default function RichTextEditor({
         <EditorContent editor={editor} />
       </div>
       {promptOpen && (
-        <LinkPrompt editor={editor} showRelOptions={blogCanvas} onClose={() => setPromptOpen(false)} />
+        <LinkPrompt
+          editor={editor}
+          showRelOptions={blogCanvas}
+          allowPopup={allowPopupLinks}
+          onClose={() => setPromptOpen(false)}
+        />
       )}
       {linkBubble && (
-        <LinkBubble bubble={linkBubble} editor={editor} showRelOptions={blogCanvas} onClose={() => setLinkBubble(null)} />
+        <LinkBubble
+          bubble={linkBubble}
+          editor={editor}
+          showRelOptions={blogCanvas}
+          allowPopup={allowPopupLinks}
+          onClose={() => setLinkBubble(null)}
+        />
       )}
       {buttonPromptOpen && (
         <ButtonPrompt

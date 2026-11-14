@@ -7,7 +7,10 @@ import ConsoleMobileNav from "@/components/ConsoleMobileNav";
 import ConsoleSearch from "@/components/ConsoleSearch";
 import ConsoleSidebar from "@/components/ConsoleSidebar";
 
-type NavGroup = { title: string; links: { href: string; label: string; badge?: number }[] };
+type NavGroup = {
+  title: string;
+  links: { href: string; label: string; badge?: number; hidden?: boolean }[];
+};
 
 export default function ConsoleFrame({
   children,
@@ -33,6 +36,7 @@ export default function ConsoleFrame({
   const isPageEditor =
     /^\/console\/pages\/[^/]+$/.test(pathname) ||
     /^\/console\/forms\/[^/]+$/.test(pathname) ||
+    /^\/console\/popups\/[^/]+$/.test(pathname) ||
     /^\/console\/workflows\/[^/]+$/.test(pathname) ||
     /^\/console\/courses\/[^/]+\/page-sections$/.test(pathname) ||
     /^\/console\/directory\/tools\/[^/]+\/page-sections$/.test(pathname);
