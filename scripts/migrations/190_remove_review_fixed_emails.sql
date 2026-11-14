@@ -13,8 +13,23 @@
 -- notification template, it's the delivery envelope for an admin-typed
 -- question (arbitrary text), so it stays fixed -- same reasoning as
 -- 'contact-form-reply' in migration 189.
+--
+-- review_requests.template_key and email_flow_steps.review_template_key
+-- both carry a hard FK (ON DELETE RESTRICT) to email_templates(key), added
+-- back in migration 047 when every email_templates row was assumed
+-- permanent. That assumption is exactly what this migration series
+-- retires -- a self-hoster can now delete this content, and
+-- src/lib/reviewRequests.ts / emailDispatcher.ts already fall back to
+-- the literal "google-review-request" key and degrade gracefully
+-- (getEmailTemplateOptional) when it's gone. A hard FK on a column that's
+-- meant to tolerate a missing key is a correctness bug now, not a safety
+-- net, so both are dropped -- this failed live on first deploy
+-- (review_requests_template_key_fkey) before this fix.
 
 BEGIN;
+
+ALTER TABLE review_requests DROP CONSTRAINT IF EXISTS review_requests_template_key_fkey;
+ALTER TABLE email_flow_steps DROP CONSTRAINT IF EXISTS email_flow_steps_review_template_key_fkey;
 
 DELETE FROM email_templates WHERE key IN (
   'review-submission-received',
