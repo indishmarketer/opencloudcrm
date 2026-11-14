@@ -31,6 +31,14 @@ export default function AuthForm({ mode, design }: { mode: "signup" | "login"; d
   const interest = searchParams.get("interest") || undefined;
   const ref = searchParams.get("ref") || searchParams.get("invite") || undefined;
   const redirect = searchParams.get("redirect") || "/account";
+  const oauthError = searchParams.get("error");
+  const oauthErrorMessage = oauthError === "oauth_unverified"
+    ? "Your provider did not share a verified email address. Try another sign-in method."
+    : oauthError === "oauth_profile_incomplete"
+      ? "Your provider did not share both your name and email address. Try another sign-in method."
+      : oauthError === "oauth_failed"
+        ? "Social sign-in could not be completed. Please try again."
+        : null;
 
   const [status, setStatus] = useState<"idle" | "submitting" | "error" | "check-email">("idle");
   const [error, setError] = useState("");
@@ -241,9 +249,9 @@ export default function AuthForm({ mode, design }: { mode: "signup" | "login"; d
           hasPhone={!!toE164(country, phone)}
         />
       )}
-      {error && (
+      {(error || oauthErrorMessage) && (
         <div>
-          <p className="text-sm text-red-600">{error}</p>
+          <p className="text-sm text-red-600">{error || oauthErrorMessage}</p>
           {needsVerification && (
             <button
               type="button"

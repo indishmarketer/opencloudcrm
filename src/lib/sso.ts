@@ -9,6 +9,11 @@ export function isSsoProvider(value: string): value is SsoProvider {
   return (SSO_PROVIDERS as string[]).includes(value);
 }
 
+/** Keep the authorization and token-exchange URI byte-for-byte identical. */
+export function ssoCallbackUrl(provider: SsoProvider, origin: string): string {
+  return new URL(`/api/auth/oauth/${provider}/callback`, origin).toString();
+}
+
 type ProviderConfig = {
   authorizeUrl: string;
   tokenUrl: string;
@@ -127,7 +132,7 @@ async function fetchGithubProfile(accessToken: string): Promise<SsoProfile | nul
   const primary = Array.isArray(emails)
     ? emails.find((e: { primary?: boolean; verified?: boolean }) => e.primary && e.verified)
     : null;
-  if (!primary) return null;
+  if (!primary || typeof primary.email !== "string" || !primary.email.trim()) return null;
 
   return {
     providerUserId: String(user.id),
@@ -137,8 +142,34 @@ async function fetchGithubProfile(accessToken: string): Promise<SsoProfile | nul
   };
 }
 
+async function fetchOidcUserInfo(provider: "google" | "linkedin", accessToken: string): Promise<SsoProfile | null> {
+  const endpoint = provider === "google"
+    ? "https://openidconnect.googleapis.com/v1/userinfo"
+    : "https://api.linkedin.com/v2/userinfo";
+  const res = await fetch(endpoint, { headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" } });
+  if (!res.ok) return null;
+  const claims = await res.json().catch(() => null);
+  if (!claims || typeof claims.sub !== "string" || typeof claims.email !== "string") return null;
+  return {
+    providerUserId: claims.sub,
+    email: claims.email,
+    emailVerified: claims.email_verified === true,
+    name: typeof claims.name === "string" && claims.name.trim()
+      ? claims.name.trim()
+      : [claims.given_name, claims.family_name].filter((part) => typeof part === "string" && part.trim()).join(" ") || null,
+  };
+}
+
 export async function fetchSsoProfile(provider: SsoProvider, tokens: TokenResponse): Promise<SsoProfile | null> {
   if (provider === "github") return fetchGithubProfile(tokens.accessToken);
-  if (!tokens.idToken) return null;
-  return profileFromIdToken(tokens.idToken);
+  const userInfo = await fetchOidcUserInfo(provider, tokens.accessToken);
+  const idProfile = tokens.idToken ? profileFromIdToken(tokens.idToken) : null;
+  if (userInfo) {
+    if (idProfile?.providerUserId === userInfo.providerUserId && idProfile.email === userInfo.email) {
+      userInfo.name ||= idProfile.name;
+      userInfo.emailVerified ||= idProfile.emailVerified;
+    }
+    return userInfo;
+  }
+  return idProfile;
 }

@@ -4,23 +4,24 @@ import bcrypt from "bcryptjs";
 import { jwtVerify } from "jose";
 import { pool, withTransaction } from "@/lib/db";
 import { createSession, consumeJti, getSessionSecret, safeRedirectPath } from "@/lib/auth";
-import { isSsoProvider, exchangeCodeForToken, fetchSsoProfile } from "@/lib/sso";
+import { isSsoProvider, exchangeCodeForToken, fetchSsoProfile, ssoCallbackUrl } from "@/lib/sso";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { ensureContact, normalizeContactEmail } from "@/lib/contacts";
 import { generateUniqueUsername } from "@/lib/community";
 import { getAttributionFromRequest } from "@/lib/attribution";
 import { normalizeCountry } from "@/lib/countries";
-import { SITE_URL } from "@/lib/liveSiteUrl";
+import { requestOrigin } from "@/lib/requestOrigin";
 
 const secret = () => new TextEncoder().encode(getSessionSecret());
 
-function failureRedirect(code: string) {
-  return NextResponse.redirect(`${SITE_URL}/login?error=${code}`);
+function failureRedirect(code: string, origin: string) {
+  return NextResponse.redirect(new URL(`/login?error=${code}`, origin));
 }
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ provider: string }> }) {
   const { provider } = await params;
   if (!isSsoProvider(provider)) return NextResponse.json({ error: "Unknown provider." }, { status: 404 });
+  const origin = requestOrigin(req);
 
   const ip = req.headers.get("cf-connecting-ip") || "unknown";
   if (!(await checkRateLimit(`oauth-callback:${ip}`, 20, 10 * 60 * 1000))) {
@@ -30,29 +31,30 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
   const { searchParams } = new URL(req.url);
   const code = searchParams.get("code");
   const stateToken = searchParams.get("state");
-  if (!code || !stateToken) return failureRedirect("oauth_failed");
+  if (!code || !stateToken) return failureRedirect("oauth_failed", origin);
 
   let redirectPath = "/account";
   let ref: string | null = null;
   try {
     const { payload } = await jwtVerify(stateToken, secret());
-    if (payload.purpose !== "sso-state" || payload.provider !== provider) return failureRedirect("oauth_failed");
-    if (typeof payload.jti !== "string" || !(await consumeJti(payload.jti))) return failureRedirect("oauth_failed");
+    if (payload.purpose !== "sso-state" || payload.provider !== provider || payload.origin !== origin) return failureRedirect("oauth_failed", origin);
+    if (typeof payload.jti !== "string" || !(await consumeJti(payload.jti))) return failureRedirect("oauth_failed", origin);
     redirectPath = safeRedirectPath(typeof payload.redirect === "string" ? payload.redirect : null);
     ref = typeof payload.ref === "string" ? payload.ref : null;
   } catch {
-    return failureRedirect("oauth_failed");
+    return failureRedirect("oauth_failed", origin);
   }
 
-  const redirectUri = `${SITE_URL}/api/auth/oauth/${provider}/callback`;
+  const redirectUri = ssoCallbackUrl(provider, origin);
   const tokens = await exchangeCodeForToken(provider, code, redirectUri);
-  if (!tokens) return failureRedirect("oauth_failed");
+  if (!tokens) return failureRedirect("oauth_failed", origin);
 
   const profile = await fetchSsoProfile(provider, tokens);
-  if (!profile || !profile.emailVerified) return failureRedirect("oauth_unverified");
+  if (!profile || !profile.emailVerified) return failureRedirect("oauth_unverified", origin);
 
   const email = normalizeContactEmail(profile.email);
   const name = profile.name?.trim() || null;
+  if (!email || !name) return failureRedirect("oauth_profile_incomplete", origin);
 
   const linked = await pool.query<{ user_id: number }>(
     "SELECT user_id FROM oauth_identities WHERE provider = $1 AND provider_user_id = $2",
@@ -145,15 +147,20 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
   }
 
   const ipCountry = normalizeCountry(req.headers.get("cf-ipcountry"));
-  await ensureContact({
-    email,
-    userId,
-    name,
-    country: ipCountry,
-    countrySource: ipCountry ? "ip" : undefined,
-  }).catch((err) => console.error("oauth ensureContact failed (non-fatal):", err));
+  try {
+    await ensureContact({
+      email,
+      userId,
+      name,
+      country: ipCountry,
+      countrySource: ipCountry ? "ip" : undefined,
+    });
+  } catch (error) {
+    console.error("oauth ensureContact failed:", error);
+    return failureRedirect("oauth_failed", origin);
+  }
 
   await createSession({ userId, email });
 
-  return NextResponse.redirect(new URL(redirectPath, SITE_URL).toString());
+  return NextResponse.redirect(new URL(redirectPath, origin));
 }
