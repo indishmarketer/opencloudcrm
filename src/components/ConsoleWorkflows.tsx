@@ -16,6 +16,18 @@ function TrashIcon() {
   return <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M3.5 6.5h17M9 6.5V4h6v2.5m-9.5 0 1 14h11l1-14M10 10v7m4-7v7" /></svg>;
 }
 
+function LockIcon() {
+  return <svg viewBox="0 0 24 24" aria-hidden="true" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>;
+}
+
+function toolsForSystemFlow(actions: readonly string[]): ToolKind[] {
+  const text = actions.join(" ").toLowerCase();
+  const tools: ToolKind[] = [];
+  if (text.includes("whatsapp")) tools.push("whatsapp");
+  if (text.includes("verify") || text.includes("code")) tools.push("condition");
+  return tools;
+}
+
 function TriggerIcon() {
   return <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5" fill="currentColor"><path d="M13.2 1.8 4.7 13h5.6l-.8 9.2L19.3 9.7h-6.1l1-7.9Z" /></svg>;
 }
@@ -43,13 +55,6 @@ function WorkflowToggle({ on, label, disabled, onToggle }: { on: boolean; label:
   </button>;
 }
 
-function FlowMap({ trigger, actions }: { trigger: string; actions: readonly string[] }) {
-  return <div className="flex min-w-max flex-nowrap items-center gap-2">
-    <div className="min-w-36 rounded-xl border border-line bg-paper-soft px-3 py-2.5"><p className="text-[10px] font-semibold uppercase tracking-wide text-ink-soft">Trigger</p><p className="mt-1 text-xs font-medium">{trigger}</p></div>
-    {actions.map((action, index) => <div key={`${index}-${action}`} className="flex items-center gap-2"><span aria-hidden="true" className="text-ink-soft">→</span><div className="min-w-36 rounded-xl border border-line bg-paper-soft px-3 py-2.5"><p className="text-[10px] font-semibold uppercase tracking-wide text-ink-soft">Action {index + 1}</p><p className="mt-1 text-xs font-medium">{action}</p></div></div>)}
-  </div>;
-}
-
 function toolsForWorkflow(workflow: Workflow): ToolKind[] {
   const allowed = new Set<ToolKind>(["email", "whatsapp", "webhook", "condition", "course_access", "wait", "stop"]);
   return Array.from(new Set(workflow.graph.nodes.filter((node) => node.data.kind !== "trigger" && allowed.has(node.data.kind as ToolKind)).map((node) => node.data.kind as ToolKind)));
@@ -65,7 +70,6 @@ export default function ConsoleWorkflows({ workflows, triggers, emailFlows, fold
 }) {
   const router = useRouter();
   const { confirm, dialog } = useConfirm();
-  const [tab, setTab] = useState<"mine" | "critical">("mine");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [savingKey, setSavingKey] = useState("");
@@ -153,15 +157,12 @@ export default function ConsoleWorkflows({ workflows, triggers, emailFlows, fold
 
   return <div>
     <div className="flex flex-wrap items-center justify-between gap-4">
-      <div className="flex gap-2 border-b border-line" role="tablist" aria-label="Workflow categories">
-        <button type="button" role="tab" aria-selected={tab === "mine"} onClick={() => setTab("mine")} className={`border-b-2 px-4 py-3 text-sm font-medium ${tab === "mine" ? "border-ink text-ink" : "border-transparent text-ink-soft hover:text-ink"}`}>Your workflows</button>
-        <button type="button" role="tab" aria-selected={tab === "critical"} onClick={() => setTab("critical")} className={`border-b-2 px-4 py-3 text-sm font-medium ${tab === "critical" ? "border-ink text-ink" : "border-transparent text-ink-soft hover:text-ink"}`}>Critical workflows</button>
-      </div>
-      {tab === "mine" && <button type="button" disabled={busy} onClick={() => void create()} className="rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-paper disabled:opacity-50">{busy ? "Opening canvas..." : "New workflow"}</button>}
+      <div><h2 className="font-display text-lg font-semibold">Your workflows</h2></div>
+      <button type="button" disabled={busy} onClick={() => void create()} className="rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-paper disabled:opacity-50">{busy ? "Opening canvas..." : "New workflow"}</button>
     </div>
     {error && <p role="alert" className="mt-3 text-sm text-red-700">{error}</p>}
 
-    {tab === "mine" ? <div className="mt-5 space-y-8">
+    <div className="mt-5 space-y-8">
       <section>
         <div className="mb-4 flex flex-wrap items-center gap-3">
           <label className="relative min-w-56 flex-1 sm:max-w-md"><span className="sr-only">Search workflows</span><svg viewBox="0 0 24 24" aria-hidden="true" className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-soft" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4 4"/></svg><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search workflows" className="w-full rounded-lg border border-line bg-paper py-2.5 pl-9 pr-3 text-sm outline-none focus:border-ink" /></label>
@@ -173,10 +174,16 @@ export default function ConsoleWorkflows({ workflows, triggers, emailFlows, fold
         </div>
         {showFolderForm && <div className="mb-4 flex max-w-xl flex-wrap items-center gap-2 rounded-xl border border-line bg-paper p-3"><label className="min-w-48 flex-1"><span className="sr-only">New folder name</span><input autoFocus maxLength={80} value={folderName} onChange={(event) => setFolderName(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void createFolder(); if (event.key === "Escape") setShowFolderForm(false); }} placeholder="Folder name" className="w-full rounded-lg border border-line px-3 py-2 text-sm outline-none focus:border-ink" /></label><button type="button" onClick={() => void createFolder()} className="rounded-full bg-ink px-4 py-2 text-sm font-medium text-paper">Create folder</button><button type="button" onClick={() => { setShowFolderForm(false); setFolderName(""); }} className="rounded-full border border-line px-4 py-2 text-sm">Cancel</button></div>}
         <p className="mb-3 text-sm text-ink-soft">Build event-based or email workflows on the canvas. Delete stops future sends and keeps existing history.</p>
-        {!visibleWorkflows.length && !visibleEmailFlows.length ? <p className="rounded-2xl border border-dashed border-line p-8 text-center text-sm text-ink-soft">{workflows.length || emailFlows.length ? "No workflows match this folder or search." : "No workflows yet. Start with a site event or an incoming webhook."}</p> : <div className="overflow-x-auto rounded-xl border border-line bg-paper">
+        {!visibleWorkflows.length && !visibleEmailFlows.length && !systemFlows.length ? <p className="rounded-2xl border border-dashed border-line p-8 text-center text-sm text-ink-soft">{workflows.length || emailFlows.length ? "No workflows match this folder or search." : "No workflows yet. Start with a site event or an incoming webhook."}</p> : <div className="overflow-x-auto rounded-xl border border-line bg-paper">
           <table className="w-full min-w-[680px] table-fixed border-collapse text-left">
             <thead><tr className="border-b border-line text-sm text-ink-soft"><th scope="col" className="w-[38%] px-4 py-3 font-medium">Name</th><th scope="col" className="w-32 px-4 py-3 font-medium">Status</th><th scope="col" className="px-4 py-3 font-medium">Tools</th><th scope="col" className="w-36 px-4 py-3 text-center font-medium">Actions</th></tr></thead>
             <tbody>
+              {systemFlows.map((flow) => <tr key={`system-${flow.id}`} className="border-b border-line last:border-0 bg-paper-soft/40">
+                <td className="px-4 py-3"><span className="flex min-w-0 items-center gap-3 font-medium text-ink"><span className="shrink-0 text-ink"><TriggerIcon /></span><span className="truncate">{flow.name}</span></span></td>
+                <td className="px-4 py-3"><span className="inline-flex items-center rounded-full bg-paper-soft px-2.5 py-1 text-xs font-medium text-ink-soft" title={flow.detail}>Always on</span></td>
+                <td className="px-4 py-3"><ToolIcons tools={toolsForSystemFlow(flow.actions)} /></td>
+                <td className="px-4 py-3"><div className="flex items-center justify-center gap-2"><span title={`Required by the application. ${flow.detail}`} className="inline-flex items-center gap-1.5 rounded-full border border-line px-3 py-2 text-xs font-medium text-ink-soft"><LockIcon /> Platform managed</span></div></td>
+              </tr>)}
               {visibleWorkflows.map((workflow) => <tr key={`workflow-${workflow.id}`} className="border-b border-line last:border-0 hover:bg-paper-soft/60">
                 <td className="px-4 py-3"><a href={`/console/workflows/${workflow.id}`} className="flex min-w-0 items-center gap-3 font-medium text-ink hover:underline"><span className="shrink-0 text-ink"><TriggerIcon /></span><span className="truncate">{workflow.name}</span></a></td>
                 <td className="px-4 py-3"><WorkflowToggle on={workflow.status === "active"} label={`${workflow.status === "active" ? "Turn off" : "Turn on"} ${workflow.name}`} disabled={savingKey === `workflow-${workflow.id}`} onToggle={() => void toggleCustomWorkflow(workflow)} /></td>
@@ -195,7 +202,7 @@ export default function ConsoleWorkflows({ workflows, triggers, emailFlows, fold
       </section>
 
       <section className="border-t border-line pt-6"><h2 className="font-display text-lg font-semibold">Outbound webhooks</h2><p className="mt-1 text-sm text-ink-soft">Send selected site events to external services.</p>{!webhookDestinations.length ? <p className="mt-3 text-sm text-ink-soft">No webhook connections configured.</p> : <div className="mt-3 grid gap-3 lg:grid-cols-2">{webhookDestinations.map((destination) => <Link href="/console/webhooks" key={destination.id} className="rounded-2xl border border-line bg-paper p-4 hover:border-ink"><div className="flex justify-between gap-3"><span className="font-medium">{destination.name}</span><span className="text-xs text-ink-soft">{destination.enabled ? "Enabled" : "Paused"}</span></div><p className="mt-2 text-xs text-ink-soft">{destination.event_types.length} subscribed events</p></Link>)}</div>}</section>
-    </div> : <div className="mt-5 space-y-3">{systemFlows.map((flow) => <article key={flow.id} className="rounded-2xl border border-line bg-paper p-5"><div className="mb-4 flex flex-wrap items-center justify-between gap-2"><h3 className="font-semibold">{flow.name}</h3><span className="rounded-full bg-paper-soft px-2.5 py-1 text-xs font-medium text-ink-soft">Critical · platform managed</span></div><div className="overflow-x-auto pb-1"><FlowMap trigger={flow.trigger} actions={flow.actions} /></div></article>)}</div>}
+    </div>
     {dialog}
   </div>;
 }

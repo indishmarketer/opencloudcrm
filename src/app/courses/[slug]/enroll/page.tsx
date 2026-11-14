@@ -4,7 +4,7 @@ import { pool } from "@/lib/db";
 import { getCourseBySlug, getCourseCurriculum, getUserEnrollment } from "@/lib/courses";
 import { getPublishedEntityPage } from "@/lib/sitePages";
 import { sendEmailWithRetry } from "@/lib/emailOutbox";
-import { getEmailTemplate, applyTemplateVars } from "@/lib/emailTemplates";
+import { getEmailTemplateOptional, applyTemplateVars } from "@/lib/emailTemplates";
 import { triggerEmailFlow, firstNameOf } from "@/lib/emailAutomation";
 import { emitWebhookEvent } from "@/lib/webhookEvents";
 import { escapeHtml } from "@/lib/escapeHtml";
@@ -41,21 +41,23 @@ export default async function CourseEnrollPage({ params }: { params: Promise<{ s
   if (result.rows.length > 0) {
     const userRow = await pool.query("SELECT name FROM users WHERE id = $1", [session.userId]);
     const firstName = firstNameOf(userRow.rows[0]?.name);
-    const grantTpl = await getEmailTemplate("course-access-granted-free");
-    const grantVars = {
-      first_name: escapeHtml(firstName),
-      course_title: escapeHtml(course.title),
-      course_url: `${SITE_URL}/account/courses/${encodeURIComponent(course.slug)}`,
-    };
-    await sendEmailWithRetry({
-      to: session.email,
-      subject: applyTemplateVars(grantTpl.subject, grantVars),
-      html: applyTemplateVars(grantTpl.body_html, grantVars),
-      from: grantTpl.from_email,
-      templateKey: grantTpl.key,
-      category: "fixed",
-      trackOpens: grantTpl.track_opens,
-    });
+    const grantTpl = await getEmailTemplateOptional("course-access-granted-free");
+    if (grantTpl) {
+      const grantVars = {
+        first_name: escapeHtml(firstName),
+        course_title: escapeHtml(course.title),
+        course_url: `${SITE_URL}/account/courses/${encodeURIComponent(course.slug)}`,
+      };
+      await sendEmailWithRetry({
+        to: session.email,
+        subject: applyTemplateVars(grantTpl.subject, grantVars),
+        html: applyTemplateVars(grantTpl.body_html, grantVars),
+        from: grantTpl.from_email,
+        templateKey: grantTpl.key,
+        category: "fixed",
+        trackOpens: grantTpl.track_opens,
+      });
+    }
     triggerEmailFlow(
       "course_enroll_free",
       session.email,

@@ -17,10 +17,10 @@ export async function GET(req: NextRequest, { params }: Params) {
 }
 
 /** Edits an existing template's subject/body/sender/open-tracking. There is
- * no create or delete here: every key is sent by one specific trigger
- * elsewhere in the app, so a new key would never be sent and deleting an
- * existing one would break that trigger -- see
- * src/lib/emailTemplates.ts's updateEmailTemplate. */
+ * no create here: every key is sent by one specific trigger elsewhere in
+ * the app, so a brand-new key would never be sent by anything. Deletion is
+ * exposed separately, from the console only -- see
+ * src/lib/emailTemplates.ts's canDeleteEmailTemplate/deleteEmailTemplate. */
 export async function PATCH(req: NextRequest, { params }: Params) {
   const auth = await authorizeRequest(req, "email:write");
   if (!auth.ok) return unauthorized();

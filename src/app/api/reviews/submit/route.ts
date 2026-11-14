@@ -4,7 +4,7 @@ import { pool } from "@/lib/db";
 import { verifyTurnstile } from "@/lib/turnstile";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { sendEmail } from "@/lib/email";
-import { getEmailTemplate, applyTemplateVars } from "@/lib/emailTemplates";
+import { getEmailTemplateOptional, applyTemplateVars } from "@/lib/emailTemplates";
 import { escapeHtml } from "@/lib/escapeHtml";
 import { raiseInboxAlert } from "@/lib/systemAlerts";
 import { extractYoutubeId } from "@/lib/youtube";
@@ -78,17 +78,19 @@ export async function POST(req: NextRequest) {
     data: { review_id: inserted.rows[0].id, rating: Math.min(5, Math.max(1, Number(rating) || 5)), role: role || null },
   }).catch(() => {});
 
-  const receivedTpl = await getEmailTemplate("review-submission-received");
-  const receivedVars = { first_name: escapeHtml(String(name).trim().split(/\s+/)[0] || "there") };
-  await sendEmail({
-    to: session.email,
-    subject: applyTemplateVars(receivedTpl.subject, receivedVars),
-    html: applyTemplateVars(receivedTpl.body_html, receivedVars),
-    from: receivedTpl.from_email,
-    templateKey: receivedTpl.key,
-    category: "fixed",
-    trackOpens: receivedTpl.track_opens,
-  });
+  const receivedTpl = await getEmailTemplateOptional("review-submission-received");
+  if (receivedTpl) {
+    const receivedVars = { first_name: escapeHtml(String(name).trim().split(/\s+/)[0] || "there") };
+    await sendEmail({
+      to: session.email,
+      subject: applyTemplateVars(receivedTpl.subject, receivedVars),
+      html: applyTemplateVars(receivedTpl.body_html, receivedVars),
+      from: receivedTpl.from_email,
+      templateKey: receivedTpl.key,
+      category: "fixed",
+      trackOpens: receivedTpl.track_opens,
+    });
+  }
 
   raiseInboxAlert({
     kind: "review_submitted",

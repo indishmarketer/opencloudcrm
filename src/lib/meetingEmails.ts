@@ -1,6 +1,6 @@
 import { escapeHtml } from "@/lib/escapeHtml";
 import { sendEmail } from "@/lib/email";
-import { applyTemplateVars, getEmailTemplate } from "@/lib/emailTemplates";
+import { applyTemplateVars, getEmailTemplateOptional } from "@/lib/emailTemplates";
 import { calVideoUrl } from "@/lib/calcom";
 import { buildIcsInvite, icsAttachment } from "@/lib/ics";
 import { createMeetingManageToken } from "@/lib/meetingManageToken";
@@ -53,7 +53,8 @@ function safeMeetingDate(date: Date | string, timeZone: string): string {
 }
 
 async function deliverTemplate(key: string, to: string, vars: Record<string, string>, attachments?: { name: string; content: string }[]): Promise<boolean> {
-  const template = await getEmailTemplate(key);
+  const template = await getEmailTemplateOptional(key);
+  if (!template) return true;
   const result = await sendEmail({
     to,
     subject: applyTemplateVars(template.subject, vars),

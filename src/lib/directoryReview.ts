@@ -1,9 +1,10 @@
 import { pool } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
-import { getEmailTemplate, applyTemplateVars } from "@/lib/emailTemplates";
+import { getEmailTemplateOptional, applyTemplateVars } from "@/lib/emailTemplates";
 import { escapeHtml } from "@/lib/escapeHtml";
 import { isAuthorizedConsoleEmail } from "@/lib/consoleAdmins";
 import { isOwnedR2Url } from "@/lib/r2Upload";
+import { emitWebhookEvent } from "@/lib/webhookEvents";
 import { SITE_URL } from "@/lib/siteMeta";
 import { PRICING_TYPES, cleanToolUrl } from "@/lib/directoryFields";
 
@@ -97,7 +98,8 @@ export async function emailSubmitter(
 ): Promise<boolean> {
   const submitter = await getSubmitter(toolId);
   if (!submitter || submitter.isAdmin) return false;
-  const tpl = await getEmailTemplate(templateKey);
+  const tpl = await getEmailTemplateOptional(templateKey);
+  if (!tpl) return false;
   const all = { first_name: firstName(submitter.name), ...vars };
   await sendEmail({
     to: submitter.email,
@@ -115,7 +117,8 @@ export async function emailSubmitter(
 export async function notifyAdminOfTool(submitterEmail: string, eventText: string, toolName: string) {
   const adminEmail = process.env.ADMIN_EMAIL;
   if (!adminEmail || (await isAuthorizedConsoleEmail(submitterEmail))) return;
-  const tpl = await getEmailTemplate("tool-submission-admin-notify");
+  const tpl = await getEmailTemplateOptional("tool-submission-admin-notify");
+  if (!tpl) return;
   const vars = {
     submitter_email: escapeHtml(submitterEmail),
     event_text: escapeHtml(eventText),
@@ -179,6 +182,15 @@ export async function reviewTool(
   const tool = await loadTool(toolId);
   if (!tool) return { ok: false, error: "Tool not found." };
   const cleanNote = note?.trim().slice(0, 3000) || null;
+  const submitter = await getSubmitter(toolId);
+  const emitReviewed = (status: string) => emitWebhookEvent({
+    eventType: "directory_tool.reviewed",
+    source: "directory_tools",
+    sourceRecordId: toolId,
+    contactEmail: submitter?.email || null,
+    contactName: submitter?.name || null,
+    data: { tool_id: toolId, tool_name: tool.name, status, note: cleanNote },
+  }).catch(() => {});
 
   if (action === "approve") {
     // A paid listing that already paid during the submit flow publishes
@@ -193,13 +205,16 @@ export async function reviewTool(
         tool_name: escapeHtml(tool.name),
         payment_url: `${SITE_URL}/account/tools`,
       });
+      emitReviewed("approved_unpaid");
       return { ok: true, email: sent ? "sent" : "skipped" };
     }
     await pool.query(
       "UPDATE directory_tools SET status = 'published', review_note = NULL, reviewed_at = now(), updated_at = now() WHERE id = $1",
       [toolId]
     );
-    return { ok: true, email: await sendApprovedEmail(toolId) };
+    const email = await sendApprovedEmail(toolId);
+    emitReviewed("published");
+    return { ok: true, email };
   }
 
   if (action === "request_changes") {
@@ -215,6 +230,7 @@ export async function reviewTool(
       note: noteHtml(cleanNote),
       edit_url: urls.edit_url,
     });
+    emitReviewed("changes_requested");
     return { ok: true, email: sent ? "sent" : "skipped" };
   }
 
@@ -226,5 +242,6 @@ export async function reviewTool(
     tool_name: escapeHtml(tool.name),
     note: noteHtml(cleanNote),
   });
+  emitReviewed("rejected");
   return { ok: true, email: sent ? "sent" : "skipped" };
 }

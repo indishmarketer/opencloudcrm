@@ -55,6 +55,31 @@ export async function getEmailTemplate(key: string): Promise<EmailTemplate> {
   };
 }
 
+/** Like getEmailTemplate, but for keys the self-hoster is allowed to delete
+ * (anything not in CODE_LINKED_TEMPLATE_KEYS / the critical set). Returns
+ * null instead of throwing when the row is gone, so the surrounding
+ * business logic (granting a course, recording a payment, etc.) still
+ * completes -- only the now-optional notification email is skipped. The
+ * underlying event this call site emits (webhookEvents) still fires either
+ * way, so a self-hoster can wire their own automation back up from the
+ * console. */
+export async function getEmailTemplateOptional(key: string): Promise<EmailTemplate | null> {
+  const result = await pool.query<EmailTemplate>(
+    `SELECT key, category, label, description, subject, body_html, from_email, critical, track_opens, allowed_vars
+     FROM email_templates WHERE key = $1`,
+    [key]
+  );
+  const row = result.rows[0];
+  if (!row) return null;
+  const business = await getBusiness();
+  const siteName = escapeHtml(business.brand || SITE_NAME);
+  return {
+    ...row,
+    subject: row.subject.replace(/\{\{site_name\}\}/g, siteName),
+    body_html: row.body_html.replace(/\{\{site_name\}\}/g, siteName),
+  };
+}
+
 export async function listEmailTemplates(): Promise<EmailTemplate[]> {
   const result = await pool.query<EmailTemplate>(
     `SELECT key, category, label, description, subject, body_html, from_email, critical, track_opens, allowed_vars
@@ -79,29 +104,20 @@ export class EmailTemplateDeleteError extends Error {
   }
 }
 
-// These keys are read by application workflows. Removing their rows would
-// make the corresponding signup, payment, booking, or support flow fail.
-// The pattern checks cover keys selected from persisted meeting/webinar and
-// directory records, where the call-site receives the key dynamically.
+// Everything the application itself cannot run without: the account and
+// security primitives (signup/login/password/email-change), plus the
+// handful of templates that are themselves the delivery envelope for
+// admin-typed content or a one-time credential rather than an automation
+// notification (see the comment at each call site for why). Every other
+// fixed email in the app degrades gracefully (getEmailTemplateOptional)
+// when its row is deleted, so this set stays short on purpose.
 const CODE_LINKED_TEMPLATE_KEYS = new Set([
   "email-verification", "password-reset", "magic-link-login", "otp-code", "account-email-change",
-  "console-admin-invite", "author-application-received", "author-application-approved",
-  "author-application-rejected", "author-application-changes-requested", "author-application-draft-accepted",
-  "contact-form-admin-notify", "contact-form-received", "contact-form-reply", "review-submission-received",
-  "review-question-to-author", "payment-claim-admin-notify", "payment-claim-received",
-  "razorpay-unmatched-payment-alert", "payment-grant-failed-alert", "course-access-granted-pro",
-  "course-access-granted-free", "course-access-granted-manual", "course-access-granted-new-account",
-  "course-access-granted-claim-approved", "course-access-upgraded", "tool-submission-admin-notify",
-  "tool-submission-approved", "tool-submission-approved-payment", "tool-submission-changes-requested",
-  "tool-submission-rejected", "open-cloud-crm-welcome", "webinar-guest-signin", "google-review-request",
-  "google-review-reminder", "review-submission-received", "review-submitted-admin-notify",
-  "meeting-confirmation", "meeting-unrecognized-type-alert", "meeting-reconciliation-orphan-alert",
-  "meeting-owner-new-booking", "meeting-cancelled", "meeting-owner-cancelled-notice",
-  "meeting-owner-rescheduled-notice", "webinar-registration-confirmation", "webinar-reminder",
+  "console-admin-invite", "contact-form-reply", "review-question-to-author", "webinar-guest-signin",
 ]);
 
 function isCodeLinkedTemplate(key: string): boolean {
-  return CODE_LINKED_TEMPLATE_KEYS.has(key) || /^(meeting|webinar|tool-submission|author-application|course-access|payment-|contact-form|review-|console-admin-)/.test(key);
+  return CODE_LINKED_TEMPLATE_KEYS.has(key);
 }
 
 export function canDeleteEmailTemplate(template: Pick<EmailTemplate, "key" | "critical">): boolean {
@@ -128,12 +144,13 @@ export async function deleteEmailTemplate(key: string): Promise<void> {
   }
 }
 
-/** Shared by the console's own editor and /api/v1/email: these are fixed,
- * code-referenced templates (each key is sent by a specific trigger
- * elsewhere in the app -- see getEmailTemplate's comment), so only editing
- * is exposed. There's no create or delete: a new key would never be sent by
- * anything, and deleting an existing one would break whatever transactional
- * email still calls getEmailTemplate(key) for it. */
+/** Shared by the console's own editor and /api/v1/email: edits an
+ * existing fixed template's content. There's no create here -- a brand
+ * new key would never be sent by anything, since every key is read by one
+ * specific call site elsewhere in the app. Deletion is a separate function
+ * (deleteEmailTemplate, above) gated by canDeleteEmailTemplate -- most keys
+ * may be deleted; the ones that may not are account/security primitives or
+ * the delivery envelope for admin-typed content, not exposed here. */
 export async function updateEmailTemplate(
   key: string,
   input: { subject: string; bodyHtml: string; fromEmail?: string | null; trackOpens?: boolean | null }

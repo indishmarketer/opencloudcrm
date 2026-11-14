@@ -24,6 +24,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Message not found." }, { status: 404 });
   }
 
+  // This is not a notification template -- it's the delivery envelope for
+  // an admin-composed reply (the "message" var is arbitrary admin text), so
+  // it stays a fixed, non-deletable template like the account/security
+  // set, not a convertible automation. See emailTemplates.ts.
   const tpl = await getEmailTemplate("contact-form-reply");
   const vars = { name: escapeHtml(submission.name), message: escapeHtml(message).replace(/\n/g, "<br>") };
   const sendResult = await sendEmail({

@@ -4,7 +4,7 @@ import { normalizeCountry } from "@/lib/countries";
 import { triggerEmailFlow, firstNameOf } from "@/lib/emailAutomation";
 import { emitWebhookEvent } from "@/lib/webhookEvents";
 import { sendEmail } from "@/lib/email";
-import { getEmailTemplate, applyTemplateVars } from "@/lib/emailTemplates";
+import { getEmailTemplateOptional, applyTemplateVars } from "@/lib/emailTemplates";
 import { escapeHtml } from "@/lib/escapeHtml";
 import { getLeadMagnetById } from "@/lib/leadMagnets";
 
@@ -112,8 +112,8 @@ export async function completeContactVerification(email: string, payload: Contac
   );
 
   const adminEmail = process.env.ADMIN_EMAIL;
-  if (adminEmail) {
-    const tpl = await getEmailTemplate("contact-form-admin-notify");
+  const tpl = adminEmail ? await getEmailTemplateOptional("contact-form-admin-notify") : null;
+  if (adminEmail && tpl) {
     const vars = {
       name: escapeHtml(name),
       email: escapeHtml(email),
@@ -134,19 +134,21 @@ export async function completeContactVerification(email: string, payload: Contac
     }
   }
 
-  const receivedTpl = await getEmailTemplate("contact-form-received");
-  const receivedVars = { first_name: escapeHtml(name.trim().split(/\s+/)[0] || "there") };
-  const receivedResult = await sendEmail({
-    to: email,
-    subject: applyTemplateVars(receivedTpl.subject, receivedVars),
-    html: applyTemplateVars(receivedTpl.body_html, receivedVars),
-    from: receivedTpl.from_email,
-    templateKey: receivedTpl.key,
-    category: "fixed",
-    trackOpens: receivedTpl.track_opens,
-  });
-  if (!receivedResult.ok) {
-    console.error(`Contact form receipt email failed to send for submission #${submissionId}`);
+  const receivedTpl = await getEmailTemplateOptional("contact-form-received");
+  if (receivedTpl) {
+    const receivedVars = { first_name: escapeHtml(name.trim().split(/\s+/)[0] || "there") };
+    const receivedResult = await sendEmail({
+      to: email,
+      subject: applyTemplateVars(receivedTpl.subject, receivedVars),
+      html: applyTemplateVars(receivedTpl.body_html, receivedVars),
+      from: receivedTpl.from_email,
+      templateKey: receivedTpl.key,
+      category: "fixed",
+      trackOpens: receivedTpl.track_opens,
+    });
+    if (!receivedResult.ok) {
+      console.error(`Contact form receipt email failed to send for submission #${submissionId}`);
+    }
   }
 
   return submissionId;

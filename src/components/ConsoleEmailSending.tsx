@@ -3,10 +3,10 @@
 import { useState } from "react";
 import Link from "next/link";
 
-/** Its own tab (not bundled into Transactional emails) because this is
+/** Its own tab (not bundled into Account & security) because this is
  * deployment-level infrastructure -- which domain mail claims to be from --
  * not per-template content. The per-template "Send from" address itself is
- * a free-text field on each template in the Transactional emails tab; this
+ * a free-text field on each template in the Account & security tab; this
  * page only controls the domain those addresses can use. */
 export default function ConsoleEmailSending({ defaultDomain, sendingDomain }: { defaultDomain: string; sendingDomain: string }) {
   const [value, setValue] = useState(sendingDomain);
@@ -44,7 +44,7 @@ export default function ConsoleEmailSending({ defaultDomain, sendingDomain }: { 
       </p>
       <p className="mt-2 text-sm text-ink-soft">
         This only sets the domain. The username/local part (the bit before the @) is yours to choose freely on
-        each individual email, in the <Link href="/console/email/templates" className="underline">Transactional emails</Link> tab --
+        each individual email, in the <Link href="/console/email/templates" className="underline">Account & security</Link> tab --
         there is no fixed list of usernames to pick from.
       </p>
       <div className="mt-4 flex flex-wrap items-center gap-3">

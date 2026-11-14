@@ -3,7 +3,7 @@ import { pool, withTransaction } from "@/lib/db";
 import { workflowGraphSchema, workflowReadinessIssues, type WorkflowGraph, type WorkflowNode } from "@/lib/workflowGraph";
 import { sendEmailWithRetry } from "@/lib/emailOutbox";
 import { sendEmail } from "@/lib/email";
-import { getEmailTemplate } from "@/lib/emailTemplates";
+import { getEmailTemplateOptional } from "@/lib/emailTemplates";
 import { getContentTemplate } from "@/lib/emailContentTemplates";
 import { sendWhatsAppTemplateMessage, normalizePhoneForWhatsApp } from "@/lib/whatsapp";
 import { hasOptedOut, canSendWhatsAppMarketing } from "@/lib/whatsappContacts";
@@ -258,7 +258,8 @@ async function runAction(node: WorkflowNode, payload: unknown, run: { id: number
           if (!sent) throw new Error("Meeting confirmation email could not be sent.");
           return { sent: true, recipient: to, templateKey };
         }
-        const template = await getEmailTemplate(templateKey);
+        const template = await getEmailTemplateOptional(templateKey);
+        if (!template) throw new Error(`Email action "${node.data.label}" uses an email that was deleted. Pick a different one.`);
         subjectTemplate = template.subject;
         bodyTemplate = template.body_html;
         from = template.from_email;

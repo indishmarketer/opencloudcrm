@@ -6,7 +6,7 @@ import { sendEmail } from "@/lib/email";
 import { escapeHtml } from "@/lib/escapeHtml";
 import { raiseInboxAlert } from "@/lib/systemAlerts";
 import { getPendingApplication } from "@/lib/authorApplications";
-import { getEmailTemplate, applyTemplateVars } from "@/lib/emailTemplates";
+import { getEmailTemplateOptional, applyTemplateVars } from "@/lib/emailTemplates";
 import { emitWebhookEvent } from "@/lib/webhookEvents";
 
 export async function POST(req: NextRequest) {
@@ -43,17 +43,19 @@ export async function POST(req: NextRequest) {
     userId: session.userId,
     data: { application_id: result.rows[0].id, topics: topics.slice(0, 1000), sample_url: sampleUrl || null },
   }).catch(() => {});
-  const receivedTpl = await getEmailTemplate("author-application-received");
-  const receivedVars = { first_name: escapeHtml((applicant.rows[0]?.name || "there").trim().split(/\s+/)[0]) };
-  await sendEmail({
-    to: session.email,
-    subject: applyTemplateVars(receivedTpl.subject, receivedVars),
-    html: applyTemplateVars(receivedTpl.body_html, receivedVars),
-    from: receivedTpl.from_email,
-    templateKey: receivedTpl.key,
-    category: "fixed",
-    trackOpens: receivedTpl.track_opens,
-  });
+  const receivedTpl = await getEmailTemplateOptional("author-application-received");
+  if (receivedTpl) {
+    const receivedVars = { first_name: escapeHtml((applicant.rows[0]?.name || "there").trim().split(/\s+/)[0]) };
+    await sendEmail({
+      to: session.email,
+      subject: applyTemplateVars(receivedTpl.subject, receivedVars),
+      html: applyTemplateVars(receivedTpl.body_html, receivedVars),
+      from: receivedTpl.from_email,
+      templateKey: receivedTpl.key,
+      category: "fixed",
+      trackOpens: receivedTpl.track_opens,
+    });
+  }
 
   raiseInboxAlert({
     kind: "author_application",

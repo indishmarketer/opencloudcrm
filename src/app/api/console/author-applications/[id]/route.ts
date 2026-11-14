@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAdminSession } from "@/lib/auth";
 import { pool } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
-import { getEmailTemplate, applyTemplateVars } from "@/lib/emailTemplates";
+import { getEmailTemplateOptional, applyTemplateVars } from "@/lib/emailTemplates";
 import { escapeHtml } from "@/lib/escapeHtml";
 import { SITE_URL } from "@/lib/siteMeta";
 import { emitWebhookEvent } from "@/lib/webhookEvents";
@@ -40,7 +40,62 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   if (action === "approved" || action === "rejected") {
     await pool.query("UPDATE author_applications SET status = $1, reviewed_at = now() WHERE id = $2", [action, id]);
-    const tpl = await getEmailTemplate(action === "approved" ? "author-application-approved" : "author-application-rejected");
+    const tpl = await getEmailTemplateOptional(action === "approved" ? "author-application-approved" : "author-application-rejected");
+    if (tpl) {
+      await sendEmail({
+        to: application.email,
+        subject: applyTemplateVars(tpl.subject, vars),
+        html: applyTemplateVars(tpl.body_html, vars),
+        from: tpl.from_email,
+        templateKey: tpl.key,
+        category: "fixed",
+        trackOpens: tpl.track_opens,
+      });
+    }
+    emitWebhookEvent({
+      eventType: "author_application.reviewed",
+      source: "author_applications",
+      sourceRecordId: application.id,
+      contactEmail: application.email,
+      contactName: application.name,
+      data: { application_id: application.id, status: action },
+    }).catch(() => {});
+    return NextResponse.json({ ok: true, status: action });
+  }
+
+  if (action === "request_changes") {
+    await pool.query(
+      "UPDATE author_applications SET status = 'changes_requested', admin_note = $1, reviewed_at = now() WHERE id = $2",
+      [note, id]
+    );
+    const tpl = await getEmailTemplateOptional("author-application-changes-requested");
+    if (tpl) {
+      const withNote = { ...vars, note: escapeHtml(note as string).replace(/\n/g, "<br>") };
+      await sendEmail({
+        to: application.email,
+        subject: applyTemplateVars(tpl.subject, withNote),
+        html: applyTemplateVars(tpl.body_html, withNote),
+        from: tpl.from_email,
+        templateKey: tpl.key,
+        category: "fixed",
+        trackOpens: tpl.track_opens,
+      });
+    }
+    emitWebhookEvent({
+      eventType: "author_application.reviewed",
+      source: "author_applications",
+      sourceRecordId: application.id,
+      contactEmail: application.email,
+      contactName: application.name,
+      data: { application_id: application.id, status: "changes_requested", note },
+    }).catch(() => {});
+    return NextResponse.json({ ok: true, status: "changes_requested" });
+  }
+
+  // accept_draft
+  await pool.query("UPDATE author_applications SET status = 'accepted', reviewed_at = now() WHERE id = $1", [id]);
+  const tpl = await getEmailTemplateOptional("author-application-draft-accepted");
+  if (tpl) {
     await sendEmail({
       to: application.email,
       subject: applyTemplateVars(tpl.subject, vars),
@@ -50,40 +105,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       category: "fixed",
       trackOpens: tpl.track_opens,
     });
-    return NextResponse.json({ ok: true, status: action });
   }
-
-  if (action === "request_changes") {
-    await pool.query(
-      "UPDATE author_applications SET status = 'changes_requested', admin_note = $1, reviewed_at = now() WHERE id = $2",
-      [note, id]
-    );
-    const tpl = await getEmailTemplate("author-application-changes-requested");
-    const withNote = { ...vars, note: escapeHtml(note as string).replace(/\n/g, "<br>") };
-    await sendEmail({
-      to: application.email,
-      subject: applyTemplateVars(tpl.subject, withNote),
-      html: applyTemplateVars(tpl.body_html, withNote),
-      from: tpl.from_email,
-      templateKey: tpl.key,
-      category: "fixed",
-      trackOpens: tpl.track_opens,
-    });
-    return NextResponse.json({ ok: true, status: "changes_requested" });
-  }
-
-  // accept_draft
-  await pool.query("UPDATE author_applications SET status = 'accepted', reviewed_at = now() WHERE id = $1", [id]);
-  const tpl = await getEmailTemplate("author-application-draft-accepted");
-  await sendEmail({
-    to: application.email,
-    subject: applyTemplateVars(tpl.subject, vars),
-    html: applyTemplateVars(tpl.body_html, vars),
-    from: tpl.from_email,
-    templateKey: tpl.key,
-    category: "fixed",
-    trackOpens: tpl.track_opens,
-  });
   emitWebhookEvent({
     eventType: "author_application.accepted",
     source: "author_applications",

@@ -62,7 +62,7 @@ export default async function EmailWorkflowCanvasPage({ params }: { params: Prom
   const path = [triggerNodeId, ...orderedIds];
   const edges: Edge[] = path.slice(0, -1).map((source, index) => ({ id: `journey-edge-${index}`, source, target: path[index + 1], animated: true, style: { stroke: "#525252", strokeWidth: 2 } }));
   const emailTemplates = [
-    ...fixedTemplates.map((template) => ({ value: `fixed:${template.key}`, label: `Transactional · ${template.label}`, subject: template.subject, body: template.body_html, fromEmail: template.from_email })),
+    ...fixedTemplates.map((template) => ({ value: `fixed:${template.key}`, label: `Account & security · ${template.label}`, subject: template.subject, body: template.body_html, fromEmail: template.from_email })),
     ...libraryTemplates.map((template) => ({ value: `library:${template.id}`, label: `Email library · ${template.name}`, subject: template.subject, body: template.body_html })),
   ];
 

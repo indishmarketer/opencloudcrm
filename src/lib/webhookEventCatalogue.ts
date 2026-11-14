@@ -6,7 +6,7 @@
  * comment for the full pattern). */
 export const WEBHOOK_EVENT_TYPES = [
   { key: "contact.created", label: "New contact identified", description: "A brand-new person entered the CRM (signup, newsletter, contact form, voice lead, etc.) for the first time. It fires from the contacts table itself, so it cannot tell you which form they came from -- to start a workflow from one specific form, use 'Custom form submitted' and pick that form." },
-  { key: "user.verified", label: "Account email verified", description: "Someone verifies their email and their account becomes active." },
+  { key: "user.verified", label: "New signup (email verified)", description: "Someone finishes signing up by verifying their email, and their account becomes active." },
   { key: "newsletter.subscribed", label: "Newsletter subscribed", description: "Someone confirms a newsletter signup via the OTP code." },
   { key: "newsletter.unsubscribed", label: "Newsletter unsubscribed", description: "Someone unsubscribes from marketing email." },
   { key: "email.bounced", label: "Email bounced", description: "An email provider reports a bounce; includes whether it is permanent, temporary, or undetermined." },
@@ -22,10 +22,13 @@ export const WEBHOOK_EVENT_TYPES = [
   { key: "contact_form.submitted", label: "Contact form submitted", description: "Someone submits the public contact form." },
   { key: "external_webhook.received", label: "External webhook received", description: "A signed inbound webhook reaches this deployment; use the source slug and payload fields in conditions and actions." },
   { key: "meeting.booked", label: "Meeting booked", description: "A visitor books a meeting and receives a confirmed time." },
+  { key: "webinar.registered", label: "Webinar registered", description: "A visitor registers for a webinar session, or moves to a different session time." },
   { key: "author_application.submitted", label: "Author application submitted", description: "Someone applies to write for the blog." },
+  { key: "author_application.reviewed", label: "Author application reviewed", description: "An admin approves, rejects, or requests changes on an author application; the status field in the payload tells you which." },
   { key: "author_application.draft_submitted", label: "Author draft submitted", description: "An approved applicant submits (or resubmits) their draft link." },
   { key: "author_application.accepted", label: "Author draft accepted", description: "An admin accepts an applicant's draft, ready to publish." },
   { key: "directory_tool.submitted", label: "Tool directory submission", description: "Someone submits a tool to the directory." },
+  { key: "directory_tool.reviewed", label: "Tool directory submission reviewed", description: "An admin approves, requests changes, or rejects a tool submission; the status field in the payload tells you which." },
   { key: "review.submitted", label: "Review submitted", description: "Someone submits a testimonial/review." },
   { key: "community.post_created", label: "Community post created", description: "Someone creates a forum post (General or PRO space)." },
   { key: "community.member_inactive", label: "Community member inactive", description: "An active community member has not created their first post." },

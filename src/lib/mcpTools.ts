@@ -541,7 +541,7 @@ export function createMcpTools(authHeader: string): ToolDef[] {
     },
     {
       name: "list_email_templates",
-      description: "List every transactional email template this deployment sends (welcome emails, receipts, reminders...).",
+      description: "List the fixed, non-deletable account & security emails this deployment sends (verification, password reset, login links, account changes).",
       inputSchema: {},
       handler: async () => unwrap(emailListGET(fakeRequest(authHeader))),
     },
@@ -553,7 +553,7 @@ export function createMcpTools(authHeader: string): ToolDef[] {
     },
     {
       name: "update_email_template",
-      description: "Edit an existing email template's subject, body, sender or open-tracking. There is no create or delete: every key is sent by one specific trigger elsewhere in the app.",
+      description: "Edit an existing account & security email's subject, body, sender or open-tracking. There is no create here: every key is sent by one specific trigger elsewhere in the app.",
       inputSchema: {
         key: z.string(),
         subject: z.string(),
@@ -568,13 +568,13 @@ export function createMcpTools(authHeader: string): ToolDef[] {
     },
     {
       name: "list_content_templates",
-      description: "List the reusable Email Library content templates -- one-off content picked from a campaign, an automation step, or when emailing a contact directly. Distinct from the fixed-trigger transactional templates in list_email_templates.",
+      description: "List the reusable Email Library content templates -- one-off content picked from a campaign, an automation step, or when emailing a contact directly. Distinct from the fixed account & security templates in list_email_templates.",
       inputSchema: {},
       handler: async () => unwrap(contentTemplatesListGET(fakeRequest(authHeader))),
     },
     {
       name: "create_content_template",
-      description: "Create a new Email Library content template (name, subject, HTML body). Unlike transactional templates, these can be freely created.",
+      description: "Create a new Email Library content template (name, subject, HTML body). Unlike account & security templates, these can be freely created.",
       inputSchema: {
         name: z.string(),
         subject: z.string(),

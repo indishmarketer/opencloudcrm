@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAdminSession } from "@/lib/auth";
 import { pool } from "@/lib/db";
 import { sendEmailWithRetry } from "@/lib/emailOutbox";
-import { getEmailTemplate, applyTemplateVars } from "@/lib/emailTemplates";
+import { getEmailTemplateOptional, applyTemplateVars } from "@/lib/emailTemplates";
 import { firstNameOf } from "@/lib/emailAutomation";
 import { escapeHtml } from "@/lib/escapeHtml";
+import { emitWebhookEvent } from "@/lib/webhookEvents";
 import { SITE_URL } from "@/lib/liveSiteUrl";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -31,21 +32,32 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const user = userResult.rows[0];
     const course = courseResult.rows[0];
     if (user && course) {
-      const tpl = await getEmailTemplate("course-access-upgraded");
-      const vars = {
-        first_name: escapeHtml(firstNameOf(user.name)),
-        course_title: escapeHtml(course.title),
-        course_url: `${SITE_URL}/account/courses/${encodeURIComponent(course.slug)}`,
-      };
-      await sendEmailWithRetry({
-        to: user.email,
-        subject: applyTemplateVars(tpl.subject, vars),
-        html: applyTemplateVars(tpl.body_html, vars),
-        from: tpl.from_email,
-        templateKey: tpl.key,
-        category: "fixed",
-        trackOpens: tpl.track_opens,
-      });
+      const tpl = await getEmailTemplateOptional("course-access-upgraded");
+      if (tpl) {
+        const vars = {
+          first_name: escapeHtml(firstNameOf(user.name)),
+          course_title: escapeHtml(course.title),
+          course_url: `${SITE_URL}/account/courses/${encodeURIComponent(course.slug)}`,
+        };
+        await sendEmailWithRetry({
+          to: user.email,
+          subject: applyTemplateVars(tpl.subject, vars),
+          html: applyTemplateVars(tpl.body_html, vars),
+          from: tpl.from_email,
+          templateKey: tpl.key,
+          category: "fixed",
+          trackOpens: tpl.track_opens,
+        });
+      }
+      emitWebhookEvent({
+        eventType: "course.upgraded",
+        source: "course_enrollments",
+        sourceRecordId: enrollmentId,
+        contactEmail: user.email,
+        contactName: user.name,
+        userId: row.user_id,
+        data: { course_id: row.course_id, course_title: course.title, course_slug: course.slug, tier: "pro", method: "manual" },
+      }).catch(() => {});
     }
   }
 

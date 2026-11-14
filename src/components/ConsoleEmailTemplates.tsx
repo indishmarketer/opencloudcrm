@@ -14,7 +14,6 @@ const CATEGORY_LABELS: Record<string, string> = {
   meetings: "Meetings",
   webinars: "Webinars",
   reviews: "Reviews",
-  "open-cloud-crm": "Open Cloud CRM leads",
 };
 
 export type EmailTemplateRow = {
@@ -189,7 +188,7 @@ export default function ConsoleEmailTemplates({
 
   async function removeTemplate(template: EmailTemplateRow) {
     const ok = await confirm({
-      message: `Permanently delete “${template.label}” from the transactional email system?`,
+      message: `Permanently delete “${template.label}”?`,
       confirmLabel: "Delete email",
     });
     if (!ok) return;
@@ -227,8 +226,8 @@ export default function ConsoleEmailTemplates({
     <div>
       {dialog}
       <p className="max-w-2xl text-sm text-ink-soft">
-        Every fixed (transactional) email this site can send — {templates.length} in total. Click one to edit its
-        subject and content, or send yourself a test copy first.
+        Every fixed, non-deletable email this site depends on to function — {templates.length} in total. Click one
+        to edit its subject and content, or send yourself a test copy first.
       </p>
 
       <nav className="mt-6 flex gap-1 overflow-x-auto border-b border-line" aria-label="Email categories">

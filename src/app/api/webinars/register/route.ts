@@ -7,6 +7,7 @@ import { consumeRateLimit } from "@/lib/rateLimit";
 import { isConsoleOwner } from "@/lib/consoleAdmins";
 import { upcomingWebinarSessions, type WebinarScheduleRule } from "@/lib/webinarSchedule";
 import { sendWebinarEmail } from "@/lib/webinarEmails";
+import { emitWebhookEvent } from "@/lib/webhookEvents";
 
 const registrationSchema = z.object({
   webinarId: z.coerce.number().int().positive(),
@@ -112,6 +113,15 @@ export async function POST(req: NextRequest) {
     } catch (error) {
       console.error("Webinar registration email failed:", error);
     }
+    emitWebhookEvent({
+      eventType: "webinar.registered",
+      source: "webinar_access",
+      sourceRecordId: registration.accessId,
+      contactEmail: email,
+      contactName: name,
+      userId: session.userId,
+      data: { webinar_id: webinar.id, webinar_title: webinar.title, webinar_slug: webinar.slug, session_start_at: registration.sessionStartAt },
+    }).catch(() => {});
   }
   return NextResponse.json({ ok: true, roomUrl, newlyRegistered: registration.newlyRegistered, sessionStartAt: registration.sessionStartAt });
 }

@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import { pool } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
-import { getEmailTemplate, applyTemplateVars } from "@/lib/emailTemplates";
+import { getEmailTemplateOptional, applyTemplateVars } from "@/lib/emailTemplates";
 import { escapeHtml } from "@/lib/escapeHtml";
 import { getGoogleReviewUrl } from "@/lib/googleReview";
 import { createNotification } from "@/lib/notifications";
@@ -120,7 +120,14 @@ export async function dispatchDueReviewRequests(limit = 25) {
       if (row.marketing_status !== "subscribed" || row.deliverability_status !== "ok") throw new Error("No current marketing consent or address is not deliverable");
       const reviewUrl = await getGoogleReviewUrl();
       if (!reviewUrl) throw new Error("Official Google review link is missing");
-      const template = await getEmailTemplate(row.template_key);
+      const template = await getEmailTemplateOptional(row.template_key);
+      if (!template) {
+        // The owner deleted this review-request email's content -- treat
+        // the request as done rather than retrying forever against a row
+        // that will never come back.
+        await pool.query(`UPDATE review_requests SET status='sent',sent_at=now(),updated_at=now() WHERE id=$1`, [row.id]);
+        continue;
+      }
       const firstName = String(row.name || "there").trim().split(/\s+/)[0] || "there";
       const vars = { first_name: escapeHtml(firstName), google_review_url: escapeHtml(reviewUrl) };
       const mail = await sendEmail({

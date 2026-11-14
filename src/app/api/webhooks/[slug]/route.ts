@@ -2,9 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { pool } from "@/lib/db";
 import { confirmContactSubscribed, recordContactActivity } from "@/lib/contacts";
-import { sendOpenCloudCrmWelcomeEmailOnce } from "@/lib/openCloudCrmLeads";
 import { emitWebhookEvent } from "@/lib/webhookEvents";
-import { hasActiveInboundWebhookAction } from "@/lib/workflows";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   const secret = process.env.WEBHOOK_SHARED_SECRET;
@@ -72,7 +70,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
 
   }
 
-  let eventEmitted = false;
   await emitWebhookEvent({
     eventType: "external_webhook.received",
     source: "webhook_events",
@@ -83,15 +80,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
       source_slug: safeSlug,
       payload: obj,
     },
-  }).then(() => { eventEmitted = true; }).catch((err) => console.error("Inbound webhook workflow event failed (non-fatal):", err));
-
-  // Keep the existing welcome email as a fallback. Once a visual workflow
-  // filters for this source slug and sends email, it owns the channel so the
-  // lead does not receive duplicate messages.
-  if (safeSlug === "open-cloud-crm" && email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    const managed = eventEmitted && await hasActiveInboundWebhookAction(safeSlug, "email").catch(() => false);
-    if (!managed) await sendOpenCloudCrmWelcomeEmailOnce(email, name);
-  }
+  }).catch((err) => console.error("Inbound webhook workflow event failed (non-fatal):", err));
 
   return NextResponse.json({ ok: true });
 }

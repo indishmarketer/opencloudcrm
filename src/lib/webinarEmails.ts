@@ -1,5 +1,5 @@
 import { sendEmail } from "@/lib/email";
-import { applyTemplateVars, getEmailTemplate } from "@/lib/emailTemplates";
+import { applyTemplateVars, getEmailTemplateOptional } from "@/lib/emailTemplates";
 import { escapeHtml } from "@/lib/escapeHtml";
 import { buildIcsInvite, icsAttachment } from "@/lib/ics";
 import { formatWebinarSessionWindow, webinarDurationLabel, type WebinarEmailType } from "@/lib/webinarReminders";
@@ -29,7 +29,8 @@ function templateKey(type: "confirmation" | WebinarEmailType): string {
 }
 
 export async function sendWebinarEmail(type: "confirmation" | WebinarEmailType, input: WebinarEmailInput): Promise<boolean> {
-  const template = await getEmailTemplate(templateKey(type));
+  const template = await getEmailTemplateOptional(templateKey(type));
+  if (!template) return true;
   const roomUrl = `${SITE_URL}/webinars/${encodeURIComponent(input.slug)}/room`;
   const landingUrl = `${SITE_URL}/webinars/${encodeURIComponent(input.slug)}`;
   const vars = {
@@ -69,7 +70,8 @@ export async function sendWebinarEmail(type: "confirmation" | WebinarEmailType, 
 }
 
 async function deliverTemplate(key: string, to: string, vars: Record<string, string>): Promise<boolean> {
-  const template = await getEmailTemplate(key);
+  const template = await getEmailTemplateOptional(key);
+  if (!template) return true;
   const result = await sendEmail({
     to,
     subject: applyTemplateVars(template.subject, vars),

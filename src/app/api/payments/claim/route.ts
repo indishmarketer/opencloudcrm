@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { pool, withTransaction } from "@/lib/db";
 import { sendEmailWithRetry } from "@/lib/emailOutbox";
-import { getEmailTemplate, applyTemplateVars } from "@/lib/emailTemplates";
+import { getEmailTemplateOptional, applyTemplateVars } from "@/lib/emailTemplates";
 import { escapeHtml } from "@/lib/escapeHtml";
 import { consumeRateLimit } from "@/lib/rateLimit";
 import { emitWebhookEvent } from "@/lib/webhookEvents";
@@ -49,8 +49,8 @@ export async function POST(req: NextRequest) {
   }
 
   const adminEmail = process.env.ADMIN_EMAIL;
-  if (adminEmail) {
-    const tpl = await getEmailTemplate("payment-claim-admin-notify");
+  const tpl = adminEmail ? await getEmailTemplateOptional("payment-claim-admin-notify") : null;
+  if (adminEmail && tpl) {
     const vars = {
       email: escapeHtml(session.email),
       method: escapeHtml(String(method)),
@@ -78,20 +78,22 @@ export async function POST(req: NextRequest) {
     userId: session.userId,
     data: { claim_id: inserted, course_id: courseId, course_title: course.rows[0].title, method, reference },
   }).catch(() => {});
-  const receivedTpl = await getEmailTemplate("payment-claim-received");
-  const receivedVars = {
-    first_name: escapeHtml((user.rows[0]?.name || "there").trim().split(/\s+/)[0]),
-    course_title: escapeHtml(course.rows[0].title),
-  };
-  await sendEmailWithRetry({
-    to: session.email,
-    subject: applyTemplateVars(receivedTpl.subject, receivedVars),
-    html: applyTemplateVars(receivedTpl.body_html, receivedVars),
-    from: receivedTpl.from_email,
-    templateKey: receivedTpl.key,
-    category: "fixed",
-    trackOpens: receivedTpl.track_opens,
-  });
+  const receivedTpl = await getEmailTemplateOptional("payment-claim-received");
+  if (receivedTpl) {
+    const receivedVars = {
+      first_name: escapeHtml((user.rows[0]?.name || "there").trim().split(/\s+/)[0]),
+      course_title: escapeHtml(course.rows[0].title),
+    };
+    await sendEmailWithRetry({
+      to: session.email,
+      subject: applyTemplateVars(receivedTpl.subject, receivedVars),
+      html: applyTemplateVars(receivedTpl.body_html, receivedVars),
+      from: receivedTpl.from_email,
+      templateKey: receivedTpl.key,
+      category: "fixed",
+      trackOpens: receivedTpl.track_opens,
+    });
+  }
 
   return NextResponse.json({ ok: true });
 }

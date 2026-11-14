@@ -3,7 +3,7 @@ import crypto from "crypto";
 import { sendEmailWithRetry } from "@/lib/emailOutbox";
 import { raiseAlert } from "@/lib/systemAlerts";
 import { handleRefund, handleDispute } from "@/lib/paymentRefunds";
-import { getEmailTemplate, applyTemplateVars } from "@/lib/emailTemplates";
+import { getEmailTemplateOptional, applyTemplateVars } from "@/lib/emailTemplates";
 import { escapeHtml } from "@/lib/escapeHtml";
 import { verifyRazorpayPurchaseToken } from "@/lib/razorpayPurchaseToken";
 import { grantCoursePurchase } from "@/lib/coursePurchaseGrant";
@@ -181,21 +181,23 @@ export async function POST(req: NextRequest) {
       detail: `Payer email: ${payerEmail || "unknown"}. Find the buyer and grant access by hand, then mark this resolved.`,
       link: "/console/courses/students",
     });
-    const alertTpl = await getEmailTemplate("razorpay-unmatched-payment-alert");
-    const alertVars = {
-      payment_id: escapeHtml(paymentId || "unknown"),
-      payer_email: escapeHtml(payerEmail || "unknown"),
-    };
-    await sendEmailWithRetry({
-      to: emailAt("support"),
-      subject: applyTemplateVars(alertTpl.subject, alertVars),
-      html: applyTemplateVars(alertTpl.body_html, alertVars),
-      from: alertTpl.from_email,
-      critical: alertTpl.critical,
-      templateKey: alertTpl.key,
-      category: "fixed",
-      trackOpens: alertTpl.track_opens,
-    });
+    const alertTpl = await getEmailTemplateOptional("razorpay-unmatched-payment-alert");
+    if (alertTpl) {
+      const alertVars = {
+        payment_id: escapeHtml(paymentId || "unknown"),
+        payer_email: escapeHtml(payerEmail || "unknown"),
+      };
+      await sendEmailWithRetry({
+        to: emailAt("support"),
+        subject: applyTemplateVars(alertTpl.subject, alertVars),
+        html: applyTemplateVars(alertTpl.body_html, alertVars),
+        from: alertTpl.from_email,
+        critical: alertTpl.critical,
+        templateKey: alertTpl.key,
+        category: "fixed",
+        trackOpens: alertTpl.track_opens,
+      });
+    }
     return NextResponse.json({ ok: true, skipped: "could not match user/course, owner alerted" });
   }
 

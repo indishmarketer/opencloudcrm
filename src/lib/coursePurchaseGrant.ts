@@ -1,7 +1,7 @@
 import { pool, withTransaction } from "@/lib/db";
 import { sendEmailWithRetry } from "@/lib/emailOutbox";
 import { raiseAlert } from "@/lib/systemAlerts";
-import { getEmailTemplate, applyTemplateVars } from "@/lib/emailTemplates";
+import { getEmailTemplateOptional, applyTemplateVars } from "@/lib/emailTemplates";
 import { triggerEmailFlow, firstNameOf } from "@/lib/emailAutomation";
 import { escapeHtml } from "@/lib/escapeHtml";
 import { emitWebhookEvent } from "@/lib/webhookEvents";
@@ -169,8 +169,8 @@ export async function grantCoursePurchase(input: {
       link: "/console/courses/students",
     });
     const adminEmail = process.env.ADMIN_EMAIL;
-    if (adminEmail) {
-      const failTpl = await getEmailTemplate("payment-grant-failed-alert");
+    const failTpl = adminEmail ? await getEmailTemplateOptional("payment-grant-failed-alert") : null;
+    if (adminEmail && failTpl) {
       const failVars = {
         provider,
         payer_email: escapeHtml(user.email),
@@ -209,21 +209,23 @@ export async function grantCoursePurchase(input: {
     return "granted";
   }
 
-  const grantTpl = await getEmailTemplate("course-access-granted-pro");
-  const grantVars = {
-    first_name: escapeHtml(firstNameOf(user.name)),
-    course_title: escapeHtml(course.title),
-    course_url: `${SITE_URL}/account/courses/${encodeURIComponent(courseSlug)}`,
-  };
-  await sendEmailWithRetry({
-    to: user.email,
-    subject: applyTemplateVars(grantTpl.subject, grantVars),
-    html: applyTemplateVars(grantTpl.body_html, grantVars),
-    from: grantTpl.from_email,
-    templateKey: grantTpl.key,
-    category: "fixed",
-    trackOpens: grantTpl.track_opens,
-  });
+  const grantTpl = await getEmailTemplateOptional("course-access-granted-pro");
+  if (grantTpl) {
+    const grantVars = {
+      first_name: escapeHtml(firstNameOf(user.name)),
+      course_title: escapeHtml(course.title),
+      course_url: `${SITE_URL}/account/courses/${encodeURIComponent(courseSlug)}`,
+    };
+    await sendEmailWithRetry({
+      to: user.email,
+      subject: applyTemplateVars(grantTpl.subject, grantVars),
+      html: applyTemplateVars(grantTpl.body_html, grantVars),
+      from: grantTpl.from_email,
+      templateKey: grantTpl.key,
+      category: "fixed",
+      trackOpens: grantTpl.track_opens,
+    });
+  }
   triggerEmailFlow(
     wasFreeBefore ? "course_upgrade_to_pro" : "course_purchase",
     user.email,

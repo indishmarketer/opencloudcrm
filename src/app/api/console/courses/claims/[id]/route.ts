@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAdminSession } from "@/lib/auth";
 import { pool } from "@/lib/db";
 import { sendEmailWithRetry } from "@/lib/emailOutbox";
-import { getEmailTemplate, applyTemplateVars } from "@/lib/emailTemplates";
+import { getEmailTemplateOptional, applyTemplateVars } from "@/lib/emailTemplates";
 import { triggerEmailFlow, firstNameOf } from "@/lib/emailAutomation";
 import { escapeHtml } from "@/lib/escapeHtml";
 import { emitWebhookEvent } from "@/lib/webhookEvents";
@@ -63,21 +63,23 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     );
     const row = info.rows[0];
     if (row) {
-      const tpl = await getEmailTemplate("course-access-granted-claim-approved");
-      const vars = {
-        first_name: escapeHtml(firstNameOf(row.name)),
-        course_title: escapeHtml(row.title),
-        course_url: `${SITE_URL}/account/courses/${encodeURIComponent(row.slug)}`,
-      };
-      await sendEmailWithRetry({
-        to: row.email,
-        subject: applyTemplateVars(tpl.subject, vars),
-        html: applyTemplateVars(tpl.body_html, vars),
-        from: tpl.from_email,
-        templateKey: tpl.key,
-        category: "fixed",
-        trackOpens: tpl.track_opens,
-      });
+      const tpl = await getEmailTemplateOptional("course-access-granted-claim-approved");
+      if (tpl) {
+        const vars = {
+          first_name: escapeHtml(firstNameOf(row.name)),
+          course_title: escapeHtml(row.title),
+          course_url: `${SITE_URL}/account/courses/${encodeURIComponent(row.slug)}`,
+        };
+        await sendEmailWithRetry({
+          to: row.email,
+          subject: applyTemplateVars(tpl.subject, vars),
+          html: applyTemplateVars(tpl.body_html, vars),
+          from: tpl.from_email,
+          templateKey: tpl.key,
+          category: "fixed",
+          trackOpens: tpl.track_opens,
+        });
+      }
       triggerEmailFlow(
         wasFreeBefore ? "course_upgrade_to_pro" : "course_purchase",
         row.email,

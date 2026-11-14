@@ -3,11 +3,12 @@ import { randomUUID } from "node:crypto";
 import { pool, withTransaction } from "@/lib/db";
 import { createEmailVerificationToken } from "@/lib/auth";
 import { sendEmailWithRetry } from "@/lib/emailOutbox";
-import { getEmailTemplate, applyTemplateVars } from "@/lib/emailTemplates";
+import { getEmailTemplateOptional, applyTemplateVars } from "@/lib/emailTemplates";
 import { firstNameOf } from "@/lib/emailAutomation";
 import { escapeHtml } from "@/lib/escapeHtml";
 import { generateUniqueUsername } from "@/lib/community";
 import { normalizeContactEmail } from "@/lib/contacts";
+import { emitWebhookEvent } from "@/lib/webhookEvents";
 import { SITE_URL } from "@/lib/liveSiteUrl";
 
 type Account = { id: number; email: string; name: string | null; verified: boolean; created: boolean };
@@ -77,16 +78,27 @@ export async function grantCourseManually(account: Account, course: { id: number
     vars.signin_url = `${SITE_URL}/api/auth/verify-email?token=${token}&redirect=${encodeURIComponent(coursePath)}`;
   }
 
-  const tpl = await getEmailTemplate(needsSignIn ? "course-access-granted-new-account" : "course-access-granted-manual");
-  const sent = await sendEmailWithRetry({
-    to: account.email,
-    subject: applyTemplateVars(tpl.subject, vars),
-    html: applyTemplateVars(tpl.body_html, vars),
-    from: tpl.from_email,
-    critical: true,
-    templateKey: tpl.key,
-    category: "fixed",
-    trackOpens: tpl.track_opens,
-  });
-  return { emailed: sent.ok || Boolean(sent.queued) };
+  const tpl = await getEmailTemplateOptional(needsSignIn ? "course-access-granted-new-account" : "course-access-granted-manual");
+  const sent = tpl
+    ? await sendEmailWithRetry({
+        to: account.email,
+        subject: applyTemplateVars(tpl.subject, vars),
+        html: applyTemplateVars(tpl.body_html, vars),
+        from: tpl.from_email,
+        critical: true,
+        templateKey: tpl.key,
+        category: "fixed",
+        trackOpens: tpl.track_opens,
+      })
+    : null;
+  emitWebhookEvent({
+    eventType: "course.enrolled",
+    source: "course_enrollments",
+    sourceRecordId: `${account.id}:${course.id}`,
+    contactEmail: account.email,
+    contactName: account.name,
+    userId: account.id,
+    data: { course_id: course.id, course_title: course.title, course_slug: course.slug, tier, method: "manual" },
+  }).catch(() => {});
+  return { emailed: sent ? sent.ok || Boolean(sent.queued) : false };
 }

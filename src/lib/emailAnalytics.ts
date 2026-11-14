@@ -11,7 +11,7 @@ export const ANALYTICS_TYPES = [
   { value: "", label: "All email" },
   { value: "campaign", label: "Campaigns" },
   { value: "automation", label: "Automation" },
-  { value: "fixed", label: "Transactional" },
+  { value: "fixed", label: "Account & security" },
 ] as const;
 
 export const RANGE_PRESETS = [
