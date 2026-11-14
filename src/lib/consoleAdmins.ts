@@ -1,5 +1,5 @@
 import { pool } from "@/lib/db";
-import { getEmailTemplate, applyTemplateVars } from "@/lib/emailTemplates";
+import { getEmailTemplateOptional, applyTemplateVars } from "@/lib/emailTemplates";
 import { escapeHtml } from "@/lib/escapeHtml";
 import { SITE_URL } from "@/lib/liveSiteUrl";
 
@@ -51,19 +51,24 @@ export async function inviteConsoleAdmin(
   // A top-level import would make isConsoleOwner/isAuthorizedConsoleEmail
   // (used by anything checking admin access, including outside Next's
   // runtime) drag that whole chain in just to load this module.
-  const tpl = await getEmailTemplate("console-admin-invite");
-  const vars = { invited_by: escapeHtml(invitedBy), login_url: `${SITE_URL}/console/login` };
-  const { sendEmail } = await import("@/lib/email");
-  sendEmail({
-    to: normalized,
-    subject: applyTemplateVars(tpl.subject, vars),
-    html: applyTemplateVars(tpl.body_html, vars),
-    from: tpl.from_email,
-    critical: tpl.critical,
-    templateKey: tpl.key,
-    category: "fixed",
-    trackOpens: tpl.track_opens,
-  }).catch((err) => console.error("Console admin invite email failed:", err));
+  const tpl = await getEmailTemplateOptional("console-admin-invite");
+  if (tpl) {
+    const vars = { invited_by: escapeHtml(invitedBy), login_url: `${SITE_URL}/console/login` };
+    const { sendEmail } = await import("@/lib/email");
+    sendEmail({
+      to: normalized,
+      subject: applyTemplateVars(tpl.subject, vars),
+      html: applyTemplateVars(tpl.body_html, vars),
+      from: tpl.from_email,
+      critical: tpl.critical,
+      templateKey: tpl.key,
+      category: "fixed",
+      trackOpens: tpl.track_opens,
+    }).catch((err) => console.error("Console admin invite email failed:", err));
+  }
+  // The DB row above is the actual access grant -- an invite with no
+  // email sent is still a real invite; the new admin can request their own
+  // console login link to get in (see magic-link-login).
 
   return { ok: true };
 }

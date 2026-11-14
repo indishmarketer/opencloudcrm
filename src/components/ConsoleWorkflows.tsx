@@ -9,23 +9,10 @@ type Trigger = { value: string; label: string; description: string };
 type Folder = { id: number; name: string };
 type Workflow = { id: number; name: string; description: string; status: string; trigger_type: string; trigger_key: string | null; folder_id: number | null; graph: { nodes: { data: { kind: string; label?: string } }[] }; updated_at: string };
 type EmailFlow = { id: number; name: string; trigger_key: string; active: boolean; course_id: number | null; course_title: string | null; folder_id: number | null; step_count: number; has_wait: boolean; has_email_action: boolean; has_review_request: boolean; step_titles: string[] };
-type SystemFlow = { id: string; name: string; trigger: string; actions: readonly string[]; detail: string; source: string };
 type ToolKind = "email" | "review" | "whatsapp" | "webhook" | "condition" | "course_access" | "wait" | "stop";
 
 function TrashIcon() {
   return <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M3.5 6.5h17M9 6.5V4h6v2.5m-9.5 0 1 14h11l1-14M10 10v7m4-7v7" /></svg>;
-}
-
-function LockIcon() {
-  return <svg viewBox="0 0 24 24" aria-hidden="true" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>;
-}
-
-function toolsForSystemFlow(actions: readonly string[]): ToolKind[] {
-  const text = actions.join(" ").toLowerCase();
-  const tools: ToolKind[] = [];
-  if (text.includes("whatsapp")) tools.push("whatsapp");
-  if (text.includes("verify") || text.includes("code")) tools.push("condition");
-  return tools;
 }
 
 function TriggerIcon() {
@@ -60,12 +47,11 @@ function toolsForWorkflow(workflow: Workflow): ToolKind[] {
   return Array.from(new Set(workflow.graph.nodes.filter((node) => node.data.kind !== "trigger" && allowed.has(node.data.kind as ToolKind)).map((node) => node.data.kind as ToolKind)));
 }
 
-export default function ConsoleWorkflows({ workflows, triggers, emailFlows, folders, systemFlows, webhookDestinations }: {
+export default function ConsoleWorkflows({ workflows, triggers, emailFlows, folders, webhookDestinations }: {
   workflows: Workflow[];
   triggers: Trigger[];
   emailFlows: EmailFlow[];
   folders: Folder[];
-  systemFlows: readonly SystemFlow[];
   webhookDestinations: { id: number; name: string; enabled: boolean; event_types: string[] }[];
 }) {
   const router = useRouter();
@@ -174,16 +160,10 @@ export default function ConsoleWorkflows({ workflows, triggers, emailFlows, fold
         </div>
         {showFolderForm && <div className="mb-4 flex max-w-xl flex-wrap items-center gap-2 rounded-xl border border-line bg-paper p-3"><label className="min-w-48 flex-1"><span className="sr-only">New folder name</span><input autoFocus maxLength={80} value={folderName} onChange={(event) => setFolderName(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void createFolder(); if (event.key === "Escape") setShowFolderForm(false); }} placeholder="Folder name" className="w-full rounded-lg border border-line px-3 py-2 text-sm outline-none focus:border-ink" /></label><button type="button" onClick={() => void createFolder()} className="rounded-full bg-ink px-4 py-2 text-sm font-medium text-paper">Create folder</button><button type="button" onClick={() => { setShowFolderForm(false); setFolderName(""); }} className="rounded-full border border-line px-4 py-2 text-sm">Cancel</button></div>}
         <p className="mb-3 text-sm text-ink-soft">Build event-based or email workflows on the canvas. Delete stops future sends and keeps existing history.</p>
-        {!visibleWorkflows.length && !visibleEmailFlows.length && !systemFlows.length ? <p className="rounded-2xl border border-dashed border-line p-8 text-center text-sm text-ink-soft">{workflows.length || emailFlows.length ? "No workflows match this folder or search." : "No workflows yet. Start with a site event or an incoming webhook."}</p> : <div className="overflow-x-auto rounded-xl border border-line bg-paper">
+        {!visibleWorkflows.length && !visibleEmailFlows.length ? <p className="rounded-2xl border border-dashed border-line p-8 text-center text-sm text-ink-soft">{workflows.length || emailFlows.length ? "No workflows match this folder or search." : "No workflows yet. Start with a site event or an incoming webhook."}</p> : <div className="overflow-x-auto rounded-xl border border-line bg-paper">
           <table className="w-full min-w-[680px] table-fixed border-collapse text-left">
             <thead><tr className="border-b border-line text-sm text-ink-soft"><th scope="col" className="w-[38%] px-4 py-3 font-medium">Name</th><th scope="col" className="w-32 px-4 py-3 font-medium">Status</th><th scope="col" className="px-4 py-3 font-medium">Tools</th><th scope="col" className="w-36 px-4 py-3 text-center font-medium">Actions</th></tr></thead>
             <tbody>
-              {systemFlows.map((flow) => <tr key={`system-${flow.id}`} className="border-b border-line last:border-0 bg-paper-soft/40">
-                <td className="px-4 py-3"><span className="flex min-w-0 items-center gap-3 font-medium text-ink"><span className="shrink-0 text-ink"><TriggerIcon /></span><span className="truncate">{flow.name}</span></span></td>
-                <td className="px-4 py-3"><span className="inline-flex items-center rounded-full bg-paper-soft px-2.5 py-1 text-xs font-medium text-ink-soft" title={flow.detail}>Always on</span></td>
-                <td className="px-4 py-3"><ToolIcons tools={toolsForSystemFlow(flow.actions)} /></td>
-                <td className="px-4 py-3"><div className="flex items-center justify-center gap-2"><span title={`Required by the application. ${flow.detail}`} className="inline-flex items-center gap-1.5 rounded-full border border-line px-3 py-2 text-xs font-medium text-ink-soft"><LockIcon /> Platform managed</span></div></td>
-              </tr>)}
               {visibleWorkflows.map((workflow) => <tr key={`workflow-${workflow.id}`} className="border-b border-line last:border-0 hover:bg-paper-soft/60">
                 <td className="px-4 py-3"><a href={`/console/workflows/${workflow.id}`} className="flex min-w-0 items-center gap-3 font-medium text-ink hover:underline"><span className="shrink-0 text-ink"><TriggerIcon /></span><span className="truncate">{workflow.name}</span></a></td>
                 <td className="px-4 py-3"><WorkflowToggle on={workflow.status === "active"} label={`${workflow.status === "active" ? "Turn off" : "Turn on"} ${workflow.name}`} disabled={savingKey === `workflow-${workflow.id}`} onToggle={() => void toggleCustomWorkflow(workflow)} /></td>

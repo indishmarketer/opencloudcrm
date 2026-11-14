@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAdminSession } from "@/lib/auth";
 import { pool } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
-import { getEmailTemplate, applyTemplateVars } from "@/lib/emailTemplates";
+import { getEmailTemplateOptional, applyTemplateVars } from "@/lib/emailTemplates";
 import { escapeHtml } from "@/lib/escapeHtml";
 import { deleteFromR2 } from "@/lib/r2Upload";
 
@@ -41,7 +41,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       );
     }
 
-    const tpl = await getEmailTemplate("review-question-to-author");
+    const tpl = await getEmailTemplateOptional("review-question-to-author");
+    if (!tpl) {
+      return NextResponse.json(
+        { error: "This email's content has been deleted. Recreate it in Email -> Library before asking." },
+        { status: 409 }
+      );
+    }
     const vars = { name: escapeHtml(submission.name), note: escapeHtml(note).replace(/\n/g, "<br>") };
     const sendResult = await sendEmail({
       to: submission.email,

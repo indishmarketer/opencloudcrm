@@ -1,6 +1,6 @@
 import { pool } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
-import { getEmailTemplate, applyTemplateVars } from "@/lib/emailTemplates";
+import { getEmailTemplateOptional, applyTemplateVars } from "@/lib/emailTemplates";
 import { confirmContactDeliverable } from "@/lib/contacts";
 import { SITE_URL } from "@/lib/siteMeta";
 import crypto from "node:crypto";
@@ -35,7 +35,8 @@ export async function requestOtp(
     [email, code, purpose, expiresAt, linkToken, payload ? JSON.stringify(payload) : null]
   );
 
-  const tpl = await getEmailTemplate("otp-code");
+  const tpl = await getEmailTemplateOptional("otp-code");
+  if (!tpl) return false;
   const vars = { code, magic_link_url: `${SITE_URL}/verify?token=${linkToken}` };
   const result = await sendEmail({
     to: email,

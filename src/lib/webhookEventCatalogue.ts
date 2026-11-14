@@ -13,6 +13,7 @@ export const WEBHOOK_EVENT_TYPES = [
   { key: "email.complained", label: "Email spam complaint", description: "An email recipient reports a message as spam; the address is suppressed immediately." },
   { key: "course.enrolled", label: "Course enrolled", description: "Someone gets access to a course for the first time (free enroll or a fresh PRO purchase)." },
   { key: "course.upgraded", label: "Course upgraded to PRO", description: "An existing free learner upgrades to PRO on a course." },
+  { key: "course.revoked", label: "Course access revoked", description: "An admin removes someone's enrollment from a course." },
   { key: "course.completed", label: "Course completed", description: "Someone finishes every lesson they have access to in a course." },
   { key: "course.inactivity", label: "Course inactivity detected", description: "A course learner's last-activity timestamp and course progress; add a wait and send a reminder from one shared workflow." },
   { key: "payment.succeeded", label: "Payment succeeded", description: "A Razorpay or PayPal payment is captured and access is granted." },

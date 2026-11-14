@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { pool } from "@/lib/db";
 import { createEmailVerificationToken, safeRedirectPath } from "@/lib/auth";
 import { sendEmail } from "@/lib/email";
-import { getEmailTemplate, applyTemplateVars } from "@/lib/emailTemplates";
+import { getEmailTemplateOptional, applyTemplateVars } from "@/lib/emailTemplates";
 import { firstNameOf } from "@/lib/emailAutomation";
 import { escapeHtml } from "@/lib/escapeHtml";
+import { raiseAlert } from "@/lib/systemAlerts";
 import { checkRateLimit, privateRateLimitKey } from "@/lib/rateLimit";
 import { SITE_URL } from "@/lib/liveSiteUrl";
 import { z } from "zod";
@@ -42,18 +43,32 @@ export async function POST(req: NextRequest) {
   const dest = safeRedirectPath(redirect);
   const verifyUrl = `${SITE_URL}/api/auth/verify-email?token=${token}&redirect=${encodeURIComponent(dest)}`;
 
-  const tpl = await getEmailTemplate("email-verification");
-  const vars = { first_name: escapeHtml(firstNameOf(user.name)), verify_url: verifyUrl };
-  await sendEmail({
-    to: user.email,
-    subject: applyTemplateVars(tpl.subject, vars),
-    html: applyTemplateVars(tpl.body_html, vars),
-    from: tpl.from_email,
-    critical: tpl.critical,
-    templateKey: tpl.key,
-    category: "fixed",
-    trackOpens: tpl.track_opens,
-  });
+  const tpl = await getEmailTemplateOptional("email-verification");
+  if (tpl) {
+    const vars = { first_name: escapeHtml(firstNameOf(user.name)), verify_url: verifyUrl };
+    await sendEmail({
+      to: user.email,
+      subject: applyTemplateVars(tpl.subject, vars),
+      html: applyTemplateVars(tpl.body_html, vars),
+      from: tpl.from_email,
+      critical: tpl.critical,
+      templateKey: tpl.key,
+      category: "fixed",
+      trackOpens: tpl.track_opens,
+    });
+  } else {
+    // Keep the generic response identical either way (anti-enumeration),
+    // but the owner needs to know this is broken -- a deleted "email
+    // verification" template means nobody can confirm a new account.
+    raiseAlert({
+      kind: "missing_email_template",
+      dedupeKey: "missing_email_template:email-verification",
+      severity: "critical",
+      title: "The \"Account email verification\" email has been deleted",
+      detail: "Someone just tried to verify their account and no email went out. Recreate it in Email -> Library.",
+      link: "/console/email/library",
+    }).catch(() => {});
+  }
 
   return genericResponse();
 }

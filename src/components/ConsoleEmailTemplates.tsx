@@ -5,16 +5,7 @@ import { useRouter } from "next/navigation";
 import RichTextEditor from "@/components/RichTextEditor";
 import { useConfirm } from "@/components/ConfirmDialog";
 
-const CATEGORY_LABELS: Record<string, string> = {
-  security: "Account & security",
-  courses: "Course access",
-  "payments-alerts": "Payment alerts (to you)",
-  "community-support": "Contact, reviews & support",
-  admin: "Admin & authors",
-  meetings: "Meetings",
-  webinars: "Webinars",
-  reviews: "Reviews",
-};
+export type SystemEmailDef = { key: string; label: string; description: string };
 
 export type EmailTemplateRow = {
   key: string;
@@ -162,33 +153,81 @@ function TemplateEditor({ tpl, siteHost }: { tpl: EmailTemplateRow; siteHost: st
   );
 }
 
-function sortedCategories(templates: EmailTemplateRow[]): string[] {
-  const seen = new Set(templates.map((t) => t.category));
-  return [...seen].sort((a, b) => (CATEGORY_LABELS[a] || a).localeCompare(CATEGORY_LABELS[b] || b));
+function AddSystemEmail({ missing, onAdded }: { missing: SystemEmailDef[]; onAdded: () => void }) {
+  const router = useRouter();
+  const [key, setKey] = useState(missing[0]?.key || "");
+  const [adding, setAdding] = useState(false);
+  const [error, setError] = useState("");
+
+  if (!missing.length) return null;
+
+  async function add() {
+    setAdding(true);
+    setError("");
+    const res = await fetch("/api/console/email/templates", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key }),
+    });
+    const body = await res.json().catch(() => ({}));
+    setAdding(false);
+    if (!res.ok) {
+      setError(body.error || "Could not create this email.");
+      return;
+    }
+    onAdded();
+    router.refresh();
+  }
+
+  return (
+    <div className="mb-6 flex flex-wrap items-center gap-3 rounded-2xl border border-dashed border-line bg-paper-soft p-4">
+      <p className="text-sm text-ink-soft">Bring back a deleted one:</p>
+      <select
+        value={key}
+        onChange={(e) => setKey(e.target.value)}
+        className="rounded-lg border border-line bg-paper px-3 py-2 text-sm outline-none focus:border-ink"
+      >
+        {missing.map((def) => (
+          <option key={def.key} value={def.key}>{def.label}</option>
+        ))}
+      </select>
+      <button
+        type="button"
+        onClick={add}
+        disabled={adding}
+        className="rounded-full bg-ink px-4 py-2 text-sm font-medium text-paper transition-opacity hover:opacity-80 disabled:opacity-50"
+      >
+        {adding ? "Creating…" : "Create"}
+      </button>
+      {error && <p className="text-xs text-red-600">{error}</p>}
+    </div>
+  );
 }
 
 export default function ConsoleEmailTemplates({
   templates,
   siteHost,
+  systemDefs,
 }: {
   templates: EmailTemplateRow[];
   siteHost: string;
+  systemDefs: SystemEmailDef[];
 }) {
   const router = useRouter();
   const { confirm, dialog } = useConfirm();
   const [openKey, setOpenKey] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const [category, setCategory] = useState(() => sortedCategories(templates)[0] || "");
   const [deleteError, setDeleteError] = useState("");
   const [deletingKey, setDeletingKey] = useState<string | null>(null);
 
-  const categoryOptions = useMemo(() => sortedCategories(templates), [templates]);
-
-  const selectedCategory = categoryOptions.includes(category) ? category : categoryOptions[0] || "";
+  const missingSystemDefs = useMemo(() => {
+    const existing = new Set(templates.map((t) => t.key));
+    return systemDefs.filter((def) => !existing.has(def.key));
+  }, [templates, systemDefs]);
 
   async function removeTemplate(template: EmailTemplateRow) {
     const ok = await confirm({
-      message: `Permanently delete “${template.label}”?`,
+      message: `Permanently delete “${template.label}”? Anything that sends it will skip the email (or show a clear error, for the few that have no other fallback) until you recreate it.`,
       confirmLabel: "Delete email",
     });
     if (!ok) return;
@@ -207,44 +246,25 @@ export default function ConsoleEmailTemplates({
     }
   }
 
-  const categoryCounts = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const t of templates) counts.set(t.category, (counts.get(t.category) || 0) + 1);
-    return counts;
-  }, [templates]);
-
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return templates.filter((t) => {
-      if (t.category !== selectedCategory) return false;
-      if (!q) return true;
-      return t.label.toLowerCase().includes(q) || t.description.toLowerCase().includes(q) || t.key.toLowerCase().includes(q);
-    });
-  }, [templates, search, selectedCategory]);
+    if (!q) return templates;
+    return templates.filter((t) =>
+      t.label.toLowerCase().includes(q) || t.description.toLowerCase().includes(q) || t.key.toLowerCase().includes(q)
+    );
+  }, [templates, search]);
 
   return (
     <div>
       {dialog}
       <p className="max-w-2xl text-sm text-ink-soft">
-        Every fixed, non-deletable email this site depends on to function — {templates.length} in total. Click one
-        to edit its subject and content, or send yourself a test copy first.
+        Every fixed email this site can send, bound to a specific action elsewhere in the app —
+        {" "}{templates.length} in total. All of them are fully editable and deletable; delete one and the action
+        that sends it just skips the email (a few show a clear error instead, when there&apos;s truly nothing else to
+        fall back to).
       </p>
 
-      <nav className="mt-6 flex gap-1 overflow-x-auto border-b border-line" aria-label="Email categories">
-        {categoryOptions.map((c) => (
-          <button
-            key={c}
-            type="button"
-            onClick={() => setCategory(c)}
-            aria-current={selectedCategory === c ? "page" : undefined}
-            className={`-mb-px shrink-0 whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
-              selectedCategory === c ? "border-ink text-ink" : "border-transparent text-ink-soft hover:text-ink"
-            }`}
-          >
-            {CATEGORY_LABELS[c] || c} ({categoryCounts.get(c) || 0})
-          </button>
-        ))}
-      </nav>
+      <AddSystemEmail missing={missingSystemDefs} onAdded={() => {}} />
 
       <div className="mt-4">
         <input
@@ -256,7 +276,7 @@ export default function ConsoleEmailTemplates({
       </div>
 
       {!filtered.length && (
-        <p className="mt-8 text-sm text-ink-soft">No emails match these filters.</p>
+        <p className="mt-8 text-sm text-ink-soft">No emails match this search.</p>
       )}
       {deleteError && <p role="alert" className="mt-4 text-sm text-red-600">{deleteError}</p>}
 
@@ -289,18 +309,14 @@ export default function ConsoleEmailTemplates({
                 </div>
               </button>
               <div className="mt-3 flex justify-end border-t border-line pt-3">
-                {tpl.deletable ? (
-                  <button
-                    type="button"
-                    onClick={() => void removeTemplate(tpl)}
-                    disabled={deletingKey === tpl.key}
-                    className="rounded-full border border-red-200 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
-                  >
-                    {deletingKey === tpl.key ? "Deleting…" : "Delete email"}
-                  </button>
-                ) : (
-                  <p className="text-xs text-ink-soft">Required by a site feature; cannot be deleted.</p>
-                )}
+                <button
+                  type="button"
+                  onClick={() => void removeTemplate(tpl)}
+                  disabled={deletingKey === tpl.key}
+                  className="rounded-full border border-red-200 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
+                >
+                  {deletingKey === tpl.key ? "Deleting…" : "Delete email"}
+                </button>
               </div>
               {isOpen && <TemplateEditor tpl={tpl} siteHost={siteHost} />}
             </div>

@@ -5,7 +5,7 @@ import { z } from "zod";
 import { pool, withTransaction } from "@/lib/db";
 import { createEmailVerificationToken, safeRedirectPath } from "@/lib/auth";
 import { sendEmail } from "@/lib/email";
-import { getEmailTemplate, applyTemplateVars } from "@/lib/emailTemplates";
+import { getEmailTemplateOptional, applyTemplateVars } from "@/lib/emailTemplates";
 import { firstNameOf } from "@/lib/emailAutomation";
 import { escapeHtml } from "@/lib/escapeHtml";
 import { verifyTurnstile } from "@/lib/turnstile";
@@ -113,7 +113,13 @@ export async function POST(req: NextRequest) {
   const dest = safeRedirectPath(redirect);
   const verifyUrl = `${SITE_URL}/api/auth/verify-email?token=${token}&redirect=${encodeURIComponent(dest)}`;
 
-  const tpl = await getEmailTemplate("webinar-guest-signin");
+  const tpl = await getEmailTemplateOptional("webinar-guest-signin");
+  if (!tpl) {
+    return NextResponse.json(
+      { error: "The sign-in email's content has been deleted. Recreate it in Email -> Library before registering guests." },
+      { status: 409 }
+    );
+  }
   const vars = { first_name: escapeHtml(firstNameOf(name)), webinar_title: escapeHtml(webinar.title), verify_url: verifyUrl };
   const emailResult = await sendEmail({
     to: user.email,

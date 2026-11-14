@@ -6,7 +6,8 @@ import { consumeRateLimit, privateRateLimitKey } from "@/lib/rateLimit";
 import { startEmailChange } from "@/lib/accountContact";
 import { sendEmail } from "@/lib/email";
 import { escapeHtml } from "@/lib/escapeHtml";
-import { applyTemplateVars, getEmailTemplate } from "@/lib/emailTemplates";
+import { applyTemplateVars, getEmailTemplateOptional } from "@/lib/emailTemplates";
+import { raiseAlert } from "@/lib/systemAlerts";
 import { SITE_URL } from "@/lib/liveSiteUrl";
 
 const Schema = z.object({ email: z.string().trim().toLowerCase().email().max(320) }).strict();
@@ -54,23 +55,33 @@ export async function POST(req: NextRequest) {
 
   const token = await startEmailChange(session.userId, newEmail);
   const link = `${SITE_URL}/account/email-changed?token=${encodeURIComponent(token)}`;
-  const template = await getEmailTemplate("account-email-change");
-  const vars = {
-    confirm_url: escapeHtml(link),
-    current_email: escapeHtml(session.email),
-  };
-
-  await sendEmail({
-    to: newEmail,
-    subject: applyTemplateVars(template.subject, vars),
-    html: applyTemplateVars(template.body_html, vars),
-    from: template.from_email,
-    critical: template.critical,
-    category: "fixed",
-    templateKey: template.key,
-    trackOpens: template.track_opens,
-    trackClicks: false,
-  });
+  const template = await getEmailTemplateOptional("account-email-change");
+  if (template) {
+    const vars = {
+      confirm_url: escapeHtml(link),
+      current_email: escapeHtml(session.email),
+    };
+    await sendEmail({
+      to: newEmail,
+      subject: applyTemplateVars(template.subject, vars),
+      html: applyTemplateVars(template.body_html, vars),
+      from: template.from_email,
+      critical: template.critical,
+      category: "fixed",
+      templateKey: template.key,
+      trackOpens: template.track_opens,
+      trackClicks: false,
+    });
+  } else {
+    raiseAlert({
+      kind: "missing_email_template",
+      dedupeKey: "missing_email_template:account-email-change",
+      severity: "critical",
+      title: "The \"Account email change confirmation\" email has been deleted",
+      detail: "Someone just requested an account email change and no confirmation email went out. Recreate it in Email -> Library.",
+      link: "/console/email/library",
+    }).catch(() => {});
+  }
 
   return NextResponse.json({ ok: true });
 }

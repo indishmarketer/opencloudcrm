@@ -1,7 +1,6 @@
 import ConsoleWorkflows from "@/components/ConsoleWorkflows";
 import { listWorkflows, safeWorkflowRecord } from "@/lib/workflows";
 import { workflowTriggerOptions } from "@/lib/workflowGraph";
-import { SYSTEM_WORKFLOW_CATALOG } from "@/lib/systemWorkflowCatalog";
 import { pool } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -27,7 +26,7 @@ export default async function WorkflowsPage() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div><h1 className="font-display text-2xl font-semibold sm:text-3xl">Workflows</h1><p className="mt-2 max-w-3xl text-sm leading-6 text-ink-soft">Connect site events, conditions, email, WhatsApp, and external webhooks in one visual canvas. New workflows and run history are stored in this deployment&apos;s database.</p></div>
       </div>
-      <div className="mt-7"><ConsoleWorkflows workflows={workflows.map(safeWorkflowRecord)} triggers={workflowTriggerOptions} emailFlows={emailFlows.rows} folders={folders.rows} systemFlows={SYSTEM_WORKFLOW_CATALOG} webhookDestinations={webhookDestinations.rows} /></div>
+      <div className="mt-7"><ConsoleWorkflows workflows={workflows.map(safeWorkflowRecord)} triggers={workflowTriggerOptions} emailFlows={emailFlows.rows} folders={folders.rows} webhookDestinations={webhookDestinations.rows} /></div>
     </div>
   );
 }

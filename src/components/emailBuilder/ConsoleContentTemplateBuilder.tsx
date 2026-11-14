@@ -14,24 +14,28 @@ export default function ConsoleContentTemplateBuilder({
   template,
   businessName,
   businessAddress,
+  branding,
 }: {
   template: EmailContentTemplate;
   businessName: string;
   businessAddress: string;
+  branding: { enabled: boolean; align: "left" | "center"; accentColor: string; backgroundColor: string };
 }) {
   return (
     <ConsoleEmailBuilder
       initialSubject={template.subject}
       initialBlocks={(template.blocks_json as EmailBlock[] | null) || []}
+      initialBodyHtml={template.body_html}
       backHref="/console/email/library"
       backLabel="All templates"
       businessName={businessName}
       businessAddress={businessAddress}
-      onSave={async ({ subject, blocks }) => {
+      branding={branding}
+      onSave={async ({ subject, blocks, bodyHtml }) => {
         const res = await fetch(`/api/console/email/content-templates/${template.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: template.name, subject, bodyHtml: template.body_html, blocks }),
+          body: JSON.stringify({ name: template.name, subject, bodyHtml, blocks }),
         }).catch(() => null);
         const body = (await res?.json().catch(() => ({}))) ?? {};
         if (!res?.ok) return { ok: false, error: body.error || "Could not save this template." };

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAdminSessionEmail } from "@/lib/auth";
 import { pool } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
-import { getEmailTemplate, applyTemplateVars } from "@/lib/emailTemplates";
+import { getEmailTemplateOptional, applyTemplateVars } from "@/lib/emailTemplates";
 import { escapeHtml } from "@/lib/escapeHtml";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -24,11 +24,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Message not found." }, { status: 404 });
   }
 
-  // This is not a notification template -- it's the delivery envelope for
-  // an admin-composed reply (the "message" var is arbitrary admin text), so
-  // it stays a fixed, non-deletable template like the account/security
-  // set, not a convertible automation. See emailTemplates.ts.
-  const tpl = await getEmailTemplate("contact-form-reply");
+  // The envelope for an admin-composed reply (the "message" var is
+  // arbitrary admin text) -- deletable like any other email now, but if
+  // it's gone there's no way to send this specific reply, so fail clearly
+  // rather than let getEmailTemplate throw a raw "missing row" error.
+  const tpl = await getEmailTemplateOptional("contact-form-reply");
+  if (!tpl) {
+    return NextResponse.json(
+      { error: "The reply email's content has been deleted. Recreate it in Email -> Library before replying." },
+      { status: 409 }
+    );
+  }
   const vars = { name: escapeHtml(submission.name), message: escapeHtml(message).replace(/\n/g, "<br>") };
   const sendResult = await sendEmail({
     to: submission.email,

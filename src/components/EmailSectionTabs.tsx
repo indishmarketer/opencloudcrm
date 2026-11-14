@@ -6,8 +6,7 @@ import { usePathname } from "next/navigation";
 const TABS = [
   { href: "/console/email/campaigns", label: "Campaigns" },
   { href: "/console/email/segments", label: "Segments" },
-  { href: "/console/email/library", label: "Templates" },
-  { href: "/console/email/templates", label: "Account & security" },
+  { href: "/console/email/library", label: "Library" },
   { href: "/console/email/sending", label: "Sending" },
   { href: "/console/email/analytics", label: "Analytics" },
   { href: "/console/email/cost", label: "Cost" },

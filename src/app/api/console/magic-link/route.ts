@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createMagicLinkToken } from "@/lib/auth";
 import { isAuthorizedConsoleEmail } from "@/lib/consoleAdmins";
 import { sendEmail, isEmailProviderConfigured } from "@/lib/email";
-import { getEmailTemplate, applyTemplateVars } from "@/lib/emailTemplates";
+import { getEmailTemplateOptional, applyTemplateVars } from "@/lib/emailTemplates";
 import { checkRateLimit, privateRateLimitKey } from "@/lib/rateLimit";
 import { requestOrigin } from "@/lib/requestOrigin";
 
@@ -58,7 +58,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
-    const tpl = await getEmailTemplate("magic-link-login");
+    const tpl = await getEmailTemplateOptional("magic-link-login");
+    if (!tpl) {
+      // Same reasoning as the no-provider-configured branch above: this is
+      // the ONE email deleting it can never lock an admin out of, so fall
+      // back to the exact same logged-link mechanism.
+      console.warn(
+        `\n==================== CONSOLE LOGIN LINK ====================\n` +
+        `The "Console login link" email has been deleted, so this\n` +
+        `couldn't be emailed to ${normalized}. Open it directly to log in:\n\n` +
+        `${link}\n\n` +
+        `It expires soon and is single-use. Recreate the email in\n` +
+        `Console -> Email -> Library to stop seeing this message.\n` +
+        `==============================================================\n`
+      );
+      return NextResponse.json({ ok: true });
+    }
     const vars = { link };
     // This template's from_email seeds to a *@example.com placeholder
     // (migrations 001/032/066) that's never a real, deliverable sender for

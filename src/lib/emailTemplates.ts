@@ -29,10 +29,11 @@ export function applyTemplateVars(text: string, vars: Record<string, string>): s
   return text.replace(/\{\{(\w+)\}\}/g, (_, key) => vars[key] ?? "");
 }
 
-/** Loads one email_templates row. Every fixed-email call site MUST have a
- * seeded row (see migration 032) -- if a key is missing, this throws rather
- * than silently sending broken/placeholder copy, since that would mean the
- * owner's edited content (or lack of it) was silently bypassed. */
+/** Loads one email_templates row, throwing if it's gone. Every row in this
+ * table is deletable now (see getEmailTemplateOptional, used by every
+ * app-internal call site instead) -- this throwing variant exists only for
+ * /api/v1/email/:key, a generic passthrough that already catches the throw
+ * itself and reports 404. */
 export async function getEmailTemplate(key: string): Promise<EmailTemplate> {
   const result = await pool.query<EmailTemplate>(
     `SELECT key, category, label, description, subject, body_html, from_email, critical, track_opens, allowed_vars
@@ -40,7 +41,7 @@ export async function getEmailTemplate(key: string): Promise<EmailTemplate> {
     [key]
   );
   const row = result.rows[0];
-  if (!row) throw new Error(`Missing email_templates row for key "${key}". Run migration 032.`);
+  if (!row) throw new Error(`No email_templates row for key "${key}".`);
   // {{site_name}} is resolved here, before the caller applies its own vars,
   // so every seeded template can reference the deployment's own business
   // name instead of a hardcoded one -- and so call sites never need to know
@@ -55,14 +56,13 @@ export async function getEmailTemplate(key: string): Promise<EmailTemplate> {
   };
 }
 
-/** Like getEmailTemplate, but for keys the self-hoster is allowed to delete
- * (anything not in CODE_LINKED_TEMPLATE_KEYS / the critical set). Returns
- * null instead of throwing when the row is gone, so the surrounding
- * business logic (granting a course, recording a payment, etc.) still
- * completes -- only the now-optional notification email is skipped. The
- * underlying event this call site emits (webhookEvents) still fires either
- * way, so a self-hoster can wire their own automation back up from the
- * console. */
+/** Like getEmailTemplate, but used by every app-internal call site (every
+ * email_templates row is deletable now). Returns null instead of throwing
+ * when the row is gone, so the surrounding logic -- granting a course, an
+ * auth flow's generic response, a fire-and-forget invite -- still
+ * completes; each call site decides what "no content configured" means for
+ * it (skip silently, raise an admin alert, fall back to a logged link,
+ * etc. -- see each call site's own comment). */
 export async function getEmailTemplateOptional(key: string): Promise<EmailTemplate | null> {
   const result = await pool.query<EmailTemplate>(
     `SELECT key, category, label, description, subject, body_html, from_email, critical, track_opens, allowed_vars
@@ -104,34 +104,37 @@ export class EmailTemplateDeleteError extends Error {
   }
 }
 
-// Everything the application itself cannot run without: the account and
-// security primitives (signup/login/password/email-change), plus the
-// handful of templates that are themselves the delivery envelope for
-// admin-typed content or a one-time credential rather than an automation
-// notification (see the comment at each call site for why). Every other
-// fixed email in the app degrades gracefully (getEmailTemplateOptional)
-// when its row is deleted, so this set stays short on purpose.
-const CODE_LINKED_TEMPLATE_KEYS = new Set([
-  "email-verification", "password-reset", "magic-link-login", "otp-code", "account-email-change",
-  "console-admin-invite", "contact-form-reply", "review-question-to-author", "webinar-guest-signin",
-]);
-
-function isCodeLinkedTemplate(key: string): boolean {
-  return CODE_LINKED_TEMPLATE_KEYS.has(key);
+export class EmailTemplateCreateError extends Error {
+  status: number;
+  constructor(message: string, status = 400) {
+    super(message);
+    this.status = status;
+  }
 }
 
-export function canDeleteEmailTemplate(template: Pick<EmailTemplate, "key" | "critical">): boolean {
-  return !template.critical && !isCodeLinkedTemplate(template.key);
+/** The fixed set of keys real code actually looks up by name (see
+ * getEmailTemplateOptional's callers). An arbitrary new key would never be
+ * read by anything, so "create" is a picker over this list, not a
+ * free-text field -- these rows are fully deletable like any other email
+ * (nothing in this app treats any key as permanent), this list exists only
+ * so a self-hoster can bring one back once it's gone. */
+export const SYSTEM_EMAIL_DEFS = [
+  { key: "email-verification", label: "Account email verification", description: "Sent on signup to verify a new account's email address.", allowedVars: ["first_name", "verify_url"], defaultSubject: "Confirm your email", defaultBody: "<p>Hi {{first_name}},</p><p>Confirm your email to activate your account:</p><p><a href=\"{{verify_url}}\">Verify my email</a></p>" },
+  { key: "password-reset", label: "Password reset", description: "Sent when someone requests a password reset link.", allowedVars: ["first_name", "reset_url"], defaultSubject: "Reset your password", defaultBody: "<p>Hi {{first_name}},</p><p>Reset your password here:</p><p><a href=\"{{reset_url}}\">Reset password</a></p>" },
+  { key: "magic-link-login", label: "Console login link", description: "Sent to a console admin signing in via a one-time link instead of a password.", allowedVars: ["link"], defaultSubject: "Your console login link", defaultBody: "<p>Click to log in:</p><p><a href=\"{{link}}\">Log in to the console</a></p>" },
+  { key: "otp-code", label: "Verification code (OTP)", description: "Sent to confirm an email address with a short code or magic link (contact form, newsletter, etc).", allowedVars: ["code", "magic_link_url"], defaultSubject: "Your verification code", defaultBody: "<p>Your code: <strong>{{code}}</strong></p><p>Or click: <a href=\"{{magic_link_url}}\">Confirm now</a></p>" },
+  { key: "account-email-change", label: "Account email change confirmation", description: "Sent to a new address when someone changes their account email.", allowedVars: ["confirm_url", "current_email"], defaultSubject: "Confirm your new email address", defaultBody: "<p>Confirm this is your new email address (replacing {{current_email}}):</p><p><a href=\"{{confirm_url}}\">Confirm new email</a></p>" },
+  { key: "console-admin-invite", label: "Console admin invite", description: "Sent when an existing admin invites a new console admin.", allowedVars: ["invited_by", "login_url"], defaultSubject: "You've been invited to the console", defaultBody: "<p>{{invited_by}} invited you to the console.</p><p><a href=\"{{login_url}}\">Log in</a></p>" },
+  { key: "contact-form-reply", label: "Contact form reply envelope", description: "The envelope used when an admin replies to a contact form message -- {{message}} is the admin's own typed reply.", allowedVars: ["name", "message"], defaultSubject: "Re: your message", defaultBody: "<p>Hi {{name}},</p><p>{{message}}</p>" },
+  { key: "review-question-to-author", label: "Review question envelope", description: "The envelope used when an admin asks a reviewer a question -- {{note}} is the admin's own typed question.", allowedVars: ["name", "note"], defaultSubject: "A question about your review", defaultBody: "<p>Hi {{name}},</p><p>{{note}}</p>" },
+  { key: "webinar-guest-signin", label: "Webinar guest sign-in link", description: "Sent to a guest registering for a webinar without an existing account, to verify and sign them in.", allowedVars: ["first_name", "webinar_title", "verify_url"], defaultSubject: "Confirm your spot in {{webinar_title}}", defaultBody: "<p>Hi {{first_name}},</p><p>Confirm your email to join {{webinar_title}}:</p><p><a href=\"{{verify_url}}\">Confirm and join</a></p>" },
+] as const;
+
+export function canDeleteEmailTemplate(_template: Pick<EmailTemplate, "key" | "critical">): boolean {
+  return true;
 }
 
 export async function deleteEmailTemplate(key: string): Promise<void> {
-  const result = await pool.query<{ critical: boolean }>(
-    "SELECT critical FROM email_templates WHERE key = $1", [key]
-  );
-  if (!result.rows[0]) throw new EmailTemplateDeleteError("Template not found.", 404);
-  if (!canDeleteEmailTemplate({ key, critical: result.rows[0].critical })) {
-    throw new EmailTemplateDeleteError("This email is required by an active site feature and cannot be deleted.", 409);
-  }
   try {
     const deleted = await pool.query("DELETE FROM email_templates WHERE key = $1", [key]);
     if (!deleted.rowCount) throw new EmailTemplateDeleteError("Template not found.", 404);
@@ -144,13 +147,27 @@ export async function deleteEmailTemplate(key: string): Promise<void> {
   }
 }
 
+/** Re-creates a deleted system email from SYSTEM_EMAIL_DEFS's starter
+ * content. The admin edits it afterward like anything else; this just
+ * gets a valid row back under the exact key the call site looks up. */
+export async function createSystemEmailTemplate(key: string): Promise<EmailTemplate> {
+  const def = SYSTEM_EMAIL_DEFS.find((d) => d.key === key);
+  if (!def) throw new EmailTemplateCreateError("Not a recognized system email key.", 400);
+  const existing = await pool.query("SELECT 1 FROM email_templates WHERE key = $1", [key]);
+  if (existing.rowCount) throw new EmailTemplateCreateError("This email already exists.", 409);
+  const result = await pool.query<EmailTemplate>(
+    `INSERT INTO email_templates (key, category, label, description, subject, body_html, from_email, critical, track_opens, allowed_vars)
+     VALUES ($1, 'system', $2, $3, $4, $5, 'info@example.com', false, true, $6)
+     RETURNING key, category, label, description, subject, body_html, from_email, critical, track_opens, allowed_vars`,
+    [def.key, def.label, def.description, def.defaultSubject, def.defaultBody, def.allowedVars]
+  );
+  return result.rows[0];
+}
+
 /** Shared by the console's own editor and /api/v1/email: edits an
- * existing fixed template's content. There's no create here -- a brand
- * new key would never be sent by anything, since every key is read by one
- * specific call site elsewhere in the app. Deletion is a separate function
- * (deleteEmailTemplate, above) gated by canDeleteEmailTemplate -- most keys
- * may be deleted; the ones that may not are account/security primitives or
- * the delivery envelope for admin-typed content, not exposed here. */
+ * existing template's content. Every row (account/security included) is
+ * fully deletable -- see deleteEmailTemplate / createSystemEmailTemplate
+ * above for how a deleted system email comes back. */
 export async function updateEmailTemplate(
   key: string,
   input: { subject: string; bodyHtml: string; fromEmail?: string | null; trackOpens?: boolean | null }

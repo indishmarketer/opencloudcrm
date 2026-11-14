@@ -44,6 +44,7 @@ export default function ConsoleCampaignEditor({ campaign, segments, templates, r
   const [testTo, setTestTo] = useState("");
   const [sendStatus, setSendStatus] = useState<"idle" | "sending" | "error">("idle");
   const [sendMessage, setSendMessage] = useState("");
+  const [contentMode, setContentMode] = useState<"classic" | "html">("classic");
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
   const [scheduleBusy, setScheduleBusy] = useState(false);
   const { confirm, dialog } = useConfirm();
@@ -266,16 +267,37 @@ export default function ConsoleCampaignEditor({ campaign, segments, templates, r
         </div>
 
         <div>
-          <label className="text-sm font-medium">Content</label>
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-medium">Content</label>
+            {isDraft && (
+              <div className="flex items-center gap-0.5 rounded-lg bg-paper-soft p-0.5">
+                <button type="button" onClick={() => setContentMode("classic")} className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${contentMode === "classic" ? "bg-white text-ink shadow-sm" : "text-ink-soft hover:text-ink"}`}>Classic</button>
+                <button type="button" onClick={() => setContentMode("html")} className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${contentMode === "html" ? "bg-white text-ink shadow-sm" : "text-ink-soft hover:text-ink"}`}>HTML</button>
+              </div>
+            )}
+          </div>
           <div className="mt-1">
-            <RichTextEditor
-              value={html}
-              variables={isDraft ? CONTACT_MESSAGE_VARIABLES : undefined}
-              onChange={(v) => {
-                setHtml(v);
-                setDirty(true);
-              }}
-            />
+            {contentMode === "classic" ? (
+              <RichTextEditor
+                value={html}
+                variables={isDraft ? CONTACT_MESSAGE_VARIABLES : undefined}
+                onChange={(v) => {
+                  setHtml(v);
+                  setDirty(true);
+                }}
+              />
+            ) : (
+              <textarea
+                value={html}
+                onChange={(e) => {
+                  setHtml(e.target.value);
+                  setDirty(true);
+                }}
+                disabled={!isDraft}
+                spellCheck={false}
+                className="h-80 w-full rounded-xl border border-line bg-paper p-3 font-mono text-xs outline-none focus:border-ink disabled:opacity-60"
+              />
+            )}
           </div>
           <p className="mt-1.5 text-xs text-ink-soft">Recipient fields are filled separately for every contact when the campaign sends.</p>
         </div>

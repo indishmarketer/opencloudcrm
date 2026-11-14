@@ -18,6 +18,7 @@ import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, v
 import { CSS } from "@dnd-kit/utilities";
 import { FieldGroup } from "@/components/PageBlockFields";
 import BlockIcon from "@/components/pageEditor/blockIcons";
+import RichTextEditor from "@/components/RichTextEditor";
 import EmailElementsPalette from "@/components/emailBuilder/EmailElementsPalette";
 import {
   EMAIL_BLOCK_DEFS,
@@ -186,17 +187,26 @@ function SortableBlockCard({
 export default function ConsoleEmailBuilder({
   initialSubject,
   initialBlocks,
+  initialBodyHtml,
   onSave,
   backHref,
   backLabel,
   businessName,
   businessAddress,
+  branding,
 }: {
   initialSubject: string;
   initialBlocks: EmailBlock[];
-  onSave: (next: { subject: string; blocks: EmailBlock[] }) => Promise<{ ok: boolean; error?: string }>;
+  /** Seeds Classic/HTML mode -- the template's existing body_html, used
+   * whichever way it was last written. Ignored once Visual mode's blocks
+   * become the save's source of truth again. */
+  initialBodyHtml: string;
+  onSave: (next: { subject: string; blocks: EmailBlock[]; bodyHtml: string }) => Promise<{ ok: boolean; error?: string }>;
   backHref: string;
   backLabel: string;
+  /** So the preview matches what will actually send -- see
+   * Console -> Email -> Sending -> Branding. */
+  branding: { enabled: boolean; align: "left" | "center"; accentColor: string; backgroundColor: string };
   /** Live values, so the Footer block's preview (style-only, never part
    * of body_html -- see emailBlocksRender.ts) shows what will actually
    * render instead of a guess. */
@@ -206,6 +216,14 @@ export default function ConsoleEmailBuilder({
   const router = useRouter();
   const [subject, setSubject] = useState(initialSubject);
   const [blocks, setBlocks] = useState<EmailBlock[]>(initialBlocks);
+  // The one thing Classic and HTML mode share -- a plain HTML string. Visual
+  // mode never reads or writes it; it's only consulted at save time (see
+  // save(), below), so switching between modes to look is free, and nothing
+  // is lost until you actually save in a given mode.
+  const [freeformHtml, setFreeformHtml] = useState(initialBodyHtml);
+  const [composerMode, setComposerMode] = useState<"visual" | "classic" | "html">(
+    initialBlocks.length > 0 ? "visual" : "classic"
+  );
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [device, setDevice] = useState<"desktop" | "mobile">("desktop");
   const [mode, setMode] = useState<"edit" | "preview">("edit");
@@ -259,7 +277,14 @@ export default function ConsoleEmailBuilder({
   const save = useCallback(async () => {
     setBusy(true);
     setError("");
-    const result = await onSave({ subject, blocks }).catch((e) => ({ ok: false, error: e instanceof Error ? e.message : "Could not save." }));
+    // Whichever mode is active when you hit Save is what's authoritative:
+    // Visual saves its blocks (and their rendered HTML, for anything that
+    // only reads body_html); Classic/HTML save the freeform HTML and clear
+    // the blocks, so a stale block layout can't silently come back later.
+    const payload = composerMode === "visual"
+      ? { subject, blocks, bodyHtml: renderEmailBlocksToHtml(blocks, {}) }
+      : { subject, blocks: [], bodyHtml: freeformHtml };
+    const result = await onSave(payload).catch((e) => ({ ok: false, error: e instanceof Error ? e.message : "Could not save." }));
     setBusy(false);
     if (!result.ok) {
       setError(result.error || "Could not save this email.");
@@ -270,7 +295,7 @@ export default function ConsoleEmailBuilder({
     setTimeout(() => setMessage(""), 2500);
     router.refresh();
     return true;
-  }, [blocks, subject, onSave, router]);
+  }, [blocks, subject, composerMode, freeformHtml, onSave, router]);
 
   const saveRef = useRef(save);
   const undoRef = useRef(undo);
@@ -333,8 +358,14 @@ export default function ConsoleEmailBuilder({
   }
 
   const previewVars = PREVIEW_SAMPLE_VARS;
-  const bodyHtml = renderEmailBlocksToHtml(blocks, previewVars);
-  const fullHtml = wrapEmailHtml(bodyHtml, { brandName: businessName });
+  const bodyHtml = composerMode === "visual" ? renderEmailBlocksToHtml(blocks, previewVars) : freeformHtml;
+  const fullHtml = wrapEmailHtml(bodyHtml, {
+    brandName: businessName,
+    brandingEnabled: branding.enabled,
+    brandingAlign: branding.align,
+    accentColor: branding.accentColor,
+    backgroundColor: branding.backgroundColor,
+  });
   const footerBlock = blocks.find((b) => b.type === "footer");
   void businessAddress; // reserved for the footer preview, wired in Phase 4
 
@@ -416,6 +447,42 @@ export default function ConsoleEmailBuilder({
         </div>
       </header>
 
+      {mode === "edit" && (
+        <div className="z-20 flex h-11 shrink-0 items-center gap-1 border-b border-line bg-paper-soft px-4">
+          {([
+            { id: "visual" as const, label: "Visual" },
+            { id: "classic" as const, label: "Classic" },
+            { id: "html" as const, label: "HTML" },
+          ]).map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => {
+                if (tab.id !== "visual" && composerMode === "visual") {
+                  // First time leaving Visual: seed the freeform text with
+                  // what the blocks currently render, so Classic/HTML don't
+                  // open blank. Nothing is deleted yet -- that only happens
+                  // on Save, see save() above.
+                  setFreeformHtml(renderEmailBlocksToHtml(blocks, {}));
+                }
+                setComposerMode(tab.id);
+                setDirty(true);
+              }}
+              className={`rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors ${
+                composerMode === tab.id ? "bg-ink text-paper" : "text-ink-soft hover:text-ink"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+          {composerMode !== "visual" && blocks.length > 0 && (
+            <span className="ml-2 text-xs text-ink-soft">
+              Saving here replaces your visual blocks with this HTML.
+            </span>
+          )}
+        </div>
+      )}
+
       {mode === "preview" ? (
         <main className="flex min-h-0 flex-1 items-start justify-center overflow-y-auto bg-paper-soft p-8">
           {previewFormat === "visual" ? (
@@ -431,6 +498,31 @@ export default function ConsoleEmailBuilder({
             </pre>
           )}
         </main>
+      ) : composerMode === "classic" ? (
+        <main className="min-h-0 flex-1 overflow-y-auto bg-paper-soft p-6">
+          <div className="w-full">
+            <RichTextEditor
+              value={freeformHtml}
+              onChange={(html) => {
+                setFreeformHtml(html);
+                setDirty(true);
+              }}
+            />
+          </div>
+        </main>
+      ) : composerMode === "html" ? (
+        <main className="min-h-0 flex-1 overflow-y-auto bg-paper-soft p-6">
+          <textarea
+            value={freeformHtml}
+            onChange={(e) => {
+              setFreeformHtml(e.target.value);
+              setDirty(true);
+            }}
+            spellCheck={false}
+            className="h-full min-h-[60vh] w-full rounded-xl border border-line bg-white p-4 font-mono text-xs text-ink outline-none focus:border-ink"
+            placeholder="<p>Write the full email HTML here...</p>"
+          />
+        </main>
       ) : (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={() => setActiveDragLabel(null)}>
           <div className="flex min-h-0 flex-1 overflow-hidden">
@@ -440,7 +532,7 @@ export default function ConsoleEmailBuilder({
             </aside>
 
             <main onClick={() => setSelectedId(null)} className="relative min-w-0 flex-1 overflow-y-auto bg-paper-soft p-6">
-              <div onClick={(e) => e.stopPropagation()} className="mx-auto w-full max-w-xl space-y-2">
+              <div onClick={(e) => e.stopPropagation()} className="w-full space-y-2">
                 <SortableContext items={blocks.map((b) => b.id)} strategy={verticalListSortingStrategy}>
                   {blocks.map((block) => (
                     <SortableBlockCard

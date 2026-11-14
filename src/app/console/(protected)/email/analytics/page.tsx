@@ -17,7 +17,7 @@ import {
 } from "@/lib/emailAnalytics";
 
 const CATEGORY_LABELS: Record<string, string> = {
-  fixed: "Account & security",
+  fixed: "Fixed emails",
   automation: "Automation",
   campaign: "Campaigns",
   system: "System",
@@ -233,8 +233,8 @@ function EmailsTab({ breakdowns, type }: { breakdowns: Awaited<ReturnType<typeof
         </Section>
       )}
       {(!type || type === "fixed") && (
-        <Section title="Account & security emails" note="The fixed emails the application depends on to function: verification, password reset, login links, and account changes." first={type === "fixed"}>
-          <BreakdownTable rows={breakdowns.templates} nameHeader="Email" empty="No account & security emails sent in this period." />
+        <Section title="Fixed emails" note="Emails bound to a specific action in the app: verification, password reset, course access, bookings, and so on." first={type === "fixed"}>
+          <BreakdownTable rows={breakdowns.templates} nameHeader="Email" empty="No fixed emails sent in this period." />
         </Section>
       )}
     </>

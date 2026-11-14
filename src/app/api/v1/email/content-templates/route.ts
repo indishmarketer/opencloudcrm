@@ -2,10 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { authorizeRequest } from "@/lib/apiTokens";
 import { listContentTemplates, createContentTemplate } from "@/lib/emailContentTemplates";
 
-/** The reusable Email Library (distinct from the fixed account & security
+/** The reusable Email Library (distinct from the fixed, action-bound
  * templates at /api/v1/email): content written once and picked from a
- * campaign, an automation step, or when emailing a contact directly. Unlike
- * account & security templates, these can be freely created and deleted. */
+ * campaign, an automation step, or when emailing a contact directly. */
 export async function GET(req: NextRequest) {
   const auth = await authorizeRequest(req, "email:read");
   if (!auth.ok) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

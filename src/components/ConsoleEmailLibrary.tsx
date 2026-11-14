@@ -120,8 +120,10 @@ function TemplateForm({
 
 export default function ConsoleEmailLibrary({ templates }: { templates: EmailContentTemplate[] }) {
   const router = useRouter();
-  const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [creatingName, setCreatingName] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState("");
   const { confirm, dialog } = useConfirm();
 
   async function handleDelete(template: EmailContentTemplate) {
@@ -131,15 +133,37 @@ export default function ConsoleEmailLibrary({ templates }: { templates: EmailCon
     router.refresh();
   }
 
+  // Creating now jumps straight into the real composer (Visual/Classic/HTML
+  // mode choice) instead of a cramped inline form -- a name is all this
+  // step needs, everything else is written in the composer itself.
+  async function createAndOpen() {
+    const name = (creatingName || "").trim();
+    if (!name) return;
+    setCreating(true);
+    setCreateError("");
+    const res = await fetch("/api/console/email/content-templates", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, subject: "", bodyHtml: "" }),
+    }).catch(() => null);
+    const body = (await res?.json().catch(() => ({}))) ?? {};
+    setCreating(false);
+    if (!res?.ok) {
+      setCreateError(body.error || "Could not create this template.");
+      return;
+    }
+    router.push(`/console/email-builder/${body.template.id}`);
+  }
+
   return (
     <div>
       {dialog}
       <div className="flex items-center justify-between">
         <h2 className="font-display text-lg font-semibold">Templates ({templates.length})</h2>
-        {!creating && (
+        {creatingName === null && (
           <button
             type="button"
-            onClick={() => setCreating(true)}
+            onClick={() => setCreatingName("")}
             className="rounded-full bg-ink px-4 py-2 text-sm font-medium text-paper transition-opacity hover:opacity-80"
           >
             New template
@@ -147,20 +171,34 @@ export default function ConsoleEmailLibrary({ templates }: { templates: EmailCon
         )}
       </div>
 
-      {creating && (
-        <div className="mt-4">
-          <TemplateForm
-            initial={null}
-            onCancel={() => setCreating(false)}
-            onSaved={() => {
-              setCreating(false);
-              router.refresh();
-            }}
-          />
+      {creatingName !== null && (
+        <div className="mt-4 flex flex-wrap items-center gap-2 rounded-2xl border border-line bg-paper p-4">
+          <label className="min-w-48 flex-1">
+            <span className="sr-only">Template name</span>
+            <input
+              autoFocus
+              value={creatingName}
+              onChange={(e) => setCreatingName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") void createAndOpen(); if (e.key === "Escape") setCreatingName(null); }}
+              placeholder="Name this template (e.g. Course check-in)"
+              maxLength={120}
+              className="w-full rounded-lg border border-line px-3 py-2 text-sm outline-none focus:border-ink"
+            />
+          </label>
+          <button
+            type="button"
+            onClick={() => void createAndOpen()}
+            disabled={creating || !creatingName.trim()}
+            className="rounded-full bg-ink px-4 py-2 text-sm font-medium text-paper transition-opacity hover:opacity-80 disabled:opacity-50"
+          >
+            {creating ? "Opening…" : "Create and open"}
+          </button>
+          <button type="button" onClick={() => setCreatingName(null)} className="rounded-full border border-line px-4 py-2 text-sm">Cancel</button>
+          {createError && <p className="text-sm text-red-600">{createError}</p>}
         </div>
       )}
 
-      {!templates.length && !creating && (
+      {!templates.length && creatingName === null && (
         <p className="mt-6 text-sm text-ink-soft">No templates yet. Create one to reuse it in campaigns, automation, and contact emails.</p>
       )}
 
@@ -180,11 +218,11 @@ export default function ConsoleEmailLibrary({ templates }: { templates: EmailCon
                 </button>
                 <div className="flex shrink-0 items-center gap-2">
                   <Link
-                    href={`/console/email/library/${template.id}/builder`}
+                    href={`/console/email-builder/${template.id}`}
                     className="rounded-full border border-line px-3 py-1.5 text-xs font-medium text-ink transition-colors hover:border-ink"
-                    title="Design this email's layout, colours and elements visually"
+                    title="Open the full composer -- visual blocks, classic rich text, or raw HTML"
                   >
-                    Design visually
+                    Open composer
                   </Link>
                   <button
                     type="button"
