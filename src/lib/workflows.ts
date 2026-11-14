@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import { pool, withTransaction } from "@/lib/db";
-import { workflowGraphSchema, workflowReadinessIssues, type WorkflowGraph, type WorkflowNode } from "@/lib/workflowGraph";
+import { workflowGraphSchema, workflowReadinessIssues, workflowTriggerOptions, isSupportedWorkflowEvent, workflowEventLabel, VERIFICATION_REQUESTED_EVENT, type WorkflowGraph, type WorkflowNode } from "@/lib/workflowGraph";
 import { sendEmailWithRetry } from "@/lib/emailOutbox";
 import { sendEmail } from "@/lib/email";
 import { getEmailTemplateOptional } from "@/lib/emailTemplates";
@@ -9,7 +9,6 @@ import { sendWhatsAppTemplateMessage, normalizePhoneForWhatsApp } from "@/lib/wh
 import { hasOptedOut, canSendWhatsAppMarketing } from "@/lib/whatsappContacts";
 import { listWhatsAppTemplates } from "@/lib/whatsappTemplates";
 import { deliverWebhookAttempt } from "@/lib/webhookDelivery";
-import { WEBHOOK_EVENT_TYPES } from "@/lib/webhookEventCatalogue";
 import { findOrCreateAccount, grantCourseManually } from "@/lib/courseGrant";
 import { SITE_URL } from "@/lib/liveSiteUrl";
 import { sendMeetingConfirmation } from "@/lib/meetingEmails";
@@ -124,14 +123,14 @@ export async function createWorkflow(input: {
 }): Promise<{ workflow: WorkflowRecord; webhookToken?: string }> {
   const name = (input.name || "Untitled workflow").trim().slice(0, 160) || "Untitled workflow";
   const triggerType = input.triggerType || "event";
-  const triggerKey = input.triggerKey || WEBHOOK_EVENT_TYPES[0]?.key;
-  if (triggerType === "event" && !WEBHOOK_EVENT_TYPES.some((event) => event.key === triggerKey)) {
+  const triggerKey = input.triggerKey || workflowTriggerOptions[0]?.value;
+  if (triggerType === "event" && !isSupportedWorkflowEvent(triggerKey)) {
     throw new Error("Choose a supported event trigger.");
   }
   const token = triggerType === "webhook" ? `${TOKEN_PREFIX}${crypto.randomBytes(32).toString("base64url")}` : null;
   const triggerLabel = triggerType === "webhook"
     ? "Incoming webhook"
-    : WEBHOOK_EVENT_TYPES.find((event) => event.key === triggerKey)?.label || "Event trigger";
+    : workflowEventLabel(triggerKey);
   const graph: WorkflowGraph = {
     nodes: [{ id: "trigger", type: "workflow", position: { x: 80, y: 180 }, data: { kind: "trigger", label: triggerLabel, config: { triggerType, triggerKey } } }],
     edges: [],
@@ -158,18 +157,40 @@ export async function updateWorkflow(id: number, input: {
   if (!current) return null;
   const triggerType = input.triggerType || current.trigger_type;
   const triggerKey = triggerType === "event"
-    ? input.triggerKey || current.trigger_key || WEBHOOK_EVENT_TYPES[0]?.key || null
+    ? input.triggerKey || current.trigger_key || workflowTriggerOptions[0]?.value || null
     : null;
-  if (triggerKey && !WEBHOOK_EVENT_TYPES.some((event) => event.key === triggerKey)) throw new Error("Choose a supported event trigger.");
+  if (triggerKey && !isSupportedWorkflowEvent(triggerKey)) throw new Error("Choose a supported event trigger.");
   const parsedGraph = input.graph === undefined ? null : workflowGraphSchema.safeParse(input.graph);
   if (parsedGraph && !parsedGraph.success) throw new Error(parsedGraph.error.issues[0]?.message || "Invalid workflow graph.");
   const graph = parsedGraph?.success ? parsedGraph.data : current.graph;
+  const normalizedGraph: WorkflowGraph = {
+    ...graph,
+    nodes: graph.nodes.map((node) => node.data.kind === "trigger"
+      ? { ...node, data: { ...node.data, label: triggerType === "event" && triggerKey ? workflowEventLabel(triggerKey) : "Incoming webhook", config: { ...node.data.config, triggerType, triggerKey } } }
+      : node),
+  };
   const status = input.status || current.status;
   if (status === "active") {
-    const issue = workflowReadinessIssues(graph)[0];
+    const issue = workflowReadinessIssues(normalizedGraph)[0];
     if (issue) throw new Error(issue);
-    if (triggerType === "event" && (!triggerKey || !WEBHOOK_EVENT_TYPES.some((event) => event.key === triggerKey))) {
+    if (triggerType === "event" && (!triggerKey || !isSupportedWorkflowEvent(triggerKey))) {
       throw new Error("Choose a supported event trigger.");
+    }
+    if (triggerKey === VERIFICATION_REQUESTED_EVENT.value) {
+      const other = await pool.query("SELECT 1 FROM automation_workflows WHERE id <> $1 AND status = 'active' AND archived_at IS NULL AND trigger_key = $2 LIMIT 1", [id, triggerKey]);
+      if (other.rowCount) throw new Error("Pause the existing verification workflow before activating another one.");
+      const emailNode = normalizedGraph.nodes.find((node) => node.data.kind === "email");
+      const config = emailNode?.data.config || {};
+      let content = String(config.body || "");
+      if (config.contentMode === "template") {
+        const template = config.templateKind === "library"
+          ? await getContentTemplate(Number(config.templateKey))
+          : await getEmailTemplateOptional(String(config.templateKey || ""));
+        content = template ? "body_html" in template ? template.body_html : "" : "";
+      }
+      if (!/\{\{(?:data\.)?code\}\}/.test(content) || !/\{\{(?:data\.)?(?:verification_url|magic_link_url)\}\}/.test(content)) {
+        throw new Error("Verification email content must include both {{data.code}} and {{data.verification_url}} (or the matching magic link variable).");
+      }
     }
   }
   const result = await pool.query<WorkflowRecord>(
@@ -181,17 +202,7 @@ export async function updateWorkflow(id: number, input: {
       triggerType === "webhook"
         ? (current.trigger_type === "webhook" ? current.webhook_token_hash : hashWorkflowToken(`${TOKEN_PREFIX}${crypto.randomBytes(32).toString("base64url")}`))
         : null,
-      JSON.stringify(triggerKey && triggerType === "event" ? {
-        ...graph,
-        nodes: graph.nodes.map((node) => node.data.kind === "trigger"
-          ? { ...node, data: { ...node.data, label: WEBHOOK_EVENT_TYPES.find((event) => event.key === triggerKey)?.label || node.data.label, config: { ...node.data.config, triggerType, triggerKey } } }
-          : node),
-      } : {
-        ...graph,
-        nodes: graph.nodes.map((node) => node.data.kind === "trigger"
-          ? { ...node, data: { ...node.data, label: "Incoming webhook", config: { ...node.data.config, triggerType } } }
-          : node),
-      }), status],
+      JSON.stringify(normalizedGraph), status],
   );
   return result.rows[0] || null;
 }
@@ -238,6 +249,13 @@ async function runAction(node: WorkflowNode, payload: unknown, run: { id: number
   const config = node.data.config;
   if (node.data.kind === "email") {
     const to = (test?.email || interpolate(String(config.to || "{{contact.email}}"), payload)).trim();
+    const verificationRequest = valueAtPath(payload, "event_type") === VERIFICATION_REQUESTED_EVENT.value;
+    if (verificationRequest && !test && !(Date.parse(String(valueAtPath(payload, "data.expires_at") || "")) > Date.now())) {
+      return { skipped: true, reason: "Verification code expired before delivery." };
+    }
+    if (verificationRequest && !test && to.toLowerCase() !== String(valueAtPath(payload, "data.email") || "").toLowerCase()) {
+      throw new Error("Verification email must go to the requester.");
+    }
     let subjectTemplate = String(config.subject || "");
     let bodyTemplate = String(config.body || "");
     let from: string | undefined;
@@ -272,6 +290,9 @@ async function runAction(node: WorkflowNode, payload: unknown, run: { id: number
         throw new Error("Choose an email template or write a custom email.");
       }
     }
+    if (verificationRequest && !test && (!/\{\{(?:data\.)?code\}\}/.test(bodyTemplate) || !/\{\{(?:data\.)?(?:verification_url|magic_link_url)\}\}/.test(bodyTemplate))) {
+      throw new Error("Verification email must contain both the code and verification link.");
+    }
     const subject = `${test ? "[Workflow test] " : ""}${interpolate(subjectTemplate, payload)}`;
     // Action authors control the HTML template; event and contact values do
     // not. Escape substitutions so a form value can't inject markup.
@@ -291,7 +312,7 @@ async function runAction(node: WorkflowNode, payload: unknown, run: { id: number
       if (!sent.ok) throw new Error("Test email could not be sent.");
       return { sent: true, recipient: to, subject, test: true };
     }
-    const sent = await sendEmailWithRetry({ to, subject, html, ...(from ? { from } : {}), category: "automation", workflowRunId: run.id, workflowNodeId: node.id, requiresMarketingConsent: config.messageType === "marketing" || (!config.messageType && config.purpose === "marketing") });
+    const sent = await sendEmailWithRetry({ to, subject, html, ...(from ? { from } : {}), category: "automation", critical: verificationRequest, ...(verificationRequest ? { expiresAt: String(valueAtPath(payload, "data.expires_at") || "") } : {}), workflowRunId: run.id, workflowNodeId: node.id, requiresMarketingConsent: config.messageType === "marketing" || (!config.messageType && config.purpose === "marketing") });
     if (!sent.ok && !sent.queued) throw new Error("Email could not be sent or queued for retry.");
     return { queued: sent.queued === true, recipient: to, subject };
   }
@@ -453,6 +474,9 @@ async function executeRun(run: { id: number; workflow_id: number; trigger_payloa
     const triggerConfig = trigger.data.config;
     if (rawPayload.event_type === "contact.verified" && triggerConfig.source && triggerConfig.source !== valueAtPath(rawPayload, "data.source")) {
       return { __workflowExited: true, reason: "Verified contact source does not match." };
+    }
+    if (rawPayload.event_type === VERIFICATION_REQUESTED_EVENT.value && triggerConfig.source && triggerConfig.source !== valueAtPath(rawPayload, "data.source")) {
+      return { __workflowExited: true, reason: "Verification request source does not match." };
     }
     const recipientEmail = String(payload.contact?.email || payload.email || "").trim().toLowerCase();
     const goalType = String(triggerConfig.goalType || "none") as "none" | "course_pro" | "course_completed" | "community_first_post";

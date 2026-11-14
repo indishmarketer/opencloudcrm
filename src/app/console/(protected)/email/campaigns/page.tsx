@@ -1,9 +1,10 @@
 import { pool } from "@/lib/db";
 import ConsoleEmailCampaigns from "@/components/ConsoleEmailCampaigns";
 import { getPublicPosts } from "@/lib/blogPosts";
+import { listContentTemplates } from "@/lib/emailContentTemplates";
 
 export default async function EmailCampaignsPage() {
-  const [result, sentSlugsResult] = await Promise.all([
+  const [result, sentSlugsResult, templates] = await Promise.all([
     pool.query(`
       SELECT c.id, c.subject, c.status, c.created_at, c.sent_at, c.scheduled_at,
         seg.name AS segment_name, c.last_error,
@@ -22,6 +23,7 @@ export default async function EmailCampaignsPage() {
       ORDER BY c.created_at DESC
     `),
     pool.query(`SELECT DISTINCT source_post_slug FROM newsletter_campaigns WHERE source_post_slug IS NOT NULL AND status != 'draft'`),
+    listContentTemplates(),
   ]);
 
   const sentSlugs = new Set(sentSlugsResult.rows.map((r) => r.source_post_slug));
@@ -37,7 +39,7 @@ export default async function EmailCampaignsPage() {
         then send now or schedule it in IST.
       </p>
       <div className="mt-8">
-        <ConsoleEmailCampaigns campaigns={result.rows} recentPosts={recentPosts} />
+        <ConsoleEmailCampaigns campaigns={result.rows} recentPosts={recentPosts} templates={templates.filter((item) => item.category === "marketing").map((item) => ({ id: item.id, name: item.name, subject: item.subject }))} />
       </div>
     </div>
   );

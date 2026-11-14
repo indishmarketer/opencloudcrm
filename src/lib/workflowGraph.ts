@@ -59,20 +59,56 @@ export const VERIFIED_CONTACT_SOURCES = [
   { value: "custom_form", label: "Verified custom form" },
 ] as const;
 
+/** This event is queued only inside the application: its one-time code/link
+ * must never be published through the outbound webhook catalogue. */
+export const VERIFICATION_REQUESTED_EVENT = {
+  value: "contact.verification_requested",
+  label: "Email verification requested",
+  description: "An unverified person requests a code and magic link from signup, a form, newsletter, or guide. Configure one transactional Email step using data.code and data.verification_url. The link and code expire in 10 minutes.",
+} as const;
+
+export function isSupportedWorkflowEvent(key: string): boolean {
+  return key === VERIFICATION_REQUESTED_EVENT.value || WEBHOOK_EVENT_TYPES.some((event) => event.key === key);
+}
+
+export function workflowEventLabel(key: string): string {
+  return key === VERIFICATION_REQUESTED_EVENT.value
+    ? VERIFICATION_REQUESTED_EVENT.label
+    : WEBHOOK_EVENT_TYPES.find((event) => event.key === key)?.label || "Event trigger";
+}
+
 const SITE_WORKFLOW_EVENT_KEYS = [
   "contact.verified", "newsletter.unsubscribed", "course.enrolled", "course.upgraded",
   "course.revoked", "course.completed", "course.inactivity", "payment.succeeded", "payment.failed",
 ] as const;
 
-export const workflowTriggerOptions = SITE_WORKFLOW_EVENT_KEYS.map((key) => {
+export const workflowTriggerOptions = [...SITE_WORKFLOW_EVENT_KEYS.map((key) => {
   const event = WEBHOOK_EVENT_TYPES.find((item) => item.key === key)!;
   return { value: event.key as string, label: event.label, description: event.description };
-});
+}), VERIFICATION_REQUESTED_EVENT];
 
 export function workflowReadinessIssues(graph: WorkflowGraph): string[] {
   const issues: string[] = [];
   const trigger = graph.nodes.find((node) => node.data.kind === "trigger");
   if (!trigger || !graph.edges.some((edge) => edge.source === trigger.id)) issues.push("Connect the trigger to an action.");
+  if (trigger?.data.config.triggerKey === VERIFICATION_REQUESTED_EVENT.value) {
+    const emailNodes = graph.nodes.filter((node) => node.data.kind === "email");
+    if (emailNodes.length !== 1) issues.push("Use exactly one Email step for verification requests.");
+    if (graph.nodes.some((node) => !["trigger", "email", "stop"].includes(node.data.kind))) {
+      issues.push("Verification requests must go directly to one Email step, with an optional End step.");
+    }
+    if (trigger.data.config.source || trigger.data.config.entrySegmentId || trigger.data.config.purpose || trigger.data.config.goalType) {
+      issues.push("Verification requests must accept every source without an entry filter.");
+    }
+    if (emailNodes.length === 1 && !graph.edges.some((edge) => edge.source === trigger.id && edge.target === emailNodes[0].id)) {
+      issues.push("Connect the verification trigger directly to the Email step.");
+    }
+    for (const node of emailNodes) {
+      if (node.data.config.to !== "{{contact.email}}" || node.data.config.messageType !== "transactional") {
+        issues.push("Send verification only to {{contact.email}} as Transactional email.");
+      }
+    }
+  }
   if (["course.enrolled", "course.upgraded", "course.revoked", "course.completed", "course.inactivity", "payment.succeeded", "payment.failed"].includes(String(trigger?.data.config.triggerKey || ""))) {
     const courseId = String(trigger?.data.config.courseId || "");
     if (courseId && (!Number.isInteger(Number(courseId)) || Number(courseId) < 1)) issues.push("Choose a valid course for this trigger.");

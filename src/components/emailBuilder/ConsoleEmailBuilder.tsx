@@ -193,6 +193,7 @@ export default function ConsoleEmailBuilder({
   backLabel,
   businessName,
   businessAddress,
+  returnAfterSave = false,
 }: {
   initialSubject: string;
   initialBlocks: EmailBlock[];
@@ -208,6 +209,7 @@ export default function ConsoleEmailBuilder({
    * render instead of a guess. */
   businessName: string;
   businessAddress: string;
+  returnAfterSave?: boolean;
 }) {
   const router = useRouter();
   const [subject, setSubject] = useState(initialSubject);
@@ -218,7 +220,7 @@ export default function ConsoleEmailBuilder({
   // is lost until you actually save in a given mode.
   const [freeformHtml, setFreeformHtml] = useState(initialBodyHtml);
   const [composerMode, setComposerMode] = useState<"visual" | "classic" | "html">(
-    initialBlocks.length > 0 ? "visual" : "classic"
+    initialBlocks.length > 0 || !initialBodyHtml.trim() ? "visual" : "classic"
   );
   // Existing HTML templates have no block layout. Keep that source intact
   // until the owner explicitly converts it into an editable visual block.
@@ -301,8 +303,9 @@ export default function ConsoleEmailBuilder({
     setMessage("Saved.");
     setTimeout(() => setMessage(""), 2500);
     router.refresh();
+    if (returnAfterSave) router.push(backHref);
     return true;
-  }, [blocks, subject, freeformHtml, onSave, router, bodySource]);
+  }, [blocks, subject, freeformHtml, onSave, router, bodySource, returnAfterSave, backHref]);
 
   const saveRef = useRef(save);
   const undoRef = useRef(undo);
@@ -528,7 +531,7 @@ export default function ConsoleEmailBuilder({
         <main className="min-h-0 flex-1 overflow-y-auto bg-paper-soft p-6">
           <div className="mx-auto max-w-[640px] rounded-xl border border-line bg-white p-5 shadow-sm">
             <h2 className="text-sm font-semibold text-ink">Existing HTML content</h2>
-            <p className="mt-1 text-xs leading-5 text-ink-soft">This template was written in Classic or HTML. Its content is preserved when you switch modes. Edit it there, or convert it into one visual text block to start a block layout. Conversion may change some formatting when you save.</p>
+            <p className="mt-1 text-xs leading-5 text-ink-soft">This email was written in Classic or HTML. Its content is preserved when you switch modes. Edit it there, or convert it into one visual text block to start a block layout. Conversion may change some formatting when you save.</p>
             <div className="mt-4 flex flex-wrap gap-2">
               <button type="button" onClick={() => setComposerMode("classic")} className={button}>Edit in Classic</button>
               <button type="button" onClick={() => { const textBlock = createEmailBlock("text"); const block = { ...textBlock, props: { ...textBlock.props, html: freeformHtml } }; change([block]); setSelectedId(block.id); }} className={primaryButton}>Convert to visual block</button>

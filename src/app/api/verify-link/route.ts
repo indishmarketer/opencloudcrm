@@ -12,6 +12,7 @@ import { SITE_URL } from "@/lib/siteMeta";
 import { getFormById } from "@/lib/forms";
 import { completeFormSubmission, FORM_SUBMIT_PURPOSE_PREFIX } from "@/lib/formSubmission";
 import { emitVerifiedContactEvent } from "@/lib/verifiedContactEvent";
+import { completeAccountVerification } from "@/lib/accountVerification";
 
 /** Completes whichever purpose a magic link belongs to. Only reachable via
  * POST (a real click on the confirm page's button), never GET -- so a
@@ -39,7 +40,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.redirect(new URL("/verify?error=1", SITE_URL), { status: 303 });
   }
 
-  if (result.purpose === "newsletter") {
+  if (result.purpose === "account") {
+    const userId = Number(result.payload?.userId);
+    if (!Number.isInteger(userId) || userId < 1) {
+      return NextResponse.redirect(new URL("/verify?error=1", SITE_URL), { status: 303 });
+    }
+    const redirect = await completeAccountVerification(req, userId, result.email, String(result.payload?.redirect || ""));
+    return NextResponse.redirect(new URL(redirect, SITE_URL), { status: 303 });
+  } else if (result.purpose === "newsletter") {
     await completeNewsletterVerification(result.email, result.payload);
     await emitVerifiedContactEvent({ email: result.email, source: "newsletter" }).catch((error) => console.error("Newsletter verified contact event failed:", error));
   } else if (result.purpose === "contact") {

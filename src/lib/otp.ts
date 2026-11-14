@@ -4,6 +4,7 @@ import { getEmailTemplateOptional, applyTemplateVars } from "@/lib/emailTemplate
 import { confirmContactDeliverable } from "@/lib/contacts";
 import { SITE_URL } from "@/lib/siteMeta";
 import crypto from "node:crypto";
+import { queueVerificationWorkflow } from "@/lib/verificationWorkflow";
 
 export type OtpResult = { email: string; payload: Record<string, unknown> | null };
 
@@ -35,9 +36,23 @@ export async function requestOtp(
     [email, code, purpose, expiresAt, linkToken, payload ? JSON.stringify(payload) : null]
   );
 
+  const verificationUrl = `${SITE_URL}/verify?token=${linkToken}`;
+  const source = purpose === "account" ? "signup" : purpose === "contact" ? "contact_form"
+    : purpose.startsWith("form-submit-") ? "custom_form" : purpose;
+  const queued = await queueVerificationWorkflow({
+    email,
+    name: typeof payload?.name === "string" ? payload.name : null,
+    userId: typeof payload?.userId === "number" ? payload.userId : null,
+    source,
+    code,
+    verificationUrl,
+    expiresAt,
+  }).catch((error) => { console.error("Verification workflow queue failed:", error); return false; });
+  if (queued) return true;
+
   const tpl = await getEmailTemplateOptional("otp-code");
   if (!tpl) return false;
-  const vars = { code, magic_link_url: `${SITE_URL}/verify?token=${linkToken}` };
+  const vars = { code, magic_link_url: verificationUrl };
   const result = await sendEmail({
     to: email,
     subject: applyTemplateVars(tpl.subject, vars),

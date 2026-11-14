@@ -37,13 +37,14 @@ const STATUS_STYLES: Record<string, string> = {
   completed_with_errors: "bg-red-50 text-red-700",
 };
 
-export default function ConsoleEmailCampaigns({ campaigns, recentPosts }: { campaigns: Campaign[]; recentPosts: RecentPost[] }) {
+export default function ConsoleEmailCampaigns({ campaigns, recentPosts, templates }: { campaigns: Campaign[]; recentPosts: RecentPost[]; templates: { id: number; name: string; subject: string }[] }) {
   const router = useRouter();
   const { confirm, dialog } = useConfirm();
   const [creating, setCreating] = useState(false);
-  const [mode, setMode] = useState<"blank" | "post">("blank");
+  const [mode, setMode] = useState<"blank" | "post" | "template">("blank");
   const [subject, setSubject] = useState("");
   const [postSlug, setPostSlug] = useState(recentPosts[0]?.slug || "");
+  const [templateId, setTemplateId] = useState(String(templates[0]?.id || ""));
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [error, setError] = useState("");
@@ -52,6 +53,7 @@ export default function ConsoleEmailCampaigns({ campaigns, recentPosts }: { camp
     setMode("blank");
     setSubject("");
     setPostSlug(recentPosts[0]?.slug || "");
+    setTemplateId(String(templates[0]?.id || ""));
     setError("");
     setCreating(true);
   }
@@ -68,20 +70,22 @@ export default function ConsoleEmailCampaigns({ campaigns, recentPosts }: { camp
       });
       const body = await res.json().catch(() => ({}));
       setSaving(false);
-      if (res.ok) router.push(`/console/email/campaigns/${body.id}`);
+      if (res.ok) router.push(`/console/email-builder/campaign/${body.id}`);
       else setError(body.error || "Could not create this campaign.");
       return;
     }
-    if (!subject.trim()) return;
+    const selectedTemplate = templates.find((item) => String(item.id) === templateId);
+    const draftSubject = mode === "template" ? selectedTemplate?.subject || selectedTemplate?.name || "" : subject;
+    if (!draftSubject.trim()) return;
     setSaving(true);
     const res = await fetch("/api/console/email/campaigns", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ subject }),
+      body: JSON.stringify({ subject: draftSubject, ...(mode === "template" ? { templateId: selectedTemplate?.id } : {}) }),
     });
     const body = await res.json().catch(() => ({}));
     setSaving(false);
-    if (res.ok) router.push(`/console/email/campaigns/${body.id}`);
+    if (res.ok) router.push(`/console/email-builder/campaign/${body.id}`);
     else setError(body.error || "Could not create this campaign.");
   }
 
@@ -151,12 +155,21 @@ export default function ConsoleEmailCampaigns({ campaigns, recentPosts }: { camp
               >
                 From a blog post
               </button>
+              <button type="button" onClick={() => setMode("template")} disabled={templates.length === 0} className={`flex-1 rounded-full px-3 py-1.5 font-medium transition-colors disabled:opacity-50 ${mode === "template" ? "bg-ink text-paper" : "text-ink-soft hover:text-ink"}`}>
+                From a template
+              </button>
             </div>
 
             {mode === "blank" ? (
               <div>
                 <label className="text-sm font-medium">Subject</label>
                 <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="e.g. What's new this month" className="mt-1 w-full rounded-lg border border-line bg-paper px-3 py-2 text-sm outline-none focus:border-ink" />
+              </div>
+            ) : mode === "template" ? (
+              <div>
+                <label className="text-sm font-medium">Marketing template</label>
+                <div className="mt-1"><BrandSelect value={templateId} onChange={setTemplateId} options={templates.map((item) => ({ value: String(item.id), label: item.name }))} /></div>
+                <p className="mt-1 text-xs text-ink-soft">A copy opens in the composer. Changes to this campaign will not alter the template.</p>
               </div>
             ) : (
               <div>
@@ -185,7 +198,7 @@ export default function ConsoleEmailCampaigns({ campaigns, recentPosts }: { camp
             <button
               type="button"
               onClick={handleCreate}
-              disabled={saving || (mode === "blank" ? !subject.trim() : !postSlug)}
+              disabled={saving || (mode === "blank" ? !subject.trim() : mode === "template" ? !templateId : !postSlug)}
               className="w-full rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-paper transition-opacity hover:opacity-80 disabled:opacity-50"
             >
               {saving ? "Creating..." : "Create draft"}

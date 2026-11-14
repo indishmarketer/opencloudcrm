@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { pool } from "@/lib/db";
-import { createEmailVerificationToken, safeRedirectPath } from "@/lib/auth";
-import { firstNameOf } from "@/lib/emailAutomation";
-import { emitWebhookEvent } from "@/lib/webhookEvents";
+import { safeRedirectPath } from "@/lib/auth";
+import { requestOtp } from "@/lib/otp";
 import { checkRateLimit, privateRateLimitKey } from "@/lib/rateLimit";
-import { SITE_URL } from "@/lib/liveSiteUrl";
 import { z } from "zod";
 
 const ResendSchema = z.object({
@@ -36,20 +34,9 @@ export async function POST(req: NextRequest) {
   const user = result.rows[0];
   if (!user) return genericResponse();
 
-  const token = await createEmailVerificationToken(user.id, user.email);
-  const dest = safeRedirectPath(redirect);
-  const verifyUrl = `${SITE_URL}/api/auth/verify-email?token=${token}&redirect=${encodeURIComponent(dest)}`;
-
-  // Same event as signup -- a resend is just the same request again.
-  emitWebhookEvent({
-    eventType: "account.verification_requested",
-    source: "users",
-    sourceRecordId: user.id,
-    contactEmail: user.email,
-    contactName: user.name,
-    userId: user.id,
-    data: { verify_url: verifyUrl, first_name: firstNameOf(user.name) },
-  }).catch(() => {});
+  await requestOtp(user.email, "account", {
+    userId: user.id, name: user.name, redirect: safeRedirectPath(redirect),
+  }).catch((error) => console.error("Resend verification failed:", error));
 
   return genericResponse();
 }

@@ -7,6 +7,11 @@ export const metadata: Metadata = {
 };
 
 const PURPOSE_COPY: Record<string, { heading: string; body: string; button: string }> = {
+  account: {
+    heading: "Confirm your account",
+    body: "One click and your account is ready.",
+    button: "Confirm my email",
+  },
   newsletter: {
     heading: "Confirm your subscription",
     body: "One click and you're on the list.",

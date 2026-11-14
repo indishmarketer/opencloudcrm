@@ -50,6 +50,8 @@ const workflowEmailVariables = [
   { token: "data.message", label: "Contact message" }, { token: "data.sample_url", label: "Writing sample link" },
   { token: "data.community_url", label: "Community link" },
   { token: "data.verify_url", label: "Account verification link" }, { token: "data.reset_url", label: "Password reset link" },
+  { token: "data.code", label: "Verification code" }, { token: "data.verification_url", label: "Verification link" },
+  { token: "data.magic_link_url", label: "Magic link" }, { token: "data.source", label: "Verification source" },
   { token: "data.confirm_url", label: "Email change confirmation link" }, { token: "data.current_email", label: "Previous email address" },
   { token: "data.link", label: "Console login link" }, { token: "data.invited_by", label: "Invited by" },
 ];

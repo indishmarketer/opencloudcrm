@@ -4,12 +4,10 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import BrandSelect from "@/components/BrandSelect";
-import RichTextEditor from "@/components/RichTextEditor";
 import ScheduleDateTimeModal from "@/components/ScheduleDateTimeModal";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { CONTACT_MESSAGE_VARIABLES } from "@/lib/messageVariables";
 import { formatIndiaDateTime } from "@/lib/indiaTime";
-import type { EmailContentTemplate } from "@/lib/emailContentTemplates";
 
 type Campaign = {
   id: number;
@@ -22,19 +20,15 @@ type Campaign = {
   scheduled_at: string | null;
 };
 
-export default function ConsoleCampaignEditor({ campaign, segments, templates, report }: {
+export default function ConsoleCampaignEditor({ campaign, segments, report }: {
   campaign: Campaign;
   segments: { id: number; name: string; count: number }[];
-  /** Reusable content from Email → Templates. Picking one copies its
-   * subject/content in; nothing stays linked afterward. */
-  templates: EmailContentTemplate[];
   /** Results once it has been sent: shown as tabs beside the read-only email. */
   report?: { analytics: React.ReactNode; recipients: React.ReactNode };
 }) {
   const [tab, setTab] = useState<"analytics" | "recipients" | "email">(report ? "analytics" : "email");
   const router = useRouter();
   const [subject, setSubject] = useState(campaign.subject);
-  const [html, setHtml] = useState(campaign.html);
   const [segmentId, setSegmentId] = useState(String(campaign.segment_id || segments[0]?.id || ""));
   const [fromEmail, setFromEmail] = useState(campaign.from_email);
   const [dirty, setDirty] = useState(false);
@@ -44,7 +38,6 @@ export default function ConsoleCampaignEditor({ campaign, segments, templates, r
   const [testTo, setTestTo] = useState("");
   const [sendStatus, setSendStatus] = useState<"idle" | "sending" | "error">("idle");
   const [sendMessage, setSendMessage] = useState("");
-  const [contentMode, setContentMode] = useState<"classic" | "html">("classic");
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
   const [scheduleBusy, setScheduleBusy] = useState(false);
   const { confirm, dialog } = useConfirm();
@@ -57,7 +50,7 @@ export default function ConsoleCampaignEditor({ campaign, segments, templates, r
     const res = await fetch(`/api/console/email/campaigns/${campaign.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ subject, html, segmentId: Number(segmentId), fromEmail }),
+      body: JSON.stringify({ subject, segmentId: Number(segmentId), fromEmail }),
     });
     setSaving(false);
     if (!res.ok) {
@@ -75,7 +68,7 @@ export default function ConsoleCampaignEditor({ campaign, segments, templates, r
     const res = await fetch(`/api/console/email/campaigns/${campaign.id}/test`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ subject, html, fromEmail, testTo }),
+      body: JSON.stringify({ subject, html: campaign.html, fromEmail, testTo }),
     });
     const body = await res.json().catch(() => ({}));
     setTestStatus(res.ok ? "sent" : "error");
@@ -148,7 +141,7 @@ export default function ConsoleCampaignEditor({ campaign, segments, templates, r
       </Link>
 
       <div className="mt-3 flex flex-wrap items-center gap-3">
-        <h1 className="font-display text-2xl font-semibold sm:text-3xl">{isDraft ? "Edit campaign" : "Campaign"}</h1>
+        <h1 className="font-display text-2xl font-semibold sm:text-3xl">{isDraft ? "Prepare campaign" : "Campaign"}</h1>
         {!isDraft && (
           <span className="rounded-full bg-paper-soft px-3 py-1 text-xs font-medium text-ink-soft">
             {campaign.status} — read only
@@ -215,28 +208,6 @@ export default function ConsoleCampaignEditor({ campaign, segments, templates, r
           </div>
         </div>
 
-        {isDraft && templates.length > 0 && (
-          <div className="min-w-[260px] max-w-sm">
-            <label className="text-sm text-ink-soft">Start from a template</label>
-            <div className="mt-1">
-              <BrandSelect
-                value=""
-                placeholder="Pick a template"
-                onChange={(id) => {
-                  const template = templates.find((t) => String(t.id) === id);
-                  if (!template) return;
-                  setSubject(template.subject);
-                  setHtml(template.body_html);
-                  setDirty(true);
-                }}
-                options={templates.map((t) => ({ value: String(t.id), label: t.name }))}
-                compact
-              />
-            </div>
-            <p className="mt-1 text-xs text-ink-soft">Copies its subject and content in — still fully editable after.</p>
-          </div>
-        )}
-
         <div>
           <label className="text-sm font-medium">Subject</label>
           <input
@@ -266,40 +237,13 @@ export default function ConsoleCampaignEditor({ campaign, segments, templates, r
           </div>}
         </div>
 
-        <div>
-          <div className="flex items-center justify-between">
-            <label className="text-sm font-medium">Content</label>
-            {isDraft && (
-              <div className="flex items-center gap-0.5 rounded-lg bg-paper-soft p-0.5">
-                <button type="button" onClick={() => setContentMode("classic")} className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${contentMode === "classic" ? "bg-white text-ink shadow-sm" : "text-ink-soft hover:text-ink"}`}>Classic</button>
-                <button type="button" onClick={() => setContentMode("html")} className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${contentMode === "html" ? "bg-white text-ink shadow-sm" : "text-ink-soft hover:text-ink"}`}>HTML</button>
-              </div>
-            )}
+        <div className="rounded-xl border border-line bg-paper p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-sm font-medium">Email preview</h2>
+            {isDraft && <button type="button" onClick={async () => { if (!dirty || await save()) router.push(`/console/email-builder/campaign/${campaign.id}`); }} disabled={saving} className="rounded-full border border-line px-4 py-2 text-sm font-medium hover:border-ink disabled:opacity-50">Open composer</button>}
           </div>
-          <div className="mt-1">
-            {contentMode === "classic" ? (
-              <RichTextEditor
-                value={html}
-                variables={isDraft ? CONTACT_MESSAGE_VARIABLES : undefined}
-                onChange={(v) => {
-                  setHtml(v);
-                  setDirty(true);
-                }}
-              />
-            ) : (
-              <textarea
-                value={html}
-                onChange={(e) => {
-                  setHtml(e.target.value);
-                  setDirty(true);
-                }}
-                disabled={!isDraft}
-                spellCheck={false}
-                className="h-80 w-full rounded-xl border border-line bg-paper p-3 font-mono text-xs outline-none focus:border-ink disabled:opacity-60"
-              />
-            )}
-          </div>
-          <p className="mt-1.5 text-xs text-ink-soft">Recipient fields are filled separately for every contact when the campaign sends.</p>
+          <iframe title="Campaign email preview" sandbox="" srcDoc={campaign.html} className="mt-3 h-96 w-full rounded-lg border border-line bg-white" />
+          <p className="mt-2 text-xs text-ink-soft">Recipient fields are filled for each contact when the campaign sends.</p>
         </div>
 
         {isDraft && (

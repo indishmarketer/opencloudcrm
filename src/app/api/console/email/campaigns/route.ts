@@ -30,17 +30,23 @@ export async function POST(req: NextRequest) {
   const isAdmin = await getAdminSession();
   if (!isAdmin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { subject } = await req.json();
+  const { subject, templateId } = await req.json();
   if (!subject || typeof subject !== "string" || !subject.trim()) {
     return NextResponse.json({ error: "Subject is required." }, { status: 400 });
   }
 
+  let template: { body_html: string; blocks_json: unknown } | undefined;
+  if (templateId !== undefined) {
+    const found = await pool.query("SELECT body_html, blocks_json FROM email_content_templates WHERE id = $1 AND category = 'marketing'", [Number(templateId)]);
+    template = found.rows[0];
+    if (!template) return NextResponse.json({ error: "Choose a marketing template." }, { status: 400 });
+  }
   const result = await pool.query(
-    `INSERT INTO newsletter_campaigns (subject, html, status, segment_id)
-     VALUES ($1, '<p></p>', 'draft',
-       (SELECT id FROM contact_segments WHERE name = 'All marketable contacts' AND is_system = true LIMIT 1))
+    `INSERT INTO newsletter_campaigns (subject, html, status, segment_id, blocks_json)
+     VALUES ($1, $2, 'draft',
+       (SELECT id FROM contact_segments WHERE name = 'All marketable contacts' AND is_system = true LIMIT 1), $3::jsonb)
      RETURNING id`,
-    [subject.trim()]
+    [subject.trim(), template?.body_html ?? "", template?.blocks_json ? JSON.stringify(template.blocks_json) : null]
   );
   return NextResponse.json({ id: result.rows[0].id });
 }

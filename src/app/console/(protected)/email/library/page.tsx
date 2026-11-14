@@ -1,14 +1,11 @@
 import { listContentTemplates } from "@/lib/emailContentTemplates";
 import { listEmailTemplates, SYSTEM_EMAIL_DEFS } from "@/lib/emailTemplates";
 import ConsoleTemplates, { type ContentTemplateRow, type FixedTemplateRow } from "@/components/ConsoleTemplates";
-import { SITE_HOSTNAME } from "@/lib/liveSiteUrl";
-import { resolveEmailDomain } from "@/lib/emailSettings";
 
 export default async function EmailTemplatesPage() {
-  const [contentTemplates, fixedTemplates, siteHost] = await Promise.all([
+  const [contentTemplates, fixedTemplates] = await Promise.all([
     listContentTemplates(),
     listEmailTemplates(),
-    resolveEmailDomain(SITE_HOSTNAME),
   ]);
   const content: ContentTemplateRow[] = contentTemplates.map((t) => ({
     kind: "content",
@@ -37,7 +34,7 @@ export default async function EmailTemplatesPage() {
         Nothing is hardcoded: every template here is fully editable and deletable, and can be written in whichever
         mode you prefer -- Visual blocks, Classic rich text, or raw HTML.
       </p>
-      <ConsoleTemplates contentTemplates={content} fixedTemplates={fixed} systemDefs={SYSTEM_EMAIL_DEFS as unknown as { key: string; label: string; description: string }[]} siteHost={siteHost} />
+      <ConsoleTemplates contentTemplates={content} fixedTemplates={fixed} systemDefs={SYSTEM_EMAIL_DEFS as unknown as { key: string; label: string; description: string }[]} />
     </div>
   );
 }

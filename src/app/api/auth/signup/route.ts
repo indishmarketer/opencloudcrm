@@ -1,16 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { pool, withTransaction } from "@/lib/db";
-import { createEmailVerificationToken, safeRedirectPath } from "@/lib/auth";
-import { firstNameOf } from "@/lib/emailAutomation";
-import { emitWebhookEvent } from "@/lib/webhookEvents";
+import { safeRedirectPath } from "@/lib/auth";
+import { requestOtp } from "@/lib/otp";
 import { verifyTurnstile } from "@/lib/turnstile";
 import { generateUniqueUsername } from "@/lib/community";
 import { getAttributionFromRequest } from "@/lib/attribution";
 import { checkRateLimit, privateRateLimitKey } from "@/lib/rateLimit";
 import { ensureContact } from "@/lib/contacts";
 import { normalizeCountry } from "@/lib/countries";
-import { SITE_URL } from "@/lib/liveSiteUrl";
 import { z } from "zod";
 
 const SignupSchema = z.object({
@@ -151,24 +149,12 @@ export async function POST(req: NextRequest) {
     return user;
   });
 
-  const token = await createEmailVerificationToken(user.id, user.email);
-  const dest = safeRedirectPath(redirect);
-  const verifyUrl = `${SITE_URL}/api/auth/verify-email?token=${token}&redirect=${encodeURIComponent(dest)}`;
-
-  // No more direct send -- this is now a real, self-built automation
-  // (trigger "Account created (needs verification)"). Nothing emails the
-  // new user until that automation exists; the account itself is already
-  // created regardless, same as course.enrolled never depends on its own
-  // notification succeeding.
-  emitWebhookEvent({
-    eventType: "account.verification_requested",
-    source: "users",
-    sourceRecordId: user.id,
-    contactEmail: user.email,
-    contactName: name,
-    userId: user.id,
-    data: { verify_url: verifyUrl, first_name: firstNameOf(name) },
-  }).catch(() => {});
+  const sent = await requestOtp(user.email, "account", {
+    userId: user.id, name, redirect: safeRedirectPath(redirect),
+  });
+  if (!sent) {
+    return NextResponse.json({ error: "Account created, but the verification email could not be sent. Request a new code.", needsVerification: true }, { status: 502 });
+  }
 
   return NextResponse.json({ ok: true, needsVerification: true });
 }

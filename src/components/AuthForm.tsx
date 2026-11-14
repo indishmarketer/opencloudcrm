@@ -45,6 +45,9 @@ export default function AuthForm({ mode, design }: { mode: "signup" | "login"; d
   const [needsVerification, setNeedsVerification] = useState(false);
   const [lastEmail, setLastEmail] = useState("");
   const [resent, setResent] = useState(false);
+  const [verificationCode, setVerificationCode] = useState("");
+  const [verifyingCode, setVerifyingCode] = useState(false);
+  const [verificationError, setVerificationError] = useState("");
   const [turnstileToken, setTurnstileToken] = useState("");
   const [updatesOptIn, setUpdatesOptIn] = useState(true);
   const [whatsappOptIn, setWhatsappOptIn] = useState(true);
@@ -60,6 +63,35 @@ export default function AuthForm({ mode, design }: { mode: "signup" | "login"; d
       body: JSON.stringify({ email: lastEmail, redirect }),
     });
   }
+
+  async function handleVerifyCode(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setVerifyingCode(true);
+    setVerificationError("");
+    const response = await fetch("/api/auth/verify-email/code", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: lastEmail, code: verificationCode }),
+    }).catch(() => null);
+    const body = await response?.json().catch(() => ({})) || {};
+    setVerifyingCode(false);
+    if (!response?.ok) {
+      setVerificationError(body.error || "Could not verify the code.");
+      return;
+    }
+    const safe = typeof body.redirect === "string" && body.redirect.startsWith("/") && !body.redirect.startsWith("//") && !body.redirect.includes("\\") ? body.redirect : "/account";
+    window.location.replace(new URL(safe, window.location.origin).toString());
+  }
+
+  const codeEntry = lastEmail ? (
+    <form onSubmit={handleVerifyCode} className="mt-5 space-y-2 text-left">
+      <label className="block text-sm font-medium text-ink">Verification code
+        <input value={verificationCode} onChange={(event) => setVerificationCode(event.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" placeholder="Six digit code" className="mt-1.5 w-full rounded-lg border border-line bg-white px-3 py-2 text-sm outline-none focus:border-ink" />
+      </label>
+      {verificationError && <p role="alert" className="text-xs text-red-600">{verificationError}</p>}
+      <button type="submit" disabled={verifyingCode || verificationCode.length !== 6} className="rounded-full bg-ink px-5 py-2 text-sm font-medium text-paper disabled:opacity-50">{verifyingCode ? "Verifying…" : "Verify code"}</button>
+    </form>
+  ) : null;
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -137,9 +169,10 @@ export default function AuthForm({ mode, design }: { mode: "signup" | "login"; d
       <div className="mt-10 rounded-2xl border border-line bg-paper-soft p-6 text-center">
         <p className="font-medium">Check your email</p>
         <p className="mt-2 text-sm text-ink-soft">
-          We sent a confirmation link to <strong>{lastEmail}</strong>. Click it to activate your
-          account and continue.
+          We sent a six digit code and confirmation link to <strong>{lastEmail}</strong>.
+          Enter the code or click the link to activate your account.
         </p>
+        {codeEntry}
         <button
           type="button"
           onClick={handleResend}
@@ -253,14 +286,14 @@ export default function AuthForm({ mode, design }: { mode: "signup" | "login"; d
         <div>
           <p className="text-sm text-red-600">{error || oauthErrorMessage}</p>
           {needsVerification && (
-            <button
+            <><button
               type="button"
               onClick={handleResend}
               disabled={resent}
               className="mt-2 text-sm font-medium text-ink underline disabled:opacity-50"
             >
               {resent ? "Sent — check your inbox" : "Resend confirmation email"}
-            </button>
+            </button>{codeEntry}</>
           )}
         </div>
       )}
