@@ -628,6 +628,7 @@ export default function ConsolePageEditor({
               onRemove={() => void removeElementFromRow(rowId, el.id)}
               canMoveUp={i > 0}
               canMoveDown={i < column.length - 1}
+              device={device}
               inlineEdit={inlineTextEdit(el, elSelected, (next) => updateElementProps(rowId, el.id, next))}
             />
           );
@@ -1124,7 +1125,7 @@ export default function ConsolePageEditor({
                   title={settingsTarget.def.label}
                   description={blockSummary(settingsTarget.def)}
                   contentFields={settingsTarget.def.fields}
-                  styleFieldsList={styleFields(settingsTarget.def)}
+                  styleFieldsList={device === "mobile" ? styleFields(settingsTarget.def).filter(isOverridableStyleField) : styleFields(settingsTarget.def)}
                   device={device}
                   props={settingsTarget.props}
                   onChangeProps={settingsTarget.onChangeProps}

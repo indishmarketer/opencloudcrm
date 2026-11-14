@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { BUILT_IN_PAGES } from "../src/lib/defaultPages.ts";
 import { normalizeBlocks } from "../src/lib/pageBlocks.ts";
-import { upgradeDirectoryBlocks } from "../src/lib/directoryPageBlocks.ts";
+import { directoryPageBlocks, upgradeDirectoryBlocks } from "../src/lib/directoryPageBlocks.ts";
 
 const identity = (value) => value;
 
@@ -36,4 +36,22 @@ test("an old directory marker becomes editable sections without losing saved cop
   assert.equal(after[1].props.items[0][3].props.placeholder, "Find software");
   assert.equal(after[3].props.items[0][0].props.text, "Browse categories");
   assert.deepEqual(upgradeDirectoryBlocks(after), after);
+});
+
+test("existing directory sections gain spacing controls once and keep deliberate mobile resets", () => {
+  const old = directoryPageBlocks();
+  delete old[0].props.sideGap;
+  delete old[0].props.mobile;
+  delete old[0].props.items[0][1].props.lineHeight;
+  delete old[0].props.items[0][1].props.mobile;
+  const upgraded = upgradeDirectoryBlocks(old);
+  assert.equal(upgraded[0].props.sideGap, 24);
+  assert.equal(upgraded[0].props.mobile.sideGap, 16);
+  assert.equal(upgraded[0].props.items[0][1].props.lineHeight, 105);
+  assert.equal(upgraded[0].props.items[0][1].props.mobile.fontSize, 48);
+  delete upgraded[0].props.mobile;
+  delete upgraded[0].props.items[0][1].props.mobile;
+  const reset = upgradeDirectoryBlocks(upgraded);
+  assert.equal(reset[0].props.mobile, undefined);
+  assert.equal(reset[0].props.items[0][1].props.mobile, undefined);
 });

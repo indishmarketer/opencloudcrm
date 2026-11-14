@@ -63,11 +63,13 @@ function number(props: Record<string, unknown>, key: string, fallback: number) {
   return Number.isFinite(value) ? value : fallback;
 }
 function sectionStyle(props: Record<string, unknown>): React.CSSProperties {
+  const sideGap = number(props, "sideGap", 0);
   return {
     paddingTop: number(props, "paddingY", 48), paddingBottom: number(props, "paddingY", 48),
     paddingLeft: number(props, "paddingX", 24), paddingRight: number(props, "paddingX", 24),
     marginTop: number(props, "marginTop", 0), marginBottom: number(props, "marginBottom", 0),
     borderRadius: number(props, "borderRadius", 0),
+    ...(sideGap > 0 ? { width: `calc(100% - ${sideGap * 2}px)`, marginLeft: "auto", marginRight: "auto" } : {}),
     ...surfaceStyle(str(props, "backgroundColor")),
   };
 }
@@ -79,17 +81,43 @@ export function DirectorySearchBlock({ props }: { props: Record<string, unknown>
   const directory = useDirectory();
   if (!directory) return null;
   const placeholder = str(props, "placeholder", "Search 'CRM', 'free API', 'email tool'...");
-  const label = str(props, "submitLabel", "Submit your tool");
+  const searchLabel = str(props, "searchLabel", "Search");
+  const submitLabel = str(props, "submitLabel", "Submit your tool");
+  const variables = {
+    "--directory-input-height": `${number(props, "inputHeight", 72)}px`,
+    "--directory-input-padding-x": `${number(props, "inputPaddingX", 20)}px`,
+    "--directory-button-radius": `${number(props, "buttonRadius", 12)}px`,
+    "--directory-search-bg": str(props, "searchBackgroundColor", "#262626"),
+    "--directory-search-border": str(props, "searchBorderColor", "#565656"),
+    "--directory-search-button-bg": str(props, "searchButtonColor", "#ffffff"),
+    "--directory-search-button-text": str(props, "searchButtonTextColor", "#000000"),
+    "--directory-submit-button-bg": str(props, "submitButtonColor", "#ffffff"),
+    "--directory-submit-button-text": str(props, "submitButtonTextColor", "#000000"),
+  } as React.CSSProperties;
+  const searchButtonStyle: React.CSSProperties = { background: "var(--directory-search-button-bg)", color: "var(--directory-search-button-text)", borderRadius: "var(--directory-button-radius)" };
+  const submitButtonStyle: React.CSSProperties = { background: "var(--directory-submit-button-bg)", color: "var(--directory-submit-button-text)", borderRadius: "var(--directory-button-radius)" };
+  const showResults = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    document.getElementById("directory-results-top")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
   return (
-    <div style={{ ...elementStyle(props), maxWidth: number(props, "maxWidth", 960) || 960, marginInline: "auto" }}>
-      <div className="flex items-center gap-2 rounded-2xl border border-white/20 bg-white/10 p-2 backdrop-blur-sm sm:gap-3 sm:p-2.5">
-        <svg viewBox="0 0 24 24" aria-hidden="true" className="ml-2 h-5 w-5 shrink-0 text-white/60 sm:ml-3" fill="none" stroke="currentColor" strokeWidth={2}><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" strokeLinecap="round" /></svg>
-        <label className="sr-only" htmlFor="directory-search">Search the tools directory</label>
-        <input id="directory-search" type="search" value={directory.query} onChange={(event) => directory.setQuery(event.target.value)} placeholder={placeholder} className="min-w-0 flex-1 bg-transparent py-3 text-base text-white outline-none placeholder:text-white/50 sm:py-4" />
-        {directory.query && <button type="button" onClick={() => directory.setQuery("")} className="shrink-0 px-2 text-sm text-white/70">Clear</button>}
-        <Link href="/tools/submit" className="hidden shrink-0 rounded-xl bg-white px-5 py-3.5 text-sm font-medium text-black sm:block">{label}</Link>
+    <div style={{ ...elementStyle(props), ...variables, maxWidth: number(props, "searchWidth", 960) || 960, marginInline: "auto" }} className={str(props, "mobileClass") || undefined}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch">
+        <form onSubmit={showResults} role="search" className="min-w-0 flex-1">
+          <div className="flex min-w-0 items-center gap-3 border backdrop-blur-sm" style={{ background: "var(--directory-search-bg)", borderColor: "var(--directory-search-border)", borderRadius: "calc(var(--directory-button-radius) + 4px)", paddingInline: "var(--directory-input-padding-x)" }}>
+            <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5 shrink-0 text-white/60" fill="none" stroke="currentColor" strokeWidth={2}><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" strokeLinecap="round" /></svg>
+            <label className="sr-only" htmlFor="directory-search">Search the tools directory</label>
+            <input id="directory-search" type="search" value={directory.query} onChange={(event) => directory.setQuery(event.target.value)} placeholder={placeholder} style={{ minHeight: "var(--directory-input-height)", color: str(props, "textColor", "#ffffff") }} className="min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-white/50" />
+            {directory.query && <button type="button" onClick={() => directory.setQuery("")} className="shrink-0 px-1 text-sm text-white/70">Clear</button>}
+            <button type="submit" style={searchButtonStyle} className="hidden shrink-0 items-center justify-center px-5 py-3 text-sm font-medium sm:inline-flex">{searchLabel}</button>
+          </div>
+          <div className="mt-3 flex gap-3 sm:hidden">
+            <button type="submit" style={searchButtonStyle} className="flex min-h-12 min-w-0 flex-1 items-center justify-center gap-2 px-3 text-sm font-medium"><svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2}><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" strokeLinecap="round" /></svg>{searchLabel}</button>
+            <Link href="/tools/submit" style={submitButtonStyle} className="flex min-h-12 min-w-0 flex-1 items-center justify-center px-3 text-center text-sm font-medium">{submitLabel}</Link>
+          </div>
+        </form>
+        <Link href="/tools/submit" style={submitButtonStyle} className="hidden shrink-0 items-center justify-center px-5 text-center text-sm font-medium sm:inline-flex">{submitLabel}</Link>
       </div>
-      <Link href="/tools/submit" className="mt-3 block rounded-xl bg-white px-5 py-3 text-center text-sm font-medium text-black sm:hidden">{label}</Link>
     </div>
   );
 }
@@ -98,7 +126,7 @@ export function DirectoryLogosBlock({ props }: { props: Record<string, unknown> 
   const directory = useDirectory();
   if (!directory?.heroLogos.length) return null;
   return (
-    <div aria-hidden="true" className="tool-logo-marquee-viewport relative mt-4" style={{ ...elementStyle(props), overflow: "hidden" }}>
+    <div aria-hidden="true" className={`tool-logo-marquee-viewport relative mt-4 ${str(props, "mobileClass")}`} style={{ ...elementStyle(props), overflow: "hidden" }}>
       <div className="tool-logo-marquee gap-4">
         {[...directory.heroLogos, ...directory.heroLogos].map((tool, index) => (
           <span key={`${tool.slug}-${index}`} className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-white/15 bg-white/10 p-2">
@@ -153,9 +181,10 @@ export function DirectoryResultsBlock({ props }: { props: Record<string, unknown
   ];
   const activeCategoryName = directory.categories.find((item) => item.slug === directory.category)?.name;
   const movePage = (value: number) => { directory.setPage(value); document.getElementById("directory-results-top")?.scrollIntoView({ behavior: "smooth", block: "start" }); };
+  const { paddingLeft, paddingRight, ...outerStyle } = sectionStyle(props);
   return (
-    <section style={sectionStyle(props)} id={str(props, "anchor") || undefined}>
-      <div className="mx-auto" style={{ maxWidth: number(props, "maxWidth", 1152) || 1152 }}>
+    <section style={outerStyle} id={str(props, "anchor") || undefined} className={str(props, "mobileClass") || undefined}>
+      <div className="mx-auto" style={{ maxWidth: number(props, "maxWidth", 1152) || 1152, paddingLeft, paddingRight }}>
         <div id="directory-results-top" className="scroll-mt-24" />
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <BrandSelect value={directory.category} onChange={directory.setCategory} options={categoryOptions} searchable searchPlaceholder="Search categories…" className="sm:w-64" />
@@ -184,7 +213,7 @@ export function DirectoryResultsBlock({ props }: { props: Record<string, unknown
 export function DirectoryCategoriesBlock({ props }: { props: Record<string, unknown> }) {
   const directory = useDirectory();
   if (!directory) return null;
-  return <div style={elementStyle(props)} className="flex flex-wrap gap-2">
+  return <div style={elementStyle(props)} className={`flex flex-wrap gap-2 ${str(props, "mobileClass")}`}>
     {directory.categories.filter((item) => item.tool_count > 0).map((item) => (
       <Link key={item.slug} href={`/tools/${item.slug}`} className="inline-flex items-center gap-1.5 rounded-full border border-line px-3.5 py-2 text-sm text-ink-soft hover:border-ink hover:text-ink">
         {item.name}<span className="text-xs text-ink-soft/70">{item.tool_count}</span>

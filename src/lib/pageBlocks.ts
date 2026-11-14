@@ -191,11 +191,13 @@ export const RICH_STYLE_FIELDS: FieldDef[] = [
   dimension("paddingX", "Padding, left/right (px)", 240),
   dimension("marginTop", "Space above (px)", 240),
   dimension("marginBottom", "Space below (px)", 240),
+  dimension("sideGap", "Outside left/right gap (px)", 240, "Space outside a section without narrowing its inner content."),
   dimension("borderRadius", "Corner roundness (px)", 120),
   dimension("maxWidth", "Max content width (px) -- only applies to a top-level section, not one nested in a column. 0 = full width.", 1600),
   color("backgroundColor", "Background color", "Leave blank for none/transparent."),
   select("textAlign", "Text alignment", [["left", "Left"], ["center", "Center"], ["right", "Right"], ["justify", "Justify"]]),
   dimension("fontSize", "Text size (px)", 160, "Applies to this element's own text; ignored by one with no text of its own (Image, Spacer...)."),
+  dimension("lineHeight", "Line height (%)", 300, "0 follows the browser default; lower values bring wrapped lines closer together."),
   select("fontWeight", "Text weight", [["normal", "Normal"], ["medium", "Medium"], ["semibold", "Semibold"], ["bold", "Bold"]]),
   color("textColor", "Text color", "Leave blank to inherit the page's normal text color."),
 ];
@@ -205,11 +207,13 @@ const RICH_STYLE_DEFAULTS: Record<string, unknown> = {
   paddingX: 24,
   marginTop: 0,
   marginBottom: 0,
+  sideGap: 0,
   borderRadius: 0,
   maxWidth: 0,
   backgroundColor: "",
   textAlign: "left",
   fontSize: 16,
+  lineHeight: 0,
   fontWeight: "normal",
   textColor: "",
 };
@@ -397,8 +401,8 @@ export const BLOCK_DEFS: BlockDef[] = [
     label: "Tool search",
     description: "Search input and submit-tool button for the tools directory.",
     category: "Directory", group: "element", styleModel: "rich", nestable: true,
-    fields: [text("placeholder", "Search placeholder", { max: 160 }), text("submitLabel", "Submit button", { max: 80 })],
-    defaults: { placeholder: "Search tools...", submitLabel: "Submit your tool", paddingY: 0, paddingX: 0 },
+    fields: [text("placeholder", "Search placeholder", { max: 160 }), text("searchLabel", "Search button", { max: 40 }), text("submitLabel", "Submit button", { max: 80 })],
+    defaults: { placeholder: "Search tools...", searchLabel: "Search", submitLabel: "Submit your tool", searchWidth: 960, inputHeight: 72, inputPaddingX: 20, buttonRadius: 12, searchBackgroundColor: "#262626", searchBorderColor: "#565656", searchButtonColor: "#ffffff", searchButtonTextColor: "#000000", submitButtonColor: "#ffffff", submitButtonTextColor: "#000000", paddingY: 0, paddingX: 0 },
   },
   {
     type: "directoryLogos",
@@ -1076,6 +1080,19 @@ export function blockFields(def: BlockDef): FieldDef[] {
  * (spacer, the built-in content marker). */
 export function styleFields(def: BlockDef): FieldDef[] {
   if (!hasSectionFields(def)) return [];
+  if (def.type === "directorySearch") return [
+    ...ownStyleFields(def),
+    dimension("searchWidth", "Search area width (px)", 1600),
+    dimension("inputHeight", "Search field height (px)", 160),
+    dimension("inputPaddingX", "Search field side padding (px)", 80),
+    dimension("buttonRadius", "Button corner roundness (px)", 80),
+    color("searchBackgroundColor", "Search field background"),
+    color("searchBorderColor", "Search field border"),
+    color("searchButtonColor", "Search button color"),
+    color("searchButtonTextColor", "Search button text color"),
+    color("submitButtonColor", "Submit button color"),
+    color("submitButtonTextColor", "Submit button text color"),
+  ];
   if (def.type !== "row") return ownStyleFields(def);
   return [
     ...ownStyleFields(def),

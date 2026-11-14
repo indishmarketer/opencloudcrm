@@ -99,20 +99,33 @@ test("only one block type is offered for Custom design (embed does not duplicate
 
 // ── Mobile overrides must stay in step with the style fields ───────────────
 // MOBILE_OVERRIDABLE_KEYS is written out by hand rather than derived from
-// RICH_STYLE_FIELDS, because pageBlocks imports mobileOverrides and reading
+// the style fields, because pageBlocks imports mobileOverrides and reading
 // that array across the cycle at module top level would see it undefined.
 // This is the guard that makes the duplication safe.
 
-test("every overridable style field is listed for mobile, and nothing else is", () => {
+test("shared and directory search style fields have working mobile overrides", () => {
   const styleKeys = RICH_STYLE_FIELDS.map((f) => f.key).filter((k) => k !== "anchor").sort();
+  const search = BLOCK_DEFS.find((block) => block.type === "directorySearch");
+  const searchKeys = styleFields(search).map((field) => field.key).filter((key) => !RICH_STYLE_FIELDS.some((field) => field.key === key));
   assert.deepEqual(
     [...MOBILE_OVERRIDABLE_KEYS].sort(),
-    styleKeys,
-    "MOBILE_OVERRIDABLE_KEYS has drifted from RICH_STYLE_FIELDS",
+    [...styleKeys, ...searchKeys].sort(),
+    "MOBILE_OVERRIDABLE_KEYS has drifted from the shared or directory search style fields",
   );
   // anchor identifies a section; it is not styling and must never be
   // device-specific, or a #link would break on one device only.
   assert.ok(!MOBILE_OVERRIDABLE_KEYS.includes("anchor"));
+});
+
+test("mobile side gap, line height and search dimensions generate responsive CSS", () => {
+  const css = mobileOverrideCss([{ id: "hero", type: "row", props: { mobile: { sideGap: 16 }, items: [[
+    { id: "headline", type: "heading", props: { mobile: { lineHeight: 100 } } },
+    { id: "search", type: "directorySearch", props: { mobile: { searchWidth: 520, inputHeight: 80 } } },
+  ]] } }]);
+  assert.match(css, /width:calc\(100% - 32px\) !important/);
+  assert.match(css, /line-height:1 !important/);
+  assert.match(css, /max-width:520px !important/);
+  assert.match(css, /--directory-input-height:80px !important/);
 });
 
 test("a mobile override layers over the desktop value without replacing it", () => {

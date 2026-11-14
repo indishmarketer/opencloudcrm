@@ -23,7 +23,7 @@ import type { FieldDef, PageBlock } from "@/lib/pageBlocks";
 export const MOBILE_BREAKPOINT_PX = 767;
 
 /** The style keys a mobile override may carry: every RICH_STYLE_FIELDS key
- * except `anchor`, which identifies the section rather than styling it.
+ * except `anchor`, plus the tools directory search control's style keys.
  *
  * Listed here rather than derived from RICH_STYLE_FIELDS because pageBlocks
  * imports this module, and reading that array at module top level across a
@@ -35,13 +35,25 @@ export const MOBILE_OVERRIDABLE_KEYS = [
   "paddingX",
   "marginTop",
   "marginBottom",
+  "sideGap",
   "borderRadius",
   "maxWidth",
   "backgroundColor",
   "textAlign",
   "fontSize",
+  "lineHeight",
   "fontWeight",
   "textColor",
+  "searchWidth",
+  "inputHeight",
+  "inputPaddingX",
+  "buttonRadius",
+  "searchBackgroundColor",
+  "searchBorderColor",
+  "searchButtonColor",
+  "searchButtonTextColor",
+  "submitButtonColor",
+  "submitButtonTextColor",
 ] as const;
 
 const OVERRIDABLE = new Set<string>(MOBILE_OVERRIDABLE_KEYS);
@@ -86,9 +98,11 @@ const CSS_PROPERTY: Record<string, (value: unknown) => string | null> = {
   paddingX: (v) => (typeof v === "number" ? `padding-left:${v}px;padding-right:${v}px` : null),
   marginTop: (v) => (typeof v === "number" ? `margin-top:${v}px` : null),
   marginBottom: (v) => (typeof v === "number" ? `margin-bottom:${v}px` : null),
+  sideGap: (v) => (typeof v === "number" ? `width:calc(100% - ${v * 2}px);margin-left:auto;margin-right:auto` : null),
   borderRadius: (v) => (typeof v === "number" ? `border-radius:${v}px` : null),
   maxWidth: (v) => (typeof v === "number" && v > 0 ? `max-width:${v}px` : null),
   fontSize: (v) => (typeof v === "number" ? `font-size:${v}px` : null),
+  lineHeight: (v) => (typeof v === "number" && v > 0 ? `line-height:${v / 100}` : null),
   textAlign: (v) => (typeof v === "string" ? `text-align:${v}` : null),
   fontWeight: (v) => {
     const weights: Record<string, string> = { normal: "400", medium: "500", semibold: "600", bold: "700" };
@@ -98,6 +112,16 @@ const CSS_PROPERTY: Record<string, (value: unknown) => string | null> = {
   // all, silently. Solid colours only; a gradient text colour (see
   // src/lib/colorValue.ts) still isn't overridable per-device.
   textColor: (v) => (typeof v === "string" && v ? `color:${v}` : null),
+  searchWidth: (v) => (typeof v === "number" ? `max-width:${v}px` : null),
+  inputHeight: (v) => (typeof v === "number" ? `--directory-input-height:${v}px` : null),
+  inputPaddingX: (v) => (typeof v === "number" ? `--directory-input-padding-x:${v}px` : null),
+  buttonRadius: (v) => (typeof v === "number" ? `--directory-button-radius:${v}px` : null),
+  searchBackgroundColor: (v) => (typeof v === "string" ? `--directory-search-bg:${v}` : null),
+  searchBorderColor: (v) => (typeof v === "string" ? `--directory-search-border:${v}` : null),
+  searchButtonColor: (v) => (typeof v === "string" ? `--directory-search-button-bg:${v}` : null),
+  searchButtonTextColor: (v) => (typeof v === "string" ? `--directory-search-button-text:${v}` : null),
+  submitButtonColor: (v) => (typeof v === "string" ? `--directory-submit-button-bg:${v}` : null),
+  submitButtonTextColor: (v) => (typeof v === "string" ? `--directory-submit-button-text:${v}` : null),
 };
 
 /** Which selector a property's override rule needs, because of WHERE each
@@ -131,13 +155,25 @@ const SELECTOR_SCOPE: Record<string, "self" | "child" | "descendant"> = {
   paddingY: "self",
   marginTop: "self",
   marginBottom: "self",
+  sideGap: "self",
   borderRadius: "self",
   maxWidth: "child",
   paddingX: "child",
   textAlign: "descendant",
   fontSize: "descendant",
+  lineHeight: "descendant",
   fontWeight: "descendant",
   textColor: "descendant",
+  searchWidth: "self",
+  inputHeight: "self",
+  inputPaddingX: "self",
+  buttonRadius: "self",
+  searchBackgroundColor: "self",
+  searchBorderColor: "self",
+  searchButtonColor: "self",
+  searchButtonTextColor: "self",
+  submitButtonColor: "self",
+  submitButtonTextColor: "self",
 };
 
 /** The <style> body for every block that has mobile overrides. Returns ""

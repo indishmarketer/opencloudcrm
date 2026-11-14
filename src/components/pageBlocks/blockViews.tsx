@@ -273,6 +273,12 @@ function richBoxStyle(props: Props): React.CSSProperties {
   };
   const bg = str(props, "backgroundColor");
   Object.assign(style, surfaceStyle(bg) ?? {});
+  const sideGap = num(props, "sideGap", 0);
+  if (sideGap > 0) {
+    style.width = `calc(100% - ${sideGap * 2}px)`;
+    style.marginLeft = "auto";
+    style.marginRight = "auto";
+  }
   const backgroundImage = str(props, "backgroundImage");
   const grid = str(props, "backgroundPattern") === "grid";
   const gridColor = str(props, "patternColor") || "#303030";
@@ -294,6 +300,8 @@ function richTextStyle(props: Props): React.CSSProperties {
     fontSize: `${num(props, "fontSize", 16)}px`,
     fontWeight: FONT_WEIGHT_CSS[str(props, "fontWeight")] ?? 400,
   };
+  const lineHeight = num(props, "lineHeight", 0);
+  if (lineHeight > 0) style.lineHeight = lineHeight / 100;
   // A gradient on text is painted behind the glyphs and clipped to them;
   // a solid colour is just a colour. Either way it is one call.
   Object.assign(style, textColorStyle(str(props, "textColor")) ?? {});
