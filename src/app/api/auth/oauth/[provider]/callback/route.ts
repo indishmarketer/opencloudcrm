@@ -11,6 +11,7 @@ import { generateUniqueUsername } from "@/lib/community";
 import { getAttributionFromRequest } from "@/lib/attribution";
 import { normalizeCountry } from "@/lib/countries";
 import { requestOrigin } from "@/lib/requestOrigin";
+import { emitVerifiedContactEvent } from "@/lib/verifiedContactEvent";
 
 const secret = () => new TextEncoder().encode(getSessionSecret());
 
@@ -63,6 +64,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
 
   let userId: number;
   let isNewUser = false;
+  let becameVerified = false;
 
   if (linked.rows[0]) {
     userId = linked.rows[0].user_id;
@@ -78,6 +80,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
       // unverified state.
       if (!existingUser.rows[0].email_verified_at) {
         await pool.query("UPDATE users SET email_verified_at = now() WHERE id = $1", [userId]);
+        becameVerified = true;
       }
       await pool.query(
         "INSERT INTO oauth_identities (user_id, provider, provider_user_id, email) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING",
@@ -85,6 +88,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
       );
     } else {
       isNewUser = true;
+      becameVerified = true;
       const passwordHash = await bcrypt.hash(crypto.randomUUID(), 12);
       userId = await withTransaction(async (client) => {
         let created: { id: number } | undefined;
@@ -158,6 +162,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
   } catch (error) {
     console.error("oauth ensureContact failed:", error);
     return failureRedirect("oauth_failed", origin);
+  }
+  if (becameVerified) {
+    await emitVerifiedContactEvent({ email, name, userId, source: provider }).catch((error) => console.error("OAuth verified contact event failed:", error));
   }
 
   await createSession({ userId, email });

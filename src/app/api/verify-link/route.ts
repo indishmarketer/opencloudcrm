@@ -11,6 +11,7 @@ import {
 import { SITE_URL } from "@/lib/siteMeta";
 import { getFormById } from "@/lib/forms";
 import { completeFormSubmission, FORM_SUBMIT_PURPOSE_PREFIX } from "@/lib/formSubmission";
+import { emitVerifiedContactEvent } from "@/lib/verifiedContactEvent";
 
 /** Completes whichever purpose a magic link belongs to. Only reachable via
  * POST (a real click on the confirm page's button), never GET -- so a
@@ -40,11 +41,13 @@ export async function POST(req: NextRequest) {
 
   if (result.purpose === "newsletter") {
     await completeNewsletterVerification(result.email, result.payload);
+    await emitVerifiedContactEvent({ email: result.email, source: "newsletter" }).catch((error) => console.error("Newsletter verified contact event failed:", error));
   } else if (result.purpose === "contact") {
     if (!result.payload) {
       return NextResponse.redirect(new URL("/verify?error=1", SITE_URL), { status: 303 });
     }
     await completeContactVerification(result.email, result.payload as unknown as ContactPayload);
+    await emitVerifiedContactEvent({ email: result.email, name: (result.payload as unknown as ContactPayload).name, source: "contact_form" }).catch((error) => console.error("Contact form verified contact event failed:", error));
   } else if (result.purpose.startsWith(FORM_SUBMIT_PURPOSE_PREFIX)) {
     // A saved form with email verification on. Until this branch existed, the
     // magic link in a form's own verification email always failed -- the
@@ -69,6 +72,7 @@ export async function POST(req: NextRequest) {
       attribution: payload.attribution,
       ipCountry: payload.ipCountry,
     });
+    await emitVerifiedContactEvent({ email: result.email, source: "custom_form" }).catch((error) => console.error("Form verified contact event failed:", error));
     if (form.submissionAction === "redirect" && form.redirectUrl) {
       return NextResponse.redirect(new URL(form.redirectUrl, SITE_URL), { status: 303 });
     }
@@ -79,6 +83,7 @@ export async function POST(req: NextRequest) {
     }
     const slug = await completeGuideVerification(result.email, result.payload as unknown as GuidePayload);
     if (!slug) return NextResponse.redirect(new URL("/verify?error=1", SITE_URL), { status: 303 });
+    await emitVerifiedContactEvent({ email: result.email, name: (result.payload as unknown as GuidePayload).name, source: "guide" }).catch((error) => console.error("Guide verified contact event failed:", error));
     return NextResponse.redirect(new URL(`/guide/${slug}?unlocked=1`, SITE_URL), { status: 303 });
   } else {
     return NextResponse.redirect(new URL("/verify?error=1", SITE_URL), { status: 303 });

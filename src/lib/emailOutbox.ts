@@ -2,7 +2,7 @@ import { pool } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
 import { raiseAlert } from "@/lib/systemAlerts";
 
-type SendArgs = Parameters<typeof sendEmail>[0];
+type SendArgs = Parameters<typeof sendEmail>[0] & { requiresMarketingConsent?: boolean };
 
 // Minutes to wait before retry n (attempt 2 waits 5, attempt 3 waits 15...).
 // Six attempts span roughly 10 hours, enough to ride out an SES hiccup.
@@ -57,6 +57,17 @@ export async function retryEmailOutbox(limit = 20): Promise<{ sent: number; fail
 
   let sent = 0, failed = 0, retrying = 0;
   for (const row of due.rows) {
+    if (row.payload.requiresMarketingConsent) {
+      const consent = await pool.query(
+        "SELECT 1 FROM contacts WHERE normalized_email = lower(trim($1)) AND marketing_status = 'subscribed' AND deliverability_status = 'ok'",
+        [row.recipient_email],
+      ).catch(() => null);
+      if (!consent?.rowCount) {
+        await pool.query("UPDATE email_outbox SET status = 'failed', last_error = 'Marketing consent or deliverability is missing', attempts = attempts + 1 WHERE id = $1", [row.id]);
+        failed++;
+        continue;
+      }
+    }
     let error = "";
     try {
       const result = await sendEmail(row.payload);

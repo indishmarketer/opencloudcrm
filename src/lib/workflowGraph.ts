@@ -48,15 +48,38 @@ export type WorkflowGraph = z.infer<typeof workflowGraphSchema>;
 export type WorkflowNode = WorkflowGraph["nodes"][number];
 export type WorkflowEdge = WorkflowGraph["edges"][number];
 
-export const workflowTriggerOptions = WEBHOOK_EVENT_TYPES.map((event) => ({ value: event.key, label: event.label, description: event.description }));
+export const VERIFIED_CONTACT_SOURCES = [
+  { value: "signup", label: "Email signup" },
+  { value: "google", label: "Google" },
+  { value: "linkedin", label: "LinkedIn" },
+  { value: "github", label: "GitHub" },
+  { value: "newsletter", label: "Newsletter" },
+  { value: "contact_form", label: "Contact form" },
+  { value: "guide", label: "Free guide" },
+  { value: "custom_form", label: "Verified custom form" },
+] as const;
+
+const SITE_WORKFLOW_EVENT_KEYS = [
+  "contact.verified", "newsletter.unsubscribed", "course.enrolled", "course.upgraded",
+  "course.revoked", "course.completed", "course.inactivity", "payment.succeeded", "payment.failed",
+] as const;
+
+export const workflowTriggerOptions = SITE_WORKFLOW_EVENT_KEYS.map((key) => {
+  const event = WEBHOOK_EVENT_TYPES.find((item) => item.key === key)!;
+  return { value: event.key as string, label: event.label, description: event.description };
+});
 
 export function workflowReadinessIssues(graph: WorkflowGraph): string[] {
   const issues: string[] = [];
   const trigger = graph.nodes.find((node) => node.data.kind === "trigger");
   if (!trigger || !graph.edges.some((edge) => edge.source === trigger.id)) issues.push("Connect the trigger to an action.");
-  if (["course.enrolled", "course.upgraded", "course.completed", "course.inactivity"].includes(String(trigger?.data.config.triggerKey || ""))) {
+  if (["course.enrolled", "course.upgraded", "course.revoked", "course.completed", "course.inactivity", "payment.succeeded", "payment.failed"].includes(String(trigger?.data.config.triggerKey || ""))) {
     const courseId = String(trigger?.data.config.courseId || "");
     if (courseId && (!Number.isInteger(Number(courseId)) || Number(courseId) < 1)) issues.push("Choose a valid course for this trigger.");
+  }
+  if (trigger?.data.config.triggerKey === "contact.verified" && trigger.data.config.source &&
+      !VERIFIED_CONTACT_SOURCES.some((source) => source.value === trigger.data.config.source)) {
+    issues.push("Choose a valid verified contact source.");
   }
   if (trigger?.data.config.triggerKey === "custom_form.submitted") {
     const formId = String(trigger?.data.config.formId || "");
@@ -105,7 +128,7 @@ export function workflowReadinessIssues(graph: WorkflowGraph): string[] {
       const duration = Number(config.duration);
       const multiplier = config.unit === "minutes" ? 1 : config.unit === "hours" ? 60 : config.unit === "days" ? 1440 : 0;
       if (!Number.isFinite(duration) || duration < 1 || duration * multiplier > 525600) issues.push(`Choose a wait duration from 1 minute up to 365 days for "${node.data.label}".`);
-      if (config.anchorPath !== undefined && !["", "data.last_active_at"].includes(String(config.anchorPath))) issues.push(`Choose a supported wait start date for "${node.data.label}".`);
+      if (config.anchorPath !== undefined && !["", "data.last_active_at", "occurred_at"].includes(String(config.anchorPath))) issues.push(`Choose a supported wait start date for "${node.data.label}".`);
     }
   }
   return issues;

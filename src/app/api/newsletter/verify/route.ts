@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit, privateRateLimitKey } from "@/lib/rateLimit";
 import { verifyOtp } from "@/lib/otp";
 import { completeNewsletterVerification } from "@/lib/otpCompletion";
+import { emitVerifiedContactEvent } from "@/lib/verifiedContactEvent";
 import { z } from "zod";
 
 const VerifySchema = z.object({
@@ -28,6 +29,7 @@ export async function POST(req: NextRequest) {
   }
 
   await completeNewsletterVerification(email, result.payload);
+  await emitVerifiedContactEvent({ email, source: "newsletter" }).catch((error) => console.error("Newsletter verified contact event failed:", error));
 
   return NextResponse.json({ ok: true });
 }

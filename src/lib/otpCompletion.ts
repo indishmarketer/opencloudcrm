@@ -21,7 +21,7 @@ export async function completeNewsletterVerification(email: string, payload?: Re
   // Double opt-in just completed -- this is real, verifiable marketing
   // consent, so promote the contact record to reflect it. This is the only
   // place a contact is allowed to become 'subscribed'.
-  confirmContactSubscribed(email).catch(() => {});
+  await confirmContactSubscribed(email).catch((error) => console.error("Newsletter consent update failed:", error));
 
   triggerEmailFlow("newsletter_signup", email, { first_name: firstNameOf(subResult.rows[0]?.name) }).catch(
     () => {}
@@ -80,7 +80,7 @@ export async function completeContactVerification(email: string, payload: Contac
 
   // Only when the sender left the updates box ticked: asking for help is
   // not by itself consent to marketing.
-  if (payload.updatesOptIn === true) confirmContactSubscribed(email).catch(() => {});
+  if (payload.updatesOptIn === true) await confirmContactSubscribed(email).catch((error) => console.error("Contact consent update failed:", error));
 
   const existingUser = payload.userId
     ? { rows: [{ id: payload.userId }] }

@@ -5,6 +5,7 @@ import { verifyEmailVerificationToken, createSession, safeRedirectPath, isSameOr
 import { sendMetaEvent } from "@/lib/metaCapi";
 import { triggerEmailFlow, firstNameOf } from "@/lib/emailAutomation";
 import { emitWebhookEvent } from "@/lib/webhookEvents";
+import { emitVerifiedContactEvent } from "@/lib/verifiedContactEvent";
 import { confirmContactDeliverable, confirmContactSubscribed } from "@/lib/contacts";
 import { recordWhatsAppOptIn } from "@/lib/whatsappContacts";
 import { SITE_URL } from "@/lib/liveSiteUrl";
@@ -44,7 +45,8 @@ export async function POST(req: NextRequest) {
   const vars = { first_name: firstNameOf(userRow.rows[0]?.name) };
   // Deferred to verification (like account activation itself) so a
   // mistyped/someone-else's email at signup never gets marked subscribed.
-  if (userRow.rows[0]?.updates_opt_in) confirmContactSubscribed(verified.email).catch(() => {});
+  if (userRow.rows[0]?.updates_opt_in) await confirmContactSubscribed(verified.email).catch((error) => console.error("Signup consent update failed:", error));
+  await emitVerifiedContactEvent({ email: verified.email, name: userRow.rows[0]?.name, userId: verified.userId, source: "signup" }).catch((error) => console.error("Verified contact event failed:", error));
   // Same deferral for WhatsApp, for the same reason: the two checkboxes at
   // signup are answered before anyone has proved the address is theirs.
   if (userRow.rows[0]?.whatsapp_opt_in) recordWhatsAppOptIn(verified.email, "signup").catch(() => {});

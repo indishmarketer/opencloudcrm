@@ -168,9 +168,13 @@ export async function completeFormSubmission(input: {
        ON CONFLICT (email) DO UPDATE SET name = COALESCE(EXCLUDED.name, newsletter_subscribers.name)`,
       [email, contactData.name, form.source || form.name],
     );
-    await completeNewsletterVerification(email, { country }).catch((err) =>
-      console.error("newsletter completion failed (non-fatal):", err),
-    );
+    // A form submission alone does not prove inbox ownership or grant
+    // marketing permission. Only the verified OTP/link path may complete it.
+    if (input.verifiedEmail) {
+      await completeNewsletterVerification(email, { country }).catch((err) =>
+        console.error("newsletter completion failed (non-fatal):", err),
+      );
+    }
   }
 
   const detail = submissionDetailText(form, values, pageUrl);

@@ -10,7 +10,7 @@ import { useRouter } from "next/navigation";
 import BrandSelect from "@/components/BrandSelect";
 import { useConfirm } from "@/components/ConfirmDialog";
 import EmailWorkflowBodyEditor from "@/components/EmailWorkflowBodyEditor";
-import type { WorkflowGraph, WorkflowNodeKind } from "@/lib/workflowGraph";
+import { VERIFIED_CONTACT_SOURCES, type WorkflowGraph, type WorkflowNodeKind } from "@/lib/workflowGraph";
 
 type CanvasNodeData = { kind: WorkflowNodeKind; label: string; config: Record<string, unknown> };
 type CanvasNode = Node<CanvasNodeData, "workflow">;
@@ -76,7 +76,7 @@ function WorkflowNodeView({ id, data, selected }: NodeProps<CanvasNode>) {
 const nodeTypes = { workflow: WorkflowNodeView };
 
 function courseEvent(value: string) {
-  return ["course.enrolled", "course.upgraded", "course.completed", "course.inactivity", "payment.succeeded"].includes(value);
+  return ["course.enrolled", "course.upgraded", "course.revoked", "course.completed", "course.inactivity", "payment.succeeded", "payment.failed"].includes(value);
 }
 
 function initialNodes(graph: WorkflowGraph): CanvasNode[] {
@@ -206,6 +206,7 @@ export default function WorkflowCanvas({
         ...node.data.config,
         triggerType: "event",
         triggerKey: value,
+        source: value === "contact.verified" ? String(node.data.config.source || "") : undefined,
         ...(value === "custom_form.submitted"
           ? { formId: String(node.data.config.formId || "") }
           : { formId: undefined }),
@@ -238,9 +239,9 @@ export default function WorkflowCanvas({
       : kind === "wait"
         ? { duration: 1, unit: "days" }
       : kind === "email"
-        ? { to: "{{contact.email}}", from: fromAddresses.find((item) => item.label.startsWith("Academy"))?.value || fromAddresses[0]?.value || "", contentMode: "template", templateKind: "library", templateKey: "", subject: "", body: "", purpose: "service" }
+        ? { to: "{{contact.email}}", from: fromAddresses.find((item) => item.label.startsWith("Academy"))?.value || fromAddresses[0]?.value || "", contentMode: "template", templateKind: "library", templateKey: "", subject: "", body: "", messageType: "transactional" }
         : kind === "whatsapp"
-          ? { phone: "{{contact.phone}}", templateName: "", languageCode: "en", variables: [] }
+          ? { phone: "{{contact.phone}}", templateName: "", languageCode: "en", variables: [], messageType: "transactional" }
           : kind === "webhook"
             ? { url: "" }
             : kind === "course_access"
@@ -406,7 +407,7 @@ export default function WorkflowCanvas({
   );
 }
 
-function NodeSettings({ node, emailNodes, onChange, triggerType, triggerKey, triggers, onTriggerTypeChange, onTriggerKeyChange, onRotateWebhook, webhookUrl, emailTemplates, whatsappTemplates, courses, segments, forms, fromAddresses }: {
+function NodeSettings({ node, emailNodes, onChange, triggerType, triggerKey, triggers, onTriggerTypeChange, onTriggerKeyChange, onRotateWebhook, webhookUrl, emailTemplates, whatsappTemplates, courses, segments: _segments, forms, fromAddresses }: {
   node: CanvasNode;
   emailNodes: CanvasNode[];
   onChange: (patch: Partial<CanvasNodeData>) => void;
@@ -435,7 +436,8 @@ function NodeSettings({ node, emailNodes, onChange, triggerType, triggerKey, tri
     {node.data.kind === "trigger" && <>
       <div><p className="mb-1.5 text-xs font-medium text-ink-soft">Start when</p><BrandSelect value={triggerType} onChange={(value) => onTriggerTypeChange(value as "event" | "webhook")} options={[{ value: "event", label: "A site event occurs" }, { value: "webhook", label: "An external app calls a webhook" }]} /></div>
       {triggerType === "event" ? <>
-        <div><p className="mb-1.5 text-xs font-medium text-ink-soft">Site event</p><BrandSelect value={triggerKey} onChange={onTriggerKeyChange} options={triggers.map((trigger) => ({ value: trigger.value, label: trigger.label }))} searchable searchPlaceholder="Find an event" /></div>
+        <div><p className="mb-1.5 text-xs font-medium text-ink-soft">Site event</p><BrandSelect value={triggerKey} onChange={onTriggerKeyChange} options={[...triggers, ...(triggerKey && !triggers.some((trigger) => trigger.value === triggerKey) ? [{ value: triggerKey, label: node.data.label, description: "Existing workflow event" }] : [])].map((trigger) => ({ value: trigger.value, label: trigger.label }))} searchable searchPlaceholder="Find an event" /></div>
+        {triggerKey === "contact.verified" && <div><p className="mb-1.5 text-xs font-medium text-ink-soft">Source</p><BrandSelect value={String(config.source || "")} onChange={(value) => set("source", value)} options={[{ value: "", label: "Any verified source" }, ...VERIFIED_CONTACT_SOURCES]} searchable placeholder="Any verified source" /></div>}
         {courseEvent(triggerKey) && <>
           <div><p className="mb-1.5 text-xs font-medium text-ink-soft">Course</p><BrandSelect value={String(config.courseId || "")} onChange={(value) => set("courseId", value)} options={[{ value: "", label: "Any course" }, ...courses.map((course) => ({ value: String(course.id), label: course.title }))]} searchable placeholder="Any course" /></div>
         </>}
@@ -453,11 +455,6 @@ function NodeSettings({ node, emailNodes, onChange, triggerType, triggerKey, tri
         {triggers.find((trigger) => trigger.value === triggerKey)?.description && <p className="text-xs leading-5 text-ink-soft">{triggers.find((trigger) => trigger.value === triggerKey)?.description}</p>}
       </> : <div className="space-y-3"><p className="text-xs leading-5 text-ink-soft">Send a JSON POST request to start this workflow.</p><button type="button" onClick={onRotateWebhook} className="rounded-full border border-line px-3 py-2 text-xs font-medium">Create or rotate endpoint</button></div>}
       {webhookUrl && triggerType === "webhook" && <div><p className="text-xs text-ink-soft">Copy this URL now. It is shown only once.</p><input readOnly value={webhookUrl} className="mt-2 w-full rounded-lg border border-line bg-paper-soft px-3 py-2 text-xs" /></div>}
-      {triggerType === "event" && <>
-        <div><p className="mb-1.5 text-xs font-medium text-ink-soft">Entry segment</p><BrandSelect value={String(config.entrySegmentId || "")} onChange={(value) => set("entrySegmentId", value ? Number(value) : null)} options={[{ value: "", label: "All eligible contacts" }, ...segments.map((segment) => ({ value: String(segment.id), label: segment.name }))]} searchable placeholder="All eligible contacts" /></div>
-        <div><p className="mb-1.5 text-xs font-medium text-ink-soft">Purpose</p><BrandSelect value={String(config.purpose || "service")} onChange={(value) => set("purpose", value)} options={[{ value: "service", label: "Service / relationship" }, { value: "marketing", label: "Marketing (consent required)" }]} /></div>
-        <div><p className="mb-1.5 text-xs font-medium text-ink-soft">Stop when</p><BrandSelect value={String(config.goalType || "none")} onChange={(value) => set("goalType", value)} options={[{ value: "none", label: "Journey completes" }, { value: "course_pro", label: "Learner upgrades to PRO" }, { value: "course_completed", label: "Learner completes the course" }, { value: "community_first_post", label: "Member creates their first post" }]} /></div>
-      </>}
     </>}
     {node.data.kind === "condition" && <>
       {field("Payload field", "field", "data.phone")}
@@ -498,7 +495,7 @@ function NodeSettings({ node, emailNodes, onChange, triggerType, triggerKey, tri
         {field("Subject", "subject", "Welcome")}
         <div><p className="mb-1.5 text-xs font-medium text-ink-soft">Email body</p><EmailWorkflowBodyEditor value={String(config.body || "")} onChange={(value) => set("body", value)} variables={workflowEmailVariables} /></div>
       </>}
-      <div><p className="mb-1.5 text-xs font-medium text-ink-soft">Purpose</p><BrandSelect value={String(config.purpose || "service")} onChange={(value) => set("purpose", value)} options={[{ value: "service", label: "Service / relationship" }, { value: "marketing", label: "Marketing (consent required)" }]} /></div>
+      <div><p className="mb-1.5 text-xs font-medium text-ink-soft">Type</p><BrandSelect value={String(config.messageType || (config.purpose === "marketing" ? "marketing" : "transactional"))} onChange={(value) => set("messageType", value)} options={[{ value: "transactional", label: "Transactional" }, { value: "marketing", label: "Marketing" }]} /></div>
     </>}
     {node.data.kind === "google_review_request" && <>
       <div><p className="mb-1.5 text-xs font-medium text-ink-soft">Review email</p><BrandSelect value={String(config.templateKey || "google-review-request")} onChange={(value) => set("templateKey", value)} options={[{ value: "google-review-request", label: "Initial request" }, { value: "google-review-reminder", label: "Reminder" }]} /></div>
@@ -506,7 +503,8 @@ function NodeSettings({ node, emailNodes, onChange, triggerType, triggerKey, tri
     </>}
     {node.data.kind === "whatsapp" && <>
       {field("Phone", "phone", "{{contact.phone}}")}
-      <div><p className="mb-1.5 text-xs font-medium text-ink-soft">Approved template</p><BrandSelect value={config.templateName ? `${String(config.templateName)}:${String(config.languageCode || "en")}` : ""} onChange={(value) => { const template = whatsappTemplates.find((item) => `${item.name}:${item.language}` === value); onChange({ config: { ...config, templateName: template?.name || "", languageCode: template?.language || "en", variables: template ? Array.from({ length: template.variableCount }, () => "{{contact.name}}") : [] } }); }} options={whatsappTemplates.map((template) => ({ value: `${template.name}:${template.language}`, label: `${template.name} · ${template.language} · ${template.category.toLowerCase()}` }))} searchable searchPlaceholder="Find a WhatsApp template" placeholder="Select an approved template" /></div>
+      <div><p className="mb-1.5 text-xs font-medium text-ink-soft">Type</p><BrandSelect value={String(config.messageType || (whatsappTemplates.find((template) => template.name === config.templateName && template.language === config.languageCode)?.category === "MARKETING" ? "marketing" : "transactional"))} onChange={(value) => set("messageType", value)} options={[{ value: "transactional", label: "Transactional" }, { value: "marketing", label: "Marketing" }]} /></div>
+      <div><p className="mb-1.5 text-xs font-medium text-ink-soft">Approved template</p><BrandSelect value={config.templateName ? `${String(config.templateName)}:${String(config.languageCode || "en")}` : ""} onChange={(value) => { const template = whatsappTemplates.find((item) => `${item.name}:${item.language}` === value); onChange({ config: { ...config, templateName: template?.name || "", languageCode: template?.language || "en", messageType: template?.category === "MARKETING" ? "marketing" : "transactional", variables: template ? Array.from({ length: template.variableCount }, () => "{{contact.name}}") : [] } }); }} options={whatsappTemplates.map((template) => ({ value: `${template.name}:${template.language}`, label: `${template.name} · ${template.language} · ${template.category.toLowerCase()}` }))} searchable searchPlaceholder="Find a WhatsApp template" placeholder="Select an approved template" /></div>
       {whatsappTemplates.find((template) => template.name === config.templateName && template.language === config.languageCode) && <div className="rounded-xl border border-line bg-paper-soft p-3"><p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-ink-soft">Approved message</p><p className="whitespace-pre-wrap text-xs leading-5 text-ink">{whatsappTemplates.find((template) => template.name === config.templateName && template.language === config.languageCode)?.body}</p></div>}
       {Array.isArray(config.variables) && config.variables.length > 0 && <div><p className="text-xs font-medium text-ink-soft">Template variable mapping</p><p className="mt-1 text-[11px] leading-4 text-ink-soft">Map each numbered placeholder from the approved message to a contact or event value.</p><div className="mt-2 space-y-2">{config.variables.map((variable, index) => <label key={index} className="block text-xs font-medium text-ink-soft">Variable {index + 1}<input value={String(variable)} onChange={(event) => { const values = [...config.variables as unknown[]]; values[index] = event.target.value; set("variables", values); }} placeholder="{{contact.name}}" className="mt-1 w-full rounded-lg border border-line px-3 py-2 text-sm text-ink outline-none focus:border-ink" /></label>)}</div></div>}
       <p className="text-xs leading-5 text-ink-soft">Only approved Meta templates can send. WhatsApp opt-outs and marketing consent are checked at send time.</p>

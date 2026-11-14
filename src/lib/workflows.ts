@@ -281,7 +281,7 @@ async function runAction(node: WorkflowNode, payload: unknown, run: { id: number
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(config.from)) throw new Error(`Email action "${node.data.label}" needs a valid "From" address.`);
       from = config.from;
     }
-    if (config.purpose === "marketing" && !test) {
+    if ((config.messageType === "marketing" || (!config.messageType && config.purpose === "marketing")) && !test) {
       const consent = await pool.query("SELECT 1 FROM contacts WHERE normalized_email = lower(trim($1)) AND marketing_status = 'subscribed' AND deliverability_status = 'ok'", [to]);
       if (!consent.rowCount) return { skipped: true, reason: "Marketing consent or deliverability is missing." };
     }
@@ -291,7 +291,7 @@ async function runAction(node: WorkflowNode, payload: unknown, run: { id: number
       if (!sent.ok) throw new Error("Test email could not be sent.");
       return { sent: true, recipient: to, subject, test: true };
     }
-    const sent = await sendEmailWithRetry({ to, subject, html, ...(from ? { from } : {}), category: "automation", workflowRunId: run.id, workflowNodeId: node.id });
+    const sent = await sendEmailWithRetry({ to, subject, html, ...(from ? { from } : {}), category: "automation", workflowRunId: run.id, workflowNodeId: node.id, requiresMarketingConsent: config.messageType === "marketing" || (!config.messageType && config.purpose === "marketing") });
     if (!sent.ok && !sent.queued) throw new Error("Email could not be sent or queued for retry.");
     return { queued: sent.queued === true, recipient: to, subject };
   }
@@ -305,7 +305,11 @@ async function runAction(node: WorkflowNode, payload: unknown, run: { id: number
     const languageCode = String(config.languageCode || "en").trim();
     const template = (await listWhatsAppTemplates()).find((item) => item.name === templateName && item.language === languageCode);
     if (!template || template.status !== "APPROVED") throw new Error(`WhatsApp template "${templateName}" is not approved.`);
-    if (template.category === "MARKETING" && !test) {
+    const messageType = config.messageType || (template.category === "MARKETING" ? "marketing" : "transactional");
+    if ((messageType === "marketing") !== (template.category === "MARKETING")) {
+      throw new Error("WhatsApp type must match the approved template category.");
+    }
+    if (messageType === "marketing" && !test) {
       const contactId = Number(valueAtPath(payload, "contact.id")) || Number(valueAtPath(payload, "contact_id")) || null;
       if (!contactId || !(await canSendWhatsAppMarketing(contactId))) return { skipped: true, reason: "WhatsApp marketing consent is missing." };
     }
@@ -447,6 +451,9 @@ async function executeRun(run: { id: number; workflow_id: number; trigger_payloa
   if (!trigger) throw new Error("Workflow trigger node is missing.");
   if (!test) {
     const triggerConfig = trigger.data.config;
+    if (rawPayload.event_type === "contact.verified" && triggerConfig.source && triggerConfig.source !== valueAtPath(rawPayload, "data.source")) {
+      return { __workflowExited: true, reason: "Verified contact source does not match." };
+    }
     const recipientEmail = String(payload.contact?.email || payload.email || "").trim().toLowerCase();
     const goalType = String(triggerConfig.goalType || "none") as "none" | "course_pro" | "course_completed" | "community_first_post";
     if (goalType !== "none" && recipientEmail && await automationGoalReached(goalType, recipientEmail, Number(triggerConfig.courseId) || null)) {

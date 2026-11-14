@@ -5,10 +5,11 @@
  * at the real call site that observes the action (see that file's own doc
  * comment for the full pattern). */
 export const WEBHOOK_EVENT_TYPES = [
+  { key: "contact.verified", label: "New contact verified", description: "A contact proves ownership of their email address. Narrow this trigger by signup or form source." },
   { key: "contact.created", label: "New contact identified", description: "A brand-new person entered the CRM (signup, newsletter, contact form, voice lead, etc.) for the first time. It fires from the contacts table itself, so it cannot tell you which form they came from -- to start a workflow from one specific form, use 'Custom form submitted' and pick that form." },
   { key: "user.verified", label: "New signup (email verified)", description: "Someone finishes signing up by verifying their email, and their account becomes active." },
   { key: "newsletter.subscribed", label: "Newsletter subscribed", description: "Someone confirms a newsletter signup via the OTP code." },
-  { key: "newsletter.unsubscribed", label: "Newsletter unsubscribed", description: "Someone unsubscribes from marketing email." },
+  { key: "newsletter.unsubscribed", label: "Email unsubscribed", description: "Someone unsubscribes from marketing email." },
   { key: "email.bounced", label: "Email bounced", description: "An email provider reports a bounce; includes whether it is permanent, temporary, or undetermined." },
   { key: "email.complained", label: "Email spam complaint", description: "An email recipient reports a message as spam; the address is suppressed immediately." },
   { key: "course.enrolled", label: "Course enrolled", description: "Someone gets access to a course for the first time (free enroll or a fresh PRO purchase)." },

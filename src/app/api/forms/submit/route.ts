@@ -6,6 +6,7 @@ import { getFormById } from "@/lib/forms";
 import { requestOtp, verifyOtp } from "@/lib/otp";
 import { getAttributionFromRequest } from "@/lib/attribution";
 import { completeFormSubmission, extractContactData, formSubmitPurpose } from "@/lib/formSubmission";
+import { emitVerifiedContactEvent } from "@/lib/verifiedContactEvent";
 import type { FormDefinition } from "@/lib/formsShape";
 
 /** A saved form's submission. Three modes, all validated below:
@@ -110,6 +111,7 @@ export async function POST(req: NextRequest) {
       attribution: payload.attribution,
       ipCountry: payload.ipCountry,
     });
+    await emitVerifiedContactEvent({ email: otpEmail, source: "custom_form" }).catch((error) => console.error("Form verified contact event failed:", error));
     return NextResponse.json({ ok: true });
   }
 
