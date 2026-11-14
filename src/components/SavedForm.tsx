@@ -391,6 +391,12 @@ export default function SavedForm({
   /** The thank-you popup. Closing it leaves the same message in place where
    * the form was, so the confirmation is never lost. */
   const [successOpen, setSuccessOpen] = useState(false);
+  /** Set once the visitor actually closes the confirmation -- "I clicked
+   * close, it's still showing You're subscribed" was this exact inline
+   * fallback below: it rendered unconditionally (so the message was never
+   * lost if someone closed the popup by accident), but that reads as the
+   * popup not having closed at all. Closing now means closing. */
+  const [successDismissed, setSuccessDismissed] = useState(false);
   /** True only between clicking "Send a new code" and the resend going out,
    * which is the one moment the code screen needs a challenge. */
   const [resendArmed, setResendArmed] = useState(false);
@@ -589,6 +595,11 @@ export default function SavedForm({
       : false;
 
   if (status === "done") {
+    const close = () => {
+      setSuccessOpen(false);
+      setSuccessDismissed(true);
+    };
+    if (successDismissed) return null;
     // The confirmation is a centred popup over the page rather than text
     // quietly replacing the form in place, so it is impossible to miss --
     // especially for a form sitting low on a long page.
@@ -605,7 +616,7 @@ export default function SavedForm({
               role="dialog"
               aria-modal="true"
               aria-labelledby={`saved-form-${form.id}-success`}
-              onClick={() => setSuccessOpen(false)}
+              onClick={close}
             >
               <div
                 onClick={(e) => e.stopPropagation()}
@@ -614,7 +625,7 @@ export default function SavedForm({
               >
                 <button
                   type="button"
-                  onClick={() => setSuccessOpen(false)}
+                  onClick={close}
                   aria-label="Close"
                   className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-paper-soft text-ink-soft transition-colors hover:bg-line hover:text-ink"
                 >
@@ -638,7 +649,7 @@ export default function SavedForm({
                 {form.successText && <p className="mt-3 text-ink-soft">{form.successText}</p>}
                 <button
                   type="button"
-                  onClick={() => setSuccessOpen(false)}
+                  onClick={close}
                   className="mt-6 rounded-full bg-ink px-6 py-2.5 text-sm font-medium text-paper transition-opacity hover:opacity-80"
                   style={buttonStyles(design, undefined, designOverride)}
                 >
