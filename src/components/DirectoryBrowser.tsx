@@ -5,6 +5,7 @@ import SafeImage from "@/components/SafeImage";
 import Link from "next/link";
 import DirectoryToolCard, { type DirectoryToolCardData } from "@/components/DirectoryToolCard";
 import BrandSelect from "@/components/BrandSelect";
+import { DEFAULT_DIRECTORY_HERO, directoryHeroText, directoryListingNote, type DirectoryPageHero } from "@/lib/directoryPageHero";
 
 const PRICING_OPTIONS = [
   { value: "", label: "All pricing" },
@@ -50,6 +51,7 @@ export default function DirectoryBrowser({
   initialPricing,
   initialCategory,
   priceLabel,
+  hero = DEFAULT_DIRECTORY_HERO,
 }: {
   tools: DirectoryToolCardData[];
   categories: DirectoryBrowserCategory[];
@@ -60,12 +62,15 @@ export default function DirectoryBrowser({
   initialCategory?: string;
   /** The paid tier fee as text; the console setting, not a literal. */
   priceLabel: string;
+  hero?: DirectoryPageHero;
 }) {
   const [query, setQuery] = useState("");
   const [pricing, setPricing] = useState(initialPricing || "");
   const [category, setCategory] = useState(initialCategory || "");
   const [sort, setSort] = useState("featured");
   const [page, setPage] = useState(1);
+  const EyebrowTag = hero.eyebrowTag;
+  const HeadingTag = hero.headingTag;
   const resultsTop = useRef<HTMLDivElement>(null);
 
   const categoryOptions = useMemo(
@@ -141,15 +146,10 @@ export default function DirectoryBrowser({
         </div>
 
         <div className="relative mx-auto max-w-3xl text-center">
-          <p className="text-xs font-medium uppercase tracking-[0.22em] text-paper/60">
-            Tools &amp; software directory
-          </p>
-          <h1 className="mt-4 text-balance font-display text-4xl font-semibold leading-tight sm:text-5xl">
-            Find the tool that does the job
-          </h1>
+          <EyebrowTag className="text-xs font-medium uppercase tracking-[0.22em] text-paper/60">{hero.eyebrow}</EyebrowTag>
+          <HeadingTag className="mt-4 text-balance font-display text-4xl font-semibold leading-tight sm:text-5xl">{hero.heading}</HeadingTag>
           <p className="mx-auto mt-4 max-w-xl text-balance leading-7 text-paper/70">
-            {tools.length} AI agents, automations, CRMs and open source tools we have vetted or built
-            with. Search by what you need, filter by category and price. No pay-to-rank listings.
+            {directoryHeroText(hero.text, tools.length)}
           </p>
 
           <div className="mt-8">
@@ -173,7 +173,7 @@ export default function DirectoryBrowser({
                 type="search"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search 'CRM', 'free API', 'email tool'..."
+                placeholder={hero.searchPlaceholder}
                 className="min-w-0 flex-1 bg-transparent py-3 text-base text-paper outline-none placeholder:text-paper/50 sm:py-4"
               />
               {query && (
@@ -189,20 +189,19 @@ export default function DirectoryBrowser({
                 href="/tools/submit"
                 className="hidden shrink-0 rounded-xl bg-paper px-5 py-3.5 text-sm font-medium text-ink transition-opacity hover:opacity-85 sm:block"
               >
-                Submit your tool
+                {hero.submitLabel}
               </Link>
             </div>
             <Link
               href="/tools/submit"
               className="mt-3 block rounded-xl bg-paper px-5 py-3 text-center text-sm font-medium text-ink transition-opacity hover:opacity-85 sm:hidden"
             >
-              Submit your tool
+              {hero.submitLabel}
             </Link>
           </div>
 
           <p className="mt-5 text-xs text-paper/50">
-            Free listing with our badge on your site, or {priceLabel} for a reviewed listing with no
-            badge. Every link is nofollow, both ways.
+            {directoryListingNote(hero.listingNote, priceLabel)}
           </p>
         </div>
 
@@ -249,12 +248,14 @@ export default function DirectoryBrowser({
 
       {filtered.length === 0 ? (
         <div className="mt-10 rounded-2xl border border-dashed border-line p-10 text-center">
-          <p className="font-display text-lg font-semibold">Nothing matches that yet</p>
+          <p className="font-display text-lg font-semibold">{tools.length === 0 ? "The directory is being built right now" : "Nothing matches that yet"}</p>
           <p className="mt-2 text-sm text-ink-soft">
-            Try a shorter search, or clear the filters.{" "}
-            <Link href="/tools/submit" className="underline underline-offset-2 hover:text-ink">
-              Know a tool that belongs here?
-            </Link>
+            {tools.length === 0 ? "Check back soon." : <>
+              Try a shorter search, or clear the filters.{" "}
+              <Link href="/tools/submit" className="underline underline-offset-2 hover:text-ink">
+                Know a tool that belongs here?
+              </Link>
+            </>}
           </p>
         </div>
       ) : (

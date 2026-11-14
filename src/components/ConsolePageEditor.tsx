@@ -40,6 +40,7 @@ import {
 } from "@/lib/pageBlocks";
 import type { SitePage } from "@/lib/sitePagesShape";
 import type { PageEditorLiveData } from "@/lib/pageEditorLiveData";
+import { directoryHeroFromBlocks } from "@/lib/directoryPageHero";
 
 const button =
   "rounded-lg border border-line px-3.5 py-2 text-sm font-medium text-ink transition-colors hover:border-ink disabled:cursor-not-allowed disabled:opacity-50";
@@ -751,7 +752,9 @@ export default function ConsolePageEditor({
       ? {
           key: selectedTopBlock.id,
           def: getBlockDef(selectedTopBlock.type),
-          props: selectedTopBlock.props,
+          props: selectedTopBlock.type === "builtIn" && page.path === "/tools"
+            ? { ...selectedTopBlock.props, ...directoryHeroFromBlocks([selectedTopBlock]) }
+            : selectedTopBlock.props,
           onChangeProps: (next: Record<string, unknown>) =>
             update(blocks.map((b) => (b.id === selectedTopBlock.id ? { ...b, props: selectedTopBlock.type === "row" ? resizeRowItems(next) : next } : b))),
           onDelete: () => void removeBlock(selectedTopBlock),
@@ -1064,6 +1067,7 @@ export default function ConsolePageEditor({
                             editing={nodeEditingFor(block.id)}
                             inlineEdit={topInlineEditFor(block)}
                             device="mobile"
+                            pagePath={page.path}
                           />
                         ))}
                       </SortableContext>
@@ -1092,6 +1096,7 @@ export default function ConsolePageEditor({
                       renderColumn={block.type === "row" ? renderColumnFor(block.id) : undefined}
                       editing={nodeEditingFor(block.id)}
                       inlineEdit={topInlineEditFor(block)}
+                      pagePath={page.path}
                     />
                   ))}
                 </SortableContext>
@@ -1118,7 +1123,7 @@ export default function ConsolePageEditor({
                   settingsKey={settingsTarget.key}
                   title={settingsTarget.def.label}
                   description={blockSummary(settingsTarget.def)}
-                  contentFields={settingsTarget.def.fields}
+                  contentFields={settingsTarget.def.type === "builtIn" && page.path !== "/tools" ? [] : settingsTarget.def.fields}
                   styleFieldsList={styleFields(settingsTarget.def)}
                   device={device}
                   props={settingsTarget.props}

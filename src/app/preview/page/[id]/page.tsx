@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { getAdminSession } from "@/lib/auth";
 import { getPageById } from "@/lib/sitePages";
 import SitePageView from "@/components/pageBlocks/SitePageView";
+import ToolsDirectoryContent from "@/components/ToolsDirectoryContent";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Preview", robots: { index: false, follow: false } };
@@ -19,13 +20,13 @@ export default async function PagePreview({ params }: { params: Promise<{ id: st
       </div>
       <SitePageView
         page={page}
-        builtIn={
+        builtIn={page.path === "/tools" ? <ToolsDirectoryContent blocks={page.blocks} /> : (
           <div className="mx-auto max-w-6xl px-6 py-10">
             <div className="rounded-2xl border border-dashed border-line p-8 text-center text-sm text-ink-soft">
               This page&apos;s own content (its list, form or policy text) appears here.
             </div>
           </div>
-        }
+        )}
       />
     </>
   );

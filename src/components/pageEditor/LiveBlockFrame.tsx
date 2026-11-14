@@ -58,6 +58,8 @@ import {
   type Props,
 } from "@/components/pageBlocks/blockViews";
 import BlockTypePicker from "@/components/pageEditor/BlockTypePicker";
+import DirectoryBrowser from "@/components/DirectoryBrowser";
+import { directoryHeroFromBlocks } from "@/lib/directoryPageHero";
 
 const NESTABLE_DEFS = BLOCK_DEFS.filter((d) => d.nestable && !d.deprecated);
 
@@ -89,7 +91,8 @@ export function renderLiveBlock(
   inlineEdit?: InlineEdit,
   /** Mobile preview renders the block's mobile overrides laid over its
    * desktop design, so the canvas shows what a phone will actually show. */
-  device: "desktop" | "mobile" = "desktop"
+  device: "desktop" | "mobile" = "desktop",
+  pagePath?: string | null,
 ): React.ReactNode {
   const props = propsForDevice(block.props as Record<string, unknown>, device) as Props;
   const business = liveData.business;
@@ -185,6 +188,33 @@ export function renderLiveBlock(
     case "logo":
       return <LogoBlock props={props} editorEmpty />;
     case "builtIn":
+      if (pagePath === "/tools") {
+        if (!liveData.directory) return <p className="p-8 text-center text-sm text-ink-soft">Directory preview is temporarily unavailable. Your hero fields remain editable.</p>;
+        return (
+          <div className="mx-auto max-w-6xl px-6 py-12 sm:py-16">
+            <DirectoryBrowser
+              tools={liveData.directory.tools}
+              categories={liveData.directory.categories}
+              heroLogos={liveData.directory.heroLogos}
+              priceLabel={liveData.directory.priceLabel}
+              hero={directoryHeroFromBlocks([block])}
+            />
+            {liveData.directory.categories.some((category) => category.tool_count > 0) && (
+              <section className="mt-16 border-t border-line pt-10">
+                <h2 className="font-display text-lg font-semibold">{directoryHeroFromBlocks([block]).categoriesHeading}</h2>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {liveData.directory.categories.filter((category) => category.tool_count > 0).map((category) => (
+                    <span key={category.slug} className="rounded-full border border-line px-3.5 py-2 text-sm text-ink-soft">
+                      {category.name} <span className="text-xs text-ink-soft/70">{category.tool_count}</span>
+                    </span>
+                  ))}
+                </div>
+              </section>
+            )}
+            <p className="mt-6 text-center text-xs text-ink-soft">Tool listings and categories are managed in Tools directory.</p>
+          </div>
+        );
+      }
       return (
         <div className="border-y border-dashed border-line bg-paper-soft px-6 py-10 text-center text-sm text-ink-soft">
           This page&apos;s own built-in content (its list, form or policy text) renders here on the live site. Check Preview to see it.
@@ -331,6 +361,7 @@ export function TopBlockFrame({
   editing,
   inlineEdit,
   device = "desktop",
+  pagePath,
 }: {
   block: PageBlock;
   liveData: PageEditorLiveData;
@@ -340,6 +371,7 @@ export function TopBlockFrame({
   onDelete: () => void;
   /** Which canvas this is drawn on; mobile applies the block's overrides. */
   device?: "desktop" | "mobile";
+  pagePath?: string | null;
   renderColumn?: RenderColumn;
   /** Passed for the selected "custom" block while Elements mode is open. */
   editing?: CustomBlockEditing;
@@ -400,7 +432,7 @@ export function TopBlockFrame({
         </>
       }
     >
-      {renderLiveBlock(block, liveData, renderColumn, editing, inlineEdit, device)}
+      {renderLiveBlock(block, liveData, renderColumn, editing, inlineEdit, device, pagePath)}
     </SelectableNode>
   );
 }

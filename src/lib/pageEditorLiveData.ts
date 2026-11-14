@@ -4,6 +4,9 @@ import { getActiveLeadMagnet } from "@/lib/leadMagnets";
 import { getPublicPosts } from "@/lib/blogPosts";
 import { getCuratedReviewers } from "@/lib/curatedReviews";
 import type { CourseSummary } from "@/components/pageBlocks/blockViews";
+import { listCategoriesWithCounts, listPublishedTools } from "@/lib/directory";
+import { heroLogoWindow } from "@/lib/directoryHero";
+import { formatListingPrice, getDirectoryListingPrice } from "@/lib/directoryListingPrice";
 
 /** Pre-fetched once per page-editor load (both console/pages/[id] and a
  * course/tool's extra-sections editor use this) so the editor's live
@@ -12,8 +15,8 @@ import type { CourseSummary } from "@/components/pageBlocks/blockViews";
  * reviews) without needing its own DB access -- see blockViews.tsx's note
  * on why those components take this data as a prop instead of fetching it
  * themselves. */
-export async function getPageEditorLiveData() {
-  const [business, activeLeadMagnet, posts, courses, reviewers] = await Promise.all([
+export async function getPageEditorLiveData(path?: string | null) {
+  const [business, activeLeadMagnet, posts, courses, reviewers, directory] = await Promise.all([
     getBusiness(),
     getActiveLeadMagnet().catch(() => null),
     getPublicPosts().catch(() => []),
@@ -22,8 +25,21 @@ export async function getPageEditorLiveData() {
       .then((r) => r.rows)
       .catch(() => []),
     getCuratedReviewers().catch(() => []),
+    path === "/tools"
+      ? Promise.all([listCategoriesWithCounts(), listPublishedTools(), getDirectoryListingPrice()]).then(([categories, tools, price]) => ({
+          tools: tools.map((tool) => ({
+            id: tool.id, slug: tool.slug, name: tool.name, tagline: tool.tagline,
+            logo_url: tool.logo_url, pricing_type: tool.pricing_type,
+            category_slug: tool.category_slug, category_name: tool.category_name,
+            subcategory: tool.subcategory, featured: tool.featured,
+          })),
+          categories: categories.map((item) => ({ slug: item.slug, name: item.name, tool_count: item.tool_count })),
+          heroLogos: heroLogoWindow(tools),
+          priceLabel: formatListingPrice(price.usd, "USD"),
+        })).catch(() => null)
+      : Promise.resolve(null),
   ]);
-  return { business, activeLeadMagnet, posts, courses, reviewers };
+  return { business, activeLeadMagnet, posts, courses, reviewers, directory };
 }
 
 export type PageEditorLiveData = Awaited<ReturnType<typeof getPageEditorLiveData>>;

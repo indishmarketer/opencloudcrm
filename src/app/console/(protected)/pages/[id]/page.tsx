@@ -45,7 +45,7 @@ export default async function ConsoleEditPage({ params }: { params: Promise<{ id
       backHref={backHref}
       backLabel={backLabel}
       publicUrl={publicUrl}
-      liveData={await getPageEditorLiveData()}
+      liveData={await getPageEditorLiveData(page.path)}
     />
   );
 }
