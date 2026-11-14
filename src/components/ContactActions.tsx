@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import BrandSelect from "@/components/BrandSelect";
 import ConsoleModal from "@/components/ConsoleModal";
-import ContactGrantCourse from "@/components/ContactGrantCourse";
+import ContactGrantCourse, { type CourseEnrollment } from "@/components/ContactGrantCourse";
 import ContactWhatsAppSend from "@/components/ContactWhatsAppSend";
 import RichTextEditor from "@/components/RichTextEditor";
 import ScheduleDateTimeModal from "@/components/ScheduleDateTimeModal";
@@ -36,6 +36,7 @@ export default function ContactActions({
   hasGoogleReviewLink,
   communityActive,
   courses,
+  enrollments = [],
   replyToEmail,
 }: {
   contactId: number;
@@ -52,6 +53,7 @@ export default function ContactActions({
   hasGoogleReviewLink: boolean;
   communityActive: boolean;
   courses: Course[];
+  enrollments?: CourseEnrollment[];
 }) {
   const router = useRouter();
   const { confirm, dialog } = useConfirm();
@@ -140,8 +142,12 @@ export default function ContactActions({
     },
     {
       key: "course",
-      label: "Give course access",
-      hint: hasAccount ? "Free or PRO" : "Creates an account for them",
+      label: "Course access",
+      hint: enrollments.length > 0
+        ? `${enrollments.length} active course${enrollments.length === 1 ? "" : "s"} · Grant or revoke`
+        : hasAccount
+          ? "Free or PRO"
+          : "Creates an account for them",
       disabled: courses.length === 0,
       onClick: () => setOpen("course"),
     },
@@ -236,8 +242,13 @@ export default function ContactActions({
         </ConsoleModal>
       )}
       {open === "course" && (
-        <ConsoleModal title="Give course access" onClose={() => setOpen(null)}>
-          <ContactGrantCourse contactId={contactId} hasAccount={hasAccount} courses={courses} />
+        <ConsoleModal title="Course access" onClose={() => setOpen(null)} wide>
+          <ContactGrantCourse
+            contactId={contactId}
+            hasAccount={hasAccount}
+            courses={courses}
+            enrollments={enrollments}
+          />
         </ConsoleModal>
       )}
     </section>

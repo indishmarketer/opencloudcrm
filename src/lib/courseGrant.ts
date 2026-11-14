@@ -58,12 +58,14 @@ export async function findOrCreateAccount(emailInput: string, name: string | nul
  * earlier marketing unsubscribe can't swallow it: it's about access they
  * were just given, not marketing. */
 export async function grantCourseManually(account: Account, course: { id: number; slug: string; title: string }, tier: "free" | "pro") {
-  await pool.query(
+  const enrollRes = await pool.query(
     `INSERT INTO course_enrollments (user_id, course_id, tier, granted_via)
      VALUES ($1, $2, $3, 'manual')
-     ON CONFLICT (user_id, course_id) DO UPDATE SET tier = $3, granted_via = 'manual'`,
+     ON CONFLICT (user_id, course_id) DO UPDATE SET tier = $3, granted_via = 'manual'
+     RETURNING id`,
     [account.id, course.id, tier],
   );
+  const enrollmentId = Number(enrollRes.rows[0]?.id);
 
   const coursePath = `/account/courses/${encodeURIComponent(course.slug)}`;
   const needsSignIn = account.created || !account.verified;
@@ -100,5 +102,5 @@ export async function grantCourseManually(account: Account, course: { id: number
     userId: account.id,
     data: { course_id: course.id, course_title: course.title, course_slug: course.slug, tier, method: "manual" },
   }).catch(() => {});
-  return { emailed: sent ? sent.ok || Boolean(sent.queued) : false };
+  return { emailed: sent ? sent.ok || Boolean(sent.queued) : false, enrollmentId };
 }

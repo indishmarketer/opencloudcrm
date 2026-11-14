@@ -46,7 +46,11 @@ export async function POST(req: NextRequest) {
   }
 
   const account = await findOrCreateAccount(email, name);
-  const { emailed } = await grantCourseManually(account, course, tier);
+  const { emailed, enrollmentId } = await grantCourseManually(account, course, tier);
 
-  return NextResponse.json({ ok: true, userId: account.id, createdAccount: account.created, emailed });
+  if (Number.isInteger(body.contactId)) {
+    await pool.query("UPDATE contacts SET user_id = $1 WHERE id = $2 AND user_id IS NULL", [account.id, body.contactId]);
+  }
+
+  return NextResponse.json({ ok: true, userId: account.id, createdAccount: account.created, emailed, enrollmentId });
 }

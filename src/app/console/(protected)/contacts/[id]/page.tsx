@@ -69,8 +69,19 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
   // Answers a form was told to promote onto the contact itself, rather than
   // leave sitting in the submission.
   const contactFormDetails = await listContactFormDetails(contactId);
-  const userId = contact.user_id ? Number(contact.user_id) : null;
+  let resolvedUserId = contact.user_id ? Number(contact.user_id) : null;
   const guestEmail = contact.email as string;
+
+  if (!resolvedUserId && guestEmail) {
+    const matchedUser = await pool.query(
+      "SELECT id FROM users WHERE lower(email) = lower($1) LIMIT 1",
+      [guestEmail],
+    );
+    if (matchedUser.rows[0]) {
+      resolvedUserId = Number(matchedUser.rows[0].id);
+      await pool.query("UPDATE contacts SET user_id = $1 WHERE id = $2 AND user_id IS NULL", [resolvedUserId, contactId]);
+    }
+  }
 
   let user = null as null | {
     id: number;
@@ -81,10 +92,10 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
     last_seen_at: string | null;
   };
 
-  if (userId) {
+  if (resolvedUserId) {
     const result = await pool.query(
       "SELECT id, email, name, created_at, username, last_seen_at FROM users WHERE id = $1",
-      [userId],
+      [resolvedUserId],
     );
     user = result.rows[0] || null;
     if (!user) notFound();
@@ -108,9 +119,9 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
   ] = await Promise.all([
     pool.query(
       "SELECT * FROM attribution_events WHERE user_id = $1 OR email = $2 ORDER BY created_at ASC",
-      [userId, email],
+      [resolvedUserId, email],
     ),
-    userId
+    resolvedUserId
       ? pool.query(
           `SELECT ce.id AS enrollment_id, ce.course_id, c.slug, c.title, ce.tier, ce.granted_via, ce.created_at,
              COUNT(l.id)::int AS total_lessons,
@@ -123,7 +134,7 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
            WHERE ce.user_id = $1
            GROUP BY ce.id, c.id
            ORDER BY ce.created_at DESC`,
-          [userId],
+          [resolvedUserId],
         )
       : Promise.resolve({ rows: [] }),
     pool.query(
@@ -131,24 +142,24 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
          EXISTS(SELECT 1 FROM course_modules m WHERE m.course_id = c.id AND m.tier = 'free') AS has_free_tier
        FROM courses c ORDER BY c.created_at DESC`,
     ),
-    userId
+    resolvedUserId
       ? pool.query(
           `SELECT pc.id, pc.method, pc.reference, pc.status, pc.amount, pc.currency, pc.created_at, c.title AS course_title
            FROM payment_claims pc JOIN courses c ON c.id = pc.course_id
            WHERE pc.user_id = $1 ORDER BY pc.created_at DESC`,
-          [userId],
+          [resolvedUserId],
         )
       : Promise.resolve({ rows: [] }),
-    userId
+    resolvedUserId
       ? pool.query(
           "SELECT status, source, current_period_end, created_at FROM community_memberships WHERE user_id = $1",
-          [userId],
+          [resolvedUserId],
         )
       : Promise.resolve({ rows: [] }),
-    userId
+    resolvedUserId
       ? pool.query(
           "SELECT id, body, created_by, created_at FROM contact_notes WHERE user_id = $1 ORDER BY created_at DESC",
-          [userId],
+          [resolvedUserId],
         )
       : Promise.resolve({ rows: [] }),
     pool.query(
@@ -174,12 +185,12 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
        WHERE mb.contact_id = $1 ORDER BY mb.scheduled_start DESC`,
       [contactId],
     ),
-    userId
+    resolvedUserId
       ? pool.query(
           `SELECT wa.id, wa.registered_at, wa.session_start_at, w.title
            FROM webinar_access wa JOIN webinars w ON w.id = wa.webinar_id
            WHERE wa.user_id = $1 ORDER BY wa.registered_at DESC`,
-          [userId],
+          [resolvedUserId],
         )
       : Promise.resolve({ rows: [] }),
   ]);
@@ -380,7 +391,20 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
         whatsappMessageCount={whatsappCount}
         hasGoogleReviewLink={Boolean(googleLocation.rowCount)}
         communityActive={communityActive}
-        courses={allCourses.rows.filter((c) => !enrollments.rows.some((e) => e.course_id === c.id))}
+        courses={allCourses.rows.map((c) => ({
+          id: Number(c.id),
+          title: String(c.title),
+          has_free_tier: Boolean(c.has_free_tier),
+        }))}
+        enrollments={enrollments.rows.map((row) => ({
+          enrollment_id: Number(row.enrollment_id),
+          course_id: Number(row.course_id),
+          title: String(row.title),
+          slug: String(row.slug),
+          tier: String(row.tier) as "free" | "pro",
+          granted_via: String(row.granted_via || "manual"),
+          created_at: new Date(row.created_at).toISOString(),
+        }))}
         replyToEmail={await getReplyToEmail()}
       />
 

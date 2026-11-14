@@ -74,6 +74,28 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json({ error: "Invalid request." }, { status: 400 });
   }
 
-  await pool.query("DELETE FROM course_enrollments WHERE id = $1", [enrollmentId]);
+  const result = await pool.query(
+    "DELETE FROM course_enrollments WHERE id = $1 RETURNING user_id, course_id",
+    [enrollmentId],
+  );
+  const row = result.rows[0];
+  if (row) {
+    const userResult = await pool.query("SELECT email, name FROM users WHERE id = $1", [row.user_id]);
+    const courseResult = await pool.query("SELECT slug, title FROM courses WHERE id = $1", [row.course_id]);
+    const user = userResult.rows[0];
+    const course = courseResult.rows[0];
+    if (user && course) {
+      emitWebhookEvent({
+        eventType: "course.revoked",
+        source: "course_enrollments",
+        sourceRecordId: enrollmentId,
+        contactEmail: user.email,
+        contactName: user.name,
+        userId: row.user_id,
+        data: { course_id: row.course_id, course_title: course.title, course_slug: course.slug, method: "manual" },
+      }).catch(() => {});
+    }
+  }
+
   return NextResponse.json({ ok: true });
 }
