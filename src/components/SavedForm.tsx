@@ -56,12 +56,45 @@ function designStyles(d: FormDesign): React.CSSProperties {
  * the real work (padding, size, spacing, typography, border) lives in
  * src/lib/formElementStyles.ts and is shared with the console canvas. */
 const inputStyles = (d: FormDesign, elStyle?: FormCanvasElement["elementStyle"]) => elementInputStyle(d, elStyle);
-const buttonStyles = (d: FormDesign, elStyle?: FormCanvasElement["elementStyle"]) => elementButtonStyle(d, elStyle);
+/** `designOverride`, when given, forces its buttonColor/buttonTextColor
+ * over even a per-element style -- see withOverride's doc comment. */
+const buttonStyles = (d: FormDesign, elStyle?: FormCanvasElement["elementStyle"], designOverride?: Partial<FormDesign>) =>
+  withOverride(elementButtonStyle(d, elStyle), designOverride, { backgroundColor: "buttonColor", color: "buttonTextColor" });
 
 // `block` keeps an input that has been given an explicit width on its own
 // line, under its label, rather than letting it flow inline beside it.
 const baseInputClass =
   "form-field-input mt-2 block w-full rounded-lg border border-line bg-paper px-4 py-3 text-sm outline-none focus:border-ink transition-colors";
+
+/** `designOverride` (a Form element's colour-override fields, set by
+ * whatever embeds this form -- a Row column or a Popup, see
+ * blockViews.tsx's formDesignOverride) is meant to WIN even over a field
+ * or button's own saved per-element style -- that is the whole point of
+ * calling it an override rather than a fallback default. Without this, a
+ * button (or field) already given an explicit colour once in Console ->
+ * Forms stayed exactly that colour everywhere the form was reused, no
+ * matter what colour the embedding page or popup asked for -- confirmed
+ * live: "I changed the button colour override but the button doesn't
+ * change." `design` itself already layers designOverride UNDER the
+ * form's own tokens (form.design, then designOverride spread on top), but
+ * that still loses to an explicit per-element value upstream in
+ * elementButtonStyle/elementInputStyle's own `style?.x || design.x`
+ * fallback chain -- this applies the override a second time, after that
+ * chain, so it wins regardless. */
+type FormDesignColorKey = "backgroundColor" | "textColor" | "placeholderColor" | "borderColor" | "buttonColor" | "buttonTextColor";
+function withOverride(
+  style: React.CSSProperties,
+  override: Partial<FormDesign> | undefined,
+  keys: { backgroundColor?: FormDesignColorKey; color?: FormDesignColorKey; borderColor?: FormDesignColorKey; placeholder?: FormDesignColorKey },
+): React.CSSProperties {
+  if (!override) return style;
+  const out = { ...style };
+  if (keys.backgroundColor && override[keys.backgroundColor]) out.backgroundColor = override[keys.backgroundColor];
+  if (keys.color && override[keys.color]) out.color = override[keys.color];
+  if (keys.borderColor && override[keys.borderColor]) out.borderColor = override[keys.borderColor];
+  if (keys.placeholder && override[keys.placeholder]) (out as Record<string, string>)["--ph-color"] = override[keys.placeholder] as string;
+  return out;
+}
 
 /** A field's own label follows its text colour and font size so restyling an
  * element restyles the whole field, not just its input box.
@@ -75,8 +108,8 @@ const baseInputClass =
  * input given an explicit width becomes inline-block -- so narrowing a field
  * used to pull its input up onto the same line as its label instead of
  * keeping it underneath. */
-function labelStyle(design: FormDesign, el: FormCanvasElement): React.CSSProperties {
-  return {
+function labelStyle(design: FormDesign, el: FormCanvasElement, designOverride?: Partial<FormDesign>): React.CSSProperties {
+  const style: React.CSSProperties = {
     display: "block",
     textAlign: "left",
     // labelColor overrides independently of the value typed into the box
@@ -89,6 +122,7 @@ function labelStyle(design: FormDesign, el: FormCanvasElement): React.CSSPropert
     fontSize: el.elementStyle?.fontSize || undefined,
     fontWeight: el.elementStyle?.fontWeight || undefined,
   };
+  return withOverride(style, designOverride, { color: "textColor" });
 }
 
 function CountryPicker({
@@ -606,7 +640,7 @@ export default function SavedForm({
                   type="button"
                   onClick={() => setSuccessOpen(false)}
                   className="mt-6 rounded-full bg-ink px-6 py-2.5 text-sm font-medium text-paper transition-opacity hover:opacity-80"
-                  style={buttonStyles(design)}
+                  style={buttonStyles(design, undefined, designOverride)}
                 >
                   Close
                 </button>
@@ -668,7 +702,12 @@ export default function SavedForm({
                 required
                 placeholder="123456"
                 className="form-field-input block w-full rounded-lg border border-line bg-paper px-4 py-3 text-center text-lg tracking-widest text-ink outline-none focus:border-ink"
-                style={elementInputStyle(design, design.verifyInput)}
+                style={withOverride(elementInputStyle(design, design.verifyInput), designOverride, {
+                  backgroundColor: "backgroundColor",
+                  color: "textColor",
+                  borderColor: "borderColor",
+                  placeholder: "placeholderColor",
+                })}
               />
               {error && <p className="text-sm text-red-600">{error}</p>}
               {otpNotice && <p className="text-sm text-ink-soft">{otpNotice}</p>}
@@ -676,7 +715,7 @@ export default function SavedForm({
                 type="submit"
                 disabled={status === "submitting"}
                 className={`block ${hasCustomWidth(design.verifyButton) ? "" : "w-full"} rounded-full bg-ink px-6 py-3 text-sm font-medium text-paper transition-opacity hover:opacity-80 disabled:opacity-50`}
-                style={elementButtonStyle(design, design.verifyButton)}
+                style={buttonStyles(design, design.verifyButton, designOverride)}
               >
                 {status === "submitting" ? "Verifying…" : "Confirm and submit"}
               </button>
@@ -865,7 +904,7 @@ export default function SavedForm({
                       } ${
                         el.elementStyle?.paddingY || el.elementStyle?.padding || el.elementStyle?.height ? "" : "py-3"
                       } rounded-xl bg-ink text-sm font-medium text-paper transition-opacity hover:opacity-80 disabled:opacity-50`}
-                      style={buttonStyles(design, el.elementStyle)}
+                      style={buttonStyles(design, el.elementStyle, designOverride)}
                     >
                       {status === "submitting" ? "Sending…" : el.buttonLabel || "Submit"}
                     </button>
@@ -882,12 +921,18 @@ export default function SavedForm({
             const inputId = `saved-form-${form.id}-${key}`;
             const val = values[key] || "";
             const choices = parseChoices(el.fieldOptions);
-            const { group: fieldGroup, control: fieldControl } = fieldLayout(design, el.elementStyle);
+            const { group: fieldGroup, control: rawFieldControl } = fieldLayout(design, el.elementStyle);
+            const fieldControl = withOverride(rawFieldControl, designOverride, {
+              backgroundColor: "backgroundColor",
+              color: "textColor",
+              borderColor: "borderColor",
+              placeholder: "placeholderColor",
+            });
 
             if (el.type === "country") {
               return (
                 <div key={el.id} style={fieldGroup}>
-                  <label className="text-sm font-medium" style={labelStyle(design, el)} htmlFor={inputId}>
+                  <label className="text-sm font-medium" style={labelStyle(design, el, designOverride)} htmlFor={inputId}>
                     {el.fieldLabel || "Country"}
                   </label>
                   <CountryPicker
@@ -906,7 +951,7 @@ export default function SavedForm({
             if (el.type === "phone") {
               return (
                 <div key={el.id} style={fieldGroup}>
-                  <label className="text-sm font-medium" style={labelStyle(design, el)} htmlFor={inputId}>
+                  <label className="text-sm font-medium" style={labelStyle(design, el, designOverride)} htmlFor={inputId}>
                     {el.fieldLabel || "Phone number"}
                   </label>
                   <PhoneFieldInput
@@ -928,7 +973,7 @@ export default function SavedForm({
             if (el.type === "radio") {
               return (
                 <div key={el.id} className="space-y-2" style={fieldGroup}>
-                  <span className="block text-sm font-medium" style={labelStyle(design, el)}>
+                  <span className="block text-sm font-medium" style={labelStyle(design, el, designOverride)}>
                     {el.fieldLabel || "Select an option"}
                   </span>
                   <div className="space-y-1.5 pt-0.5">
@@ -959,7 +1004,7 @@ export default function SavedForm({
               const selectedList = val ? val.split(",").map((s) => s.trim()).filter(Boolean) : [];
               return (
                 <div key={el.id} className="space-y-2" style={fieldGroup}>
-                  <span className="block text-sm font-medium" style={labelStyle(design, el)}>
+                  <span className="block text-sm font-medium" style={labelStyle(design, el, designOverride)}>
                     {el.fieldLabel || "Select choices"}
                   </span>
                   <div className="space-y-1.5 pt-0.5">
@@ -994,7 +1039,7 @@ export default function SavedForm({
             return (
               <div key={el.id} style={fieldGroup}>
                 {el.type !== "checkbox" && (
-                  <label className="text-sm font-medium" style={labelStyle(design, el)} htmlFor={inputId}>
+                  <label className="text-sm font-medium" style={labelStyle(design, el, designOverride)} htmlFor={inputId}>
                     {el.fieldLabel}
                   </label>
                 )}
@@ -1029,7 +1074,7 @@ export default function SavedForm({
                 ) : el.type === "checkbox" ? (
                   <label
                     className="inline-flex items-center gap-2 text-sm font-medium"
-                    style={labelStyle(design, el)}
+                    style={labelStyle(design, el, designOverride)}
                     htmlFor={inputId}
                   >
                     <input
@@ -1095,7 +1140,7 @@ export default function SavedForm({
                 type="submit"
                 disabled={status === "submitting" || !turnstileToken}
                 className="w-full rounded-xl bg-ink px-6 py-3 text-sm font-medium text-paper transition-opacity hover:opacity-80 disabled:opacity-50"
-                style={buttonStyles(design)}
+                style={buttonStyles(design, undefined, designOverride)}
               >
                 {status === "submitting" ? "Sending…" : form.submitLabel || "Submit"}
               </button>
@@ -1195,7 +1240,7 @@ export default function SavedForm({
               type="submit"
               disabled={status === "submitting" || !turnstileToken}
               className="rounded-full bg-ink px-6 py-3 text-sm font-medium text-paper transition-opacity hover:opacity-80 disabled:opacity-50"
-              style={buttonStyles(design)}
+              style={buttonStyles(design, undefined, designOverride)}
             >
               {status === "submitting" ? "Sending…" : form.submitLabel}
             </button>

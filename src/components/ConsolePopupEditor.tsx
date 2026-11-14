@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   DndContext,
@@ -49,8 +48,6 @@ const INLINE_TEXT_FIELD: Record<string, string> = {
   video: "caption",
 };
 
-const button =
-  "inline-flex items-center gap-1.5 rounded-full border border-line px-4 py-2 text-sm font-medium text-ink transition-colors hover:border-ink disabled:opacity-50";
 const primaryButton =
   "inline-flex items-center gap-1.5 rounded-full bg-ink px-5 py-2 text-sm font-medium text-paper transition-opacity hover:opacity-85 disabled:opacity-50";
 
@@ -64,6 +61,25 @@ const MobileIcon = () => (
     <rect x="7" y="2.5" width="10" height="19" rx="1.8" /><path d="M11 18h2" />
   </svg>
 );
+// Same glyphs as the page and form editors -- a plain back arrow (not a
+// text link) and an undo/redo pill, so the popup editor's chrome actually
+// matches them instead of standing out as its own thing.
+const BackIcon = () => (
+  <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="m14.5 5-7 7 7 7M8 12h12" />
+  </svg>
+);
+const UndoIcon = () => (
+  <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M9 14 4 9l5-5" /><path d="M4 9h10a6 6 0 0 1 0 12h-2" />
+  </svg>
+);
+const RedoIcon = () => (
+  <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="m15 14 5-5-5-5" /><path d="M20 9H10a6 6 0 0 0 0 12h2" />
+  </svg>
+);
+const iconButton = "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-ink-soft hover:bg-paper-soft hover:text-ink";
 
 /** The drop target below the last element -- also the whole canvas's drop
  * target when the popup is empty. Popup elements have no Tailwind
@@ -108,10 +124,33 @@ export default function ConsolePopupEditor({
   const selected = blocks.find((b) => b.id === selectedId) || null;
   const selectedDef = selected ? BLOCK_DEFS.find((d) => d.type === selected.type) : null;
 
-  const change = useCallback((next: PageBlock[]) => {
+  // Undo/redo, same shape as the page and form editors.
+  const [history, setHistory] = useState<{ past: PageBlock[][]; future: PageBlock[][] }>({ past: [], future: [] });
+
+  const change = useCallback(
+    (next: PageBlock[]) => {
+      setHistory((curr) => ({ past: [...curr.past.slice(-20), blocks], future: [] }));
+      setBlocks(next);
+      setDirty(true);
+    },
+    [blocks],
+  );
+
+  const undo = useCallback(() => {
+    if (history.past.length === 0) return;
+    const prev = history.past[history.past.length - 1];
+    setHistory((curr) => ({ past: curr.past.slice(0, -1), future: [blocks, ...curr.future] }));
+    setBlocks(prev);
+    setDirty(true);
+  }, [blocks, history.past]);
+
+  const redo = useCallback(() => {
+    if (history.future.length === 0) return;
+    const next = history.future[0];
+    setHistory((curr) => ({ past: [...curr.past, blocks], future: curr.future.slice(1) }));
     setBlocks(next);
     setDirty(true);
-  }, []);
+  }, [blocks, history.future]);
 
   function addElement(type: string) {
     const block = createBlock(type);
@@ -152,16 +191,28 @@ export default function ConsolePopupEditor({
     return true;
   }, [blocks, name, popup.id, router, settings]);
 
-  // Ctrl/Cmd+S, the same shortcut the page and form editors use.
+  // Ctrl/Cmd+S / Z / Shift+Z, the same shortcuts the page and form editors use.
   const saveRef = useRef(save);
   useEffect(() => {
     saveRef.current = save;
+  });
+  const undoRef = useRef(undo);
+  const redoRef = useRef(redo);
+  useEffect(() => {
+    undoRef.current = undo;
+    redoRef.current = redo;
   });
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if ((e.ctrlKey || e.metaKey) && e.key === "s") {
         e.preventDefault();
         void saveRef.current();
+      } else if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        undoRef.current();
+      } else if ((e.ctrlKey || e.metaKey) && ((e.key === "z" && e.shiftKey) || e.key === "y")) {
+        e.preventDefault();
+        redoRef.current();
       }
     }
     window.addEventListener("keydown", onKey);
@@ -218,10 +269,24 @@ export default function ConsolePopupEditor({
   return (
     <div className="flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-white text-ink">
       <header className="z-30 flex h-14 shrink-0 items-center justify-between gap-3 border-b border-line bg-white px-4">
-        <div className="flex min-w-0 items-center gap-3">
-          <Link href="/console/popups" aria-label="All popups" className="text-sm text-ink-soft underline">
-            ← Popups
-          </Link>
+        <div className="flex min-w-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={() => router.push("/console/popups")}
+            aria-label="All popups"
+            title="All popups"
+            className={iconButton}
+          >
+            <BackIcon />
+          </button>
+          <div className="flex items-center gap-0.5 rounded-lg bg-paper-soft p-0.5">
+            <button type="button" onClick={undo} disabled={history.past.length === 0} aria-label="Undo" title="Undo (Ctrl+Z)" className={`${iconButton} h-8 w-8 disabled:opacity-40`}>
+              <UndoIcon />
+            </button>
+            <button type="button" onClick={redo} disabled={history.future.length === 0} aria-label="Redo" title="Redo (Ctrl+Shift+Z)" className={`${iconButton} h-8 w-8 disabled:opacity-40`}>
+              <RedoIcon />
+            </button>
+          </div>
           <span className={`h-2 w-2 shrink-0 rounded-full ${dirty ? "bg-amber-500" : "bg-green-500"}`} aria-hidden="true" />
           <input
             value={name}
