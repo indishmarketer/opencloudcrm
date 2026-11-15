@@ -89,10 +89,13 @@ const SITE_WORKFLOW_EVENT_KEYS = [
   "directory_tool.submitted", "directory_tool.reviewed",
 ] as const;
 
-export const workflowTriggerOptions = [...SITE_WORKFLOW_EVENT_KEYS.map((key) => {
+/** Email verification requested is deliberately not offered: signup and
+ * form verification already send their own code email, so new workflows
+ * should not pick it. Existing workflows that use it keep working. */
+export const workflowTriggerOptions: { value: string; label: string; description: string }[] = SITE_WORKFLOW_EVENT_KEYS.map((key) => {
   const event = WEBHOOK_EVENT_TYPES.find((item) => item.key === key)!;
   return { value: event.key as string, label: event.label, description: event.description };
-}), VERIFICATION_REQUESTED_EVENT];
+});
 
 export function workflowReadinessIssues(graph: WorkflowGraph): string[] {
   const issues: string[] = [];

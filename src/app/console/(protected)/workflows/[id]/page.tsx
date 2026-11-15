@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import WorkflowCanvas from "@/components/WorkflowCanvas";
-import { workflowTriggerOptions } from "@/lib/workflowGraph";
+import { workflowTriggerOptions, VERIFICATION_REQUESTED_EVENT } from "@/lib/workflowGraph";
 import { getWorkflow, safeWorkflowRecord } from "@/lib/workflows";
 import { pool } from "@/lib/db";
 import ConsoleWorkflowCanvasFrame from "@/components/ConsoleWorkflowCanvasFrame";
@@ -50,5 +50,5 @@ export default async function WorkflowEditorPage({ params }: { params: Promise<{
     { value: emailAt("reach"), label: `Reach · ${emailAt("reach")}` },
     { value: emailAt("academy"), label: `Academy · ${emailAt("academy")}` },
   ];
-  return <ConsoleWorkflowCanvasFrame><WorkflowCanvas workflow={safeWorkflowRecord(workflow)} triggers={workflowTriggerOptions} initialRuns={runs.rows} emailTemplates={emailOptions} whatsappTemplates={whatsappOptions} courses={courses.rows} segments={segments.rows} forms={forms.rows} fromAddresses={fromAddresses} initialTestEmail={initialTestEmail || ""} businessName={business.brand || ""} businessAddress={business.addressShort || ""} /></ConsoleWorkflowCanvasFrame>;
+  return <ConsoleWorkflowCanvasFrame><WorkflowCanvas workflow={safeWorkflowRecord(workflow)} triggers={workflow.trigger_key === VERIFICATION_REQUESTED_EVENT.value ? [...workflowTriggerOptions, VERIFICATION_REQUESTED_EVENT] : workflowTriggerOptions} initialRuns={runs.rows} emailTemplates={emailOptions} whatsappTemplates={whatsappOptions} courses={courses.rows} segments={segments.rows} forms={forms.rows} fromAddresses={fromAddresses} initialTestEmail={initialTestEmail || ""} businessName={business.brand || ""} businessAddress={business.addressShort || ""} /></ConsoleWorkflowCanvasFrame>;
 }

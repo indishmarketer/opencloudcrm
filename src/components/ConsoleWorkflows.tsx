@@ -85,7 +85,8 @@ export default function ConsoleWorkflows({ workflows, triggers, emailFlows, fold
   const activeFolderRow = folderList.find((f) => String(f.id) === activeFolder);
   const triggerName = (key: string | null) => triggers.find((item) => item.value === key)?.label || key || "Incoming webhook";
   const matches = (row: { name: string; folder_id: number | null }) =>
-    (activeFolder === "all" || row.folder_id === Number(activeFolder)) && row.name.toLowerCase().includes(search.trim().toLowerCase());
+    // folder_id is a BIGINT, which pg returns as a string -- compare as text.
+    (activeFolder === "all" || String(row.folder_id) === activeFolder) && row.name.toLowerCase().includes(search.trim().toLowerCase());
   const visibleWorkflows = workflows.filter(matches);
   const visibleEmailFlows = emailFlows.filter(matches);
 
