@@ -35,6 +35,7 @@ export const WEBHOOK_EVENT_TYPES = [
   { key: "author_application.accepted", label: "Author draft accepted", description: "An admin accepts an applicant's draft, ready to publish." },
   { key: "directory_tool.submitted", label: "Tool submitted", description: "An account holder submits a tool. data.listing_tier is \"free\" or \"paid\" (paid listings pay after submitting; see Tool payment received). Branch on it with a Condition." },
   { key: "directory_tool.reviewed", label: "Tool reviewed", description: "A tool is published, approved pending payment, sent back for changes, or declined. Add a condition on data.status to send only for the result you choose." },
+  { key: "directory_tool.published", label: "Tool published", description: "A tool goes live in the directory: you approved it, or an approved paid listing was paid for. Carries the tool name, website and live link. (Submitted, review and payment emails are built in; see Tools directory > Communication.)" },
   { key: "directory_tool.paid", label: "Tool payment received", description: "A paid listing's fee was charged. data.status is \"published\" if it was already approved, otherwise \"pending\" (still awaiting review)." },
   { key: "review.submitted", label: "Review submitted", description: "Someone submits a testimonial/review." },
   { key: "community.post_created", label: "Community post created", description: "Someone creates a forum post (General or PRO space)." },

@@ -86,7 +86,9 @@ export function workflowEventLabel(key: string): string {
 const SITE_WORKFLOW_EVENT_KEYS = [
   "contact.verified", "newsletter.unsubscribed", "course.enrolled", "course.upgraded",
   "course.revoked", "course.completed", "course.inactivity", "payment.succeeded", "payment.failed",
-  "directory_tool.submitted", "directory_tool.reviewed", "directory_tool.paid",
+  // Submitted/reviewed/paid stay supported for existing workflows but are
+  // no longer offered: their emails are built in (directoryEmails.ts).
+  "directory_tool.published",
 ] as const;
 
 /** Email verification requested is deliberately not offered: signup and
@@ -171,7 +173,7 @@ export function workflowReadinessIssues(graph: WorkflowGraph): string[] {
     }
     if (node.data.kind === "contact_delete" && config.confirm !== true) issues.push(`Confirm contact removal for "${node.data.label}".`);
     if (node.data.kind === "wait" && config.mode === "event") {
-      if (!(SITE_WORKFLOW_EVENT_KEYS as readonly string[]).includes(String(config.eventKey))) issues.push(`Choose the event to wait for in "${node.data.label}".`);
+      if (!isSupportedWorkflowEvent(String(config.eventKey))) issues.push(`Choose the event to wait for in "${node.data.label}".`);
       if (!/^[a-zA-Z0-9_.]+$/.test(String(config.matchField || ""))) issues.push(`Choose which field links the event to this run in "${node.data.label}".`);
       const timeoutDays = Number(config.timeoutDays);
       if (!Number.isInteger(timeoutDays) || timeoutDays < 1 || timeoutDays > 365) issues.push(`Give up after 1 to 365 days in "${node.data.label}".`);

@@ -14,7 +14,7 @@ const TABS = [
   { key: "communication", label: "Communication" },
 ] as const;
 
-export default function ConsoleDirectory({ initialTab = "tools" }: { initialTab?: (typeof TABS)[number]["key"] }) {
+export default function ConsoleDirectory({ initialTab = "tools", businessName = "", businessAddress = "" }: { initialTab?: (typeof TABS)[number]["key"]; businessName?: string; businessAddress?: string }) {
   const [tab, setTab] = useState<(typeof TABS)[number]["key"]>(initialTab);
 
   return (
@@ -37,7 +37,7 @@ export default function ConsoleDirectory({ initialTab = "tools" }: { initialTab?
         {tab === "categories" && <ConsoleDirectoryCategories />}
         {tab === "tools" && <ConsoleDirectoryTools />}
         {tab === "pricing" && <ConsoleDirectoryPricing />}
-        {tab === "communication" && <ConsoleDirectoryCommunication />}
+        {tab === "communication" && <ConsoleDirectoryCommunication businessName={businessName} businessAddress={businessAddress} />}
       </div>
 
       <p className="mt-8 text-xs text-ink-soft">

@@ -3,6 +3,7 @@ import { sendEmail } from "@/lib/email";
 import { getBusiness } from "@/lib/businessProfile";
 import { SITE_NAME } from "@/config/brand";
 import { escapeHtml } from "@/lib/escapeHtml";
+import type { EmailBlock } from "@/lib/emailBlocks";
 
 /** Every email the tools directory sends, built in. These are not
  * automations: they go out from the review flow itself, so every
@@ -95,13 +96,13 @@ export function directoryEmailDefault(key: string) {
 }
 
 /** The wording in use: the install's saved edit, or the built-in default. */
-export async function getDirectoryEmailContent(key: DirectoryEmailKey): Promise<{ subject: string; body: string; edited: boolean }> {
+export async function getDirectoryEmailContent(key: DirectoryEmailKey): Promise<{ subject: string; body: string; blocks: EmailBlock[] | null; edited: boolean }> {
   const fallback = directoryEmailDefault(key)!;
-  const row = await pool.query<{ subject: string; body_html: string }>("SELECT subject, body_html FROM email_templates WHERE key = $1", [key]).catch(() => ({ rows: [] }));
+  const row = await pool.query<{ subject: string; body_html: string; blocks_json: EmailBlock[] | null }>("SELECT subject, body_html, blocks_json FROM email_templates WHERE key = $1", [key]).catch(() => ({ rows: [] }));
   const saved = row.rows[0];
   return saved && saved.subject.trim() && saved.body_html.trim()
-    ? { subject: saved.subject, body: saved.body_html, edited: true }
-    : { subject: fallback.subject, body: fallback.body, edited: false };
+    ? { subject: saved.subject, body: saved.body_html, blocks: Array.isArray(saved.blocks_json) ? saved.blocks_json : null, edited: true }
+    : { subject: fallback.subject, body: fallback.body, blocks: null, edited: false };
 }
 
 /** Sends one directory email. `vars` are plain text; they are escaped for
@@ -120,13 +121,13 @@ export async function sendDirectoryEmail(key: DirectoryEmailKey, to: string, var
 }
 
 /** Saves an edit as the override row; resetting deletes it. */
-export async function saveDirectoryEmail(key: DirectoryEmailKey, subject: string, body: string) {
+export async function saveDirectoryEmail(key: DirectoryEmailKey, subject: string, body: string, blocks: EmailBlock[] | null = null) {
   const fallback = directoryEmailDefault(key)!;
   await pool.query(
-    `INSERT INTO email_templates (key, category, label, description, subject, body_html, from_email, critical, track_opens, allowed_vars)
-     VALUES ($1, 'tool-directory', $2, $3, $4, $5, 'support@example.com', false, true, $6)
-     ON CONFLICT (key) DO UPDATE SET subject = EXCLUDED.subject, body_html = EXCLUDED.body_html, blocks_json = NULL`,
-    [key, `Tools directory: ${fallback.label}`, fallback.when, subject, body, [...fallback.vars]],
+    `INSERT INTO email_templates (key, category, label, description, subject, body_html, from_email, critical, track_opens, allowed_vars, blocks_json)
+     VALUES ($1, 'tool-directory', $2, $3, $4, $5, 'support@example.com', false, true, $6, $7::jsonb)
+     ON CONFLICT (key) DO UPDATE SET subject = EXCLUDED.subject, body_html = EXCLUDED.body_html, blocks_json = EXCLUDED.blocks_json`,
+    [key, `Tools directory: ${fallback.label}`, fallback.when, subject, body, [...fallback.vars], blocks ? JSON.stringify(blocks) : null],
   );
 }
 

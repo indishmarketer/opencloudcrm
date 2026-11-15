@@ -1,25 +1,63 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useConfirm } from "@/components/ConfirmDialog";
-import { wrapEmailHtml } from "@/lib/emailShell";
+import ConsoleEmailBuilder from "@/components/emailBuilder/ConsoleEmailBuilder";
+import type { EmailBlock } from "@/lib/emailBlocks";
 
-type DirectoryEmail = { key: string; label: string; when: string; vars: string[]; subject: string; body: string; edited: boolean };
+type DirectoryEmail = { key: string; label: string; when: string; vars: string[]; subject: string; body: string; blocks: EmailBlock[] | null; edited: boolean };
+
+const VAR_LABELS: Record<string, string> = {
+  first_name: "First name", tool_name: "Tool name", website_url: "Tool website", edit_url: "Edit submission link",
+  tool_url: "Live listing link", manage_url: "My tools link", payment_url: "Payment link", note: "Your note",
+  submitter_email: "Submitter email", event_text: "What happened", console_url: "Console review link", site_name: "Business name",
+};
 
 /** The tools directory's built-in emails. They always send on their own
- * when the event happens; here you can only change their wording. */
-export default function ConsoleDirectoryCommunication() {
+ * when the event happens; here only their wording changes, in the same
+ * composer used everywhere else. */
+export default function ConsoleDirectoryCommunication({ businessName, businessAddress }: { businessName: string; businessAddress: string }) {
+  const { confirm, dialog } = useConfirm();
   const [emails, setEmails] = useState<DirectoryEmail[] | null>(null);
-  const [openKey, setOpenKey] = useState<string | null>(null);
-  const [error, setError] = useState("");
+  const [composing, setComposing] = useState<DirectoryEmail | null>(null);
+  const [busyKey, setBusyKey] = useState("");
+  const [notice, setNotice] = useState<{ key: string; text: string; error?: boolean } | null>(null);
 
   useEffect(() => {
-    fetch("/api/console/directory/emails").then((r) => r.json()).then((body) => setEmails(body.emails || [])).catch(() => setError("Could not load the emails."));
+    fetch("/api/console/directory/emails").then((r) => r.json()).then((body) => setEmails(body.emails || [])).catch(() => setNotice({ key: "", text: "Could not load the emails.", error: true }));
   }, []);
 
   function replace(next: DirectoryEmail) {
     setEmails((current) => current?.map((email) => (email.key === next.key ? next : email)) || null);
+  }
+
+  async function call(email: DirectoryEmail, method: "PUT" | "DELETE" | "POST", payload?: unknown) {
+    setBusyKey(email.key); setNotice(null);
+    const response = await fetch(`/api/console/directory/emails/${email.key}`, { method, headers: { "Content-Type": "application/json" }, body: payload ? JSON.stringify(payload) : undefined }).catch(() => null);
+    const result = await response?.json().catch(() => ({})) || {};
+    setBusyKey("");
+    return response?.ok ? result : { error: result.error || "Something went wrong." };
+  }
+
+  async function saveFromComposer(next: { subject: string; blocks: EmailBlock[] | null; bodyHtml: string }) {
+    if (!composing) return { ok: false, error: "Nothing to save." };
+    const result = await call(composing, "PUT", { subject: next.subject, body: next.bodyHtml, blocks: next.blocks });
+    if (result.error) return { ok: false, error: result.error };
+    replace({ ...composing, subject: result.subject, body: result.body, blocks: result.blocks, edited: result.edited });
+    return { ok: true };
+  }
+
+  async function reset(email: DirectoryEmail) {
+    if (!(await confirm({ message: `Go back to the built-in wording for "${email.label}"? Your edits to it are removed.`, confirmLabel: "Reset" }))) return;
+    const result = await call(email, "DELETE");
+    if (result.error) setNotice({ key: email.key, text: result.error, error: true });
+    else { replace({ ...email, subject: result.subject, body: result.body, blocks: result.blocks, edited: false }); setNotice({ key: email.key, text: "Back to the built-in wording." }); }
+  }
+
+  async function sendTest(email: DirectoryEmail) {
+    const result = await call(email, "POST");
+    setNotice(result.error ? { key: email.key, text: result.error, error: true } : { key: email.key, text: `Test sent to ${result.sentTo}, with sample values.` });
   }
 
   return (
@@ -29,7 +67,7 @@ export default function ConsoleDirectoryCommunication() {
         <Link href="/console/email/sending" className="text-ink underline">Tools directory sender</Link> and with your business name.
         You can change what they say, but not when they send.
       </p>
-      {error && <p role="alert" className="mt-3 text-sm text-red-700">{error}</p>}
+      {notice && !notice.key && <p role="alert" className="mt-3 text-sm text-red-700">{notice.text}</p>}
       {!emails ? <p className="mt-6 text-sm text-ink-soft">Loading…</p> : (
         <div className="mt-6 divide-y divide-line rounded-2xl border border-line bg-paper">
           {emails.map((email) => (
@@ -40,76 +78,34 @@ export default function ConsoleDirectoryCommunication() {
                   <p className="mt-0.5 text-xs text-ink-soft">{email.when}</p>
                   <p className="mt-1 truncate text-sm text-ink-soft">Subject: {email.subject}</p>
                 </div>
-                <button type="button" onClick={() => setOpenKey(openKey === email.key ? null : email.key)} className="rounded-full border border-line px-3.5 py-1.5 text-sm font-medium hover:border-ink">{openKey === email.key ? "Close" : "Edit"}</button>
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={() => setComposing(email)} className="rounded-full bg-ink px-3.5 py-1.5 text-sm font-medium text-paper">Open composer</button>
+                  <button type="button" disabled={busyKey === email.key} onClick={() => void sendTest(email)} className="rounded-full border border-line px-3.5 py-1.5 text-sm font-medium hover:border-ink disabled:opacity-50">Send me a test</button>
+                  {email.edited && <button type="button" disabled={busyKey === email.key} onClick={() => void reset(email)} className="rounded-full border border-line px-3.5 py-1.5 text-sm text-ink-soft hover:border-ink disabled:opacity-50">Reset</button>}
+                </div>
               </div>
-              {openKey === email.key && <EmailEditor email={email} onSaved={replace} />}
+              {notice?.key === email.key && <p role={notice.error ? "alert" : "status"} className={`mt-2 text-sm ${notice.error ? "text-red-700" : "text-emerald-700"}`}>{notice.text}</p>}
             </div>
           ))}
         </div>
       )}
-    </div>
-  );
-}
-
-function EmailEditor({ email, onSaved }: { email: DirectoryEmail; onSaved: (email: DirectoryEmail) => void }) {
-  const { confirm, dialog } = useConfirm();
-  const [subject, setSubject] = useState(email.subject);
-  const [body, setBody] = useState(email.body);
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
-  const bodyRef = useRef<HTMLTextAreaElement>(null);
-  const dirty = subject !== email.subject || body !== email.body;
-
-  async function call(method: "PUT" | "DELETE" | "POST", payload?: unknown) {
-    setBusy(true); setError(""); setMessage("");
-    const response = await fetch(`/api/console/directory/emails/${email.key}`, { method, headers: { "Content-Type": "application/json" }, body: payload ? JSON.stringify(payload) : undefined }).catch(() => null);
-    const result = await response?.json().catch(() => ({})) || {};
-    setBusy(false);
-    if (!response?.ok) { setError(result.error || "Something went wrong."); return null; }
-    return result;
-  }
-  async function save() {
-    const result = await call("PUT", { subject, body });
-    if (result) { onSaved({ ...email, subject: result.subject, body: result.body, edited: result.edited }); setMessage("Saved. New emails use this wording."); }
-  }
-  async function reset() {
-    if (!(await confirm({ message: "Go back to the built-in wording? Your edits to this email are removed.", confirmLabel: "Reset" }))) return;
-    const result = await call("DELETE");
-    if (result) { setSubject(result.subject); setBody(result.body); onSaved({ ...email, subject: result.subject, body: result.body, edited: false }); setMessage("Back to the built-in wording."); }
-  }
-  async function sendTest() {
-    if (dirty) { setError("Save first. The test sends the saved version."); return; }
-    const result = await call("POST");
-    if (result) setMessage(`Test sent to ${result.sentTo}, with sample values.`);
-  }
-  function insertVar(name: string) {
-    const area = bodyRef.current;
-    const token = `{{${name}}}`;
-    if (!area) { setBody((current) => current + token); return; }
-    const { selectionStart, selectionEnd } = area;
-    setBody(body.slice(0, selectionStart) + token + body.slice(selectionEnd));
-    requestAnimationFrame(() => { area.focus(); area.setSelectionRange(selectionStart + token.length, selectionStart + token.length); });
-  }
-
-  return (
-    <div className="mt-4 space-y-3">
-      <label className="block text-xs font-medium text-ink-soft">Subject<input value={subject} onChange={(event) => setSubject(event.target.value)} className="mt-1.5 w-full rounded-lg border border-line px-3 py-2 text-sm text-ink outline-none focus:border-ink" /></label>
-      <div>
-        <p className="text-xs font-medium text-ink-soft">Fill-ins (click to add at the cursor)</p>
-        <div className="mt-1.5 flex flex-wrap gap-1.5">{email.vars.map((name) => <button key={name} type="button" onClick={() => insertVar(name)} className="rounded-full border border-line px-2.5 py-1 font-mono text-[11px] hover:border-ink">{`{{${name}}}`}</button>)}</div>
-      </div>
-      <div className="grid gap-3 lg:grid-cols-2">
-        <label className="block text-xs font-medium text-ink-soft">Message (HTML)<textarea ref={bodyRef} value={body} onChange={(event) => setBody(event.target.value)} rows={14} className="mt-1.5 w-full rounded-lg border border-line px-3 py-2 font-mono text-xs text-ink outline-none focus:border-ink" /></label>
-        <div><p className="text-xs font-medium text-ink-soft">Preview</p><iframe title={`${email.label} preview`} sandbox="" srcDoc={wrapEmailHtml(body)} className="mt-1.5 h-[17.5rem] w-full rounded-lg border border-line bg-white" /></div>
-      </div>
-      {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-      {message && <p role="status" className="text-sm text-emerald-700">{message}</p>}
-      <div className="flex flex-wrap gap-2">
-        <button type="button" disabled={busy || !dirty} onClick={() => void save()} className="rounded-full bg-ink px-4 py-2 text-sm font-medium text-paper disabled:opacity-50">Save</button>
-        <button type="button" disabled={busy} onClick={() => void sendTest()} className="rounded-full border border-line px-4 py-2 text-sm font-medium hover:border-ink disabled:opacity-50">Send me a test</button>
-        {email.edited && <button type="button" disabled={busy} onClick={() => void reset()} className="rounded-full border border-line px-4 py-2 text-sm font-medium text-ink-soft hover:border-ink disabled:opacity-50">Reset to default</button>}
-      </div>
+      {composing && <div className="fixed inset-0 z-[80] bg-paper">
+        <ConsoleEmailBuilder
+          key={composing.key}
+          initialSubject={composing.subject}
+          initialBlocks={composing.blocks || []}
+          initialBodyHtml={composing.body}
+          variables={composing.vars.map((token) => ({ token, label: VAR_LABELS[token] || token }))}
+          documentName={composing.label}
+          backHref="/console/directory?tab=communication"
+          backLabel="Back to Communication"
+          onBack={() => setComposing(null)}
+          onSaved={() => setComposing(null)}
+          businessName={businessName}
+          businessAddress={businessAddress}
+          onSave={saveFromComposer}
+        />
+      </div>}
       {dialog}
     </div>
   );

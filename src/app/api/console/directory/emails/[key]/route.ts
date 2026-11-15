@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminSession, getAdminSessionEmail } from "@/lib/auth";
+import { resolveEmailBodySave } from "@/lib/emailBlockSave";
 import { directoryEmailDefault, getDirectoryEmailContent, resetDirectoryEmail, saveDirectoryEmail, sendDirectoryEmail, type DirectoryEmailKey } from "@/lib/directoryEmails";
 
 type Params = { params: Promise<{ key: string }> };
@@ -23,9 +24,11 @@ export async function PUT(req: NextRequest, { params }: Params) {
   if (!key) return NextResponse.json({ error: "Unknown email." }, { status: 404 });
   const body = await req.json().catch(() => null);
   const subject = typeof body?.subject === "string" ? body.subject.trim().slice(0, 300) : "";
-  const html = typeof body?.body === "string" ? body.body.trim().slice(0, 50_000) : "";
+  // Visual layouts are rendered here from their blocks; HTML is kept as sent.
+  const resolved = resolveEmailBodySave({ bodyHtml: typeof body?.body === "string" ? body.body : "", blocks: body?.blocks });
+  const html = resolved.bodyHtml.trim().slice(0, 50_000);
   if (!subject || !html) return NextResponse.json({ error: "Add a subject and a message." }, { status: 400 });
-  await saveDirectoryEmail(key, subject, html);
+  await saveDirectoryEmail(key, subject, html, resolved.blocks);
   return NextResponse.json({ ok: true, ...(await getDirectoryEmailContent(key)) });
 }
 

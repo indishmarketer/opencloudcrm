@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   addEdge, Background, BaseEdge, Controls, EdgeLabelRenderer, getBezierPath, Handle, MiniMap, Position, ReactFlow, reconnectEdge,
   applyEdgeChanges, applyNodeChanges, useReactFlow, type Connection, type Edge, type Node,
@@ -12,7 +12,7 @@ import { useConfirm } from "@/components/ConfirmDialog";
 import ConsoleEmailBuilder from "@/components/emailBuilder/ConsoleEmailBuilder";
 import type { EmailBlock } from "@/lib/emailBlocks";
 import { wrapEmailHtml } from "@/lib/emailShell";
-import { EMAIL_ATTRIBUTES } from "@/lib/messageVariables";
+import { EMAIL_ATTRIBUTES, type MessageVariable } from "@/lib/messageVariables";
 import { VERIFIED_CONTACT_SOURCES, VERIFIED_CONTACT_SOURCE_OPTIONS, type WorkflowGraph, type WorkflowNodeKind } from "@/lib/workflowGraph";
 
 type CanvasNodeData = { kind: WorkflowNodeKind; label: string; config: Record<string, unknown> };
@@ -224,6 +224,26 @@ export default function WorkflowCanvas({
   const [historyState, setHistoryState] = useState({ past: 0, future: 0 });
   const [actionPicker, setActionPicker] = useState<{ x: number; y: number; source: string; sourceHandle: string | null } | null>(null);
   const [composerNodeId, setComposerNodeId] = useState<string | null>(null);
+  const [composerVariables, setComposerVariables] = useState<MessageVariable[]>(EMAIL_ATTRIBUTES);
+  // The composer's attribute list also offers this workflow's real event
+  // fields (from the latest occurrence), so anything the trigger or an
+  // awaited event carries can be inserted, whatever the feature.
+  useEffect(() => {
+    if (!composerNodeId || triggerType !== "event" || !triggerKey) { setComposerVariables(EMAIL_ATTRIBUTES); return; }
+    const waitKey = String(nodes.find((item) => item.data.kind === "wait" && item.data.config.mode === "event")?.data.config.eventKey || "");
+    const load = (key: string) => fetch(`/api/console/workflows/sample-event?eventKey=${encodeURIComponent(key)}`).then((r) => r.json()).then((b) => b.sample ?? null).catch(() => null);
+    let cancelled = false;
+    void Promise.all([load(triggerKey), waitKey ? load(waitKey) : Promise.resolve(null)]).then(([triggerSample, waitSample]) => {
+      if (cancelled) return;
+      const known = new Set(EMAIL_ATTRIBUTES.map((item) => item.token));
+      const label = (path: string) => path.split(".").pop()!.replace(/_/g, " ").replace(/^./, (ch) => ch.toUpperCase());
+      const fromSample = (sample: unknown, prefix: string, group: string) => sample
+        ? flattenFields((sample as Record<string, unknown>).data, prefix).filter((field) => !known.has(field.path)).map((field) => ({ token: field.path, label: label(field.path), group }))
+        : [];
+      setComposerVariables([...EMAIL_ATTRIBUTES, ...fromSample(triggerSample, "data", "This trigger"), ...fromSample(waitSample, "waited.data", "Awaited event")]);
+    });
+    return () => { cancelled = true; };
+  }, [composerNodeId]);
 
   const snapshot = (): GraphSnapshot => JSON.parse(JSON.stringify({ nodes, edges, triggerType, triggerKey }));
   function pushHistory() {
@@ -537,7 +557,7 @@ export default function WorkflowCanvas({
           initialSubject={String(composerNode.data.config.subject || "")}
           initialBlocks={Array.isArray(composerNode.data.config.blocks) ? composerNode.data.config.blocks as EmailBlock[] : []}
           initialBodyHtml={String(composerNode.data.config.body || "")}
-          variables={EMAIL_ATTRIBUTES}
+          variables={composerVariables}
           backHref={`/console/workflows/${initialWorkflow.id}`}
           backLabel="Back to workflow"
           onBack={() => setComposerNodeId(null)}
@@ -622,7 +642,7 @@ function NodeSettings({ node, eventWaitKey, emailNodes, onChange, onOpenComposer
       <div><p className="mb-1.5 text-xs font-medium text-ink-soft">Engagement</p><BrandSelect value={String(config.condition || "opened")} onChange={(value) => set("condition", value)} options={[{ value: "opened", label: "Was opened" }, { value: "not_opened", label: "Was not opened" }, { value: "clicked", label: "Was clicked" }, { value: "not_clicked", label: "Was not clicked" }]} /></div>
       <p className="text-xs leading-5 text-ink-soft">The Yes path continues when the selected email matches. The No path runs otherwise.</p>
     </>}
-    {node.data.kind === "wait" && <div><p className="mb-1.5 text-xs font-medium text-ink-soft">Wait</p><BrandSelect value={config.mode === "event" ? "event" : "duration"} onChange={(value) => onChange({ config: value === "event" ? { ...config, mode: "event", eventKey: config.eventKey || (triggerKey.startsWith("directory_tool.") ? "directory_tool.reviewed" : triggers[0]?.value || ""), matchField: config.matchField || (triggerKey.startsWith("directory_tool.") ? "data.tool_id" : "contact_id"), timeoutDays: config.timeoutDays || 30, filterField: config.filterField ?? "", filterValue: config.filterValue ?? "" } : { ...config, mode: "duration" } })} options={[{ value: "duration", label: "For a set time" }, { value: "event", label: "Until an event happens" }]} /></div>}
+    {node.data.kind === "wait" && <div><p className="mb-1.5 text-xs font-medium text-ink-soft">Wait</p><BrandSelect value={config.mode === "event" ? "event" : "duration"} onChange={(value) => onChange({ config: value === "event" ? { ...config, mode: "event", eventKey: config.eventKey || (triggerKey.startsWith("directory_tool.") ? "directory_tool.published" : triggers[0]?.value || ""), matchField: config.matchField || (triggerKey.startsWith("directory_tool.") ? "data.tool_id" : "contact_id"), timeoutDays: config.timeoutDays || 30, filterField: config.filterField ?? "", filterValue: config.filterValue ?? "" } : { ...config, mode: "duration" } })} options={[{ value: "duration", label: "For a set time" }, { value: "event", label: "Until an event happens" }]} /></div>}
     {node.data.kind === "wait" && config.mode === "event" && <>
       <div><p className="mb-1.5 text-xs font-medium text-ink-soft">Continue when this happens</p><BrandSelect value={String(config.eventKey || "")} onChange={(value) => set("eventKey", value)} options={triggers.map((trigger) => ({ value: trigger.value, label: trigger.label }))} searchable searchPlaceholder="Find an event" placeholder="Choose an event" /></div>
       {field("…for the same", "matchField", "data.tool_id")}

@@ -133,6 +133,18 @@ export async function emitToolReviewEvent(toolId: number, status: string, note: 
     data: { tool_id: toolId, tool_name: tool.name, website_url: tool.website_url,
       pricing_type: tool.pricing_type, status, note, payment_url: urls.manage_url, ...urls },
   });
+  if (status === "published") {
+    // One event per publication, so a re-published tool fires again.
+    await emitWebhookEvent({
+      eventType: "directory_tool.published",
+      source: "directory_tools",
+      sourceRecordId: `${toolId}:published:${randomUUID()}`,
+      contactEmail: submitter?.email || null,
+      contactName: submitter?.name || null,
+      data: { tool_id: toolId, tool_name: tool.name, website_url: tool.website_url, pricing_type: tool.pricing_type,
+        listing_tier: tool.listing_tier, category: tool.category_slug, ...urls },
+    });
+  }
 }
 
 /** Fired when a paid listing's fee clears, whether or not it has been

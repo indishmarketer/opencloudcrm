@@ -1,4 +1,5 @@
 import ConsoleDirectory from "@/components/ConsoleDirectory";
+import { getBusiness } from "@/lib/businessProfile";
 
 export default async function ConsoleDirectoryPage({
   searchParams,
@@ -6,6 +7,7 @@ export default async function ConsoleDirectoryPage({
   searchParams: Promise<{ tab?: string }>;
 }) {
   const params = await searchParams;
+  const business = await getBusiness();
   const initialTab =
     params.tab === "categories" || params.tab === "pricing" || params.tab === "communication"
       ? params.tab
@@ -18,7 +20,7 @@ export default async function ConsoleDirectoryPage({
         submissions land here as pending until you approve them.
       </p>
       <div className="mt-8">
-        <ConsoleDirectory key={initialTab} initialTab={initialTab} />
+        <ConsoleDirectory key={initialTab} initialTab={initialTab} businessName={business.brand || ""} businessAddress={business.addressShort || ""} />
       </div>
     </div>
   );
