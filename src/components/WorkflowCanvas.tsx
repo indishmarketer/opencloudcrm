@@ -81,7 +81,7 @@ function flattenFields(value: unknown, prefix: string, out: { path: string; valu
 
 /** The fields of the latest real occurrence of an event, n8n-style: click
  * one to copy its {{merge field}} for use in any later step. */
-function EventDataPanel({ eventKey, prefix, title }: { eventKey: string; prefix: string; title: string }) {
+function EventDataPanel({ eventKey, prefix, title, onPick }: { eventKey: string; prefix: string; title: string; onPick?: (path: string) => void }) {
   const [state, setState] = useState<{ key: string; sample: Record<string, unknown> | null; loading: boolean; error: string }>({ key: "", sample: null, loading: false, error: "" });
   const [copied, setCopied] = useState("");
   async function load() {
@@ -93,6 +93,7 @@ function EventDataPanel({ eventKey, prefix, title }: { eventKey: string; prefix:
   const loaded = state.key === eventKey && !state.loading;
   const fields = loaded && state.sample ? flattenFields(state.sample, prefix.replace(/\.$/, "")) : [];
   async function copy(path: string) {
+    if (onPick) { onPick(path); setCopied(path); setTimeout(() => setCopied(""), 1500); return; }
     await navigator.clipboard?.writeText(`{{${path}}}`).catch(() => {});
     setCopied(path);
     setTimeout(() => setCopied(""), 1500);
@@ -102,8 +103,8 @@ function EventDataPanel({ eventKey, prefix, title }: { eventKey: string; prefix:
     {!loaded ? <p className="mt-2 text-[11px] leading-4 text-ink-soft">Shows the fields from the most recent real event, so you can see exactly what this step receives.</p>
       : state.error ? <p className="mt-2 text-[11px] text-red-700">{state.error}</p>
       : !fields.length ? <p className="mt-2 text-[11px] leading-4 text-ink-soft">This event hasn&apos;t happened on the site yet. Trigger it once (e.g. submit a test tool), then load again.</p>
-      : <><p className="mt-2 text-[11px] leading-4 text-ink-soft">Click a field to copy its merge field, then paste it into a subject, body, condition or value.</p>
-        <div className="mt-2 max-h-72 space-y-1 overflow-y-auto">{fields.map((field) => <button key={field.path} type="button" onClick={() => void copy(field.path)} className="block w-full rounded-lg px-2 py-1.5 text-left hover:bg-paper-soft"><span className="block font-mono text-[11px] text-ink">{copied === field.path ? "Copied!" : `{{${field.path}}}`}</span><span className="block truncate text-[11px] text-ink-soft">{field.value || "(empty)"}</span></button>)}</div></>}
+      : <><p className="mt-2 text-[11px] leading-4 text-ink-soft">{onPick ? "Click a field to check it in this condition." : "Click a field to copy it with curly brackets, then paste it into a subject, body or value."}</p>
+        <div className="mt-2 max-h-72 space-y-1 overflow-y-auto">{fields.map((field) => <button key={field.path} type="button" onClick={() => void copy(field.path)} className="block w-full rounded-lg px-2 py-1.5 text-left hover:bg-paper-soft"><span className="block font-mono text-[11px] text-ink">{copied === field.path ? (onPick ? "Selected" : "Copied!") : onPick ? field.path : `{{${field.path}}}`}</span><span className="block truncate text-[11px] text-ink-soft">{field.value || "(empty)"}</span></button>)}</div></>}
   </div>;
 }
 
@@ -545,7 +546,7 @@ function NodeSettings({ node, eventWaitKey, emailNodes, onChange, onOpenComposer
     {node.data.kind === "condition" && <>
       {triggerKey === "directory_tool.reviewed"
         ? <div><p className="mb-1.5 text-xs font-medium text-ink-soft">Tool review field</p><BrandSelect value={String(config.field || "")} onChange={(value) => set("field", value)} options={[{ value: "data.status", label: "Review status" }, { value: "data.pricing_type", label: "Pricing type" }, { value: "data.website_url", label: "Tool website" }, { value: "data.note", label: "Review note" }]} placeholder="Choose a field" /></div>
-        : field("Payload field", "field", "data.phone")}
+        : <div><label className="block text-xs font-medium text-ink-soft">Field to check<input value={String(config.field ?? "")} onChange={(event) => set("field", event.target.value.replace(/[{}s]/g, ""))} placeholder="data.listing_tier" className="mt-1.5 w-full rounded-lg border border-line px-3 py-2 font-mono text-sm text-ink outline-none focus:border-ink" /></label><p className="mt-1.5 text-[11px] leading-4 text-ink-soft">The field's name only, no curly brackets. Easiest: click a field under &quot;Data you can use&quot; below to fill this in.</p></div>}
       <div><p className="mb-1.5 text-xs font-medium text-ink-soft">Rule</p><BrandSelect value={String(config.operator || "exists")} onChange={(value) => set("operator", value)} options={[{ value: "exists", label: "Has a value" }, { value: "missing", label: "Is empty" }, { value: "equals", label: "Equals" }, { value: "not_equals", label: "Does not equal" }, { value: "contains", label: "Contains" }, { value: "greater_than", label: "Greater than" }, { value: "less_than", label: "Less than" }]} /></div>
       {triggerKey === "directory_tool.reviewed" && config.field === "data.status" && ["equals", "not_equals"].includes(String(config.operator))
         ? <div><p className="mb-1.5 text-xs font-medium text-ink-soft">Review status</p><BrandSelect value={String(config.value || "")} onChange={(value) => set("value", value)} options={[{ value: "published", label: "Published" }, { value: "approved_unpaid", label: "Approved, awaiting payment" }, { value: "changes_requested", label: "Changes requested" }, { value: "rejected", label: "Declined" }]} placeholder="Choose a status" /></div>
@@ -640,8 +641,8 @@ function NodeSettings({ node, eventWaitKey, emailNodes, onChange, onOpenComposer
     {node.data.kind === "stop" && <p className="text-sm text-ink-soft">Ends this workflow path.</p>}
     {["condition", "email", "whatsapp", "webhook", "contact_update"].includes(node.data.kind) && triggerType === "event" && triggerKey && <div className="space-y-3 border-t border-line pt-4">
       <p className="text-xs font-semibold uppercase tracking-wide text-ink-soft">Data you can use</p>
-      <EventDataPanel eventKey={triggerKey} prefix="" title="From the trigger" />
-      {eventWaitKey && <EventDataPanel eventKey={eventWaitKey} prefix="waited" title="From the awaited event (after the wait)" />}
+      <EventDataPanel eventKey={triggerKey} prefix="" title="From the trigger" onPick={node.data.kind === "condition" ? (path) => set("field", path) : undefined} />
+      {eventWaitKey && <EventDataPanel eventKey={eventWaitKey} prefix="waited" title="From the awaited event (after the wait)" onPick={node.data.kind === "condition" ? (path) => set("field", path) : undefined} />}
     </div>}
   </div>;
 }

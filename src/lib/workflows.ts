@@ -230,7 +230,8 @@ function interpolate(value: string, payload: unknown, escapeValues = false): str
 
 function conditionPasses(node: WorkflowNode, payload: unknown): boolean {
   const config = node.data.config;
-  const actual = valueAtPath(payload, String(config.field || ""));
+  // Tolerate {{data.x}} typed by hand: the field is a path, not a merge field.
+  const actual = valueAtPath(payload, String(config.field || "").replace(/[{}\s]/g, ""));
   const expected = config.value;
   const actualText = actual == null ? "" : String(actual).toLowerCase();
   const expectedText = expected == null ? "" : String(expected).toLowerCase();
