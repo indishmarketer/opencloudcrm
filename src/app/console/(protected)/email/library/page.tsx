@@ -1,5 +1,5 @@
 import { listContentTemplates } from "@/lib/emailContentTemplates";
-import { listEmailTemplates, SYSTEM_EMAIL_DEFS } from "@/lib/emailTemplates";
+import { listEmailTemplates } from "@/lib/emailTemplates";
 import ConsoleTemplates, { type ContentTemplateRow, type FixedTemplateRow } from "@/components/ConsoleTemplates";
 
 export default async function EmailTemplatesPage() {
@@ -34,7 +34,7 @@ export default async function EmailTemplatesPage() {
         Nothing is hardcoded: every template here is fully editable and deletable, and can be written in whichever
         mode you prefer -- Visual blocks, Classic rich text, or raw HTML.
       </p>
-      <ConsoleTemplates contentTemplates={content} fixedTemplates={fixed} systemDefs={SYSTEM_EMAIL_DEFS as unknown as { key: string; label: string; description: string }[]} />
+      <ConsoleTemplates contentTemplates={content} fixedTemplates={fixed} />
     </div>
   );
 }

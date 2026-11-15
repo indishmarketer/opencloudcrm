@@ -124,27 +124,6 @@ export class EmailTemplateDeleteError extends Error {
   }
 }
 
-export class EmailTemplateCreateError extends Error {
-  status: number;
-  constructor(message: string, status = 400) {
-    super(message);
-    this.status = status;
-  }
-}
-
-/** The fixed set of keys real code actually looks up by name (see
- * getEmailTemplateOptional's callers). An arbitrary new key would never be
- * read by anything, so "create" is a picker over this list, not a
- * free-text field -- these rows are fully deletable like any other email
- * (nothing in this app treats any key as permanent), this list exists only
- * so a self-hoster can bring one back once it's gone. */
-export const SYSTEM_EMAIL_DEFS = [
-  { key: "otp-code", label: "Verification code (OTP)", description: "Sent to confirm an email address with a short code or magic link (contact form, newsletter, etc).", allowedVars: ["code", "magic_link_url"], defaultSubject: "Your verification code", defaultBody: "<p>Your code: <strong>{{code}}</strong></p><p>Or click: <a href=\"{{magic_link_url}}\">Confirm now</a></p>" },
-  { key: "contact-form-reply", label: "Contact form reply envelope", description: "The envelope used when an admin replies to a contact form message -- {{message}} is the admin's own typed reply.", allowedVars: ["name", "message"], defaultSubject: "Re: your message", defaultBody: "<p>Hi {{name}},</p><p>{{message}}</p>" },
-  { key: "review-question-to-author", label: "Review question envelope", description: "The envelope used when an admin asks a reviewer a question -- {{note}} is the admin's own typed question.", allowedVars: ["name", "note"], defaultSubject: "A question about your review", defaultBody: "<p>Hi {{name}},</p><p>{{note}}</p>" },
-  { key: "webinar-guest-signin", label: "Webinar guest sign-in link", description: "Sent to a guest registering for a webinar without an existing account, to verify and sign them in.", allowedVars: ["first_name", "webinar_title", "verify_url"], defaultSubject: "Confirm your spot in {{webinar_title}}", defaultBody: "<p>Hi {{first_name}},</p><p>Confirm your email to join {{webinar_title}}:</p><p><a href=\"{{verify_url}}\">Confirm and join</a></p>" },
-] as const;
-
 export function canDeleteEmailTemplate(_template: Pick<EmailTemplate, "key" | "critical">): boolean {
   return true;
 }
@@ -162,27 +141,9 @@ export async function deleteEmailTemplate(key: string): Promise<void> {
   }
 }
 
-/** Re-creates a deleted system email from SYSTEM_EMAIL_DEFS's starter
- * content. The admin edits it afterward like anything else; this just
- * gets a valid row back under the exact key the call site looks up. */
-export async function createSystemEmailTemplate(key: string): Promise<EmailTemplate> {
-  const def = SYSTEM_EMAIL_DEFS.find((d) => d.key === key);
-  if (!def) throw new EmailTemplateCreateError("Not a recognized system email key.", 400);
-  const existing = await pool.query("SELECT 1 FROM email_templates WHERE key = $1", [key]);
-  if (existing.rowCount) throw new EmailTemplateCreateError("This email already exists.", 409);
-  const result = await pool.query<EmailTemplate>(
-    `INSERT INTO email_templates (key, category, label, description, subject, body_html, from_email, critical, track_opens, allowed_vars)
-     VALUES ($1, 'system', $2, $3, $4, $5, 'info@example.com', false, true, $6)
-     RETURNING key, category, label, description, subject, body_html, from_email, critical, track_opens, allowed_vars, blocks_json`,
-    [def.key, def.label, def.description, def.defaultSubject, def.defaultBody, def.allowedVars]
-  );
-  return result.rows[0];
-}
-
 /** Shared by the console's own editor and /api/v1/email: edits an
  * existing template's content. Every row (account/security included) is
- * fully deletable -- see deleteEmailTemplate / createSystemEmailTemplate
- * above for how a deleted system email comes back. */
+ * fully deletable. */
 export async function updateEmailTemplate(
   key: string,
   input: {

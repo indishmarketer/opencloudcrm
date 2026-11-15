@@ -27,7 +27,6 @@ export type FixedTemplateRow = {
 };
 
 export type TemplateRow = ContentTemplateRow | FixedTemplateRow;
-export type SystemEmailDef = { key: string; label: string; description: string };
 
 function rowName(row: TemplateRow): string {
   return row.kind === "content" ? row.name : row.label;
@@ -39,54 +38,12 @@ function composerHref(row: TemplateRow): string {
   return row.kind === "content" ? `/console/email-builder/${row.id}` : `/console/email-builder/fixed/${encodeURIComponent(row.key)}`;
 }
 
-function AddFixedEmail({ missing, onAdded }: { missing: SystemEmailDef[]; onAdded: () => void }) {
-  const router = useRouter();
-  const [key, setKey] = useState(missing[0]?.key || "");
-  const [adding, setAdding] = useState(false);
-  const [error, setError] = useState("");
-
-  if (!missing.length) return null;
-
-  async function add() {
-    setAdding(true);
-    setError("");
-    const res = await fetch("/api/console/email/templates", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ key }),
-    });
-    const body = await res.json().catch(() => ({}));
-    setAdding(false);
-    if (!res.ok) {
-      setError(body.error || "Could not create this email.");
-      return;
-    }
-    onAdded();
-    router.refresh();
-  }
-
-  return (
-    <div className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-dashed border-line bg-paper-soft p-4">
-      <p className="text-sm text-ink-soft">Bring back a deleted one:</p>
-      <select value={key} onChange={(e) => setKey(e.target.value)} className="rounded-lg border border-line bg-paper px-3 py-2 text-sm outline-none focus:border-ink">
-        {missing.map((def) => <option key={def.key} value={def.key}>{def.label}</option>)}
-      </select>
-      <button type="button" onClick={add} disabled={adding} className="rounded-full bg-ink px-4 py-2 text-sm font-medium text-paper transition-opacity hover:opacity-80 disabled:opacity-50">
-        {adding ? "Creating…" : "Create"}
-      </button>
-      {error && <p className="text-xs text-red-600">{error}</p>}
-    </div>
-  );
-}
-
 export default function ConsoleTemplates({
   contentTemplates,
   fixedTemplates,
-  systemDefs,
 }: {
   contentTemplates: ContentTemplateRow[];
   fixedTemplates: FixedTemplateRow[];
-  systemDefs: SystemEmailDef[];
 }) {
   const router = useRouter();
   const { confirm, dialog } = useConfirm();
@@ -104,11 +61,6 @@ export default function ConsoleTemplates({
       ...fixedTemplates,
     ];
   }, [tab, contentTemplates, fixedTemplates]);
-
-  const missingSystemDefs = useMemo(() => {
-    const existing = new Set(fixedTemplates.map((t) => t.key));
-    return systemDefs.filter((def) => !existing.has(def.key));
-  }, [fixedTemplates, systemDefs]);
 
   async function createAndOpen() {
     const name = (creatingName || "").trim();
@@ -187,7 +139,6 @@ export default function ConsoleTemplates({
       )}
 
       <div className="mt-6">
-        {tab === "transactional" && <AddFixedEmail missing={missingSystemDefs} onAdded={() => {}} />}
         {deleteError && <p role="alert" className="mb-3 text-sm text-red-600">{deleteError}</p>}
         {!rows.length ? (
           <p className="text-sm text-ink-soft">
