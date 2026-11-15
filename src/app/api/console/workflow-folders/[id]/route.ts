@@ -26,7 +26,9 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
   if (!(await getAdminSession())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const id = parsePositiveId((await params).id);
   if (!id) return NextResponse.json({ error: "Folder not found." }, { status: 404 });
-  const result = await pool.query("DELETE FROM automation_workflow_folders WHERE id = $1 AND name <> 'Important' RETURNING id", [id]);
-  if (!result.rowCount) return NextResponse.json({ error: "This folder cannot be deleted." }, { status: 400 });
+  // Workflows inside are kept: folder_id is ON DELETE SET NULL, so they
+  // just return to "All workflows".
+  const result = await pool.query("DELETE FROM automation_workflow_folders WHERE id = $1 RETURNING id", [id]);
+  if (!result.rowCount) return NextResponse.json({ error: "Folder not found." }, { status: 404 });
   return NextResponse.json({ ok: true });
 }

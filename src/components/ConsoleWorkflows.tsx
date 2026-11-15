@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useConfirm } from "@/components/ConfirmDialog";
+import AnchoredPopover from "@/components/AnchoredPopover";
 
 type Trigger = { value: string; label: string; description: string };
 type Folder = { id: number; name: string };
@@ -42,6 +43,21 @@ function WorkflowToggle({ on, label, disabled, onToggle }: { on: boolean; label:
   </button>;
 }
 
+/** Icon-button folder picker. A native <select> opens with the OS's blue
+ * highlight, so this uses the same AnchoredPopover panel as BrandSelect. */
+function MoveToFolderMenu({ name, value, folders, disabled, onMove }: { name: string; value: number | null; folders: Folder[]; disabled: boolean; onMove: (value: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const options = [{ value: "", label: "All workflows" }, ...folders.map((folder) => ({ value: String(folder.id), label: folder.name }))];
+  const current = value == null ? "" : String(value);
+  return <>
+    <button ref={trigger} type="button" disabled={disabled} onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-label={`Move ${name} to folder`} title="Move to folder" className={`flex h-9 w-10 items-center justify-center rounded-lg border text-ink-soft hover:border-ink disabled:opacity-50 ${open ? "border-ink" : "border-line"}`}><svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/><path d="M12 10v6m-3-3 3 3 3-3"/></svg></button>
+    <AnchoredPopover anchor={trigger} open={open} onClose={() => setOpen(false)} width={200} align="end" className="rounded-lg p-0">
+      {options.map((option) => <button key={option.value} type="button" onClick={() => { setOpen(false); if (option.value !== current) onMove(option.value); }} className={`block w-full px-4 py-2.5 text-left text-sm hover:bg-paper-soft ${option.value === current ? "bg-paper-soft font-medium" : ""}`}>{option.label}</button>)}
+    </AnchoredPopover>
+  </>;
+}
+
 function toolsForWorkflow(workflow: Workflow): ToolKind[] {
   const allowed = new Set<ToolKind>(["email", "whatsapp", "webhook", "condition", "course_access", "wait", "stop"]);
   return Array.from(new Set(workflow.graph.nodes.filter((node) => node.data.kind !== "trigger" && allowed.has(node.data.kind as ToolKind)).map((node) => node.data.kind as ToolKind)));
@@ -64,6 +80,9 @@ export default function ConsoleWorkflows({ workflows, triggers, emailFlows, fold
   const [search, setSearch] = useState("");
   const [showFolderForm, setShowFolderForm] = useState(false);
   const [folderName, setFolderName] = useState("");
+  const [renaming, setRenaming] = useState(false);
+  const [renameValue, setRenameValue] = useState("");
+  const activeFolderRow = folderList.find((f) => String(f.id) === activeFolder);
   const triggerName = (key: string | null) => triggers.find((item) => item.value === key)?.label || key || "Incoming webhook";
   const matches = (row: { name: string; folder_id: number | null }) =>
     (activeFolder === "all" || row.folder_id === Number(activeFolder)) && row.name.toLowerCase().includes(search.trim().toLowerCase());
@@ -131,6 +150,28 @@ export default function ConsoleWorkflows({ workflows, triggers, emailFlows, fold
     setShowFolderForm(false);
   }
 
+  async function renameFolder(folder: Folder) {
+    const name = renameValue.trim();
+    if (!name || name === folder.name) { setRenaming(false); return; }
+    setError("");
+    const response = await fetch(`/api/console/workflow-folders/${folder.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) }).catch(() => null);
+    const body = await response?.json().catch(() => ({})) || {};
+    if (!response?.ok) { setError(body.error || "Could not rename folder."); return; }
+    setFolderList((current) => current.map((f) => (f.id === folder.id ? { ...f, name: body.folder.name } : f)).sort((a, b) => a.name.localeCompare(b.name)));
+    setRenaming(false);
+  }
+
+  async function deleteFolder(folder: Folder) {
+    if (!(await confirm({ message: `Delete the “${folder.name}” folder? Workflows inside it are not deleted. They move back to All workflows.`, confirmLabel: "Delete folder" }))) return;
+    setError("");
+    const response = await fetch(`/api/console/workflow-folders/${folder.id}`, { method: "DELETE" }).catch(() => null);
+    const body = await response?.json().catch(() => ({})) || {};
+    if (!response?.ok) { setError(body.error || "Could not delete folder."); return; }
+    setFolderList((current) => current.filter((f) => f.id !== folder.id));
+    setActiveFolder("all");
+    router.refresh();
+  }
+
   async function moveToFolder(type: "workflow" | "email", id: number, value: string) {
     const key = `${type}-${id}`;
     setSavingKey(key); setError("");
@@ -156,8 +197,18 @@ export default function ConsoleWorkflows({ workflows, triggers, emailFlows, fold
         </div>
         <div className="mb-4 flex flex-wrap items-center gap-2" role="tablist" aria-label="Workflow folders">
           <button type="button" role="tab" aria-selected={activeFolder === "all"} onClick={() => setActiveFolder("all")} className={`rounded-full px-3.5 py-2 text-sm font-medium ${activeFolder === "all" ? "bg-ink text-paper" : "border border-line text-ink-soft hover:text-ink"}`}>All workflows</button>
-          {folderList.map((folder) => <button key={folder.id} type="button" role="tab" aria-selected={activeFolder === String(folder.id)} onClick={() => setActiveFolder(String(folder.id))} className={`rounded-full px-3.5 py-2 text-sm font-medium ${activeFolder === String(folder.id) ? "bg-ink text-paper" : "border border-line text-ink-soft hover:text-ink"}`}>{folder.name}</button>)}
+          {folderList.map((folder) => <button key={folder.id} type="button" role="tab" aria-selected={activeFolder === String(folder.id)} onClick={() => { setActiveFolder(String(folder.id)); setRenaming(false); }} className={`rounded-full px-3.5 py-2 text-sm font-medium ${activeFolder === String(folder.id) ? "bg-ink text-paper" : "border border-line text-ink-soft hover:text-ink"}`}>{folder.name}</button>)}
         </div>
+        {activeFolderRow && <div className="-mt-1 mb-4 flex flex-wrap items-center gap-2">
+          {renaming ? <>
+            <label className="min-w-48"><span className="sr-only">Folder name</span><input autoFocus maxLength={80} value={renameValue} onChange={(event) => setRenameValue(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void renameFolder(activeFolderRow); if (event.key === "Escape") setRenaming(false); }} className="w-full rounded-lg border border-line px-3 py-1.5 text-sm outline-none focus:border-ink" /></label>
+            <button type="button" onClick={() => void renameFolder(activeFolderRow)} className="rounded-full bg-ink px-3.5 py-1.5 text-sm font-medium text-paper">Save</button>
+            <button type="button" onClick={() => setRenaming(false)} className="rounded-full border border-line px-3.5 py-1.5 text-sm">Cancel</button>
+          </> : <>
+            <button type="button" onClick={() => { setRenameValue(activeFolderRow.name); setRenaming(true); }} className="rounded-full border border-line px-3.5 py-1.5 text-sm text-ink-soft hover:border-ink hover:text-ink">Rename folder</button>
+            <button type="button" onClick={() => void deleteFolder(activeFolderRow)} className="rounded-full border border-red-200 px-3.5 py-1.5 text-sm text-red-700 hover:bg-red-50">Delete folder</button>
+          </>}
+        </div>}
         {showFolderForm && <div className="mb-4 flex max-w-xl flex-wrap items-center gap-2 rounded-xl border border-line bg-paper p-3"><label className="min-w-48 flex-1"><span className="sr-only">New folder name</span><input autoFocus maxLength={80} value={folderName} onChange={(event) => setFolderName(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void createFolder(); if (event.key === "Escape") setShowFolderForm(false); }} placeholder="Folder name" className="w-full rounded-lg border border-line px-3 py-2 text-sm outline-none focus:border-ink" /></label><button type="button" onClick={() => void createFolder()} className="rounded-full bg-ink px-4 py-2 text-sm font-medium text-paper">Create folder</button><button type="button" onClick={() => { setShowFolderForm(false); setFolderName(""); }} className="rounded-full border border-line px-4 py-2 text-sm">Cancel</button></div>}
         <p className="mb-3 text-sm text-ink-soft">Build event-based or email workflows on the canvas. Delete stops future sends and keeps existing history.</p>
         {!visibleWorkflows.length && !visibleEmailFlows.length ? <p className="rounded-2xl border border-dashed border-line p-8 text-center text-sm text-ink-soft">{workflows.length || emailFlows.length ? "No workflows match this folder or search." : "No workflows yet. Start with a site event or an incoming webhook."}</p> : <div className="overflow-x-auto rounded-xl border border-line bg-paper">
@@ -168,13 +219,13 @@ export default function ConsoleWorkflows({ workflows, triggers, emailFlows, fold
                 <td className="px-4 py-3"><a href={`/console/workflows/${workflow.id}`} className="flex min-w-0 items-center gap-3 font-medium text-ink hover:underline"><span className="shrink-0 text-ink"><TriggerIcon /></span><span className="truncate">{workflow.name}</span></a></td>
                 <td className="px-4 py-3"><WorkflowToggle on={workflow.status === "active"} label={`${workflow.status === "active" ? "Turn off" : "Turn on"} ${workflow.name}`} disabled={savingKey === `workflow-${workflow.id}`} onToggle={() => void toggleCustomWorkflow(workflow)} /></td>
                 <td className="px-4 py-3"><ToolIcons tools={toolsForWorkflow(workflow)} /></td>
-                <td className="px-4 py-3"><div className="flex items-center justify-center gap-2"><label className="relative flex h-9 w-10 items-center justify-center rounded-lg border border-line text-ink-soft hover:border-ink" title="Move to folder"><span className="sr-only">Move {workflow.name} to folder</span><svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/><path d="M12 10v6m-3-3 3 3 3-3"/></svg><select value={workflow.folder_id ?? ""} disabled={savingKey === `workflow-${workflow.id}`} onChange={(event) => void moveToFolder("workflow", workflow.id, event.target.value)} aria-label={`Move ${workflow.name} to folder`} className="absolute h-9 w-10 cursor-pointer opacity-0"><option value="">All workflows</option>{folderList.map((folder) => <option key={folder.id} value={folder.id}>{folder.name}</option>)}</select></label><button type="button" onClick={() => void deleteCustomWorkflow(workflow)} aria-label={`Delete ${workflow.name}`} title="Delete workflow" className="inline-flex rounded-full border border-red-200 p-2 text-red-700 hover:bg-red-50"><TrashIcon /></button></div></td>
+                <td className="px-4 py-3"><div className="flex items-center justify-center gap-2"><MoveToFolderMenu name={workflow.name} value={workflow.folder_id} folders={folderList} disabled={savingKey === `workflow-${workflow.id}`} onMove={(value) => void moveToFolder("workflow", workflow.id, value)} /><button type="button" onClick={() => void deleteCustomWorkflow(workflow)} aria-label={`Delete ${workflow.name}`} title="Delete workflow" className="inline-flex rounded-full border border-red-200 p-2 text-red-700 hover:bg-red-50"><TrashIcon /></button></div></td>
               </tr>)}
               {visibleEmailFlows.map((flow) => <tr key={`email-${flow.id}`} className="border-b border-line last:border-0 hover:bg-paper-soft/60">
                 <td className="px-4 py-3"><a href={`/console/workflows/email/${flow.id}`} className="flex min-w-0 items-center gap-3 font-medium text-ink hover:underline"><span className="shrink-0 text-ink"><TriggerIcon /></span><span className="truncate">{flow.name}</span></a></td>
                 <td className="px-4 py-3"><WorkflowToggle on={flow.active} label={`${flow.active ? "Turn off" : "Turn on"} ${flow.name}`} disabled={savingKey === `email-${flow.id}`} onToggle={() => void toggleEmailWorkflow(flow)} /></td>
                 <td className="px-4 py-3"><ToolIcons tools={[...(flow.has_email_action ? ["email" as const] : []), ...(flow.has_review_request ? ["review" as const] : []), ...(flow.has_wait ? ["wait" as const] : [])]} /></td>
-                <td className="px-4 py-3"><div className="flex items-center justify-center gap-2"><label className="relative flex h-9 w-10 items-center justify-center rounded-lg border border-line text-ink-soft hover:border-ink" title="Move to folder"><span className="sr-only">Move {flow.name} to folder</span><svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/><path d="M12 10v6m-3-3 3 3 3-3"/></svg><select value={flow.folder_id ?? ""} disabled={savingKey === `email-${flow.id}`} onChange={(event) => void moveToFolder("email", flow.id, event.target.value)} aria-label={`Move ${flow.name} to folder`} className="absolute h-9 w-10 cursor-pointer opacity-0"><option value="">All workflows</option>{folderList.map((folder) => <option key={folder.id} value={folder.id}>{folder.name}</option>)}</select></label><button type="button" onClick={() => void deleteEmailWorkflow(flow)} aria-label={`Delete ${flow.name}`} title="Delete workflow" className="inline-flex rounded-full border border-red-200 p-2 text-red-700 hover:bg-red-50"><TrashIcon /></button></div></td>
+                <td className="px-4 py-3"><div className="flex items-center justify-center gap-2"><MoveToFolderMenu name={flow.name} value={flow.folder_id} folders={folderList} disabled={savingKey === `email-${flow.id}`} onMove={(value) => void moveToFolder("email", flow.id, value)} /><button type="button" onClick={() => void deleteEmailWorkflow(flow)} aria-label={`Delete ${flow.name}`} title="Delete workflow" className="inline-flex rounded-full border border-red-200 p-2 text-red-700 hover:bg-red-50"><TrashIcon /></button></div></td>
               </tr>)}
             </tbody>
           </table>
