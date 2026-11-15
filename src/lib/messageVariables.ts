@@ -1,6 +1,6 @@
 import { escapeHtml } from "@/lib/escapeHtml";
 
-export type MessageVariable = { token: string; label: string };
+export type MessageVariable = { token: string; label: string; group?: string };
 export type SystemValueSource = { label: string; value: string; group: string };
 
 /** Recipient fields available in broadcasts and individual contact messages. */
@@ -21,25 +21,54 @@ const COURSE_FIELDS: MessageVariable[] = [
   { token: "course_url", label: "Course link" },
 ];
 
-/** For reusable content templates (src/app/console/(protected)/email/library):
- * these are reused in campaigns, automation steps with any trigger, and
- * one-off contact emails, so the token list is the broadest common set
- * rather than one trigger's exact fields. course_title/course_url only
- * resolve where a course is actually in context. */
-export const TEMPLATE_VARIABLES: MessageVariable[] = [
-  ...RECIPIENT_FIELDS, ...COURSE_FIELDS,
-  { token: "data.code", label: "Verification code (workflow)" },
-  { token: "data.verification_url", label: "Verification link (workflow)" },
-  { token: "data.magic_link_url", label: "Magic link (workflow)" },
-  { token: "data.tool_name", label: "Tool name (workflow)" },
-  { token: "data.website_url", label: "Tool website (workflow)" },
-  { token: "data.tool_url", label: "Published tool link (workflow)" },
-  { token: "data.edit_url", label: "Edit submission link (workflow)" },
-  { token: "data.manage_url", label: "Manage tools link (workflow)" },
-  { token: "data.payment_url", label: "Listing payment link (workflow)" },
-  { token: "data.status", label: "Tool review status (workflow)" },
-  { token: "data.note", label: "Tool review note (workflow)" },
+/** One token identity and label across composers and workflow actions.
+ * Event fields resolve when the sending workflow has that event payload. */
+export const EMAIL_ATTRIBUTES: MessageVariable[] = [
+  ...RECIPIENT_FIELDS.map((item) => ({ ...item, group: "Contact" })),
+  { token: "contact.id", label: "Contact ID", group: "Contact" },
+  { token: "event_type", label: "Event type", group: "Event" },
+  ...COURSE_FIELDS.map((item) => ({ ...item, group: "Courses" })),
+  ...[
+    ["course_id", "Course ID"], ["course_title", "Course title"], ["course_url", "Course access link"],
+    ["course_slug", "Course slug"], ["tier", "Course tier"], ["completed_lessons", "Completed lessons"],
+    ["total_lessons", "Total lessons"], ["current_module", "Current module"], ["current_lesson", "Next lesson"],
+  ].map(([token, label]) => ({ token: `data.${token}`, label, group: "Courses" })),
+  ...[
+    ["tool_id", "Tool ID"], ["tool_name", "Tool name"], ["website_url", "Tool website"],
+    ["tool_url", "Published tool link"], ["edit_url", "Edit submission link"],
+    ["manage_url", "Manage tools link"], ["payment_url", "Listing payment link"],
+    ["pricing_type", "Tool pricing"], ["status", "Review status"], ["note", "Review note"],
+  ].map(([token, label]) => ({ token: `data.${token}`, label, group: "Tools" })),
+  ...[
+    ["amount", "Payment amount"], ["currency", "Payment currency"], ["method", "Payment method"],
+    ["payment_id", "Payment ID"], ["order_id", "Order ID"], ["failure_code", "Payment failure code"],
+  ].map(([token, label]) => ({ token: `data.${token}`, label, group: "Payments" })),
+  ...[
+    ["scheduled_start", "Meeting start time"], ["timezone", "Meeting timezone"],
+    ["join_link", "Meeting link"], ["booking_page", "Booking page"], ["meeting_name", "Meeting name"],
+  ].map(([token, label]) => ({ token: `data.${token}`, label, group: "Meetings" })),
+  ...[
+    ["webinar_id", "Webinar ID"], ["webinar_title", "Webinar title"],
+    ["webinar_slug", "Webinar slug"], ["session_start_at", "Webinar session start"],
+  ].map(([token, label]) => ({ token: `data.${token}`, label, group: "Webinars" })),
+  ...[
+    ["guide", "Guide slug"], ["guide_url", "Guide link"], ["application_id", "Application ID"],
+    ["topics", "Application topics"], ["message", "Contact message"],
+    ["sample_url", "Writing sample link"], ["submission_url", "Author submission link"],
+    ["community_url", "Community link"], ["form_id", "Form ID"], ["form_name", "Form name"],
+    ["submission_id", "Form submission ID"], ["page_url", "Form page URL"],
+  ].map(([token, label]) => ({ token: `data.${token}`, label, group: "Content & forms" })),
+  ...[
+    ["code", "Verification code"], ["verification_url", "Verification link"],
+    ["magic_link_url", "Magic link"], ["expires_minutes", "Code expiry (minutes)"],
+    ["verify_url", "Account verification link"], ["reset_url", "Password reset link"],
+    ["confirm_url", "Email change confirmation link"], ["current_email", "Previous email address"],
+    ["login_url", "Login link"], ["signin_url", "Sign-in link"], ["link", "Console login link"],
+    ["invited_by", "Invited by"], ["source", "Verification source"],
+  ].map(([token, label]) => ({ token: `data.${token}`, label, group: "Account" })),
 ];
+
+export const TEMPLATE_VARIABLES: MessageVariable[] = EMAIL_ATTRIBUTES;
 
 /** Event values already supplied to each email automation trigger. */
 export const EMAIL_FLOW_VARIABLES: Record<string, MessageVariable[]> = {

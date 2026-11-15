@@ -9,7 +9,10 @@ import {
 import { useRouter } from "next/navigation";
 import BrandSelect from "@/components/BrandSelect";
 import { useConfirm } from "@/components/ConfirmDialog";
-import EmailWorkflowBodyEditor from "@/components/EmailWorkflowBodyEditor";
+import ConsoleEmailBuilder from "@/components/emailBuilder/ConsoleEmailBuilder";
+import type { EmailBlock } from "@/lib/emailBlocks";
+import { wrapEmailHtml } from "@/lib/emailShell";
+import { EMAIL_ATTRIBUTES } from "@/lib/messageVariables";
 import { VERIFIED_CONTACT_SOURCES, VERIFIED_CONTACT_SOURCE_OPTIONS, type WorkflowGraph, type WorkflowNodeKind } from "@/lib/workflowGraph";
 
 type CanvasNodeData = { kind: WorkflowNodeKind; label: string; config: Record<string, unknown> };
@@ -42,62 +45,6 @@ const kindColor: Record<WorkflowNodeKind, string> = {
   email_condition: "border-amber-300 bg-amber-50", wait: "border-orange-300 bg-orange-50", email: "border-blue-300 bg-blue-50", whatsapp: "border-green-300 bg-green-50", google_review_request: "border-blue-300 bg-blue-50",
   webhook: "border-cyan-300 bg-cyan-50", course_access: "border-rose-300 bg-rose-50", contact_update: "border-fuchsia-300 bg-fuchsia-50", contact_unsubscribe: "border-orange-300 bg-orange-50", contact_delete: "border-red-300 bg-red-50", stop: "border-line bg-paper-soft",
 };
-const workflowEmailVariables = [
-  { token: "first_name", label: "First name" }, { token: "last_name", label: "Last name" },
-  { token: "name", label: "Full name" }, { token: "email", label: "Email address" },
-  { token: "phone", label: "Phone number" }, { token: "country", label: "Country" },
-  { token: "address", label: "Address" }, { token: "source", label: "Contact source" },
-  { token: "contact.id", label: "Contact ID" }, { token: "event_type", label: "Event type" },
-  { token: "data.course_id", label: "Course ID" },
-  { token: "data.login_url", label: "Login link" }, { token: "data.signin_url", label: "Sign-in link" },
-  { token: "data.course_title", label: "Course title" }, { token: "data.course_url", label: "Course access link" },
-  { token: "data.course_slug", label: "Course slug" }, { token: "data.tier", label: "Course tier" },
-  { token: "data.amount", label: "Payment amount" }, { token: "data.currency", label: "Payment currency" },
-  { token: "data.method", label: "Payment method" }, { token: "data.meeting_name", label: "Meeting name" },
-  { token: "data.payment_id", label: "Payment ID" }, { token: "data.order_id", label: "Order ID" },
-  { token: "data.failure_code", label: "Payment failure code" },
-  { token: "data.completed_lessons", label: "Completed lessons" }, { token: "data.total_lessons", label: "Total lessons" },
-  { token: "data.current_module", label: "Current module" }, { token: "data.current_lesson", label: "Next lesson" },
-  { token: "data.scheduled_start", label: "Meeting start time" }, { token: "data.timezone", label: "Meeting timezone" },
-  { token: "data.join_link", label: "Meeting link" }, { token: "data.booking_page", label: "Booking page" },
-  { token: "data.webinar_title", label: "Webinar title" }, { token: "data.webinar_url", label: "Webinar link" },
-  { token: "data.guide", label: "Guide slug" }, { token: "data.guide_url", label: "Guide link" },
-  { token: "data.application_id", label: "Application ID" }, { token: "data.topics", label: "Application topics" },
-  { token: "data.message", label: "Contact message" }, { token: "data.sample_url", label: "Writing sample link" },
-  { token: "data.community_url", label: "Community link" },
-  { token: "data.verify_url", label: "Account verification link" }, { token: "data.reset_url", label: "Password reset link" },
-  { token: "data.code", label: "Verification code" }, { token: "data.verification_url", label: "Verification link" },
-  { token: "data.magic_link_url", label: "Magic link" }, { token: "data.source", label: "Verification source" },
-  { token: "data.expires_minutes", label: "Code expiry (minutes)" },
-  { token: "data.confirm_url", label: "Email change confirmation link" }, { token: "data.current_email", label: "Previous email address" },
-  { token: "data.link", label: "Console login link" }, { token: "data.invited_by", label: "Invited by" },
-  { token: "data.tool_id", label: "Tool ID" }, { token: "data.tool_name", label: "Tool name" },
-  { token: "data.website_url", label: "Tool website" }, { token: "data.tool_url", label: "Published tool link" },
-  { token: "data.edit_url", label: "Edit submission link" }, { token: "data.manage_url", label: "Manage tools link" },
-  { token: "data.payment_url", label: "Listing payment link" },
-  { token: "data.pricing_type", label: "Tool pricing" }, { token: "data.status", label: "Review status" },
-  { token: "data.note", label: "Review note" },
-];
-
-const workflowEventFields: Record<string, string[]> = {
-  "contact.verification_requested": ["code", "verification_url", "magic_link_url", "source", "expires_minutes"],
-  "contact.verified": ["source"],
-  "course.enrolled": ["course_id", "course_title", "course_slug", "course_url", "tier", "method"],
-  "course.upgraded": ["course_id", "course_title", "course_slug", "course_url", "tier", "method"],
-  "course.revoked": ["course_id", "course_title", "course_slug", "method"],
-  "course.completed": ["course_id", "course_title", "course_slug", "course_url"],
-  "course.inactivity": ["course_id", "course_title", "course_slug", "course_url", "completed_lessons", "total_lessons", "current_module", "current_lesson"],
-  "payment.succeeded": ["course_id", "course_title", "course_slug", "course_url", "amount", "currency", "method"],
-  "payment.failed": ["course_id", "course_title", "course_slug", "failure_code", "payment_id", "order_id"],
-  "directory_tool.submitted": ["tool_id", "tool_name", "website_url", "edit_url", "manage_url", "pricing_type"],
-  "directory_tool.reviewed": ["tool_id", "tool_name", "website_url", "tool_url", "edit_url", "manage_url", "payment_url", "pricing_type", "status", "note"],
-};
-
-function attributesForWorkflow(triggerKey: string) {
-  const eventFields = new Set(workflowEventFields[triggerKey] || []);
-  return workflowEmailVariables.filter((variable) => !variable.token.startsWith("data.") || eventFields.has(variable.token.slice(5)));
-}
-
 function WorkflowNodeView({ id, data, selected }: NodeProps<CanvasNode>) {
   const { deleteElements } = useReactFlow();
   return (
@@ -144,6 +91,8 @@ export default function WorkflowCanvas({
   forms,
   fromAddresses,
   initialTestEmail,
+  businessName,
+  businessAddress,
 }: {
   workflow: { id: number; name: string; description: string; status: "draft" | "active" | "paused"; trigger_type: "event" | "webhook"; trigger_key: string | null; graph: WorkflowGraph };
   triggers: TriggerOption[];
@@ -155,6 +104,8 @@ export default function WorkflowCanvas({
   forms: FormOption[];
   fromAddresses: { value: string; label: string }[];
   initialTestEmail: string;
+  businessName: string;
+  businessAddress: string;
 }) {
   const router = useRouter();
   const { confirm, dialog } = useConfirm();
@@ -182,6 +133,7 @@ export default function WorkflowCanvas({
   const skipEdgeRemoveCaptureUntil = useRef(0);
   const [historyState, setHistoryState] = useState({ past: 0, future: 0 });
   const [actionPicker, setActionPicker] = useState<{ x: number; y: number; source: string; sourceHandle: string | null } | null>(null);
+  const [composerNodeId, setComposerNodeId] = useState<string | null>(null);
 
   const snapshot = (): GraphSnapshot => JSON.parse(JSON.stringify({ nodes, edges, triggerType, triggerKey }));
   function pushHistory() {
@@ -223,6 +175,7 @@ export default function WorkflowCanvas({
   const isDirty = editState({ name, description, status, triggerType, triggerKey, nodes, edges }) !== savedState;
 
   const selectedNode = nodes.find((node) => node.id === selectedId) || null;
+  const composerNode = nodes.find((node) => node.id === composerNodeId && node.data.kind === "email") || null;
   const onNodesChange: OnNodesChange<CanvasNode> = useCallback((changes) => {
     const safeChanges = changes.filter((change) => change.type !== "remove" || nodes.find((node) => node.id === change.id)?.data.kind !== "trigger");
     if (safeChanges.some((change) => change.type === "remove")) skipEdgeRemoveCaptureUntil.current = Date.now() + 100;
@@ -341,6 +294,26 @@ export default function WorkflowCanvas({
     return true;
   }
 
+  async function saveComposerEmail(next: { subject: string; blocks: EmailBlock[] | null; bodyHtml: string }): Promise<{ ok: boolean; error?: string }> {
+    if (!composerNode) return { ok: false, error: "Email step no longer exists." };
+    if (!next.subject.trim() || !next.bodyHtml.trim()) return { ok: false, error: "Add a subject and email body before saving." };
+    const nextNodes = nodes.map((node) => node.id === composerNode.id
+      ? { ...node, data: { ...node.data, config: { ...node.data.config, contentMode: "custom", subject: next.subject, body: next.bodyHtml, blocks: next.blocks } } }
+      : node);
+    const response = await fetch(`/api/console/workflows/${initialWorkflow.id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, description, triggerType, triggerKey: triggerType === "event" ? triggerKey : undefined,
+        graph: { nodes: nextNodes, edges }, status }),
+    }).catch(() => null);
+    const body = await response?.json().catch(() => ({})) || {};
+    if (!response?.ok) return { ok: false, error: body.error || "Could not save this workflow email." };
+    setNodes(nextNodes);
+    setStatus(body.workflow.status);
+    setSavedState(editState({ name, description, status: body.workflow.status, triggerType, triggerKey, nodes: nextNodes, edges }));
+    setMessage("Workflow email saved.");
+    return { ok: true };
+  }
+
   async function rotateWebhook() {
     setError(""); setWebhookUrl("");
     if (triggerType !== initialWorkflow.trigger_type || triggerKey !== (initialWorkflow.trigger_key || "")) {
@@ -438,7 +411,7 @@ export default function WorkflowCanvas({
 
         <aside className="hidden w-80 shrink-0 overflow-y-auto border-l border-line bg-paper p-5 xl:block">
           {selectedNode ? (
-            <NodeSettings node={selectedNode} emailNodes={nodes.filter((item) => item.data.kind === "email")} onChange={updateSelected} triggerType={triggerType} triggerKey={triggerKey} triggers={triggers} onTriggerTypeChange={changeTriggerType} onTriggerKeyChange={changeTriggerKey} onRotateWebhook={() => void rotateWebhook()} webhookUrl={webhookUrl} emailTemplates={emailTemplates} whatsappTemplates={whatsappTemplates} courses={courses} segments={segments} forms={forms} fromAddresses={fromAddresses} />
+            <NodeSettings node={selectedNode} emailNodes={nodes.filter((item) => item.data.kind === "email")} onChange={updateSelected} onOpenComposer={() => setComposerNodeId(selectedNode.id)} triggerType={triggerType} triggerKey={triggerKey} triggers={triggers} onTriggerTypeChange={changeTriggerType} onTriggerKeyChange={changeTriggerKey} onRotateWebhook={() => void rotateWebhook()} webhookUrl={webhookUrl} emailTemplates={emailTemplates} whatsappTemplates={whatsappTemplates} courses={courses} segments={segments} forms={forms} fromAddresses={fromAddresses} />
           ) : (
             <div className="space-y-5">
               <p className="text-sm leading-6 text-ink-soft">Select a node to configure its trigger or action. Drag a node&apos;s output handle onto the canvas to add and connect the next step.</p>
@@ -454,6 +427,22 @@ export default function WorkflowCanvas({
         </aside>
       </div>
       <div className="border-t border-line bg-paper px-4 py-2 text-xs text-ink-soft xl:hidden">Select a node to edit its settings on larger screens.</div>
+      {composerNode && <div className="fixed inset-0 z-[80] bg-paper">
+        <ConsoleEmailBuilder
+          key={composerNode.id}
+          initialSubject={String(composerNode.data.config.subject || "")}
+          initialBlocks={Array.isArray(composerNode.data.config.blocks) ? composerNode.data.config.blocks as EmailBlock[] : []}
+          initialBodyHtml={String(composerNode.data.config.body || "")}
+          variables={EMAIL_ATTRIBUTES}
+          backHref={`/console/workflows/${initialWorkflow.id}`}
+          backLabel="Back to workflow"
+          onBack={() => setComposerNodeId(null)}
+          onSaved={() => setComposerNodeId(null)}
+          businessName={businessName}
+          businessAddress={businessAddress}
+          onSave={saveComposerEmail}
+        />
+      </div>}
       {testPrompt && <div className="fixed inset-0 z-[110] flex items-center justify-center bg-ink/50 px-5"><section role="dialog" aria-modal="true" aria-labelledby="workflow-test-title" className="w-full max-w-md rounded-2xl border border-line bg-paper p-6 shadow-xl"><h2 id="workflow-test-title" className="font-display text-lg font-semibold">Run workflow test</h2><p className="mt-2 text-sm leading-6 text-ink-soft">This starts at the trigger, skips Wait nodes, and sends real messages to these test recipients. Course access, contact unsubscribe, and contact removal actions are held to protect real records.</p>{nodes.some((node) => node.data.kind === "email") && <label className="mt-4 block text-sm font-medium">Test email<input type="email" value={testEmail} onChange={(event) => setTestEmail(event.target.value)} className="mt-1.5 w-full rounded-lg border border-line px-3 py-2 text-sm outline-none focus:border-ink" /></label>}{nodes.some((node) => node.data.kind === "whatsapp") && <label className="mt-4 block text-sm font-medium">Test WhatsApp number<input type="tel" value={testPhone} onChange={(event) => setTestPhone(event.target.value)} placeholder="Include country code" className="mt-1.5 w-full rounded-lg border border-line px-3 py-2 text-sm outline-none focus:border-ink" /></label>}<div className="mt-6 flex justify-end gap-2"><button type="button" onClick={() => setTestPrompt(false)} className="rounded-full border border-line px-4 py-2 text-sm">Cancel</button><button type="button" disabled={testRunning} onClick={() => void runWorkflowTest()} className="rounded-full bg-ink px-4 py-2 text-sm text-paper disabled:opacity-50">{testRunning ? "Running…" : "Send test"}</button></div></section></div>}
       {exitPrompt && <div className="fixed inset-0 z-[110] flex items-center justify-center bg-ink/50 px-5"><section role="alertdialog" aria-modal="true" aria-labelledby="workflow-exit-title" className="w-full max-w-md rounded-2xl border border-line bg-paper p-6 shadow-xl"><h2 id="workflow-exit-title" className="font-display text-lg font-semibold">Leave this workflow?</h2><p className="mt-2 text-sm leading-6 text-ink-soft">You have unsaved changes. Save them before leaving, or exit and discard those edits.</p><div className="mt-6 flex flex-wrap justify-end gap-2"><button type="button" onClick={() => setExitPrompt(false)} className="rounded-full border border-line px-4 py-2 text-sm font-medium">Cancel</button><button type="button" onClick={() => router.push("/console/workflows")} className="rounded-full border border-red-200 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50">Exit without saving</button><button type="button" disabled={saving} onClick={() => void saveAndExit()} className="rounded-full bg-ink px-4 py-2 text-sm font-medium text-paper disabled:opacity-50">{saving ? "Saving…" : "Save and exit"}</button></div></section></div>}
       {dialog}
@@ -461,10 +450,11 @@ export default function WorkflowCanvas({
   );
 }
 
-function NodeSettings({ node, emailNodes, onChange, triggerType, triggerKey, triggers, onTriggerTypeChange, onTriggerKeyChange, onRotateWebhook, webhookUrl, emailTemplates, whatsappTemplates, courses, segments: _segments, forms, fromAddresses }: {
+function NodeSettings({ node, emailNodes, onChange, onOpenComposer, triggerType, triggerKey, triggers, onTriggerTypeChange, onTriggerKeyChange, onRotateWebhook, webhookUrl, emailTemplates, whatsappTemplates, courses, segments: _segments, forms, fromAddresses }: {
   node: CanvasNode;
   emailNodes: CanvasNode[];
   onChange: (patch: Partial<CanvasNodeData>) => void;
+  onOpenComposer: () => void;
   triggerType: "event" | "webhook";
   triggerKey: string;
   triggers: TriggerOption[];
@@ -480,6 +470,7 @@ function NodeSettings({ node, emailNodes, onChange, triggerType, triggerKey, tri
   fromAddresses: { value: string; label: string }[];
 }) {
   const config = node.data.config;
+  const [showEmailPreview, setShowEmailPreview] = useState(true);
   const set = (key: string, value: unknown) => onChange({ config: { ...config, [key]: value } });
   const field = (label: string, key: string, placeholder = "") => (
     <label className="block text-xs font-medium text-ink-soft">{label}<input value={String(config[key] ?? "")} onChange={(event) => set(key, event.target.value)} placeholder={placeholder} className="mt-1.5 w-full rounded-lg border border-line px-3 py-2 text-sm text-ink outline-none focus:border-ink" /></label>
@@ -552,7 +543,16 @@ function NodeSettings({ node, emailNodes, onChange, triggerType, triggerKey, tri
         {emailTemplates.find((template) => template.value === `${config.templateKind}:${config.templateKey}`) && <div className="rounded-xl border border-line bg-paper-soft p-3"><p className="text-xs font-semibold">{emailTemplates.find((template) => template.value === `${config.templateKind}:${config.templateKey}`)?.subject}</p>{emailTemplates.find((template) => template.value === `${config.templateKind}:${config.templateKey}`)?.critical && <p className="mt-1 text-[11px] text-red-700">Critical platform template</p>}<p className="mt-2 max-h-28 overflow-hidden whitespace-pre-wrap text-[11px] leading-5 text-ink-soft">{emailTemplates.find((template) => template.value === `${config.templateKind}:${config.templateKey}`)?.body.replace(/<[^>]*>/g, " ").slice(0, 500)}</p><p className="mt-2 text-[10px] text-ink-soft">Template content stays linked, so future template edits appear here.</p></div>}
       </> : <>
         {field("Subject", "subject", "Welcome")}
-        <div><p className="mb-1.5 text-xs font-medium text-ink-soft">Email body</p><EmailWorkflowBodyEditor value={String(config.body || "")} onChange={(value) => set("body", value)} variables={attributesForWorkflow(triggerKey)} /></div>
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-ink-soft">Email body</p>
+          <div className="flex gap-2">
+            <button type="button" onClick={() => setShowEmailPreview((current) => !current)} className="rounded-full border border-line px-3 py-1.5 text-xs font-medium hover:border-ink">{showEmailPreview ? "Hide preview" : "Preview"}</button>
+            <button type="button" onClick={onOpenComposer} className="rounded-full bg-ink px-3 py-1.5 text-xs font-medium text-paper">Open composer</button>
+          </div>
+          {showEmailPreview && <div className="overflow-hidden rounded-lg border border-line bg-paper-soft">
+            {config.body ? <iframe title="Workflow email preview" sandbox="" srcDoc={wrapEmailHtml(String(config.body))} className="h-80 w-full border-0 bg-white" /> : <p className="p-4 text-xs text-ink-soft">Open the composer to write this email.</p>}
+          </div>}
+        </div>
       </>}
       <div><p className="mb-1.5 text-xs font-medium text-ink-soft">Type</p><BrandSelect value={String(config.messageType || (config.purpose === "marketing" ? "marketing" : "transactional"))} onChange={(value) => set("messageType", value)} options={[{ value: "transactional", label: "Transactional" }, { value: "marketing", label: "Marketing" }]} /></div>
     </>}

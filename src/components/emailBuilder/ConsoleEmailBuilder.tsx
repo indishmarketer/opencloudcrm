@@ -20,6 +20,7 @@ import { FieldGroup } from "@/components/PageBlockFields";
 import BlockIcon from "@/components/pageEditor/blockIcons";
 import RichTextEditor from "@/components/RichTextEditor";
 import EmailElementsPalette from "@/components/emailBuilder/EmailElementsPalette";
+import EmailAttributeCatalog from "@/components/emailBuilder/EmailAttributeCatalog";
 import {
   EMAIL_BLOCK_DEFS,
   createEmailBlock,
@@ -30,9 +31,8 @@ import {
 } from "@/lib/emailBlocks";
 import { renderEmailBlocksToHtml, renderFooterPreview } from "@/lib/emailBlocksRender";
 import { wrapEmailHtml } from "@/lib/emailShell";
-import BrandSelect from "@/components/BrandSelect";
 import MediaLibraryPicker from "@/components/MediaLibraryPicker";
-import type { MessageVariable } from "@/lib/messageVariables";
+import { EMAIL_ATTRIBUTES, type MessageVariable } from "@/lib/messageVariables";
 
 type Values = Record<string, unknown>;
 
@@ -213,7 +213,7 @@ function SortableBlockCard({
   } else if (block.type === "columns") {
     content = <div style={blockPadding(props)}><div className="grid grid-cols-2" style={blockTextStyle(props)}><div className="min-w-0 pr-3"><InlineHtml label="Left column" value={String(props.leftHtml || "")} onChange={(value) => update("leftHtml", value)} /></div><div className="min-w-0 pl-3"><InlineHtml label="Right column" value={String(props.rightHtml || "")} onChange={(value) => update("rightHtml", value)} /></div></div></div>;
   } else if (block.type === "button") {
-    content = <div style={blockPadding(props)}><input aria-label="Button label" value={String(props.label || "")} onChange={(event) => update("label", event.target.value)} className="max-w-full text-center outline-none" style={{ backgroundColor: String(props.buttonColor || "#0a0a0a"), color: String(props.buttonTextColor || "#ffffff"), borderRadius: Number(props.borderRadius ?? 6), padding: "12px 28px", fontFamily: "Helvetica, Arial, sans-serif", fontSize: 15, fontWeight: 600, width: `${Math.max(120, String(props.label || "").length * 10 + 56)}px` }} placeholder="Button label" />{selected && <input aria-label="Button link" value={String(props.href || "")} onChange={(event) => update("href", event.target.value)} className="mt-2 block w-full rounded border border-line bg-white px-2 py-1 text-xs text-ink outline-none focus:border-ink" placeholder="https://... or choose a link attribute on the right" />}</div>;
+    content = <div style={blockPadding(props)}><input aria-label="Button label" value={String(props.label || "")} onChange={(event) => update("label", event.target.value)} className="max-w-full text-center outline-none" style={{ backgroundColor: String(props.buttonColor || "#0a0a0a"), color: String(props.buttonTextColor || "#ffffff"), borderRadius: Number(props.borderRadius ?? 6), padding: "12px 28px", fontFamily: "Helvetica, Arial, sans-serif", fontSize: 15, fontWeight: 600, width: `${Math.max(120, String(props.label || "").length * 10 + 56)}px` }} placeholder="Button label" />{selected && <input aria-label="Button link" value={String(props.href || "")} onChange={(event) => update("href", event.target.value)} className="mt-2 block w-full rounded border border-line bg-white px-2 py-1 text-xs text-ink outline-none focus:border-ink" placeholder="https://... or paste a link attribute" />}</div>;
   } else if (block.type === "image") {
     content = <div style={blockPadding(props)}><button type="button" onClick={() => setImagePickerOpen(true)} className="inline-block max-w-full border-0 bg-transparent p-0 text-left" title="Choose an image">{props.src ? <CanvasImage src={String(props.src)} alt={String(props.alt || "")} width={Number(props.width)} /> : <span className="inline-flex min-h-32 min-w-48 items-center justify-center rounded-lg border border-dashed border-line bg-paper-soft px-5 text-sm text-ink-soft">Choose an image</span>}</button>{selected && <div className="mt-2 flex gap-2"><button type="button" onClick={() => setImagePickerOpen(true)} className={button}>Browse library</button><button type="button" onClick={() => fileRef.current?.click()} disabled={uploading} className={button}>{uploading ? "Uploading…" : "Upload"}</button></div>}{selected && <input aria-label="Image URL" value={String(props.src || "")} onChange={(event) => update("src", event.target.value)} className="mt-2 block w-full rounded border border-line bg-white px-2 py-1 text-xs text-ink outline-none focus:border-ink" placeholder="https://... or browse the library" />}{imageError && <p className="mt-2 text-xs text-red-600">{imageError}</p>}<input ref={fileRef} type="file" accept="image/png,image/jpeg,image/gif,image/webp" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadImage(file); event.target.value = ""; }} />{imagePickerOpen && <MediaLibraryPicker onSelect={(url) => { update("src", url); setImagePickerOpen(false); }} onClose={() => setImagePickerOpen(false)} />}</div>;
   } else if (preview) {
@@ -251,6 +251,8 @@ export default function ConsoleEmailBuilder({
   returnAfterSave = false,
   documentName,
   variables = [],
+  onBack,
+  onSaved,
 }: {
   initialSubject: string;
   initialBlocks: EmailBlock[];
@@ -269,6 +271,8 @@ export default function ConsoleEmailBuilder({
   returnAfterSave?: boolean;
   documentName?: string;
   variables?: MessageVariable[];
+  onBack?: () => void;
+  onSaved?: () => void;
 }) {
   const router = useRouter();
   const [subject, setSubject] = useState(initialSubject);
@@ -295,14 +299,7 @@ export default function ConsoleEmailBuilder({
   const [activeDragLabel, setActiveDragLabel] = useState<string | null>(null);
   const htmlInput = useRef<HTMLTextAreaElement>(null);
 
-  function insertInHtml(token: string) {
-    const tag = `{{${token}}}`;
-    const position = htmlInput.current?.selectionStart ?? freeformHtml.length;
-    setFreeformHtml((current) => current.slice(0, position) + tag + current.slice(position));
-    setBodySource("html");
-    setDirty(true);
-    requestAnimationFrame(() => { htmlInput.current?.focus(); htmlInput.current?.setSelectionRange(position + tag.length, position + tag.length); });
-  }
+  const catalogVariables = [...EMAIL_ATTRIBUTES, ...variables.filter((variable) => !EMAIL_ATTRIBUTES.some((known) => known.token === variable.token))];
 
   const selected = blocks.find((b) => b.id === selectedId) || null;
   const selectedDef = selected ? getEmailBlockDef(selected.type) : null;
@@ -372,9 +369,10 @@ export default function ConsoleEmailBuilder({
     setMessage("Saved.");
     setTimeout(() => setMessage(""), 2500);
     router.refresh();
-    if (returnAfterSave) router.push(backHref);
+    if (onSaved) onSaved();
+    else if (returnAfterSave) router.push(backHref);
     return true;
-  }, [blocks, subject, freeformHtml, onSave, router, bodySource, returnAfterSave, backHref]);
+  }, [blocks, subject, freeformHtml, onSave, onSaved, router, bodySource, returnAfterSave, backHref]);
 
   const saveRef = useRef(save);
   const undoRef = useRef(undo);
@@ -447,7 +445,7 @@ export default function ConsoleEmailBuilder({
     <div className="flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-white text-ink">
       <header className="z-30 flex h-14 shrink-0 items-center justify-between gap-3 border-b border-line bg-white px-4">
         <div className="flex min-w-0 items-center gap-2">
-          <button type="button" onClick={() => router.push(backHref)} aria-label={backLabel} title={backLabel} className={iconButton}>
+          <button type="button" onClick={() => onBack ? onBack() : router.push(backHref)} aria-label={backLabel} title={backLabel} className={iconButton}>
             <BackIcon />
           </button>
           <div className="flex items-center gap-0.5 rounded-lg bg-paper-soft p-0.5">
@@ -572,35 +570,40 @@ export default function ConsoleEmailBuilder({
           )}
         </main>
       ) : composerMode === "classic" ? (
-        <main className="min-h-0 flex-1 overflow-y-auto bg-paper-soft p-6">
-          <div className="w-full">
-            <RichTextEditor
+        <div className="flex min-h-0 flex-1">
+          <main className="min-h-0 flex-1 overflow-y-auto bg-paper-soft p-6">
+            <div className="w-full">
+              <RichTextEditor
+                value={freeformHtml}
+                variables={[]}
+                onChange={(html) => {
+                  setFreeformHtml(html);
+                  setBodySource("html");
+                  setDirty(true);
+                }}
+              />
+            </div>
+          </main>
+          <aside className="w-[340px] shrink-0 overflow-y-auto border-l border-line p-4"><EmailAttributeCatalog variables={catalogVariables} /></aside>
+        </div>
+      ) : composerMode === "html" ? (
+        <div className="flex min-h-0 flex-1">
+          <main className="min-h-0 flex-1 overflow-y-auto bg-paper-soft p-6">
+            <textarea
+              ref={htmlInput}
               value={freeformHtml}
-              variables={variables}
-              onChange={(html) => {
-                setFreeformHtml(html);
+              onChange={(e) => {
+                setFreeformHtml(e.target.value);
                 setBodySource("html");
                 setDirty(true);
               }}
+              spellCheck={false}
+              className="h-full min-h-[60vh] w-full rounded-xl border border-line bg-white p-4 font-mono text-xs text-ink outline-none focus:border-ink"
+              placeholder="<p>Write the full email HTML here...</p>"
             />
-          </div>
-        </main>
-      ) : composerMode === "html" ? (
-        <main className="min-h-0 flex-1 overflow-y-auto bg-paper-soft p-6">
-          {variables.length > 0 && <div className="mb-3 w-44"><BrandSelect value="" placeholder="＋ Attributes" compact onChange={insertInHtml} options={variables.map((item) => ({ value: item.token, label: item.label }))} searchable /></div>}
-          <textarea
-            ref={htmlInput}
-            value={freeformHtml}
-            onChange={(e) => {
-              setFreeformHtml(e.target.value);
-              setBodySource("html");
-              setDirty(true);
-            }}
-            spellCheck={false}
-            className="h-full min-h-[60vh] w-full rounded-xl border border-line bg-white p-4 font-mono text-xs text-ink outline-none focus:border-ink"
-            placeholder="<p>Write the full email HTML here...</p>"
-          />
-        </main>
+          </main>
+          <aside className="w-[340px] shrink-0 overflow-y-auto border-l border-line p-4"><EmailAttributeCatalog variables={catalogVariables} /></aside>
+        </div>
       ) : bodySource === "html" && freeformHtml.trim() ? (
         <main className="min-h-0 flex-1 overflow-y-auto bg-paper-soft p-6">
           <div className="mx-auto max-w-[640px] rounded-xl border border-line bg-white p-5 shadow-sm">
@@ -652,18 +655,6 @@ export default function ConsoleEmailBuilder({
                   {emailBlockFields(selectedDef).length > 0 && (
                     <>
                       {emailBlockFields(selectedDef).filter((field) => !["text", "html", "label", "src", "leftHtml", "rightHtml"].includes(field.key)).length > 0 && <FieldGroup fields={emailBlockFields(selectedDef).filter((field) => !["text", "html", "label", "src", "leftHtml", "rightHtml"].includes(field.key))} values={selected.props} onChange={(next) => updateProps(selected.id, next)} linkOptions={[]} />}
-                      {variables.length > 0 && emailBlockFields(selectedDef).some((field) => ["text", "textarea", "link"].includes(field.kind)) && <h3 className="border-t border-line pt-4 text-xs font-semibold uppercase tracking-wider text-ink">Attributes</h3>}
-                      {variables.length > 0 && emailBlockFields(selectedDef).filter((field) => ["text", "textarea", "link"].includes(field.kind)).map((field) => {
-                        const choices = field.kind === "link" ? variables.filter((item) => /(?:_url|_link)$/.test(item.token)) : variables;
-                        return choices.length > 0 ? <div key={`attribute-${field.key}`}>
-                          <p className="mb-1 text-xs text-ink-soft">Insert attribute in {field.label}</p>
-                          <BrandSelect value="" placeholder="＋ Attributes" compact searchable options={choices.map((item) => ({ value: item.token, label: item.label }))} onChange={(token) => {
-                            const tag = `{{${token}}}`;
-                            const existing = String(selected.props[field.key] || "");
-                            updateProps(selected.id, { ...selected.props, [field.key]: field.kind === "link" ? tag : `${existing}${existing ? " " : ""}${tag}` });
-                          }} />
-                        </div> : null;
-                      })}
                     </>
                   )}
                   <div className="space-y-4 border-t border-line pt-4">
@@ -685,9 +676,9 @@ export default function ConsoleEmailBuilder({
                       + Add footer preview
                     </button>
                   )}
-                  {variables.length > 0 && <div className="border-t border-line pt-4"><h3 className="text-xs font-semibold uppercase tracking-wider text-ink">Attributes</h3><p className="mt-1 text-xs leading-5 text-ink-soft">Select a text, heading, button, or image block to insert an attribute into its fields. Course and verification values need a matching workflow event.</p></div>}
                 </>
               )}
+              <EmailAttributeCatalog variables={catalogVariables} />
             </aside>
           </div>
 
