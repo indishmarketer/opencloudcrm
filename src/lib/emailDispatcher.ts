@@ -8,7 +8,7 @@ import { reconcileGoogleReviewsIfDue } from "@/lib/googleBusiness";
 import { retryEmailOutbox } from "@/lib/emailOutbox";
 import { sweepFailureAlerts, emailPendingAlerts } from "@/lib/systemAlerts";
 import { checkEmailHealth } from "@/lib/emailHealth";
-import { contactMessageValues } from "@/lib/messageVariables";
+import { applySubjectVariables, contactMessageValues } from "@/lib/messageVariables";
 import { dispatchScheduledContactEmails } from "@/lib/scheduledContactEmails";
 
 export async function dispatchDueEmailWork() {
@@ -140,7 +140,7 @@ export async function dispatchDueEmailWork() {
       };
       const result = await sendEmail({
         to: row.recipient_email,
-        subject: applyVars(row.subject, messageVars),
+        subject: applySubjectVariables(row.subject, messageVars),
         html: applyVars(row.body_html, messageVars),
         from: row.from_email,
         templateKey: `automation:${row.flow_id}:step:${row.step_id}`,

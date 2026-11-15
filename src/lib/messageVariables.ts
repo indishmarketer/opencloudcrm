@@ -131,6 +131,12 @@ export function applyMessageVariables(text: string, values: Record<string, strin
   return text.replace(/\{\{([a-zA-Z0-9_]+)\}\}/g, (_match, key: string) => escapeHtml(values[key] ?? ""));
 }
 
+/** Subject lines are plain text, not HTML: escaping would show "O&#39;Brien"
+ * in the inbox. Line breaks are dropped so a value can't split the header. */
+export function applySubjectVariables(text: string, values: Record<string, string>): string {
+  return text.replace(/\{\{([a-zA-Z0-9_]+)\}\}/g, (_match, key: string) => (values[key] ?? "").replace(/[\r\n]+/g, " "));
+}
+
 /** Campaigns have a contact but no particular course or workflow event. */
 export function unsupportedCampaignVariables(...parts: string[]): string[] {
   const supported = new Set(CONTACT_MESSAGE_VARIABLES.map((item) => item.token));

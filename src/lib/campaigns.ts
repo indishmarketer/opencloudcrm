@@ -1,7 +1,7 @@
 import { pool, withTransaction } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
 import { buildSegmentPredicate } from "@/lib/contactSegments";
-import { applyMessageVariables, contactMessageValues } from "@/lib/messageVariables";
+import { applyMessageVariables, applySubjectVariables, contactMessageValues } from "@/lib/messageVariables";
 
 export async function queueCampaignRecipients(campaignId: number): Promise<number> {
   return withTransaction(async (client) => {
@@ -129,7 +129,7 @@ export async function sendPendingCampaignBatch(
     try {
       const result = await sendEmail({
         to: row.email,
-        subject: applyMessageVariables(row.subject, contactMessageValues(row)),
+        subject: applySubjectVariables(row.subject, contactMessageValues(row)),
         html: applyMessageVariables(row.html, contactMessageValues(row)),
         from: row.from_email,
         templateKey: `campaign:${row.campaign_id}`,
