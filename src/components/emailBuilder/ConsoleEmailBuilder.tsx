@@ -165,6 +165,7 @@ function SortableBlockCard({
   onChangeProps,
   businessName,
   businessAddress,
+  socialProps,
 }: {
   block: EmailBlock;
   selected: boolean;
@@ -173,6 +174,7 @@ function SortableBlockCard({
   onChangeProps: (props: Values) => void;
   businessName: string;
   businessAddress: string;
+  socialProps?: Values;
 }) {
   const def = getEmailBlockDef(block.type);
   const [imagePickerOpen, setImagePickerOpen] = useState(false);
@@ -183,7 +185,7 @@ function SortableBlockCard({
   const props = block.props;
   const update = (key: string, value: string) => onChangeProps({ ...props, [key]: value });
   const preview = block.type === "footer"
-    ? renderFooterPreview(props, businessName, businessAddress)
+    ? renderFooterPreview(props, businessName, businessAddress, socialProps)
     : renderEmailBlocksToHtml([block], PREVIEW_SAMPLE_VARS);
 
   async function uploadImage(file: File) {
@@ -632,6 +634,7 @@ export default function ConsoleEmailBuilder({
                       onChangeProps={(props) => updateProps(block.id, props)}
                       businessName={businessName}
                       businessAddress={businessAddress}
+                      socialProps={blocks.find((b) => b.type === "socialIcons")?.props}
                     />
                   ))}
                 </SortableContext>

@@ -11,6 +11,7 @@ import { SITE_URL } from "@/lib/liveSiteUrl";
 import { getReplyToEmail } from "@/lib/businessProfile";
 import { getBusiness } from "@/lib/businessProfile";
 import { escapeHtml } from "@/lib/escapeHtml";
+import { extractFooterStyle, type FooterStyle } from "@/lib/emailBlocksRender";
 import { resolveEmailDomain } from "@/lib/emailSettings";
 
 const SITE_HOSTNAME = new URL(SITE_URL).hostname.replace(/^www\./, "");
@@ -36,13 +37,18 @@ export function isEmailProviderConfigured(): boolean {
   return resolveProvider() !== null;
 }
 
-function withFooter(html: string, unsubscribeUrl: string, businessName: string, postalAddress: string): string {
+/** `style` comes from the builder's Footer block (see extractFooterStyle in
+ * emailBlocksRender.ts); without one this is the plain default footer. */
+function withFooter(html: string, unsubscribeUrl: string, businessName: string, postalAddress: string, style: FooterStyle = {}): string {
   const addressLine = postalAddress ? ` &middot; ${escapeHtml(postalAddress)}` : "";
+  const textColor = style.textColor || "#4b4b4b";
+  const linkColor = style.linkColor || "#4b4b4b";
   return `${html}
 <hr style="margin-top:32px;border:none;border-top:1px solid #e2e2e0;">
-<p style="margin-top:16px;font-size:12px;color:#4b4b4b;line-height:1.5;">
+${style.socialHtml ?? ""}
+<p style="margin-top:16px;font-size:12px;color:${textColor};line-height:1.5;">
   ${escapeHtml(businessName)}${addressLine}<br>
-  <a href="${unsubscribeUrl}" style="color:#4b4b4b;">Unsubscribe</a>
+  <a href="${unsubscribeUrl}" style="color:${linkColor};">Unsubscribe</a>
 </p>`;
 }
 
@@ -219,14 +225,15 @@ export async function sendEmail({
   const unsubscribeUrl = `${SITE_URL}/unsubscribe?token=${unsubscribeToken}`;
   const oneClickUnsubscribeUrl = `${SITE_URL}/api/unsubscribe?token=${unsubscribeToken}`;
 
-  let outgoingHtml = trackClicks === false ? html : await trackLinks(html, deliveryId);
+  const { html: bodyHtml, style: footerStyle } = extractFooterStyle(html);
+  let outgoingHtml = trackClicks === false ? bodyHtml : await trackLinks(bodyHtml, deliveryId);
   const business = await getBusiness();
   const postalAddress = business.addressShort || [
     business.address.line1, business.address.line2, business.address.city,
     business.address.region || business.address.state, business.address.postalCode,
     business.address.country,
   ].filter(Boolean).join(", ");
-  outgoingHtml = withFooter(outgoingHtml, unsubscribeUrl, business.brand || SITE_NAME, postalAddress);
+  outgoingHtml = withFooter(outgoingHtml, unsubscribeUrl, business.brand || SITE_NAME, postalAddress, footerStyle);
   if (trackOpens !== false) {
     const openToken = await createEmailOpenToken({
       deliveryId,

@@ -170,11 +170,26 @@ function renderSocialIcons(props: Record<string, unknown>): string {
  * stored footerStyle. This function never renders into the actual
  * body_html; it exists so the builder's canvas can show an accurate
  * preview of something that isn't really a block in the saved output. */
-export function renderFooterPreview(props: Record<string, unknown>, businessName: string, address: string): string {
+export function renderFooterPreview(
+  props: Record<string, unknown>,
+  businessName: string,
+  address: string,
+  socialProps?: Record<string, unknown>,
+): string {
   const textColor = str(props, "textColor", "#6b6b6b");
   const linkColor = str(props, "linkColor", "#dc2626");
   const addressLine = address ? ` &middot; ${escapeHtml(address)}` : "";
+  // The toggle borrows the links from the email's Social icons block; with
+  // no such block (or no links in it) there is nothing to show, so say so.
+  let social = "";
+  if (props.showSocialIcons === true) {
+    const icons = socialProps ? renderSocialIcons({ ...socialProps, align: "center" }) : "";
+    social = icons
+      ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0">${icons}</table>`
+      : `<div style="padding:16px 24px 0;text-align:center;font-family:Helvetica,Arial,sans-serif;font-size:12px;font-style:italic;color:${textColor};">Add a Social icons block with links to show them here.</div>`;
+  }
   return (
+    social +
     `<div style="padding:20px 24px;text-align:center;font-family:Helvetica,Arial,sans-serif;font-size:12px;color:${textColor};">` +
     `${escapeHtml(businessName)}${addressLine}<br>` +
     `<a href="#" style="color:${linkColor};text-decoration:underline;">Unsubscribe</a>` +
@@ -191,12 +206,65 @@ const RENDERERS: Record<string, (props: Record<string, unknown>, vars: Record<st
   spacer: (p) => renderSpacer(p),
   columns: renderColumns,
   socialIcons: (p) => renderSocialIcons(p),
-  // The footer block contributes nothing to body_html -- see
-  // renderFooterPreview's doc comment. Its props are read separately
-  // (Phase 4: saved onto the template as footerStyle, applied by
-  // withFooter() at send time), not rendered inline with the body.
+  // The footer block renders no visible row -- see renderFooterPreview's
+  // doc comment. Its settings travel as a hidden marker instead (see
+  // renderFooterMarker), read back by withFooter() at send time.
   footer: () => "",
 };
+
+/** What the Footer block's settings boil down to at send time. */
+export type FooterStyle = { textColor?: string; linkColor?: string; socialHtml?: string };
+
+const FOOTER_MARKER = /<!--ocrm-footer ([A-Za-z0-9+/=]*)-->/;
+const HEX_COLOR = /^#[0-9a-fA-F]{3,8}$/;
+
+function toBase64(text: string): string {
+  return typeof btoa === "function"
+    ? btoa(String.fromCharCode(...new TextEncoder().encode(text)))
+    : Buffer.from(text, "utf8").toString("base64");
+}
+
+/** The Footer block's settings as an HTML comment appended to body_html, so
+ * they ride along every send path that already passes body_html through
+ * (templates, campaigns, flows) without a separate column. Base64 so no
+ * value can close the comment early. */
+function renderFooterMarker(blocks: EmailBlock[]): string {
+  const footer = blocks.find((b) => b.type === "footer");
+  if (!footer) return "";
+  const style: FooterStyle = {};
+  const textColor = str(footer.props, "textColor");
+  const linkColor = str(footer.props, "linkColor");
+  if (HEX_COLOR.test(textColor)) style.textColor = textColor;
+  if (HEX_COLOR.test(linkColor)) style.linkColor = linkColor;
+  if (footer.props.showSocialIcons === true) {
+    const social = blocks.find((b) => b.type === "socialIcons");
+    const icons = social ? renderSocialIcons({ ...social.props, align: "center", backgroundColor: "" }) : "";
+    if (icons) style.socialHtml = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0">${icons}</table>`;
+  }
+  return `<!--ocrm-footer ${toBase64(JSON.stringify(style))}-->`;
+}
+
+/** Pulls the marker back out of an outgoing body: the html without it, plus
+ * the parsed style (empty when absent or unreadable). Colours are
+ * re-validated here since body_html can also be hand-written. */
+export function extractFooterStyle(html: string): { html: string; style: FooterStyle } {
+  const match = html.match(FOOTER_MARKER);
+  if (!match) return { html, style: {} };
+  const stripped = html.replace(FOOTER_MARKER, "");
+  try {
+    const raw = JSON.parse(Buffer.from(match[1], "base64").toString("utf8")) as FooterStyle;
+    return {
+      html: stripped,
+      style: {
+        textColor: raw.textColor && HEX_COLOR.test(raw.textColor) ? raw.textColor : undefined,
+        linkColor: raw.linkColor && HEX_COLOR.test(raw.linkColor) ? raw.linkColor : undefined,
+        socialHtml: typeof raw.socialHtml === "string" ? raw.socialHtml : undefined,
+      },
+    };
+  } catch {
+    return { html: stripped, style: {} };
+  }
+}
 
 /** The full email body fragment: one `<table>` of rows, each block its own
  * row, in order. This -- not any individual block -- is what becomes
@@ -206,6 +274,7 @@ export function renderEmailBlocksToHtml(blocks: EmailBlock[], vars: Record<strin
     .map((block) => RENDERERS[block.type]?.(block.props, vars) ?? "")
     .filter(Boolean)
     .join("");
-  if (!rows) return "";
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0">${rows}</table>`;
+  const marker = renderFooterMarker(blocks);
+  if (!rows) return marker;
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0">${rows}</table>${marker}`;
 }
