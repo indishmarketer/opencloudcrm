@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import {
   DndContext,
@@ -28,9 +28,10 @@ import {
   getEmailBlockDef,
   type EmailBlock,
 } from "@/lib/emailBlocks";
-import { renderEmailBlocksToHtml } from "@/lib/emailBlocksRender";
+import { renderEmailBlocksToHtml, renderFooterPreview } from "@/lib/emailBlocksRender";
 import { wrapEmailHtml } from "@/lib/emailShell";
 import BrandSelect from "@/components/BrandSelect";
+import MediaLibraryPicker from "@/components/MediaLibraryPicker";
 import type { MessageVariable } from "@/lib/messageVariables";
 
 type Values = Record<string, unknown>;
@@ -101,32 +102,45 @@ const GripIcon = () => (
   </svg>
 );
 
-/** A one-line description of a block's own content, so the edit canvas
- * (a plain selectable/draggable list, not a true rendered preview -- see
- * the "Preview" toggle for that) still shows something recognisable
- * instead of every card reading identically. */
-function blockSummaryText(block: EmailBlock): string {
-  switch (block.type) {
-    case "heading":
-    case "text":
-      return String(block.props.text ?? block.props.html ?? "").replace(/<[^>]+>/g, "").trim() || "(empty)";
-    case "image":
-      return String(block.props.src || "(no image chosen)");
-    case "button":
-      return `"${block.props.label || "Button"}" → ${block.props.href || "(no link)"}`;
-    case "divider":
-      return "Horizontal line";
-    case "spacer":
-      return `${block.props.height || 24}px of blank space`;
-    case "columns":
-      return "Two columns";
-    case "socialIcons":
-      return "Social links";
-    case "footer":
-      return "Footer preview (automatic -- style only)";
-    default:
-      return "";
-  }
+function InlineHtml({ value, onChange, label }: { value: string; onChange: (value: string) => void; label: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (ref.current && ref.current.innerHTML !== value) ref.current.innerHTML = value;
+  }, [value]);
+  return <div ref={ref} contentEditable suppressContentEditableWarning role="textbox" aria-label={label} aria-multiline="true" onInput={(event) => onChange(event.currentTarget.innerHTML)} className="min-h-6 cursor-text outline-none focus:ring-1 focus:ring-ink/30" />;
+}
+
+function InlineText({ value, onChange, label }: { value: string; onChange: (value: string) => void; label: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (ref.current && ref.current.textContent !== value) ref.current.textContent = value;
+  }, [value]);
+  return <div ref={ref} contentEditable suppressContentEditableWarning role="textbox" aria-label={label} onKeyDown={(event) => { if (event.key === "Enter") event.preventDefault(); }} onInput={(event) => onChange(event.currentTarget.textContent || "")} className="min-h-8 cursor-text whitespace-pre-wrap outline-none focus:ring-1 focus:ring-ink/30" />;
+}
+
+function blockPadding(props: Values): CSSProperties {
+  return {
+    padding: `${Number(props.paddingY ?? 12)}px ${Number(props.paddingX ?? 24)}px`,
+    backgroundColor: String(props.backgroundColor || "transparent"),
+    textAlign: String(props.align || "left") as CSSProperties["textAlign"],
+  };
+}
+
+function blockTextStyle(props: Values): CSSProperties {
+  return {
+    color: String(props.textColor || "#1a1a1a"),
+    fontFamily: "Helvetica, Arial, sans-serif",
+    fontSize: Number(props.fontSize ?? 16),
+    fontWeight: String(props.fontWeight || "normal"),
+    lineHeight: 1.6,
+  };
+}
+
+function CanvasImage({ src, alt, width }: { src: string; alt: string; width: number }) {
+  return (
+    // eslint-disable-next-line @next/next/no-img-element -- email image URLs need their original source and dimensions
+    <img src={src} alt={alt} style={{ width: width > 0 ? width : "auto", maxWidth: "100%", height: "auto" }} />
+  );
 }
 
 function CanvasEndDropzone({ empty }: { empty: boolean }) {
@@ -148,50 +162,77 @@ function SortableBlockCard({
   selected,
   onSelect,
   onDelete,
+  onChangeProps,
+  businessName,
+  businessAddress,
 }: {
   block: EmailBlock;
   selected: boolean;
   onSelect: () => void;
   onDelete: () => void;
+  onChangeProps: (props: Values) => void;
+  businessName: string;
+  businessAddress: string;
 }) {
   const def = getEmailBlockDef(block.type);
+  const [imagePickerOpen, setImagePickerOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [imageError, setImageError] = useState("");
+  const fileRef = useRef<HTMLInputElement>(null);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.id });
+  const props = block.props;
+  const update = (key: string, value: string) => onChangeProps({ ...props, [key]: value });
+  const preview = block.type === "footer"
+    ? renderFooterPreview(props, businessName, businessAddress)
+    : renderEmailBlocksToHtml([block], PREVIEW_SAMPLE_VARS);
+
+  async function uploadImage(file: File) {
+    setUploading(true);
+    setImageError("");
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const response = await fetch("/api/console/pages/image-upload", { method: "POST", body: form });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok || !body.url) throw new Error(body.error || "Upload failed.");
+      update("src", body.url);
+    } catch (error) {
+      setImageError(error instanceof Error ? error.message : "Upload failed.");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  let content: ReactNode;
+  if (block.type === "heading") {
+    content = <div style={blockPadding(props)}><div style={blockTextStyle(props)}><InlineText label="Heading text" value={String(props.text || "")} onChange={(value) => update("text", value)} /></div></div>;
+  } else if (block.type === "text") {
+    content = <div style={blockPadding(props)}><div style={blockTextStyle(props)}><InlineHtml label="Email text" value={String(props.html || "")} onChange={(value) => update("html", value)} /></div></div>;
+  } else if (block.type === "columns") {
+    content = <div style={blockPadding(props)}><div className="grid grid-cols-2" style={blockTextStyle(props)}><div className="min-w-0 pr-3"><InlineHtml label="Left column" value={String(props.leftHtml || "")} onChange={(value) => update("leftHtml", value)} /></div><div className="min-w-0 pl-3"><InlineHtml label="Right column" value={String(props.rightHtml || "")} onChange={(value) => update("rightHtml", value)} /></div></div></div>;
+  } else if (block.type === "button") {
+    content = <div style={blockPadding(props)}><input aria-label="Button label" value={String(props.label || "")} onChange={(event) => update("label", event.target.value)} className="max-w-full text-center outline-none" style={{ backgroundColor: String(props.buttonColor || "#0a0a0a"), color: String(props.buttonTextColor || "#ffffff"), borderRadius: Number(props.borderRadius ?? 6), padding: "12px 28px", fontFamily: "Helvetica, Arial, sans-serif", fontSize: 15, fontWeight: 600, width: `${Math.max(120, String(props.label || "").length * 10 + 56)}px` }} placeholder="Button label" />{selected && <input aria-label="Button link" value={String(props.href || "")} onChange={(event) => update("href", event.target.value)} className="mt-2 block w-full rounded border border-line bg-white px-2 py-1 text-xs text-ink outline-none focus:border-ink" placeholder="https://... or choose a link attribute on the right" />}</div>;
+  } else if (block.type === "image") {
+    content = <div style={blockPadding(props)}><button type="button" onClick={() => setImagePickerOpen(true)} className="inline-block max-w-full border-0 bg-transparent p-0 text-left" title="Choose an image">{props.src ? <CanvasImage src={String(props.src)} alt={String(props.alt || "")} width={Number(props.width)} /> : <span className="inline-flex min-h-32 min-w-48 items-center justify-center rounded-lg border border-dashed border-line bg-paper-soft px-5 text-sm text-ink-soft">Choose an image</span>}</button>{selected && <div className="mt-2 flex gap-2"><button type="button" onClick={() => setImagePickerOpen(true)} className={button}>Browse library</button><button type="button" onClick={() => fileRef.current?.click()} disabled={uploading} className={button}>{uploading ? "Uploading…" : "Upload"}</button></div>}{selected && <input aria-label="Image URL" value={String(props.src || "")} onChange={(event) => update("src", event.target.value)} className="mt-2 block w-full rounded border border-line bg-white px-2 py-1 text-xs text-ink outline-none focus:border-ink" placeholder="https://... or browse the library" />}{imageError && <p className="mt-2 text-xs text-red-600">{imageError}</p>}<input ref={fileRef} type="file" accept="image/png,image/jpeg,image/gif,image/webp" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadImage(file); event.target.value = ""; }} />{imagePickerOpen && <MediaLibraryPicker onSelect={(url) => { update("src", url); setImagePickerOpen(false); }} onClose={() => setImagePickerOpen(false)} />}</div>;
+  } else if (preview) {
+    content = <div onClickCapture={(event) => { if ((event.target as HTMLElement).closest("a")) event.preventDefault(); }} dangerouslySetInnerHTML={{ __html: preview }} />;
+  } else {
+    content = <div style={blockPadding(props)} className="text-xs text-ink-soft">{def?.label || block.type}</div>;
+  }
   return (
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       onClick={onSelect}
-      className={`flex cursor-pointer items-center gap-3 rounded-xl border bg-paper px-3 py-2.5 transition-colors ${
-        selected ? "border-ink shadow-sm" : "border-line hover:border-ink/40"
-      } ${isDragging ? "z-10 opacity-60" : ""}`}
+      className={`group relative bg-white transition-shadow ${selected ? "z-10 ring-2 ring-ink ring-inset" : "hover:ring-1 hover:ring-ink/30 hover:ring-inset"} ${isDragging ? "z-20 opacity-60" : ""}`}
     >
-      <button
-        type="button"
-        {...attributes}
-        {...listeners}
-        onClick={(e) => e.stopPropagation()}
-        aria-label="Drag to reorder"
-        title="Drag to reorder"
-        className="flex h-7 w-7 shrink-0 cursor-grab touch-none items-center justify-center rounded-md text-ink-soft hover:bg-paper-soft active:cursor-grabbing"
-      >
-        <GripIcon />
-      </button>
-      <BlockIcon type={block.type} className="h-4 w-4 shrink-0 text-ink-soft" />
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-ink">{def?.label || block.type}</p>
-        <p className="truncate text-xs text-ink-soft">{blockSummaryText(block)}</p>
+      {content}
+      <div className={`absolute -left-2 -top-4 flex items-center gap-1 rounded-lg border border-line bg-white px-1 shadow-sm ${selected ? "opacity-100" : "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"}`}>
+        <button type="button" {...attributes} {...listeners} onClick={(event) => event.stopPropagation()} aria-label={`Drag ${def?.label || block.type} to reorder`} title="Drag to reorder" className="flex h-7 w-7 cursor-grab touch-none items-center justify-center rounded text-ink-soft hover:bg-paper-soft active:cursor-grabbing"><GripIcon /></button>
+        <BlockIcon type={block.type} className="h-4 w-4 text-ink-soft" />
+        <span className="text-[10px] font-medium text-ink-soft">{def?.label || block.type}</span>
+        <button type="button" onClick={(event) => { event.stopPropagation(); onDelete(); }} aria-label="Delete element" className="flex h-7 w-7 items-center justify-center rounded text-ink-soft hover:bg-red-50 hover:text-red-600"><DeleteIcon /></button>
       </div>
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onDelete();
-        }}
-        aria-label="Delete element"
-        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-ink-soft hover:bg-red-50 hover:text-red-600"
-      >
-        <DeleteIcon />
-      </button>
     </div>
   );
 }
@@ -250,16 +291,7 @@ export default function ConsoleEmailBuilder({
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [activeDragLabel, setActiveDragLabel] = useState<string | null>(null);
-  const subjectInput = useRef<HTMLInputElement>(null);
   const htmlInput = useRef<HTMLTextAreaElement>(null);
-
-  function insertInSubject(token: string) {
-    const tag = `{{${token}}}`;
-    const position = subjectInput.current?.selectionStart ?? subject.length;
-    setSubject((current) => current.slice(0, position) + tag + current.slice(position));
-    setDirty(true);
-    requestAnimationFrame(() => { subjectInput.current?.focus(); subjectInput.current?.setSelectionRange(position + tag.length, position + tag.length); });
-  }
 
   function insertInHtml(token: string) {
     const tag = `{{${token}}}`;
@@ -355,6 +387,8 @@ export default function ConsoleEmailBuilder({
       if ((e.ctrlKey || e.metaKey) && e.key === "s") {
         e.preventDefault();
         void saveRef.current();
+      } else if (e.target instanceof HTMLElement && (e.target.isContentEditable || ["INPUT", "TEXTAREA"].includes(e.target.tagName))) {
+        return;
       } else if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
         e.preventDefault();
         undoRef.current();
@@ -406,7 +440,6 @@ export default function ConsoleEmailBuilder({
   const bodyHtml = bodySource === "visual" ? renderEmailBlocksToHtml(blocks, previewVars) : freeformHtml;
   const fullHtml = wrapEmailHtml(bodyHtml);
   const footerBlock = blocks.find((b) => b.type === "footer");
-  void businessName; void businessAddress; // reserved for the footer preview, wired in Phase 4
 
   return (
     <div className="flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-white text-ink">
@@ -426,7 +459,6 @@ export default function ConsoleEmailBuilder({
           <span className={`h-2 w-2 shrink-0 rounded-full ${dirty ? "bg-amber-500" : "bg-green-500"}`} aria-hidden="true" />
           {documentName && <span className="max-w-32 truncate text-xs font-medium text-ink-soft" title={documentName}>{documentName}</span>}
           <input
-            ref={subjectInput}
             value={subject}
             onChange={(e) => {
               setSubject(e.target.value);
@@ -435,7 +467,6 @@ export default function ConsoleEmailBuilder({
             className="w-64 truncate rounded border-b border-transparent bg-transparent px-1 py-0.5 text-sm font-semibold outline-none hover:border-line focus:border-ink"
             placeholder="Subject line"
           />
-          {variables.length > 0 && <div className="w-36 shrink-0"><BrandSelect value="" placeholder="＋ Attributes" compact onChange={insertInSubject} options={variables.map((item) => ({ value: item.token, label: item.label }))} searchable /></div>}
           {error && <span className="truncate text-xs text-red-600">{error}</span>}
           {message && <span className="text-xs text-ink-soft">{message}</span>}
         </div>
@@ -589,7 +620,7 @@ export default function ConsoleEmailBuilder({
             </aside>
 
             <main onClick={() => setSelectedId(null)} className="relative min-w-0 flex-1 overflow-y-auto bg-paper-soft p-6">
-              <div onClick={(e) => e.stopPropagation()} className="w-full space-y-2">
+              <div onClick={(e) => e.stopPropagation()} className="mx-auto w-full max-w-[600px] bg-white shadow-sm">
                 <SortableContext items={blocks.map((b) => b.id)} strategy={verticalListSortingStrategy}>
                   {blocks.map((block) => (
                     <SortableBlockCard
@@ -598,6 +629,9 @@ export default function ConsoleEmailBuilder({
                       selected={block.id === selectedId}
                       onSelect={() => setSelectedId(block.id)}
                       onDelete={() => removeBlock(block.id)}
+                      onChangeProps={(props) => updateProps(block.id, props)}
+                      businessName={businessName}
+                      businessAddress={businessAddress}
                     />
                   ))}
                 </SortableContext>
@@ -614,7 +648,7 @@ export default function ConsoleEmailBuilder({
                   </div>
                   {emailBlockFields(selectedDef).length > 0 && (
                     <>
-                      <FieldGroup fields={emailBlockFields(selectedDef)} values={selected.props} onChange={(next) => updateProps(selected.id, next)} linkOptions={[]} />
+                      {emailBlockFields(selectedDef).filter((field) => !["text", "html", "label", "src", "leftHtml", "rightHtml"].includes(field.key)).length > 0 && <FieldGroup fields={emailBlockFields(selectedDef).filter((field) => !["text", "html", "label", "src", "leftHtml", "rightHtml"].includes(field.key))} values={selected.props} onChange={(next) => updateProps(selected.id, next)} linkOptions={[]} />}
                       {variables.length > 0 && emailBlockFields(selectedDef).some((field) => ["text", "textarea", "link"].includes(field.kind)) && <h3 className="border-t border-line pt-4 text-xs font-semibold uppercase tracking-wider text-ink">Attributes</h3>}
                       {variables.length > 0 && emailBlockFields(selectedDef).filter((field) => ["text", "textarea", "link"].includes(field.kind)).map((field) => {
                         const choices = field.kind === "link" ? variables.filter((item) => /(?:_url|_link)$/.test(item.token)) : variables;
