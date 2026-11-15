@@ -21,3 +21,10 @@ test("visual saves render blocks and retain unresolved merge tags", () => {
   assert.equal(saved.blocks.length, 1);
   assert.ok(saved.bodyHtml.includes("Hi {{first_name}}"));
 });
+
+test("visual verification button keeps its workflow link attribute", () => {
+  const block = createEmailBlock("button");
+  block.props.href = "{{data.verification_url}}";
+  const saved = resolveEmailBodySave({ bodyHtml: "", blocks: [block] });
+  assert.ok(saved.bodyHtml.includes('href="{{data.verification_url}}"'));
+});

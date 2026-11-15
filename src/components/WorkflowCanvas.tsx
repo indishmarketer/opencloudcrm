@@ -25,6 +25,15 @@ type Run = { id: number; status: string; error: string | null; created_at: strin
 type TestStepResult = { nodeId: string; label: string; status: "passed" | "skipped" | "failed" | "sent"; message: string };
 type GraphSnapshot = { nodes: CanvasNode[]; edges: CanvasEdge[]; triggerType: "event" | "webhook"; triggerKey: string };
 
+function editState(value: { name: string; description: string; status: string; triggerType: string; triggerKey: string; nodes: CanvasNode[]; edges: CanvasEdge[] }) {
+  return JSON.stringify({
+    name: value.name, description: value.description, status: value.status,
+    triggerType: value.triggerType, triggerKey: value.triggerKey,
+    nodes: value.nodes.map((node) => ({ id: node.id, type: node.type, position: node.position, data: node.data })),
+    edges: value.edges.map((edge) => ({ id: edge.id, source: edge.source, target: edge.target, sourceHandle: edge.sourceHandle, targetHandle: edge.targetHandle })),
+  });
+}
+
 const kindLabel: Record<WorkflowNodeKind, string> = {
   trigger: "Trigger", condition: "Condition", email_condition: "Email check", wait: "Wait", email: "Email", whatsapp: "WhatsApp", google_review_request: "Google review request", webhook: "Webhook", course_access: "Course access", contact_update: "Update contact", contact_unsubscribe: "Unsubscribe contact", contact_delete: "Remove contact", stop: "End",
 };
@@ -34,14 +43,21 @@ const kindColor: Record<WorkflowNodeKind, string> = {
   webhook: "border-cyan-300 bg-cyan-50", course_access: "border-rose-300 bg-rose-50", contact_update: "border-fuchsia-300 bg-fuchsia-50", contact_unsubscribe: "border-orange-300 bg-orange-50", contact_delete: "border-red-300 bg-red-50", stop: "border-line bg-paper-soft",
 };
 const workflowEmailVariables = [
-  { token: "first_name", label: "First name" }, { token: "name", label: "Full name" },
-  { token: "email", label: "Email address" }, { token: "phone", label: "Phone number" },
+  { token: "first_name", label: "First name" }, { token: "last_name", label: "Last name" },
+  { token: "name", label: "Full name" }, { token: "email", label: "Email address" },
+  { token: "phone", label: "Phone number" }, { token: "country", label: "Country" },
+  { token: "address", label: "Address" }, { token: "source", label: "Contact source" },
   { token: "contact.id", label: "Contact ID" }, { token: "event_type", label: "Event type" },
+  { token: "data.course_id", label: "Course ID" },
   { token: "data.login_url", label: "Login link" }, { token: "data.signin_url", label: "Sign-in link" },
   { token: "data.course_title", label: "Course title" }, { token: "data.course_url", label: "Course access link" },
   { token: "data.course_slug", label: "Course slug" }, { token: "data.tier", label: "Course tier" },
   { token: "data.amount", label: "Payment amount" }, { token: "data.currency", label: "Payment currency" },
   { token: "data.method", label: "Payment method" }, { token: "data.meeting_name", label: "Meeting name" },
+  { token: "data.payment_id", label: "Payment ID" }, { token: "data.order_id", label: "Order ID" },
+  { token: "data.failure_code", label: "Payment failure code" },
+  { token: "data.completed_lessons", label: "Completed lessons" }, { token: "data.total_lessons", label: "Total lessons" },
+  { token: "data.current_module", label: "Current module" }, { token: "data.current_lesson", label: "Next lesson" },
   { token: "data.scheduled_start", label: "Meeting start time" }, { token: "data.timezone", label: "Meeting timezone" },
   { token: "data.join_link", label: "Meeting link" }, { token: "data.booking_page", label: "Booking page" },
   { token: "data.webinar_title", label: "Webinar title" }, { token: "data.webinar_url", label: "Webinar link" },
@@ -52,9 +68,27 @@ const workflowEmailVariables = [
   { token: "data.verify_url", label: "Account verification link" }, { token: "data.reset_url", label: "Password reset link" },
   { token: "data.code", label: "Verification code" }, { token: "data.verification_url", label: "Verification link" },
   { token: "data.magic_link_url", label: "Magic link" }, { token: "data.source", label: "Verification source" },
+  { token: "data.expires_minutes", label: "Code expiry (minutes)" },
   { token: "data.confirm_url", label: "Email change confirmation link" }, { token: "data.current_email", label: "Previous email address" },
   { token: "data.link", label: "Console login link" }, { token: "data.invited_by", label: "Invited by" },
 ];
+
+const workflowEventFields: Record<string, string[]> = {
+  "contact.verification_requested": ["code", "verification_url", "magic_link_url", "source", "expires_minutes"],
+  "contact.verified": ["source"],
+  "course.enrolled": ["course_id", "course_title", "course_slug", "course_url", "tier", "method"],
+  "course.upgraded": ["course_id", "course_title", "course_slug", "course_url", "tier", "method"],
+  "course.revoked": ["course_id", "course_title", "course_slug", "method"],
+  "course.completed": ["course_id", "course_title", "course_slug", "course_url"],
+  "course.inactivity": ["course_id", "course_title", "course_slug", "course_url", "completed_lessons", "total_lessons", "current_module", "current_lesson"],
+  "payment.succeeded": ["course_id", "course_title", "course_slug", "course_url", "amount", "currency", "method"],
+  "payment.failed": ["course_id", "course_title", "course_slug", "failure_code", "payment_id", "order_id"],
+};
+
+function attributesForWorkflow(triggerKey: string) {
+  const eventFields = new Set(workflowEventFields[triggerKey] || []);
+  return workflowEmailVariables.filter((variable) => !variable.token.startsWith("data.") || eventFields.has(variable.token.slice(5)));
+}
 
 function WorkflowNodeView({ id, data, selected }: NodeProps<CanvasNode>) {
   const { deleteElements } = useReactFlow();
@@ -173,9 +207,12 @@ export default function WorkflowCanvas({
     setSelectedId(null);
     setHistoryState({ past: history.current.past.length, future: history.current.future.length });
   }
-  const isDirty = name !== initialWorkflow.name || description !== initialWorkflow.description || status !== initialWorkflow.status ||
-    triggerType !== initialWorkflow.trigger_type || triggerKey !== (initialWorkflow.trigger_key || triggers[0]?.value || "") ||
-    JSON.stringify({ nodes, edges }) !== JSON.stringify(initialWorkflow.graph);
+  const [savedState, setSavedState] = useState(() => editState({
+    name: initialWorkflow.name, description: initialWorkflow.description, status: initialWorkflow.status,
+    triggerType: initialWorkflow.trigger_type, triggerKey: initialWorkflow.trigger_key || triggers[0]?.value || "",
+    nodes: initialNodes(initialWorkflow.graph), edges: initialEdges(initialWorkflow.graph),
+  }));
+  const isDirty = editState({ name, description, status, triggerType, triggerKey, nodes, edges }) !== savedState;
 
   const selectedNode = nodes.find((node) => node.id === selectedId) || null;
   const onNodesChange: OnNodesChange<CanvasNode> = useCallback((changes) => {
@@ -287,7 +324,9 @@ export default function WorkflowCanvas({
     const body = await response?.json().catch(() => ({})) || {};
     setSaving(false);
     if (!response?.ok) { setError(body.error || "Could not save this workflow."); return false; }
-    setStatus(body.workflow.status); setMessage(nextStatus === "active" ? "Workflow is active." : "Saved.");
+    setStatus(body.workflow.status);
+    setSavedState(editState({ name, description, status: body.workflow.status, triggerType, triggerKey, nodes, edges }));
+    setMessage(nextStatus === "active" ? "Workflow is active." : "Saved.");
     router.refresh();
     return true;
   }
@@ -498,7 +537,7 @@ function NodeSettings({ node, emailNodes, onChange, triggerType, triggerKey, tri
         {emailTemplates.find((template) => template.value === `${config.templateKind}:${config.templateKey}`) && <div className="rounded-xl border border-line bg-paper-soft p-3"><p className="text-xs font-semibold">{emailTemplates.find((template) => template.value === `${config.templateKind}:${config.templateKey}`)?.subject}</p>{emailTemplates.find((template) => template.value === `${config.templateKind}:${config.templateKey}`)?.critical && <p className="mt-1 text-[11px] text-red-700">Critical platform template</p>}<p className="mt-2 max-h-28 overflow-hidden whitespace-pre-wrap text-[11px] leading-5 text-ink-soft">{emailTemplates.find((template) => template.value === `${config.templateKind}:${config.templateKey}`)?.body.replace(/<[^>]*>/g, " ").slice(0, 500)}</p><p className="mt-2 text-[10px] text-ink-soft">Template content stays linked, so future template edits appear here.</p></div>}
       </> : <>
         {field("Subject", "subject", "Welcome")}
-        <div><p className="mb-1.5 text-xs font-medium text-ink-soft">Email body</p><EmailWorkflowBodyEditor value={String(config.body || "")} onChange={(value) => set("body", value)} variables={workflowEmailVariables} /></div>
+        <div><p className="mb-1.5 text-xs font-medium text-ink-soft">Email body</p><EmailWorkflowBodyEditor value={String(config.body || "")} onChange={(value) => set("body", value)} variables={attributesForWorkflow(triggerKey)} /></div>
       </>}
       <div><p className="mb-1.5 text-xs font-medium text-ink-soft">Type</p><BrandSelect value={String(config.messageType || (config.purpose === "marketing" ? "marketing" : "transactional"))} onChange={(value) => set("messageType", value)} options={[{ value: "transactional", label: "Transactional" }, { value: "marketing", label: "Marketing" }]} /></div>
     </>}

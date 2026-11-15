@@ -1683,7 +1683,7 @@ export default function RichTextEditor({
         )}
         {variables && variables.length > 0 && (
           <div className="ml-1 flex items-center gap-1.5 text-xs text-ink-soft">
-            Insert field
+            Attributes
             <div className="w-36">
               <BrandSelect
                 value=""

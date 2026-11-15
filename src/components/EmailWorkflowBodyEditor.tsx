@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import RichTextEditor from "@/components/RichTextEditor";
+import BrandSelect from "@/components/BrandSelect";
 
 type Variable = { token: string; label: string };
 type Mode = "visual" | "html" | "plain" | "inbox";
@@ -44,7 +45,7 @@ export default function EmailWorkflowBodyEditor({ value, onChange, variables }: 
     <div className="flex flex-wrap gap-1 border-b border-line bg-paper-soft p-2" role="tablist" aria-label="Email body view">
       {modes.map((item) => <button key={item.value} type="button" role="tab" aria-selected={mode === item.value} onClick={() => setMode(item.value)} className={`rounded-full px-3 py-1.5 text-xs font-medium ${mode === item.value ? "bg-ink text-paper" : "text-ink-soft hover:bg-paper hover:text-ink"}`}>{item.label}</button>)}
     </div>
-    {(mode === "html" || mode === "plain") && <div className="flex flex-wrap items-center gap-1.5 border-b border-line px-3 py-2"><span className="mr-1 text-[10px] font-semibold uppercase tracking-wide text-ink-soft">Insert variable</span>{variables.map((variable) => <button key={variable.token} type="button" title={`Insert {{${variable.token}}}`} onClick={() => insertVariable(variable.token)} className="rounded-full border border-line bg-paper px-2 py-1 text-[10px] text-ink-soft hover:border-ink hover:text-ink">{variable.label}</button>)}</div>}
+    {(mode === "html" || mode === "plain") && <div className="flex items-center gap-2 border-b border-line px-3 py-2"><span className="text-[10px] font-semibold uppercase tracking-wide text-ink-soft">Attributes</span><div className="w-56"><BrandSelect value="" placeholder="Choose an attribute" compact searchable onChange={insertVariable} options={variables.map((variable) => ({ value: variable.token, label: variable.label }))} /></div></div>}
     {mode === "visual" && <div className="min-h-56 p-3"><RichTextEditor value={value} onChange={onChange} variables={variables} /></div>}
     {mode === "html" && <textarea ref={textareaRef} aria-label="Email body HTML" rows={14} value={value} onChange={(event) => onChange(event.target.value)} className="block w-full resize-y border-0 bg-paper px-4 py-3 font-mono text-xs leading-5 outline-none focus:ring-0" />}
     {mode === "plain" && <textarea ref={textareaRef} aria-label="Email body plain text" rows={14} value={htmlToPlain(value)} onChange={(event) => onChange(plainToHtml(event.target.value))} className="block w-full resize-y border-0 bg-paper px-4 py-3 text-sm leading-6 outline-none focus:ring-0" />}

@@ -443,15 +443,19 @@ async function executeRun(run: { id: number; workflow_id: number; trigger_payloa
   const email = String(eventData.email || rawPayload.email || "").trim().toLowerCase();
   const contactId = Number(rawPayload.contact_id) || null;
   const contactResult = test
-    ? { rows: [{ id: null, email: test.email || "", name: "Workflow test", phone: test.phone || "", marketing_status: "unknown", whatsapp_status: "unknown" }] }
+    ? { rows: [{ id: null, email: test.email || "", name: "Workflow test", first_name: "Workflow", last_name: "Test", phone: test.phone || "", country: "", address: "", source: "test", marketing_status: "unknown", whatsapp_status: "unknown" }] }
     : contactId
-      ? await pool.query("SELECT id, email, name, phone, marketing_status, whatsapp_status FROM contacts WHERE id = $1", [contactId])
+      ? await pool.query("SELECT id, email, name, first_name, last_name, phone, country, address, source, marketing_status, whatsapp_status FROM contacts WHERE id = $1", [contactId])
     : email
-      ? await pool.query("SELECT id, email, name, phone, marketing_status, whatsapp_status FROM contacts WHERE normalized_email = $1", [email])
+      ? await pool.query("SELECT id, email, name, first_name, last_name, phone, country, address, source, marketing_status, whatsapp_status FROM contacts WHERE normalized_email = $1", [email])
       : { rows: [] };
   const contact = contactResult.rows[0] || {};
-  const firstName = String(contact.name || "").trim().split(/\s+/)[0] || "there";
+  const firstName = String(contact.first_name || "").trim() || String(contact.name || "").trim().split(/\s+/)[0] || "there";
   const workflowData = { ...eventData };
+  if (!workflowData.course_slug && Number.isInteger(Number(workflowData.course_id)) && Number(workflowData.course_id) > 0) {
+    const course = await pool.query("SELECT slug FROM courses WHERE id = $1", [Number(workflowData.course_id)]);
+    if (course.rows[0]?.slug) workflowData.course_slug = course.rows[0].slug;
+  }
   if (!workflowData.course_url && typeof workflowData.course_slug === "string") {
     workflowData.course_url = `${SITE_URL}/account/courses/${encodeURIComponent(workflowData.course_slug)}`;
   }
@@ -462,9 +466,13 @@ async function executeRun(run: { id: number; workflow_id: number; trigger_payloa
     ...rawPayload,
     ...workflowData,
     first_name: workflowData.first_name || firstName,
+    last_name: workflowData.last_name || contact.last_name || "",
     name: workflowData.name || contact.name || "",
     email: workflowData.email || contact.email || "",
     phone: workflowData.phone || contact.phone || "",
+    country: workflowData.country || contact.country || "",
+    address: workflowData.address || contact.address || "",
+    source: workflowData.source || contact.source || "",
     contact: { ...contact, first_name: firstName },
     data: workflowData,
   };

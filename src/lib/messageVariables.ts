@@ -6,17 +6,16 @@ export type SystemValueSource = { label: string; value: string; group: string };
 /** Recipient fields available in broadcasts and individual contact messages. */
 export const CONTACT_MESSAGE_VARIABLES: MessageVariable[] = [
   { token: "first_name", label: "First name" },
+  { token: "last_name", label: "Last name" },
   { token: "name", label: "Full name" },
   { token: "email", label: "Email address" },
   { token: "phone", label: "Phone number" },
+  { token: "country", label: "Country" },
+  { token: "address", label: "Address" },
+  { token: "source", label: "Contact source" },
 ];
 
-const RECIPIENT_FIELDS: MessageVariable[] = [
-  { token: "first_name", label: "First name" },
-  { token: "name", label: "Full name" },
-  { token: "email", label: "Email address" },
-  { token: "phone", label: "Phone number" },
-];
+const RECIPIENT_FIELDS: MessageVariable[] = CONTACT_MESSAGE_VARIABLES;
 const COURSE_FIELDS: MessageVariable[] = [
   { token: "course_title", label: "Course title" },
   { token: "course_url", label: "Course link" },
@@ -27,7 +26,12 @@ const COURSE_FIELDS: MessageVariable[] = [
  * one-off contact emails, so the token list is the broadest common set
  * rather than one trigger's exact fields. course_title/course_url only
  * resolve where a course is actually in context. */
-export const TEMPLATE_VARIABLES: MessageVariable[] = [...RECIPIENT_FIELDS, ...COURSE_FIELDS];
+export const TEMPLATE_VARIABLES: MessageVariable[] = [
+  ...RECIPIENT_FIELDS, ...COURSE_FIELDS,
+  { token: "data.code", label: "Verification code (workflow)" },
+  { token: "data.verification_url", label: "Verification link (workflow)" },
+  { token: "data.magic_link_url", label: "Magic link (workflow)" },
+];
 
 /** Event values already supplied to each email automation trigger. */
 export const EMAIL_FLOW_VARIABLES: Record<string, MessageVariable[]> = {
@@ -64,15 +68,24 @@ export const EMAIL_FLOW_VARIABLES: Record<string, MessageVariable[]> = {
 
 export function contactMessageValues(contact: {
   name?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
   email?: string | null;
   phone?: string | null;
+  country?: string | null;
+  address?: string | null;
+  source?: string | null;
 }): Record<string, string> {
   const name = (contact.name || "").trim();
   return {
-    first_name: name.split(/\s+/)[0] || "there",
+    first_name: contact.first_name?.trim() || name.split(/\s+/)[0] || "there",
+    last_name: contact.last_name?.trim() || "",
     name: name || "there",
     email: contact.email || "",
     phone: contact.phone || "",
+    country: contact.country || "",
+    address: contact.address || "",
+    source: contact.source || "",
   };
 }
 
@@ -86,7 +99,7 @@ export function unsupportedCampaignVariables(...parts: string[]): string[] {
   const supported = new Set(CONTACT_MESSAGE_VARIABLES.map((item) => item.token));
   const found = new Set<string>();
   for (const part of parts) {
-    for (const match of part.matchAll(/\{\{([a-zA-Z0-9_]+)\}\}/g)) {
+    for (const match of part.matchAll(/\{\{([a-zA-Z0-9_.]+)\}\}/g)) {
       if (!supported.has(match[1])) found.add(match[1]);
     }
   }

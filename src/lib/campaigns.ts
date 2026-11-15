@@ -113,7 +113,8 @@ export async function sendPendingCampaignBatch(
         RETURNING s.*
       )
       SELECT upd.id, upd.attempts, upd.contact_id, c.id AS campaign_id,
-             c.subject, c.html, c.from_email, ct.name, ct.email, ct.phone
+             c.subject, c.html, c.from_email, ct.name, ct.first_name, ct.last_name,
+             ct.email, ct.phone, ct.country, ct.address, ct.source
       FROM upd
       JOIN newsletter_campaigns c ON c.id = upd.campaign_id
       JOIN contacts ct ON ct.id = upd.contact_id`,

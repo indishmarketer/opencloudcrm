@@ -41,10 +41,17 @@ type Values = Record<string, unknown>;
  * applyTemplateVars) with the real recipient's data. */
 const PREVIEW_SAMPLE_VARS: Record<string, string> = {
   first_name: "Jamie",
+  last_name: "Rivera",
   name: "Jamie Rivera",
   phone: "+1 555 0100",
+  country: "United States",
+  address: "123 Example Street",
+  source: "signup",
   course_title: "Sample course",
   course_url: "https://example.com/account/courses/sample-course",
+  "data.code": "123456",
+  "data.verification_url": "https://example.com/verify?token=sample",
+  "data.magic_link_url": "https://example.com/verify?token=sample",
   email: "jamie@example.com",
   business_name: "Your Business",
   site_name: "Your Business",
@@ -608,6 +615,7 @@ export default function ConsoleEmailBuilder({
                   {emailBlockFields(selectedDef).length > 0 && (
                     <>
                       <FieldGroup fields={emailBlockFields(selectedDef)} values={selected.props} onChange={(next) => updateProps(selected.id, next)} linkOptions={[]} />
+                      {variables.length > 0 && emailBlockFields(selectedDef).some((field) => ["text", "textarea", "link"].includes(field.kind)) && <h3 className="border-t border-line pt-4 text-xs font-semibold uppercase tracking-wider text-ink">Attributes</h3>}
                       {variables.length > 0 && emailBlockFields(selectedDef).filter((field) => ["text", "textarea", "link"].includes(field.kind)).map((field) => {
                         const choices = field.kind === "link" ? variables.filter((item) => /(?:_url|_link)$/.test(item.token)) : variables;
                         return choices.length > 0 ? <div key={`attribute-${field.key}`}>
@@ -640,6 +648,7 @@ export default function ConsoleEmailBuilder({
                       + Add footer preview
                     </button>
                   )}
+                  {variables.length > 0 && <div className="border-t border-line pt-4"><h3 className="text-xs font-semibold uppercase tracking-wider text-ink">Attributes</h3><p className="mt-1 text-xs leading-5 text-ink-soft">Select a text, heading, button, or image block to insert an attribute into its fields. Course and verification values need a matching workflow event.</p></div>}
                 </>
               )}
             </aside>
