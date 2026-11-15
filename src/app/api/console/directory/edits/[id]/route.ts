@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAdminSession } from "@/lib/auth";
 import { pool, withTransaction } from "@/lib/db";
 import { deleteFromR2 } from "@/lib/r2Upload";
-import { escapeHtml } from "@/lib/escapeHtml";
-import { emailSubmitter, noteHtml, toolUrls } from "@/lib/directoryReview";
+import { emailSubmitter, toolUrls } from "@/lib/directoryReview";
 
 const FIELDS = ["name", "tagline", "description", "category_id", "pricing_type", "website_url", "screenshots"] as const;
 
@@ -77,10 +76,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const urls = toolUrls(tool);
   const sent =
     action === "approve"
-      ? await emailSubmitter(tool.id, "tool-edit-approved", { tool_name: escapeHtml(tool.name), tool_url: urls.tool_url })
+      ? await emailSubmitter(tool.id, "tool-edit-approved", { tool_name: tool.name, tool_url: urls.tool_url })
       : await emailSubmitter(tool.id, "tool-edit-rejected", {
-          tool_name: escapeHtml(tool.name),
-          note: noteHtml(note),
+          tool_name: tool.name,
+          note,
           manage_url: urls.manage_url,
         });
   return NextResponse.json({ ok: true, email: sent ? "sent" : "skipped" });

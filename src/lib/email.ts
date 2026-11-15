@@ -12,7 +12,8 @@ import { getReplyToEmail } from "@/lib/businessProfile";
 import { getBusiness } from "@/lib/businessProfile";
 import { escapeHtml } from "@/lib/escapeHtml";
 import { extractFooterStyle, type FooterStyle } from "@/lib/emailBlocksRender";
-import { resolveEmailDomain } from "@/lib/emailSettings";
+import { getEmailSettings, resolveEmailDomain } from "@/lib/emailSettings";
+import { senderAddress, type SenderPurpose } from "@/lib/emailSettingsShape";
 
 const SITE_HOSTNAME = new URL(SITE_URL).hostname.replace(/^www\./, "");
 
@@ -119,7 +120,11 @@ export async function sendEmail({
   workflowNodeId,
   isTest,
   attachments,
+  purpose,
 }: {
+  /** Which configured username sends it (Email → Sending). Used when no
+   * explicit `from` is given. */
+  purpose?: SenderPurpose;
   to: string;
   subject: string;
   html: string;
@@ -167,7 +172,10 @@ export async function sendEmail({
   const defaultSender = process.env.EMAIL_FROM && !/@example\.com$/i.test(process.env.EMAIL_FROM)
     ? process.env.EMAIL_FROM : undefined;
   const emailDomain = await resolveEmailDomain(SITE_HOSTNAME);
-  const sender = configuredSender || defaultSender || `support@${emailDomain}`;
+  const emailSettings = await getEmailSettings();
+  const sender = configuredSender
+    || (purpose ? senderAddress(emailSettings, purpose, emailDomain) : undefined)
+    || defaultSender || senderAddress(emailSettings, "transactional", emailDomain);
   const resolvedCategory = category || "system";
   const resolvedTemplateKey = templateKey || null;
   const normalizedTo = to.trim().toLowerCase();

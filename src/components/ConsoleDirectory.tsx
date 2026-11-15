@@ -5,11 +5,13 @@ import Link from "next/link";
 import ConsoleDirectoryCategories from "@/components/ConsoleDirectoryCategories";
 import ConsoleDirectoryTools from "@/components/ConsoleDirectoryTools";
 import ConsoleDirectoryPricing from "@/components/ConsoleDirectoryPricing";
+import ConsoleDirectoryCommunication from "@/components/ConsoleDirectoryCommunication";
 
 const TABS = [
   { key: "categories", label: "Categories" },
   { key: "tools", label: "Tools" },
   { key: "pricing", label: "Pricing" },
+  { key: "communication", label: "Communication" },
 ] as const;
 
 export default function ConsoleDirectory({ initialTab = "tools" }: { initialTab?: (typeof TABS)[number]["key"] }) {
@@ -35,6 +37,7 @@ export default function ConsoleDirectory({ initialTab = "tools" }: { initialTab?
         {tab === "categories" && <ConsoleDirectoryCategories />}
         {tab === "tools" && <ConsoleDirectoryTools />}
         {tab === "pricing" && <ConsoleDirectoryPricing />}
+        {tab === "communication" && <ConsoleDirectoryCommunication />}
       </div>
 
       <p className="mt-8 text-xs text-ink-soft">

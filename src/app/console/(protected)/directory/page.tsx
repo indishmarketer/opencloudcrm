@@ -7,7 +7,7 @@ export default async function ConsoleDirectoryPage({
 }) {
   const params = await searchParams;
   const initialTab =
-    params.tab === "categories" || params.tab === "pricing"
+    params.tab === "categories" || params.tab === "pricing" || params.tab === "communication"
       ? params.tab
       : "tools";
   return (

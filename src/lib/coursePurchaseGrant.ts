@@ -181,6 +181,7 @@ export async function grantCoursePurchase(input: {
         currency: escapeHtml(currency),
       };
       await sendEmailWithRetry({
+        purpose: "courses",
         to: adminEmail,
         subject: applyTemplateVars(failTpl.subject, failVars),
         html: applyTemplateVars(failTpl.body_html, failVars),
@@ -217,6 +218,7 @@ export async function grantCoursePurchase(input: {
       course_url: `${SITE_URL}/account/courses/${encodeURIComponent(courseSlug)}`,
     };
     await sendEmailWithRetry({
+      purpose: "courses",
       to: user.email,
       subject: applyTemplateVars(grantTpl.subject, grantVars),
       html: applyTemplateVars(grantTpl.body_html, grantVars),

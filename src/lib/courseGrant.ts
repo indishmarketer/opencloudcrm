@@ -83,6 +83,7 @@ export async function grantCourseManually(account: Account, course: { id: number
   const tpl = await getEmailTemplateOptional(needsSignIn ? "course-access-granted-new-account" : "course-access-granted-manual");
   const sent = tpl
     ? await sendEmailWithRetry({
+        purpose: "courses",
         to: account.email,
         subject: applyTemplateVars(tpl.subject, vars),
         html: applyTemplateVars(tpl.body_html, vars),

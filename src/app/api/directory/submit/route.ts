@@ -7,7 +7,7 @@ import { slugify } from "@/lib/directory";
 import { findToolLogo, uploadDirectoryAsset } from "@/lib/logoFetch";
 import { SITE_URL } from "@/lib/siteMeta";
 import { emitWebhookEvent } from "@/lib/webhookEvents";
-import { parseToolFields, notifyAdminOfTool, cleanToolUrl } from "@/lib/directoryReview";
+import { parseToolFields, notifyAdminOfTool, cleanToolUrl, emailSubmitter } from "@/lib/directoryReview";
 import { raiseInboxAlert } from "@/lib/systemAlerts";
 
 type OwnListing = {
@@ -157,6 +157,9 @@ export async function POST(req: NextRequest) {
       listing_tier: body.listing_tier === "paid" ? "paid" : "free", edit_url: `${SITE_URL}/account/tools/${tool.id}`, manage_url: `${SITE_URL}/account/tools` },
   }).catch(() => {});
 
+  await emailSubmitter(tool.id, "tool-submission-received", {
+    tool_name: fields.name, website_url: fields.website_url, edit_url: `${SITE_URL}/account/tools/${tool.id}`,
+  }).catch((error) => console.error("Tool received email failed:", error));
   await notifyAdminOfTool(session.email, "submitted a new tool:", fields.name).catch(() => {});
   // Not awaited: a submission must not fail because the notification did.
   raiseInboxAlert({

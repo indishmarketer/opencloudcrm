@@ -128,6 +128,7 @@ export async function sendPendingCampaignBatch(
   for (const row of claimed.rows) {
     try {
       const result = await sendEmail({
+        purpose: "marketing",
         to: row.email,
         subject: applySubjectVariables(row.subject, contactMessageValues(row)),
         html: applyMessageVariables(row.html, contactMessageValues(row)),

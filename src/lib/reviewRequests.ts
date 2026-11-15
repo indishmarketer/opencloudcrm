@@ -131,6 +131,7 @@ export async function dispatchDueReviewRequests(limit = 25) {
       const firstName = String(row.name || "there").trim().split(/\s+/)[0] || "there";
       const vars = { first_name: escapeHtml(firstName), google_review_url: escapeHtml(reviewUrl) };
       const mail = await sendEmail({
+        purpose: "reviews",
         to: row.email,
         subject: applyTemplateVars(template.subject, vars),
         html: applyTemplateVars(template.body_html, vars),

@@ -1,5 +1,6 @@
 import { pool } from "@/lib/db";
-import { emitToolReviewEvent, emitToolPaidEvent } from "@/lib/directoryReview";
+import { SITE_URL } from "@/lib/siteMeta";
+import { emitToolReviewEvent, emitToolPaidEvent, emailSubmitter, sendApprovedEmail } from "@/lib/directoryReview";
 import { raiseInboxAlert } from "@/lib/systemAlerts";
 
 export type ListingPaymentProvider = "razorpay" | "paypal";
@@ -208,6 +209,13 @@ export async function settleDirectoryListingPayment(input: {
 
   const paidToolId = toolId ?? pendingToolId;
   if (paidToolId !== null) await emitToolPaidEvent(paidToolId).catch((error) => console.error("Paid listing payment event failed:", error));
+  // Built-in emails: live now, or paid and waiting in the review queue.
+  if (toolId !== null) await sendApprovedEmail(toolId).catch((error) => console.error("Paid listing live email failed:", error));
+  if (pendingToolId !== null) {
+    const tool = await pool.query("SELECT name FROM directory_tools WHERE id = $1", [pendingToolId]);
+    await emailSubmitter(pendingToolId, "tool-payment-received", { tool_name: tool.rows[0]?.name || "your tool", manage_url: `${SITE_URL}/account/tools` })
+      .catch((error) => console.error("Paid listing receipt email failed:", error));
+  }
   if (toolId !== null) {
     await emitToolReviewEvent(toolId, "published").catch((error) => console.error("Paid listing publication event failed:", error));
     void raiseInboxAlert({
