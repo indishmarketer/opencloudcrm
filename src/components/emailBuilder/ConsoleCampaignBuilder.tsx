@@ -2,14 +2,17 @@
 
 import ConsoleEmailBuilder from "@/components/emailBuilder/ConsoleEmailBuilder";
 import type { EmailBlock } from "@/lib/emailBlocks";
+import { CONTACT_MESSAGE_VARIABLES } from "@/lib/messageVariables";
 
 export default function ConsoleCampaignBuilder({ campaign, businessName, businessAddress }: {
-  campaign: { id: number; subject: string; html: string; blocks_json: EmailBlock[] | null };
+  campaign: { id: number; name: string; subject: string; html: string; blocks_json: EmailBlock[] | null };
   businessName: string;
   businessAddress: string;
 }) {
   return <ConsoleEmailBuilder
     initialSubject={campaign.subject}
+    documentName={campaign.name}
+    variables={CONTACT_MESSAGE_VARIABLES}
     initialBodyHtml={campaign.html}
     initialBlocks={campaign.blocks_json || []}
     backHref={`/console/email/campaigns/${campaign.id}`}

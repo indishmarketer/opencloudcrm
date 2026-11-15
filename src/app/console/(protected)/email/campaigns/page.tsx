@@ -6,7 +6,7 @@ import { listContentTemplates } from "@/lib/emailContentTemplates";
 export default async function EmailCampaignsPage() {
   const [result, sentSlugsResult, templates] = await Promise.all([
     pool.query(`
-      SELECT c.id, c.subject, c.status, c.created_at, c.sent_at, c.scheduled_at,
+      SELECT c.id, c.name, c.subject, c.status, c.created_at, c.sent_at, c.scheduled_at,
         seg.name AS segment_name, c.last_error,
         COUNT(s.id) FILTER (WHERE s.status = 'sent')::int AS sent_count,
         COUNT(s.id) FILTER (WHERE s.status = 'skipped')::int AS skipped_count,

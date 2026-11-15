@@ -11,6 +11,7 @@ import { formatIndiaDateTime } from "@/lib/indiaTime";
 
 type Campaign = {
   id: number;
+  name: string;
   subject: string;
   html: string;
   status: string;
@@ -29,6 +30,7 @@ export default function ConsoleCampaignEditor({ campaign, segments, report }: {
   const [tab, setTab] = useState<"analytics" | "recipients" | "email">(report ? "analytics" : "email");
   const router = useRouter();
   const [subject, setSubject] = useState(campaign.subject);
+  const [name, setName] = useState(campaign.name);
   const [segmentId, setSegmentId] = useState(String(campaign.segment_id || segments[0]?.id || ""));
   const [fromEmail, setFromEmail] = useState(campaign.from_email);
   const [dirty, setDirty] = useState(false);
@@ -50,7 +52,7 @@ export default function ConsoleCampaignEditor({ campaign, segments, report }: {
     const res = await fetch(`/api/console/email/campaigns/${campaign.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ subject, segmentId: Number(segmentId), fromEmail }),
+      body: JSON.stringify({ name, ...(subject.trim() || campaign.subject ? { subject } : {}), segmentId: Number(segmentId), fromEmail }),
     });
     setSaving(false);
     if (!res.ok) {
@@ -142,6 +144,7 @@ export default function ConsoleCampaignEditor({ campaign, segments, report }: {
 
       <div className="mt-3 flex flex-wrap items-center gap-3">
         <h1 className="font-display text-2xl font-semibold sm:text-3xl">{isDraft ? "Prepare campaign" : "Campaign"}</h1>
+        <span className="text-sm text-ink-soft">{name}</span>
         {!isDraft && (
           <span className="rounded-full bg-paper-soft px-3 py-1 text-xs font-medium text-ink-soft">
             {campaign.status} — read only
@@ -175,6 +178,11 @@ export default function ConsoleCampaignEditor({ campaign, segments, report }: {
       {report && tab === "recipients" && <div className="mt-6">{report.recipients}</div>}
 
       <div className={`${report ? "mt-6" : "mt-8"} space-y-4 ${tab === "email" ? "" : "hidden"}`}>
+        <div>
+          <label className="text-sm font-medium" htmlFor="campaign-name">Campaign name</label>
+          <input id="campaign-name" value={name} onChange={(event) => { setName(event.target.value); setDirty(true); }} maxLength={120} disabled={!isDraft} className="mt-1 w-full rounded-lg border border-line bg-paper px-3 py-2 text-sm outline-none focus:border-ink disabled:opacity-60" />
+          <p className="mt-1 text-xs text-ink-soft">Internal name; recipients see the subject below.</p>
+        </div>
         <div className="flex flex-wrap items-center gap-3">
           <div className="min-w-[220px]">
             <label className="text-sm text-ink-soft">Send to</label>

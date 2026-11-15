@@ -22,6 +22,7 @@ export default function ConsoleFixedTemplateBuilder({
       initialSubject={template.subject}
       initialBlocks={(template.blocks_json as EmailBlock[] | null) || []}
       initialBodyHtml={template.body_html}
+      variables={template.allowed_vars.map((token) => ({ token, label: token.replace(/_/g, " ") }))}
       backHref="/console/email/library"
       backLabel="All templates"
       businessName={businessName}

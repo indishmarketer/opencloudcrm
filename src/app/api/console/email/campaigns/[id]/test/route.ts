@@ -3,7 +3,7 @@ import { getAdminSessionEmail, getSession } from "@/lib/auth";
 import { isConsoleOwner } from "@/lib/consoleAdmins";
 import { sendEmail } from "@/lib/email";
 import { cleanTestRecipient } from "@/lib/testRecipient";
-import { applyMessageVariables, contactMessageValues } from "@/lib/messageVariables";
+import { applyMessageVariables, contactMessageValues, unsupportedCampaignVariables } from "@/lib/messageVariables";
 import { emailAt } from "@/lib/liveSiteUrl";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -23,6 +23,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!subject || !html) {
     return NextResponse.json({ error: "subject and html are required." }, { status: 400 });
   }
+  const unsupported = unsupportedCampaignVariables(subject, html);
+  if (unsupported.length) return NextResponse.json({ error: `Campaigns cannot fill these attributes: ${unsupported.join(", ")}.` }, { status: 400 });
 
   const result = await sendEmail({
     to: toEmail,

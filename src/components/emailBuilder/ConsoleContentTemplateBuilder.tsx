@@ -3,6 +3,7 @@
 import ConsoleEmailBuilder from "@/components/emailBuilder/ConsoleEmailBuilder";
 import type { EmailContentTemplate } from "@/lib/emailContentTemplates";
 import type { EmailBlock } from "@/lib/emailBlocks";
+import { TEMPLATE_VARIABLES } from "@/lib/messageVariables";
 
 /** Fetches/saves a Library template through the shared composer. HTML-only
  * templates retain their source until the owner explicitly converts them. */
@@ -20,6 +21,7 @@ export default function ConsoleContentTemplateBuilder({
       initialSubject={template.subject}
       initialBlocks={(template.blocks_json as EmailBlock[] | null) || []}
       initialBodyHtml={template.body_html}
+      variables={TEMPLATE_VARIABLES}
       backHref="/console/email/library"
       backLabel="All templates"
       businessName={businessName}

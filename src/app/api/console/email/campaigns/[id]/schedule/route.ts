@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAdminSession } from "@/lib/auth";
 import { pool } from "@/lib/db";
 import { parseIndiaDateTime } from "@/lib/indiaTime";
+import { unsupportedCampaignVariables } from "@/lib/messageVariables";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!(await getAdminSession())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -11,6 +12,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const body = await req.json().catch(() => ({}));
   const scheduledAt = parseIndiaDateTime(body.scheduledAt);
   if (!scheduledAt) return NextResponse.json({ error: "Choose a valid future date and time in IST." }, { status: 400 });
+  const campaign = await pool.query("SELECT subject, html FROM newsletter_campaigns WHERE id = $1", [Number(id)]);
+  if (campaign.rows[0]) {
+    const unsupported = unsupportedCampaignVariables(campaign.rows[0].subject, campaign.rows[0].html);
+    if (unsupported.length) return NextResponse.json({ error: `Campaigns cannot fill these attributes: ${unsupported.join(", ")}.` }, { status: 400 });
+  }
 
   const result = await pool.query(
     `UPDATE newsletter_campaigns

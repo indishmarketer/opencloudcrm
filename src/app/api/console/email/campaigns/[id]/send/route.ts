@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAdminSession } from "@/lib/auth";
 import { pool } from "@/lib/db";
 import { ensureCampaignBehaviorSegments, queueCampaignRecipients, sendPendingCampaignBatch } from "@/lib/campaigns";
+import { unsupportedCampaignVariables } from "@/lib/messageVariables";
 
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const isAdmin = await getAdminSession();
@@ -21,6 +22,8 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   if (!campaign.subject?.trim() || !campaign.html?.trim() || campaign.html === "<p></p>") {
     return NextResponse.json({ error: "Add a subject and some content before sending." }, { status: 400 });
   }
+  const unsupported = unsupportedCampaignVariables(campaign.subject, campaign.html);
+  if (unsupported.length) return NextResponse.json({ error: `Campaigns cannot fill these attributes: ${unsupported.join(", ")}.` }, { status: 400 });
 
   let queued: number;
   try {

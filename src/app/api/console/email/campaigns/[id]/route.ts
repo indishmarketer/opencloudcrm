@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAdminSession } from "@/lib/auth";
 import { pool } from "@/lib/db";
 import { resolveEmailBodySave } from "@/lib/emailBlockSave";
+import { unsupportedCampaignVariables } from "@/lib/messageVariables";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -11,7 +12,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   const { id } = await params;
   const result = await pool.query(
-    "SELECT id, subject, html, status, audience, from_email, segment_id FROM newsletter_campaigns WHERE id = $1",
+    "SELECT id, name, subject, html, status, audience, from_email, segment_id FROM newsletter_campaigns WHERE id = $1",
     [Number(id)]
   );
   if (result.rows.length === 0) return NextResponse.json({ error: "Not found." }, { status: 404 });
@@ -23,7 +24,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!isAdmin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  const { subject, html, segmentId, fromEmail, blocks } = await req.json();
+  const { name, subject, html, segmentId, fromEmail, blocks } = await req.json();
+  if (name !== undefined && (typeof name !== "string" || !name.trim() || name.trim().length > 120)) {
+    return NextResponse.json({ error: "Enter a campaign name (up to 120 characters)." }, { status: 400 });
+  }
   if (subject !== undefined && (typeof subject !== "string" || !subject.trim())) {
     return NextResponse.json({ error: "Add a subject before saving this campaign." }, { status: 400 });
   }
@@ -36,14 +40,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 
   const content = html !== undefined ? resolveEmailBodySave({ bodyHtml: String(html), blocks }) : null;
+  const unsupported = unsupportedCampaignVariables(typeof subject === "string" ? subject : "", content?.bodyHtml ?? "");
+  if (unsupported.length) return NextResponse.json({ error: `Campaigns cannot fill these attributes: ${unsupported.join(", ")}. Use a course workflow for course fields.` }, { status: 400 });
   const result = await pool.query(
     `UPDATE newsletter_campaigns
-     SET subject = COALESCE($1, subject), html = COALESCE($2, html),
+     SET subject = COALESCE($1, subject), html = COALESCE($2, html), name = COALESCE($8, name),
          segment_id = COALESCE($3, segment_id), from_email = COALESCE($4, from_email),
          blocks_json = CASE WHEN $6::boolean THEN $7::jsonb ELSE blocks_json END
      WHERE id = $5 AND status = 'draft'
      RETURNING id`,
-    [subject || null, content?.bodyHtml ?? null, segmentId === undefined ? null : Number(segmentId), fromEmail || null, Number(id), blocks !== undefined, content?.blocks ? JSON.stringify(content.blocks) : null]
+    [subject || null, content?.bodyHtml ?? null, segmentId === undefined ? null : Number(segmentId), fromEmail || null, Number(id), blocks !== undefined, content?.blocks ? JSON.stringify(content.blocks) : null, name?.trim() || null]
   );
   if (result.rows.length === 0) {
     return NextResponse.json({ error: "Campaign not found, or it's already been sent." }, { status: 404 });

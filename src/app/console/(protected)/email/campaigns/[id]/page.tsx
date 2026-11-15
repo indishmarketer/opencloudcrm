@@ -8,7 +8,7 @@ import { getCampaignReport } from "@/lib/campaignReport";
 export default async function CampaignEditorPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const [result, segmentResult] = await Promise.all([pool.query(
-    "SELECT id, subject, html, status, audience, from_email, segment_id, scheduled_at FROM newsletter_campaigns WHERE id = $1",
+    "SELECT id, name, subject, html, status, audience, from_email, segment_id, scheduled_at FROM newsletter_campaigns WHERE id = $1",
     [Number(id)]
   ), pool.query("SELECT id, name, rules FROM contact_segments ORDER BY is_system DESC, name")]);
   if (result.rows.length === 0) notFound();

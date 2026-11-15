@@ -30,6 +30,8 @@ import {
 } from "@/lib/emailBlocks";
 import { renderEmailBlocksToHtml } from "@/lib/emailBlocksRender";
 import { wrapEmailHtml } from "@/lib/emailShell";
+import BrandSelect from "@/components/BrandSelect";
+import type { MessageVariable } from "@/lib/messageVariables";
 
 type Values = Record<string, unknown>;
 
@@ -39,7 +41,10 @@ type Values = Record<string, unknown>;
  * applyTemplateVars) with the real recipient's data. */
 const PREVIEW_SAMPLE_VARS: Record<string, string> = {
   first_name: "Jamie",
-  full_name: "Jamie Rivera",
+  name: "Jamie Rivera",
+  phone: "+1 555 0100",
+  course_title: "Sample course",
+  course_url: "https://example.com/account/courses/sample-course",
   email: "jamie@example.com",
   business_name: "Your Business",
   site_name: "Your Business",
@@ -194,6 +199,8 @@ export default function ConsoleEmailBuilder({
   businessName,
   businessAddress,
   returnAfterSave = false,
+  documentName,
+  variables = [],
 }: {
   initialSubject: string;
   initialBlocks: EmailBlock[];
@@ -210,6 +217,8 @@ export default function ConsoleEmailBuilder({
   businessName: string;
   businessAddress: string;
   returnAfterSave?: boolean;
+  documentName?: string;
+  variables?: MessageVariable[];
 }) {
   const router = useRouter();
   const [subject, setSubject] = useState(initialSubject);
@@ -234,6 +243,25 @@ export default function ConsoleEmailBuilder({
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [activeDragLabel, setActiveDragLabel] = useState<string | null>(null);
+  const subjectInput = useRef<HTMLInputElement>(null);
+  const htmlInput = useRef<HTMLTextAreaElement>(null);
+
+  function insertInSubject(token: string) {
+    const tag = `{{${token}}}`;
+    const position = subjectInput.current?.selectionStart ?? subject.length;
+    setSubject((current) => current.slice(0, position) + tag + current.slice(position));
+    setDirty(true);
+    requestAnimationFrame(() => { subjectInput.current?.focus(); subjectInput.current?.setSelectionRange(position + tag.length, position + tag.length); });
+  }
+
+  function insertInHtml(token: string) {
+    const tag = `{{${token}}}`;
+    const position = htmlInput.current?.selectionStart ?? freeformHtml.length;
+    setFreeformHtml((current) => current.slice(0, position) + tag + current.slice(position));
+    setBodySource("html");
+    setDirty(true);
+    requestAnimationFrame(() => { htmlInput.current?.focus(); htmlInput.current?.setSelectionRange(position + tag.length, position + tag.length); });
+  }
 
   const selected = blocks.find((b) => b.id === selectedId) || null;
   const selectedDef = selected ? getEmailBlockDef(selected.type) : null;
@@ -389,7 +417,9 @@ export default function ConsoleEmailBuilder({
             </button>
           </div>
           <span className={`h-2 w-2 shrink-0 rounded-full ${dirty ? "bg-amber-500" : "bg-green-500"}`} aria-hidden="true" />
+          {documentName && <span className="max-w-32 truncate text-xs font-medium text-ink-soft" title={documentName}>{documentName}</span>}
           <input
+            ref={subjectInput}
             value={subject}
             onChange={(e) => {
               setSubject(e.target.value);
@@ -398,6 +428,7 @@ export default function ConsoleEmailBuilder({
             className="w-64 truncate rounded border-b border-transparent bg-transparent px-1 py-0.5 text-sm font-semibold outline-none hover:border-line focus:border-ink"
             placeholder="Subject line"
           />
+          {variables.length > 0 && <div className="w-36 shrink-0"><BrandSelect value="" placeholder="＋ Attributes" compact onChange={insertInSubject} options={variables.map((item) => ({ value: item.token, label: item.label }))} searchable /></div>}
           {error && <span className="truncate text-xs text-red-600">{error}</span>}
           {message && <span className="text-xs text-ink-soft">{message}</span>}
         </div>
@@ -505,6 +536,7 @@ export default function ConsoleEmailBuilder({
           <div className="w-full">
             <RichTextEditor
               value={freeformHtml}
+              variables={variables}
               onChange={(html) => {
                 setFreeformHtml(html);
                 setBodySource("html");
@@ -515,7 +547,9 @@ export default function ConsoleEmailBuilder({
         </main>
       ) : composerMode === "html" ? (
         <main className="min-h-0 flex-1 overflow-y-auto bg-paper-soft p-6">
+          {variables.length > 0 && <div className="mb-3 w-44"><BrandSelect value="" placeholder="＋ Attributes" compact onChange={insertInHtml} options={variables.map((item) => ({ value: item.token, label: item.label }))} searchable /></div>}
           <textarea
+            ref={htmlInput}
             value={freeformHtml}
             onChange={(e) => {
               setFreeformHtml(e.target.value);
@@ -572,7 +606,20 @@ export default function ConsoleEmailBuilder({
                     <p className="mt-0.5 text-xs text-ink-soft">{selectedDef.description}</p>
                   </div>
                   {emailBlockFields(selectedDef).length > 0 && (
-                    <FieldGroup fields={emailBlockFields(selectedDef)} values={selected.props} onChange={(next) => updateProps(selected.id, next)} linkOptions={[]} />
+                    <>
+                      <FieldGroup fields={emailBlockFields(selectedDef)} values={selected.props} onChange={(next) => updateProps(selected.id, next)} linkOptions={[]} />
+                      {variables.length > 0 && emailBlockFields(selectedDef).filter((field) => ["text", "textarea", "link"].includes(field.kind)).map((field) => {
+                        const choices = field.kind === "link" ? variables.filter((item) => /(?:_url|_link)$/.test(item.token)) : variables;
+                        return choices.length > 0 ? <div key={`attribute-${field.key}`}>
+                          <p className="mb-1 text-xs text-ink-soft">Insert attribute in {field.label}</p>
+                          <BrandSelect value="" placeholder="＋ Attributes" compact searchable options={choices.map((item) => ({ value: item.token, label: item.label }))} onChange={(token) => {
+                            const tag = `{{${token}}}`;
+                            const existing = String(selected.props[field.key] || "");
+                            updateProps(selected.id, { ...selected.props, [field.key]: field.kind === "link" ? tag : `${existing}${existing ? " " : ""}${tag}` });
+                          }} />
+                        </div> : null;
+                      })}
+                    </>
                   )}
                   <div className="space-y-4 border-t border-line pt-4">
                     <h3 className="text-xs font-semibold uppercase tracking-wider text-ink">Style</h3>

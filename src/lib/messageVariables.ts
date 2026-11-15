@@ -80,3 +80,15 @@ export function contactMessageValues(contact: {
 export function applyMessageVariables(text: string, values: Record<string, string>): string {
   return text.replace(/\{\{([a-zA-Z0-9_]+)\}\}/g, (_match, key: string) => escapeHtml(values[key] ?? ""));
 }
+
+/** Campaigns have a contact but no particular course or workflow event. */
+export function unsupportedCampaignVariables(...parts: string[]): string[] {
+  const supported = new Set(CONTACT_MESSAGE_VARIABLES.map((item) => item.token));
+  const found = new Set<string>();
+  for (const part of parts) {
+    for (const match of part.matchAll(/\{\{([a-zA-Z0-9_]+)\}\}/g)) {
+      if (!supported.has(match[1])) found.add(match[1]);
+    }
+  }
+  return [...found];
+}
