@@ -21,6 +21,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         email: typeof body?.testEmail === "string" ? body.testEmail.trim() : "",
         phone: typeof body?.testPhone === "string" ? body.testPhone.trim() : "",
       },
+      useRealEvent: body?.useRealEvent === true,
     });
     return NextResponse.json(result, { status: result.error ? 422 : 200 });
   } catch (error) {

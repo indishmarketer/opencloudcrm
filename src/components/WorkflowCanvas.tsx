@@ -69,6 +69,44 @@ function WorkflowNodeView({ id, data, selected }: NodeProps<CanvasNode>) {
 
 const nodeTypes = { workflow: WorkflowNodeView };
 
+function flattenFields(value: unknown, prefix: string, out: { path: string; value: string }[] = []) {
+  if (out.length >= 80) return out;
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    for (const [key, child] of Object.entries(value as Record<string, unknown>)) flattenFields(child, prefix ? `${prefix}.${key}` : key, out);
+  } else if (prefix) {
+    out.push({ path: prefix, value: value === null || value === undefined ? "" : typeof value === "string" ? value : JSON.stringify(value) });
+  }
+  return out;
+}
+
+/** The fields of the latest real occurrence of an event, n8n-style: click
+ * one to copy its {{merge field}} for use in any later step. */
+function EventDataPanel({ eventKey, prefix, title }: { eventKey: string; prefix: string; title: string }) {
+  const [state, setState] = useState<{ key: string; sample: Record<string, unknown> | null; loading: boolean; error: string }>({ key: "", sample: null, loading: false, error: "" });
+  const [copied, setCopied] = useState("");
+  async function load() {
+    setState({ key: eventKey, sample: null, loading: true, error: "" });
+    const response = await fetch(`/api/console/workflows/sample-event?eventKey=${encodeURIComponent(eventKey)}`).catch(() => null);
+    const body = await response?.json().catch(() => ({})) || {};
+    setState({ key: eventKey, sample: body.sample ?? null, loading: false, error: response?.ok ? "" : "Could not load data." });
+  }
+  const loaded = state.key === eventKey && !state.loading;
+  const fields = loaded && state.sample ? flattenFields(state.sample, prefix.replace(/\.$/, "")) : [];
+  async function copy(path: string) {
+    await navigator.clipboard?.writeText(`{{${path}}}`).catch(() => {});
+    setCopied(path);
+    setTimeout(() => setCopied(""), 1500);
+  }
+  return <div className="rounded-xl border border-line p-3">
+    <div className="flex items-center justify-between gap-2"><p className="text-xs font-semibold text-ink">{title}</p><button type="button" disabled={!eventKey || state.loading} onClick={() => void load()} className="rounded-full border border-line px-2.5 py-1 text-[11px] font-medium hover:border-ink disabled:opacity-50">{state.loading ? "Loading…" : loaded ? "Refresh" : "Load latest"}</button></div>
+    {!loaded ? <p className="mt-2 text-[11px] leading-4 text-ink-soft">Shows the fields from the most recent real event, so you can see exactly what this step receives.</p>
+      : state.error ? <p className="mt-2 text-[11px] text-red-700">{state.error}</p>
+      : !fields.length ? <p className="mt-2 text-[11px] leading-4 text-ink-soft">This event hasn&apos;t happened on the site yet. Trigger it once (e.g. submit a test tool), then load again.</p>
+      : <><p className="mt-2 text-[11px] leading-4 text-ink-soft">Click a field to copy its merge field, then paste it into a subject, body, condition or value.</p>
+        <div className="mt-2 max-h-72 space-y-1 overflow-y-auto">{fields.map((field) => <button key={field.path} type="button" onClick={() => void copy(field.path)} className="block w-full rounded-lg px-2 py-1.5 text-left hover:bg-paper-soft"><span className="block font-mono text-[11px] text-ink">{copied === field.path ? "Copied!" : `{{${field.path}}}`}</span><span className="block truncate text-[11px] text-ink-soft">{field.value || "(empty)"}</span></button>)}</div></>}
+  </div>;
+}
+
 function courseEvent(value: string) {
   return ["course.enrolled", "course.upgraded", "course.revoked", "course.completed", "course.inactivity", "payment.succeeded", "payment.failed"].includes(value);
 }
@@ -123,6 +161,7 @@ export default function WorkflowCanvas({
   const [testPrompt, setTestPrompt] = useState(false);
   const [testEmail, setTestEmail] = useState(initialTestEmail);
   const [testPhone, setTestPhone] = useState("");
+  const [useRealEvent, setUseRealEvent] = useState(false);
   const [webhookUrl, setWebhookUrl] = useState("");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -335,7 +374,7 @@ export default function WorkflowCanvas({
     setTestRunning(true); setError(""); setMessage(""); setTestResults([]);
     const response = await fetch(`/api/console/workflows/${initialWorkflow.id}/test`, {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ graph, triggerType, triggerKey, name, testEmail, testPhone }),
+      body: JSON.stringify({ graph, triggerType, triggerKey, name, testEmail, testPhone, useRealEvent: triggerType === "event" && useRealEvent }),
     }).catch(() => null);
     const body = await response?.json().catch(() => ({})) || {};
     setTestRunning(false);
@@ -411,7 +450,7 @@ export default function WorkflowCanvas({
 
         <aside className="hidden w-80 shrink-0 overflow-y-auto border-l border-line bg-paper p-5 xl:block">
           {selectedNode ? (
-            <NodeSettings node={selectedNode} emailNodes={nodes.filter((item) => item.data.kind === "email")} onChange={updateSelected} onOpenComposer={() => setComposerNodeId(selectedNode.id)} triggerType={triggerType} triggerKey={triggerKey} triggers={triggers} onTriggerTypeChange={changeTriggerType} onTriggerKeyChange={changeTriggerKey} onRotateWebhook={() => void rotateWebhook()} webhookUrl={webhookUrl} emailTemplates={emailTemplates} whatsappTemplates={whatsappTemplates} courses={courses} segments={segments} forms={forms} fromAddresses={fromAddresses} />
+            <NodeSettings node={selectedNode} eventWaitKey={String(nodes.find((item) => item.data.kind === "wait" && item.data.config.mode === "event")?.data.config.eventKey || "")} emailNodes={nodes.filter((item) => item.data.kind === "email")} onChange={updateSelected} onOpenComposer={() => setComposerNodeId(selectedNode.id)} triggerType={triggerType} triggerKey={triggerKey} triggers={triggers} onTriggerTypeChange={changeTriggerType} onTriggerKeyChange={changeTriggerKey} onRotateWebhook={() => void rotateWebhook()} webhookUrl={webhookUrl} emailTemplates={emailTemplates} whatsappTemplates={whatsappTemplates} courses={courses} segments={segments} forms={forms} fromAddresses={fromAddresses} />
           ) : (
             <div className="space-y-5">
               <p className="text-sm leading-6 text-ink-soft">Select a node to configure its trigger or action. Drag a node&apos;s output handle onto the canvas to add and connect the next step.</p>
@@ -443,15 +482,16 @@ export default function WorkflowCanvas({
           onSave={saveComposerEmail}
         />
       </div>}
-      {testPrompt && <div className="fixed inset-0 z-[110] flex items-center justify-center bg-ink/50 px-5"><section role="dialog" aria-modal="true" aria-labelledby="workflow-test-title" className="w-full max-w-md rounded-2xl border border-line bg-paper p-6 shadow-xl"><h2 id="workflow-test-title" className="font-display text-lg font-semibold">Run workflow test</h2><p className="mt-2 text-sm leading-6 text-ink-soft">This starts at the trigger, skips Wait nodes, and sends real messages to these test recipients. Course access, contact unsubscribe, and contact removal actions are held to protect real records.</p>{nodes.some((node) => node.data.kind === "email") && <label className="mt-4 block text-sm font-medium">Test email<input type="email" value={testEmail} onChange={(event) => setTestEmail(event.target.value)} className="mt-1.5 w-full rounded-lg border border-line px-3 py-2 text-sm outline-none focus:border-ink" /></label>}{nodes.some((node) => node.data.kind === "whatsapp") && <label className="mt-4 block text-sm font-medium">Test WhatsApp number<input type="tel" value={testPhone} onChange={(event) => setTestPhone(event.target.value)} placeholder="Include country code" className="mt-1.5 w-full rounded-lg border border-line px-3 py-2 text-sm outline-none focus:border-ink" /></label>}<div className="mt-6 flex justify-end gap-2"><button type="button" onClick={() => setTestPrompt(false)} className="rounded-full border border-line px-4 py-2 text-sm">Cancel</button><button type="button" disabled={testRunning} onClick={() => void runWorkflowTest()} className="rounded-full bg-ink px-4 py-2 text-sm text-paper disabled:opacity-50">{testRunning ? "Running…" : "Send test"}</button></div></section></div>}
+      {testPrompt && <div className="fixed inset-0 z-[110] flex items-center justify-center bg-ink/50 px-5"><section role="dialog" aria-modal="true" aria-labelledby="workflow-test-title" className="w-full max-w-md rounded-2xl border border-line bg-paper p-6 shadow-xl"><h2 id="workflow-test-title" className="font-display text-lg font-semibold">Run workflow test</h2><p className="mt-2 text-sm leading-6 text-ink-soft">This starts at the trigger, skips Wait nodes, and sends real messages to these test recipients. Course access, contact unsubscribe, and contact removal actions are held to protect real records.</p>{nodes.some((node) => node.data.kind === "email") && <label className="mt-4 block text-sm font-medium">Test email<input type="email" value={testEmail} onChange={(event) => setTestEmail(event.target.value)} className="mt-1.5 w-full rounded-lg border border-line px-3 py-2 text-sm outline-none focus:border-ink" /></label>}{nodes.some((node) => node.data.kind === "whatsapp") && <label className="mt-4 block text-sm font-medium">Test WhatsApp number<input type="tel" value={testPhone} onChange={(event) => setTestPhone(event.target.value)} placeholder="Include country code" className="mt-1.5 w-full rounded-lg border border-line px-3 py-2 text-sm outline-none focus:border-ink" /></label>}{triggerType === "event" && <label className="mt-4 flex items-start gap-2 text-sm"><input type="checkbox" checked={useRealEvent} onChange={(event) => setUseRealEvent(event.target.checked)} className="mt-1 h-4 w-4" /><span><span className="font-medium">Use the latest real event</span><span className="block text-xs leading-5 text-ink-soft">Runs on the data of the last time this event actually happened (e.g. your last tool submission), so conditions take the path real data would. Messages still go only to the test recipient above.</span></span></label>}<div className="mt-6 flex justify-end gap-2"><button type="button" onClick={() => setTestPrompt(false)} className="rounded-full border border-line px-4 py-2 text-sm">Cancel</button><button type="button" disabled={testRunning} onClick={() => void runWorkflowTest()} className="rounded-full bg-ink px-4 py-2 text-sm text-paper disabled:opacity-50">{testRunning ? "Running…" : "Send test"}</button></div></section></div>}
       {exitPrompt && <div className="fixed inset-0 z-[110] flex items-center justify-center bg-ink/50 px-5"><section role="alertdialog" aria-modal="true" aria-labelledby="workflow-exit-title" className="w-full max-w-md rounded-2xl border border-line bg-paper p-6 shadow-xl"><h2 id="workflow-exit-title" className="font-display text-lg font-semibold">Leave this workflow?</h2><p className="mt-2 text-sm leading-6 text-ink-soft">You have unsaved changes. Save them before leaving, or exit and discard those edits.</p><div className="mt-6 flex flex-wrap justify-end gap-2"><button type="button" onClick={() => setExitPrompt(false)} className="rounded-full border border-line px-4 py-2 text-sm font-medium">Cancel</button><button type="button" onClick={() => router.push("/console/workflows")} className="rounded-full border border-red-200 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50">Exit without saving</button><button type="button" disabled={saving} onClick={() => void saveAndExit()} className="rounded-full bg-ink px-4 py-2 text-sm font-medium text-paper disabled:opacity-50">{saving ? "Saving…" : "Save and exit"}</button></div></section></div>}
       {dialog}
     </div>
   );
 }
 
-function NodeSettings({ node, emailNodes, onChange, onOpenComposer, triggerType, triggerKey, triggers, onTriggerTypeChange, onTriggerKeyChange, onRotateWebhook, webhookUrl, emailTemplates, whatsappTemplates, courses, segments: _segments, forms, fromAddresses }: {
+function NodeSettings({ node, eventWaitKey, emailNodes, onChange, onOpenComposer, triggerType, triggerKey, triggers, onTriggerTypeChange, onTriggerKeyChange, onRotateWebhook, webhookUrl, emailTemplates, whatsappTemplates, courses, segments: _segments, forms, fromAddresses }: {
   node: CanvasNode;
+  eventWaitKey: string;
   emailNodes: CanvasNode[];
   onChange: (patch: Partial<CanvasNodeData>) => void;
   onOpenComposer: () => void;
@@ -498,6 +538,7 @@ function NodeSettings({ node, emailNodes, onChange, onOpenComposer, triggerType,
           <p className="text-xs leading-5 text-ink-soft">The course inactivity event is checked against the learner&apos;s last activity before this workflow starts. Add a Wait node for any additional reminder delay.</p>
         </>}
         {triggers.find((trigger) => trigger.value === triggerKey)?.description && <p className="text-xs leading-5 text-ink-soft">{triggers.find((trigger) => trigger.value === triggerKey)?.description}</p>}
+        {triggerKey && <EventDataPanel eventKey={triggerKey} prefix="" title="Data this trigger sends" />}
       </> : <div className="space-y-3"><p className="text-xs leading-5 text-ink-soft">Send a JSON POST request to start this workflow.</p><button type="button" onClick={onRotateWebhook} className="rounded-full border border-line px-3 py-2 text-xs font-medium">Create or rotate endpoint</button></div>}
       {webhookUrl && triggerType === "webhook" && <div><p className="text-xs text-ink-soft">Copy this URL now. It is shown only once.</p><input readOnly value={webhookUrl} className="mt-2 w-full rounded-lg border border-line bg-paper-soft px-3 py-2 text-xs" /></div>}
     </>}
@@ -516,7 +557,18 @@ function NodeSettings({ node, emailNodes, onChange, onOpenComposer, triggerType,
       <div><p className="mb-1.5 text-xs font-medium text-ink-soft">Engagement</p><BrandSelect value={String(config.condition || "opened")} onChange={(value) => set("condition", value)} options={[{ value: "opened", label: "Was opened" }, { value: "not_opened", label: "Was not opened" }, { value: "clicked", label: "Was clicked" }, { value: "not_clicked", label: "Was not clicked" }]} /></div>
       <p className="text-xs leading-5 text-ink-soft">The Yes path continues when the selected email matches. The No path runs otherwise.</p>
     </>}
-    {node.data.kind === "wait" && <>
+    {node.data.kind === "wait" && <div><p className="mb-1.5 text-xs font-medium text-ink-soft">Wait</p><BrandSelect value={config.mode === "event" ? "event" : "duration"} onChange={(value) => onChange({ config: value === "event" ? { ...config, mode: "event", eventKey: config.eventKey || (triggerKey.startsWith("directory_tool.") ? "directory_tool.reviewed" : triggers[0]?.value || ""), matchField: config.matchField || (triggerKey.startsWith("directory_tool.") ? "data.tool_id" : "contact_id"), timeoutDays: config.timeoutDays || 30, filterField: config.filterField ?? "", filterValue: config.filterValue ?? "" } : { ...config, mode: "duration" } })} options={[{ value: "duration", label: "For a set time" }, { value: "event", label: "Until an event happens" }]} /></div>}
+    {node.data.kind === "wait" && config.mode === "event" && <>
+      <div><p className="mb-1.5 text-xs font-medium text-ink-soft">Continue when this happens</p><BrandSelect value={String(config.eventKey || "")} onChange={(value) => set("eventKey", value)} options={triggers.map((trigger) => ({ value: trigger.value, label: trigger.label }))} searchable searchPlaceholder="Find an event" placeholder="Choose an event" /></div>
+      {field("…for the same", "matchField", "data.tool_id")}
+      <p className="-mt-2 text-[11px] leading-4 text-ink-soft">The field both events share, so this run only continues for its own record. For tools use <code>data.tool_id</code>; for a person use <code>contact_id</code>.</p>
+      {field("Only if this field (optional)", "filterField", "data.status")}
+      {String(config.filterField || "") && field("…equals", "filterValue", "published")}
+      <label className="block text-xs font-medium text-ink-soft">Give up after (days)<input type="number" min={1} max={365} value={String(config.timeoutDays ?? 30)} onChange={(event) => set("timeoutDays", Number(event.target.value))} className="mt-1.5 w-full rounded-lg border border-line px-3 py-2 text-sm text-ink outline-none focus:border-ink" /></label>
+      <p className="text-xs leading-5 text-ink-soft">The run pauses here until the event happens for the same record, then continues. If it never happens in time, the run ends. Later steps can use that event&apos;s data as <code>{"{{waited.data.…}}"}</code>.</p>
+      {String(config.eventKey || "") && <EventDataPanel eventKey={String(config.eventKey)} prefix="waited" title="Data from the awaited event" />}
+    </>}
+    {node.data.kind === "wait" && config.mode !== "event" && <>
       <label className="block text-xs font-medium text-ink-soft">Wait for<input type="number" min={1} max={525600} value={String(config.duration ?? 1)} onChange={(event) => set("duration", Number(event.target.value))} className="mt-1.5 w-full rounded-lg border border-line px-3 py-2 text-sm text-ink outline-none focus:border-ink" /></label>
       <div><p className="mb-1.5 text-xs font-medium text-ink-soft">Unit</p><BrandSelect value={String(config.unit || "days")} onChange={(value) => set("unit", value)} options={[{ value: "minutes", label: "Minutes" }, { value: "hours", label: "Hours" }, { value: "days", label: "Days" }]} /></div>
       <div><p className="mb-1.5 text-xs font-medium text-ink-soft">Start counting from</p><BrandSelect value={String(config.anchorPath || "")} onChange={(value) => set("anchorPath", value)} options={[{ value: "", label: "When this step is reached" }, { value: "data.last_active_at", label: "Last course activity" }, { value: "occurred_at", label: "Workflow event time" }]} /></div>
@@ -586,5 +638,10 @@ function NodeSettings({ node, emailNodes, onChange, onOpenComposer, triggerType,
       <p className="text-xs leading-5 text-ink-soft">This action only removes contacts already unsubscribed, hard-bounced, or invalid. Spam complaint records are retained. It cannot delete an active, deliverable contact.</p>
     </>}
     {node.data.kind === "stop" && <p className="text-sm text-ink-soft">Ends this workflow path.</p>}
+    {["condition", "email", "whatsapp", "webhook", "contact_update"].includes(node.data.kind) && triggerType === "event" && triggerKey && <div className="space-y-3 border-t border-line pt-4">
+      <p className="text-xs font-semibold uppercase tracking-wide text-ink-soft">Data you can use</p>
+      <EventDataPanel eventKey={triggerKey} prefix="" title="From the trigger" />
+      {eventWaitKey && <EventDataPanel eventKey={eventWaitKey} prefix="waited" title="From the awaited event (after the wait)" />}
+    </div>}
   </div>;
 }

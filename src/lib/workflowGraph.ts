@@ -86,7 +86,7 @@ export function workflowEventLabel(key: string): string {
 const SITE_WORKFLOW_EVENT_KEYS = [
   "contact.verified", "newsletter.unsubscribed", "course.enrolled", "course.upgraded",
   "course.revoked", "course.completed", "course.inactivity", "payment.succeeded", "payment.failed",
-  "directory_tool.submitted", "directory_tool.reviewed",
+  "directory_tool.submitted", "directory_tool.reviewed", "directory_tool.paid",
 ] as const;
 
 /** Email verification requested is deliberately not offered: signup and
@@ -170,7 +170,12 @@ export function workflowReadinessIssues(graph: WorkflowGraph): string[] {
       issues.push(`Choose a contact field and value for "${node.data.label}".`);
     }
     if (node.data.kind === "contact_delete" && config.confirm !== true) issues.push(`Confirm contact removal for "${node.data.label}".`);
-    if (node.data.kind === "wait") {
+    if (node.data.kind === "wait" && config.mode === "event") {
+      if (!(SITE_WORKFLOW_EVENT_KEYS as readonly string[]).includes(String(config.eventKey))) issues.push(`Choose the event to wait for in "${node.data.label}".`);
+      if (!/^[a-zA-Z0-9_.]+$/.test(String(config.matchField || ""))) issues.push(`Choose which field links the event to this run in "${node.data.label}".`);
+      const timeoutDays = Number(config.timeoutDays);
+      if (!Number.isInteger(timeoutDays) || timeoutDays < 1 || timeoutDays > 365) issues.push(`Give up after 1 to 365 days in "${node.data.label}".`);
+    } else if (node.data.kind === "wait") {
       const duration = Number(config.duration);
       const multiplier = config.unit === "minutes" ? 1 : config.unit === "hours" ? 60 : config.unit === "days" ? 1440 : 0;
       if (!Number.isFinite(duration) || duration < 1 || duration * multiplier > 525600) issues.push(`Choose a wait duration from 1 minute up to 365 days for "${node.data.label}".`);
@@ -229,7 +234,9 @@ export function simulateWorkflowGraph(graph: WorkflowGraph, payload: unknown): W
       continue;
     }
     if (node.data.kind === "wait") {
-      results.set(node.id, { nodeId: node.id, label: node.data.label, status: "passed", message: `Wait duration is valid (${node.data.config.duration} ${node.data.config.unit}); test did not pause.` });
+      results.set(node.id, { nodeId: node.id, label: node.data.label, status: "passed", message: node.data.config.mode === "event"
+        ? `Waits for ${workflowEventLabel(String(node.data.config.eventKey))}; test did not pause.`
+        : `Wait duration is valid (${node.data.config.duration} ${node.data.config.unit}); test did not pause.` });
     } else if (node.data.kind === "stop") {
       results.set(node.id, { nodeId: node.id, label: node.data.label, status: "passed", message: "Workflow path ends here." });
       continue;

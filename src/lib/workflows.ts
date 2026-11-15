@@ -475,6 +475,9 @@ async function executeRun(run: { id: number; workflow_id: number; trigger_payloa
     source: workflowData.source || contact.source || "",
     contact: { ...contact, first_name: firstName },
     data: workflowData,
+    // The event a "Wait until an event" step resumed on (latest wins), so
+    // later steps can read e.g. {{waited.data.status}}.
+    waited: (run.node_results?.__waitedEvent as Record<string, unknown> | undefined) ?? undefined,
   };
   const trigger = run.graph.nodes.find((node) => node.data.kind === "trigger");
   if (!trigger) throw new Error("Workflow trigger node is missing.");
@@ -511,6 +514,14 @@ async function executeRun(run: { id: number; workflow_id: number; trigger_payloa
   const results = { ...(run.node_results || {}) };
   const savedQueue = Array.isArray(results.__workflowQueue) ? results.__workflowQueue as { id: string; handle: string | null }[] : null;
   delete results.__workflowQueue;
+  // Still awaiting an event when the dispatcher picks the run up means the
+  // give-up deadline passed without it: end the run here.
+  if (results.__awaitEvent && typeof results.__awaitEvent === "object") {
+    const awaited = results.__awaitEvent as { nodeId: string };
+    delete results.__awaitEvent;
+    results[awaited.nodeId] = { timedOut: true };
+    return { ...results, __workflowExited: { reason: "The awaited event did not happen before the deadline." } };
+  }
   const queue = savedQueue || outgoing(trigger.id).map((edge) => ({ id: edge.target, handle: edge.sourceHandle || null }));
   const visited = new Set<string>();
   while (queue.length) {
@@ -582,6 +593,35 @@ async function executeRun(run: { id: number; workflow_id: number; trigger_payloa
       queue.push(...outgoing(node.id).filter((edge) => edge.sourceHandle === (passed ? "true" : "false")).map((edge) => ({ id: edge.target, handle: edge.sourceHandle || null })));
       continue;
     }
+    if (node.data.kind === "wait" && node.data.config.mode === "event") {
+      const config = node.data.config;
+      const matchField = String(config.matchField || "data.tool_id");
+      const matchValue = valueAtPath(payload, matchField);
+      if (test) {
+        results[node.id] = { skippedWait: true, test: true };
+        queue.push(...outgoing(node.id).map((edge) => ({ id: edge.target, handle: edge.sourceHandle || null })));
+        continue;
+      }
+      if (matchValue === undefined || matchValue === null || matchValue === "") {
+        throw new Error(`"${node.data.label}" could not find ${matchField} in this run's data to match the awaited event.`);
+      }
+      const timeoutDays = Math.max(1, Math.min(365, Number(config.timeoutDays) || 30));
+      const giveUpAt = new Date(Date.now() + timeoutDays * 86_400_000);
+      const continuation = [...queue, ...outgoing(node.id).map((edge) => ({ id: edge.target, handle: edge.sourceHandle || null }))];
+      await pool.query(
+        "UPDATE automation_workflow_runs SET status = 'queued', started_at = NULL, wait_until = $2, node_results = $3::jsonb WHERE id = $1",
+        [run.id, giveUpAt, JSON.stringify({
+          ...results,
+          [node.id]: { waitingForEvent: String(config.eventKey), giveUpAt: giveUpAt.toISOString() },
+          __workflowQueue: continuation,
+          __awaitEvent: {
+            nodeId: node.id, eventKey: String(config.eventKey), matchField, matchValue: String(matchValue),
+            filterField: String(config.filterField || ""), filterValue: String(config.filterValue ?? ""),
+          },
+        })],
+      );
+      return { ...results, __waitScheduled: true };
+    }
     if (node.data.kind === "wait") {
       const duration = Number(node.data.config.duration);
       const multiplier = node.data.config.unit === "minutes" ? 60_000 : node.data.config.unit === "hours" ? 3_600_000 : 86_400_000;
@@ -624,18 +664,40 @@ async function executeRun(run: { id: number; workflow_id: number; trigger_payloa
   return results;
 }
 
+/** The most recent real occurrence of an event, as workflows receive it --
+ * what the canvas shows as sample data and what a test can replay. */
+export async function latestEventSample(eventKey: string): Promise<Record<string, unknown> | null> {
+  if (!isSupportedWorkflowEvent(eventKey)) return null;
+  const result = await pool.query<{ payload: Record<string, unknown> }>(
+    "SELECT payload FROM webhook_outbox_events WHERE event_type = $1 ORDER BY occurred_at DESC, id DESC LIMIT 1",
+    [eventKey],
+  );
+  return result.rows[0]?.payload ?? null;
+}
+
 /** Executes a manual test against the current graph. Waits are skipped and
- * communications are redirected to the administrator-supplied test address. */
+ * communications are redirected to the administrator-supplied test address.
+ * With `realEvent`, the run uses that recorded event (and `waitedEvent` for
+ * {{waited.…}}) so conditions branch on real values instead of being forced. */
 export async function executeWorkflowTest(input: {
   workflowId: number;
   graph: WorkflowGraph;
   triggerKey: string;
   recipient: WorkflowTestRecipient;
+  realEvent?: Record<string, unknown> | null;
+  waitedEvent?: Record<string, unknown> | null;
 }): Promise<Record<string, unknown>> {
   const issues = workflowReadinessIssues(input.graph);
   if (issues.length) throw new Error(issues[0]);
   const trigger = input.graph.nodes.find((node) => node.data.kind === "trigger");
   if (!trigger) throw new Error("Workflow trigger node is missing.");
+  if (input.realEvent) {
+    // contact_id is dropped so the run uses the test recipient, never the
+    // real person's address.
+    const replay = { ...input.realEvent, contact_id: null, _workflow_test: true };
+    return executeRun({ id: 0, workflow_id: input.workflowId, trigger_payload: replay, graph: input.graph,
+      node_results: input.waitedEvent ? { __waitedEvent: input.waitedEvent } : {} }, input.recipient);
+  }
   const data: Record<string, unknown> = {
     source: "workflow_test",
     email: input.recipient.email || "",

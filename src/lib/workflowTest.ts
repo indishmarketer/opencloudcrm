@@ -1,6 +1,6 @@
 import type { WorkflowGraph } from "@/lib/workflowGraph";
 import { workflowReadinessIssues } from "@/lib/workflowGraph";
-import { executeWorkflowTest } from "@/lib/workflows";
+import { executeWorkflowTest, latestEventSample } from "@/lib/workflows";
 import { listWhatsAppTemplates } from "@/lib/whatsappTemplates";
 
 export class WorkflowTestError extends Error {
@@ -12,6 +12,7 @@ export async function runWorkflowTest(input: {
   graph: WorkflowGraph;
   triggerKey: string;
   recipient: { email: string; phone: string };
+  useRealEvent?: boolean;
 }) {
   if (input.graph.nodes.some((node) => node.data.kind === "email") && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.recipient.email)) {
     throw new WorkflowTestError("Enter a valid test email address.", 400);
@@ -32,7 +33,15 @@ export async function runWorkflowTest(input: {
       }
     }
   }
-  const raw = await executeWorkflowTest({ ...input, triggerKey: input.triggerKey || "workflow.test" });
+  let realEvent: Record<string, unknown> | null = null;
+  let waitedEvent: Record<string, unknown> | null = null;
+  if (input.useRealEvent) {
+    realEvent = await latestEventSample(input.triggerKey);
+    if (!realEvent) throw new WorkflowTestError("This event has not happened on the site yet, so there is no real data to test with. Test with sample data instead.");
+    const eventWait = input.graph.nodes.find((node) => node.data.kind === "wait" && node.data.config.mode === "event");
+    if (eventWait) waitedEvent = await latestEventSample(String(eventWait.data.config.eventKey));
+  }
+  const raw = await executeWorkflowTest({ ...input, triggerKey: input.triggerKey || "workflow.test", realEvent, waitedEvent });
   const failedNodeId = String(raw.__testFailedNode || "");
   const steps = input.graph.nodes.map((node) => {
     const result = raw[node.id] as Record<string, unknown> | undefined;
@@ -40,7 +49,7 @@ export async function runWorkflowTest(input: {
     const skipped = result?.skipped === true || result?.skippedWait === true || !result;
     const message = failed ? String(result?.error || "Action failed.")
       : !result ? "This step is on a branch the test trigger did not take."
-      : result.skippedWait ? "Wait skipped for test."
+      : result.skippedWait ? (node.data.config.mode === "event" ? "Event wait skipped for test; later steps used the latest real event of that type as {{waited.…}} when available." : "Wait skipped for test.")
       : result.skipped ? String(result.reason || "Skipped during test.")
       : node.data.kind === "condition" ? `Condition: ${result.passed ? "Yes" : "No"}.`
       : node.data.kind === "trigger" ? "Test trigger started."

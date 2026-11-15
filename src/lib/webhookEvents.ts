@@ -3,6 +3,7 @@ import { pool, withTransaction } from "@/lib/db";
 import { ensureContact } from "@/lib/contacts";
 import { buildEventEnvelope } from "@/lib/webhookRedaction";
 import { isValidWebhookEventType, type WebhookEventType } from "@/lib/webhookEventCatalogue";
+import { resumeRunsWaitingForEvent } from "@/lib/workflowEventWaits";
 
 /**
  * The one documented helper for emitting a real outbound webhook event.
@@ -92,5 +93,8 @@ export async function emitWebhookEvent(input: {
       "SELECT queue_visual_workflow_event_record($1::uuid, $2, $3::jsonb)",
       [storedEvent.event_uuid, storedEvent.event_type, JSON.stringify(storedEvent.payload)],
     );
+    // Never fail the caller's action because a paused workflow couldn't wake.
+    await resumeRunsWaitingForEvent(storedEvent.event_type, storedEvent.payload as unknown as Record<string, unknown>)
+      .catch((error) => console.error("Resuming event-waiting workflow runs failed:", error));
   }
 }

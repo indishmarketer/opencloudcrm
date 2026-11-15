@@ -1,5 +1,5 @@
 import { pool } from "@/lib/db";
-import { emitToolReviewEvent } from "@/lib/directoryReview";
+import { emitToolReviewEvent, emitToolPaidEvent } from "@/lib/directoryReview";
 import { raiseInboxAlert } from "@/lib/systemAlerts";
 
 export type ListingPaymentProvider = "razorpay" | "paypal";
@@ -206,6 +206,8 @@ export async function settleDirectoryListingPayment(input: {
     client.release();
   }
 
+  const paidToolId = toolId ?? pendingToolId;
+  if (paidToolId !== null) await emitToolPaidEvent(paidToolId).catch((error) => console.error("Paid listing payment event failed:", error));
   if (toolId !== null) {
     await emitToolReviewEvent(toolId, "published").catch((error) => console.error("Paid listing publication event failed:", error));
     void raiseInboxAlert({

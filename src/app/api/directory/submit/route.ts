@@ -154,7 +154,7 @@ export async function POST(req: NextRequest) {
     contactName: user.rows[0]?.name || null,
     userId: session.userId,
     data: { tool_id: tool.id, tool_name: fields.name, website_url: fields.website_url, pricing_type: fields.pricing_type,
-      edit_url: `${SITE_URL}/account/tools/${tool.id}`, manage_url: `${SITE_URL}/account/tools` },
+      listing_tier: body.listing_tier === "paid" ? "paid" : "free", edit_url: `${SITE_URL}/account/tools/${tool.id}`, manage_url: `${SITE_URL}/account/tools` },
   }).catch(() => {});
 
   await notifyAdminOfTool(session.email, "submitted a new tool:", fields.name).catch(() => {});

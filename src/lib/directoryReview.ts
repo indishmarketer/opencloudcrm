@@ -164,6 +164,22 @@ export async function emitToolReviewEvent(toolId: number, status: string, note: 
   });
 }
 
+/** Fired when a paid listing's fee clears, whether or not it has been
+ * reviewed yet, so a workflow can wait on the payment. */
+export async function emitToolPaidEvent(toolId: number): Promise<void> {
+  const tool = await loadTool(toolId);
+  if (!tool) return;
+  const submitter = await getSubmitter(toolId);
+  await emitWebhookEvent({
+    eventType: "directory_tool.paid",
+    source: "directory_tools",
+    sourceRecordId: toolId,
+    contactEmail: submitter?.email || null,
+    contactName: submitter?.name || null,
+    data: { tool_id: toolId, tool_name: tool.name, website_url: tool.website_url, listing_tier: tool.listing_tier, status: tool.status, ...toolUrls(tool) },
+  });
+}
+
 /** Sends the "your tool is live" email once per tool. Marked as sent
  * before sending so two clicks can't send it twice. */
 export async function sendApprovedEmail(toolId: number): Promise<"sent" | "skipped" | "already"> {
