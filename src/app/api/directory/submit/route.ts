@@ -5,9 +5,9 @@ import { checkRateLimit } from "@/lib/rateLimit";
 import { verifyTurnstile } from "@/lib/turnstile";
 import { slugify } from "@/lib/directory";
 import { findToolLogo, uploadDirectoryAsset } from "@/lib/logoFetch";
-import { escapeHtml } from "@/lib/escapeHtml";
+import { SITE_URL } from "@/lib/siteMeta";
 import { emitWebhookEvent } from "@/lib/webhookEvents";
-import { parseToolFields, emailSubmitter, notifyAdminOfTool, cleanToolUrl } from "@/lib/directoryReview";
+import { parseToolFields, notifyAdminOfTool, cleanToolUrl } from "@/lib/directoryReview";
 import { raiseInboxAlert } from "@/lib/systemAlerts";
 
 type OwnListing = {
@@ -146,17 +146,17 @@ export async function POST(req: NextRequest) {
   const tool = inserted.rows[0];
 
   const user = await pool.query("SELECT name FROM users WHERE id = $1", [session.userId]);
-  emitWebhookEvent({
+  await emitWebhookEvent({
     eventType: "directory_tool.submitted",
     source: "directory_tools",
     sourceRecordId: tool.id,
     contactEmail: session.email,
     contactName: user.rows[0]?.name || null,
     userId: session.userId,
-    data: { tool_id: tool.id, name: fields.name, website_url: fields.website_url, pricing_type: fields.pricing_type },
+    data: { tool_id: tool.id, tool_name: fields.name, website_url: fields.website_url, pricing_type: fields.pricing_type,
+      edit_url: `${SITE_URL}/account/tools/${tool.id}`, manage_url: `${SITE_URL}/account/tools` },
   }).catch(() => {});
 
-  await emailSubmitter(tool.id, "tool-submission-received", { tool_name: escapeHtml(fields.name) });
   await notifyAdminOfTool(session.email, "submitted a new tool:", fields.name).catch(() => {});
   // Not awaited: a submission must not fail because the notification did.
   raiseInboxAlert({

@@ -10,7 +10,7 @@ import { useRouter } from "next/navigation";
 import BrandSelect from "@/components/BrandSelect";
 import { useConfirm } from "@/components/ConfirmDialog";
 import EmailWorkflowBodyEditor from "@/components/EmailWorkflowBodyEditor";
-import { VERIFIED_CONTACT_SOURCES, type WorkflowGraph, type WorkflowNodeKind } from "@/lib/workflowGraph";
+import { VERIFIED_CONTACT_SOURCES, VERIFIED_CONTACT_SOURCE_OPTIONS, type WorkflowGraph, type WorkflowNodeKind } from "@/lib/workflowGraph";
 
 type CanvasNodeData = { kind: WorkflowNodeKind; label: string; config: Record<string, unknown> };
 type CanvasNode = Node<CanvasNodeData, "workflow">;
@@ -71,6 +71,12 @@ const workflowEmailVariables = [
   { token: "data.expires_minutes", label: "Code expiry (minutes)" },
   { token: "data.confirm_url", label: "Email change confirmation link" }, { token: "data.current_email", label: "Previous email address" },
   { token: "data.link", label: "Console login link" }, { token: "data.invited_by", label: "Invited by" },
+  { token: "data.tool_id", label: "Tool ID" }, { token: "data.tool_name", label: "Tool name" },
+  { token: "data.website_url", label: "Tool website" }, { token: "data.tool_url", label: "Published tool link" },
+  { token: "data.edit_url", label: "Edit submission link" }, { token: "data.manage_url", label: "Manage tools link" },
+  { token: "data.payment_url", label: "Listing payment link" },
+  { token: "data.pricing_type", label: "Tool pricing" }, { token: "data.status", label: "Review status" },
+  { token: "data.note", label: "Review note" },
 ];
 
 const workflowEventFields: Record<string, string[]> = {
@@ -83,6 +89,8 @@ const workflowEventFields: Record<string, string[]> = {
   "course.inactivity": ["course_id", "course_title", "course_slug", "course_url", "completed_lessons", "total_lessons", "current_module", "current_lesson"],
   "payment.succeeded": ["course_id", "course_title", "course_slug", "course_url", "amount", "currency", "method"],
   "payment.failed": ["course_id", "course_title", "course_slug", "failure_code", "payment_id", "order_id"],
+  "directory_tool.submitted": ["tool_id", "tool_name", "website_url", "edit_url", "manage_url", "pricing_type"],
+  "directory_tool.reviewed": ["tool_id", "tool_name", "website_url", "tool_url", "edit_url", "manage_url", "payment_url", "pricing_type", "status", "note"],
 };
 
 function attributesForWorkflow(triggerKey: string) {
@@ -273,7 +281,9 @@ export default function WorkflowCanvas({
     pushHistory();
     const id = `${kind}-${crypto.randomUUID().slice(0, 8)}`;
     const config: Record<string, unknown> = kind === "condition"
-      ? { field: "data.phone", operator: "exists", value: "" }
+      ? triggerKey === "directory_tool.reviewed"
+        ? { field: "data.status", operator: "equals", value: "published" }
+        : { field: "data.phone", operator: "exists", value: "" }
       : kind === "email_condition"
         ? { condition: "opened", emailNodeId: "", testEngagement: "opened" }
       : kind === "google_review_request"
@@ -481,7 +491,7 @@ function NodeSettings({ node, emailNodes, onChange, triggerType, triggerKey, tri
       <div><p className="mb-1.5 text-xs font-medium text-ink-soft">Start when</p><BrandSelect value={triggerType} onChange={(value) => onTriggerTypeChange(value as "event" | "webhook")} options={[{ value: "event", label: "A site event occurs" }, { value: "webhook", label: "An external app calls a webhook" }]} /></div>
       {triggerType === "event" ? <>
         <div><p className="mb-1.5 text-xs font-medium text-ink-soft">Site event</p><BrandSelect value={triggerKey} onChange={onTriggerKeyChange} options={[...triggers, ...(triggerKey && !triggers.some((trigger) => trigger.value === triggerKey) ? [{ value: triggerKey, label: node.data.label, description: "Existing workflow event" }] : [])].map((trigger) => ({ value: trigger.value, label: trigger.label }))} searchable searchPlaceholder="Find an event" /></div>
-        {triggerKey === "contact.verified" && <div><p className="mb-1.5 text-xs font-medium text-ink-soft">Source</p><BrandSelect value={String(config.source || "")} onChange={(value) => set("source", value)} options={[{ value: "", label: "Any verified source" }, ...VERIFIED_CONTACT_SOURCES]} searchable placeholder="Any verified source" /></div>}
+        {triggerKey === "contact.verified" && <div><p className="mb-1.5 text-xs font-medium text-ink-soft">Source</p><BrandSelect value={String(config.source || "")} onChange={(value) => set("source", value)} options={[{ value: "", label: "Any verified source" }, ...VERIFIED_CONTACT_SOURCE_OPTIONS, ...VERIFIED_CONTACT_SOURCES.filter((source) => source.value === config.source)]} searchable placeholder="Any verified source" /></div>}
         {courseEvent(triggerKey) && <>
           <div><p className="mb-1.5 text-xs font-medium text-ink-soft">Course</p><BrandSelect value={String(config.courseId || "")} onChange={(value) => set("courseId", value)} options={[{ value: "", label: "Any course" }, ...courses.map((course) => ({ value: String(course.id), label: course.title }))]} searchable placeholder="Any course" /></div>
         </>}
@@ -501,9 +511,14 @@ function NodeSettings({ node, emailNodes, onChange, triggerType, triggerKey, tri
       {webhookUrl && triggerType === "webhook" && <div><p className="text-xs text-ink-soft">Copy this URL now. It is shown only once.</p><input readOnly value={webhookUrl} className="mt-2 w-full rounded-lg border border-line bg-paper-soft px-3 py-2 text-xs" /></div>}
     </>}
     {node.data.kind === "condition" && <>
-      {field("Payload field", "field", "data.phone")}
-      <div><p className="mb-1.5 text-xs font-medium text-ink-soft">Rule</p><BrandSelect value={String(config.operator || "exists")} onChange={(value) => set("operator", value)} options={[{ value: "exists", label: "Has a value" }, { value: "missing", label: "Is empty" }, { value: "equals", label: "Equals" }, { value: "not_equals", label: "Does not equal" }, { value: "contains", label: "Contains" }, { value: "greater_than", label: "Greater than" }, { value: "less_than", label: "Less than" }]} /></div>{field("Value", "value", "Optional comparison value")}
-      <p className="text-xs leading-5 text-ink-soft">Connect the green Yes and red No handles to separate paths. Fields use dot notation, for example data.email or contact.phone.</p>
+      {triggerKey === "directory_tool.reviewed"
+        ? <div><p className="mb-1.5 text-xs font-medium text-ink-soft">Tool review field</p><BrandSelect value={String(config.field || "")} onChange={(value) => set("field", value)} options={[{ value: "data.status", label: "Review status" }, { value: "data.pricing_type", label: "Pricing type" }, { value: "data.website_url", label: "Tool website" }, { value: "data.note", label: "Review note" }]} placeholder="Choose a field" /></div>
+        : field("Payload field", "field", "data.phone")}
+      <div><p className="mb-1.5 text-xs font-medium text-ink-soft">Rule</p><BrandSelect value={String(config.operator || "exists")} onChange={(value) => set("operator", value)} options={[{ value: "exists", label: "Has a value" }, { value: "missing", label: "Is empty" }, { value: "equals", label: "Equals" }, { value: "not_equals", label: "Does not equal" }, { value: "contains", label: "Contains" }, { value: "greater_than", label: "Greater than" }, { value: "less_than", label: "Less than" }]} /></div>
+      {triggerKey === "directory_tool.reviewed" && config.field === "data.status" && ["equals", "not_equals"].includes(String(config.operator))
+        ? <div><p className="mb-1.5 text-xs font-medium text-ink-soft">Review status</p><BrandSelect value={String(config.value || "")} onChange={(value) => set("value", value)} options={[{ value: "published", label: "Published" }, { value: "approved_unpaid", label: "Approved, awaiting payment" }, { value: "changes_requested", label: "Changes requested" }, { value: "rejected", label: "Declined" }]} placeholder="Choose a status" /></div>
+        : field("Value", "value", "Optional comparison value")}
+      <p className="text-xs leading-5 text-ink-soft">Connect the green Yes and red No handles to separate paths. For a publish email, choose Review status, Equals, Published; connect Yes to Email and No to End.</p>
     </>}
     {node.data.kind === "email_condition" && <>
       <div><p className="mb-1.5 text-xs font-medium text-ink-soft">Check this email</p><BrandSelect value={String(config.emailNodeId || "")} onChange={(value) => set("emailNodeId", value)} options={emailNodes.map((emailNode) => ({ value: emailNode.id, label: emailNode.data.label }))} placeholder="Select an earlier email" /></div>

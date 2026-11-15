@@ -4,9 +4,8 @@ import { reviewTool, sendApprovedEmail, type ReviewAction } from "@/lib/director
 
 const ACTIONS = ["approve", "request_changes", "reject", "send_approval_email"] as const;
 
-/** Review decision on a tool submission. Every decision emails the
- * submitter (unless they're an admin). "send_approval_email" sends the
- * "your tool is live" email for a tool approved before it existed. */
+/** Review decisions emit workflow events. A change request sends its written
+ * note directly. The legacy send_approval_email action remains manual. */
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!(await getAdminSession())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 

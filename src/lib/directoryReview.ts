@@ -1,4 +1,5 @@
 import { pool } from "@/lib/db";
+import { randomUUID } from "node:crypto";
 import { sendEmail } from "@/lib/email";
 import { getEmailTemplateOptional, applyTemplateVars } from "@/lib/emailTemplates";
 import { escapeHtml } from "@/lib/escapeHtml";
@@ -139,11 +140,28 @@ export async function notifyAdminOfTool(submitterEmail: string, eventText: strin
 
 async function loadTool(toolId: number) {
   const result = await pool.query(
-    `SELECT t.id, t.slug, t.name, t.status, t.listing_tier, t.paid_at, t.approved_email_sent_at, c.slug AS category_slug
+    `SELECT t.id, t.slug, t.name, t.website_url, t.pricing_type, t.status, t.listing_tier, t.paid_at, t.approved_email_sent_at, c.slug AS category_slug
      FROM directory_tools t JOIN directory_categories c ON c.id = t.category_id WHERE t.id = $1`,
     [toolId]
   );
   return result.rows[0] || null;
+}
+
+/** Each review decision is a separate event, including a later publish after payment. */
+export async function emitToolReviewEvent(toolId: number, status: string, note: string | null = null): Promise<void> {
+  const tool = await loadTool(toolId);
+  if (!tool) return;
+  const submitter = await getSubmitter(toolId);
+  const urls = toolUrls(tool);
+  await emitWebhookEvent({
+    eventType: "directory_tool.reviewed",
+    source: "directory_tools",
+    sourceRecordId: `${toolId}:${status}:${randomUUID()}`,
+    contactEmail: submitter?.email || null,
+    contactName: submitter?.name || null,
+    data: { tool_id: toolId, tool_name: tool.name, website_url: tool.website_url,
+      pricing_type: tool.pricing_type, status, note, payment_url: urls.manage_url, ...urls },
+  });
 }
 
 /** Sends the "your tool is live" email once per tool. Marked as sent
@@ -172,8 +190,8 @@ export async function sendApprovedEmail(toolId: number): Promise<"sent" | "skipp
 
 export type ReviewAction = "approve" | "request_changes" | "reject";
 
-/** One review decision on a submission: updates the status and emails the
- * submitter. Returns what happened to the email. */
+/** One review decision on a submission. Request changes has its own direct
+ * message; submitted and published messages belong to visual workflows. */
 export async function reviewTool(
   toolId: number,
   action: ReviewAction,
@@ -182,15 +200,7 @@ export async function reviewTool(
   const tool = await loadTool(toolId);
   if (!tool) return { ok: false, error: "Tool not found." };
   const cleanNote = note?.trim().slice(0, 3000) || null;
-  const submitter = await getSubmitter(toolId);
-  const emitReviewed = (status: string) => emitWebhookEvent({
-    eventType: "directory_tool.reviewed",
-    source: "directory_tools",
-    sourceRecordId: toolId,
-    contactEmail: submitter?.email || null,
-    contactName: submitter?.name || null,
-    data: { tool_id: toolId, tool_name: tool.name, status, note: cleanNote },
-  }).catch(() => {});
+  const emitReviewed = (status: string) => emitToolReviewEvent(toolId, status, cleanNote).catch(() => {});
 
   if (action === "approve") {
     // A paid listing that already paid during the submit flow publishes
@@ -201,20 +211,15 @@ export async function reviewTool(
         "UPDATE directory_tools SET status = 'approved_unpaid', review_note = NULL, reviewed_at = now(), updated_at = now() WHERE id = $1",
         [toolId],
       );
-      const sent = await emailSubmitter(toolId, "tool-submission-approved-payment", {
-        tool_name: escapeHtml(tool.name),
-        payment_url: `${SITE_URL}/account/tools`,
-      });
-      emitReviewed("approved_unpaid");
-      return { ok: true, email: sent ? "sent" : "skipped" };
+      await emitReviewed("approved_unpaid");
+      return { ok: true, email: "skipped" };
     }
     await pool.query(
       "UPDATE directory_tools SET status = 'published', review_note = NULL, reviewed_at = now(), updated_at = now() WHERE id = $1",
       [toolId]
     );
-    const email = await sendApprovedEmail(toolId);
-    emitReviewed("published");
-    return { ok: true, email };
+    await emitReviewed("published");
+    return { ok: true, email: "skipped" };
   }
 
   if (action === "request_changes") {
@@ -225,23 +230,23 @@ export async function reviewTool(
       [cleanNote, toolId]
     );
     const urls = toolUrls(tool);
-    const sent = await emailSubmitter(toolId, "tool-submission-changes-requested", {
-      tool_name: escapeHtml(tool.name),
-      note: noteHtml(cleanNote),
-      edit_url: urls.edit_url,
-    });
-    emitReviewed("changes_requested");
-    return { ok: true, email: sent ? "sent" : "skipped" };
+    const submitter = await getSubmitter(toolId);
+    const sent = submitter && !submitter.isAdmin
+      ? await sendEmail({
+          to: submitter.email,
+          subject: `Changes requested for ${tool.name}`,
+          html: `<p>Hi ${firstName(submitter.name)},</p><p>${noteHtml(cleanNote)}</p><p><a href="${urls.edit_url}">Edit your tool submission</a></p>`,
+          category: "system",
+        })
+      : null;
+    await emitReviewed("changes_requested");
+    return { ok: true, email: sent?.ok && !sent.skipped ? "sent" : "skipped" };
   }
 
   await pool.query(
     "UPDATE directory_tools SET status = 'rejected', review_note = $1, reviewed_at = now(), updated_at = now() WHERE id = $2",
     [cleanNote, toolId]
   );
-  const sent = await emailSubmitter(toolId, "tool-submission-rejected", {
-    tool_name: escapeHtml(tool.name),
-    note: noteHtml(cleanNote),
-  });
-  emitReviewed("rejected");
-  return { ok: true, email: sent ? "sent" : "skipped" };
+  await emitReviewed("rejected");
+  return { ok: true, email: "skipped" };
 }

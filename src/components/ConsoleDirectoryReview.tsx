@@ -36,12 +36,12 @@ const pricingLabel = (v: unknown) => PRICING_OPTIONS.find((o) => o.value === v)?
 
 const EMAIL_RESULT: Record<string, string> = {
   sent: "Email sent to the submitter.",
-  skipped: "No email needed (added by an admin or in the console).",
+  skipped: "No direct email was sent. Active workflows handle submission and publication messages.",
   already: "They were already emailed.",
 };
 
 /** Everything waiting on an admin: new and resubmitted tools, and edit
- * requests on live tools. Each decision emails the submitter. */
+ * requests on live tools. Review decisions also emit workflow events. */
 export default function ConsoleDirectoryReview({
   tools,
   categories,
@@ -110,7 +110,7 @@ export default function ConsoleDirectoryReview({
           value={note}
           onChange={(e) => setNote(e.target.value)}
           rows={3}
-          placeholder={required ? "What should they change? For example: add 2 screenshots and a longer description." : "Reason (optional, included in the email)"}
+          placeholder={required ? "What should they change? For example: add 2 screenshots and a longer description." : "Reason (optional; kept in the review record)"}
           className="w-full rounded-lg border border-line bg-paper px-3 py-2 text-sm outline-none focus:border-ink"
         />
         <div className="mt-2 flex gap-2">
@@ -120,7 +120,7 @@ export default function ConsoleDirectoryReview({
             onClick={() => act(key, url, { action, note })}
             className="rounded-lg bg-ink px-3 py-1.5 text-xs font-medium text-paper hover:opacity-80 disabled:opacity-50"
           >
-            {busy === key ? "Sending..." : label}
+            {busy === key ? "Saving..." : label}
           </button>
           <button type="button" onClick={() => setNoteFor(null)} className="text-xs text-ink-soft hover:text-ink">
             Cancel
@@ -229,7 +229,7 @@ export default function ConsoleDirectoryReview({
                 </button>
               </div>
               {noteBox(key, "request_changes", url, true, "Send change request")}
-              {noteBox(key, "reject", url, false, "Decline and email them")}
+              {noteBox(key, "reject", url, false, "Decline without emailing")}
             </div>
           );
         })}

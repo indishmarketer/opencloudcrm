@@ -59,6 +59,12 @@ export const VERIFIED_CONTACT_SOURCES = [
   { value: "custom_form", label: "Verified custom form" },
 ] as const;
 
+export const ACCOUNT_VERIFIED_SOURCES = ["signup", "google", "linkedin", "github"] as const;
+export const VERIFIED_CONTACT_SOURCE_OPTIONS = [
+  { value: "account", label: "Account signup" },
+  ...VERIFIED_CONTACT_SOURCES.filter((source) => !ACCOUNT_VERIFIED_SOURCES.some((accountSource) => accountSource === source.value)),
+];
+
 /** This event is queued only inside the application: its one-time code/link
  * must never be published through the outbound webhook catalogue. */
 export const VERIFICATION_REQUESTED_EVENT = {
@@ -80,6 +86,7 @@ export function workflowEventLabel(key: string): string {
 const SITE_WORKFLOW_EVENT_KEYS = [
   "contact.verified", "newsletter.unsubscribed", "course.enrolled", "course.upgraded",
   "course.revoked", "course.completed", "course.inactivity", "payment.succeeded", "payment.failed",
+  "directory_tool.submitted", "directory_tool.reviewed",
 ] as const;
 
 export const workflowTriggerOptions = [...SITE_WORKFLOW_EVENT_KEYS.map((key) => {
@@ -114,7 +121,7 @@ export function workflowReadinessIssues(graph: WorkflowGraph): string[] {
     if (courseId && (!Number.isInteger(Number(courseId)) || Number(courseId) < 1)) issues.push("Choose a valid course for this trigger.");
   }
   if (trigger?.data.config.triggerKey === "contact.verified" && trigger.data.config.source &&
-      !VERIFIED_CONTACT_SOURCES.some((source) => source.value === trigger.data.config.source)) {
+      trigger.data.config.source !== "account" && !VERIFIED_CONTACT_SOURCES.some((source) => source.value === trigger.data.config.source)) {
     issues.push("Choose a valid verified contact source.");
   }
   if (trigger?.data.config.triggerKey === "custom_form.submitted") {

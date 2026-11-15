@@ -1,5 +1,5 @@
 import { pool } from "@/lib/db";
-import { sendApprovedEmail } from "@/lib/directoryReview";
+import { emitToolReviewEvent } from "@/lib/directoryReview";
 import { raiseInboxAlert } from "@/lib/systemAlerts";
 
 export type ListingPaymentProvider = "razorpay" | "paypal";
@@ -207,7 +207,7 @@ export async function settleDirectoryListingPayment(input: {
   }
 
   if (toolId !== null) {
-    void sendApprovedEmail(toolId).catch((error) => console.error("Paid listing approval email failed:", error));
+    await emitToolReviewEvent(toolId, "published").catch((error) => console.error("Paid listing publication event failed:", error));
     void raiseInboxAlert({
       kind: "directory_listing_paid",
       dedupeKey: `directory_listing_paid:${toolId}`,

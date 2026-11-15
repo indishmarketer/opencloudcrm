@@ -3,7 +3,7 @@ import { getAdminSession } from "@/lib/auth";
 import { pool } from "@/lib/db";
 import { deleteFromR2 } from "@/lib/r2Upload";
 import { TOOL_STATUSES } from "@/lib/directoryFields";
-import { cleanToolUrl, sendApprovedEmail } from "@/lib/directoryReview";
+import { cleanToolUrl, emitToolReviewEvent } from "@/lib/directoryReview";
 
 /** Keeps alt text only for screenshots the tool actually has. */
 function cleanAlts(input: unknown, screenshots: string[]): string | null {
@@ -95,14 +95,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     await Promise.all(droppedAssets.map((url) => deleteFromR2(url)));
   }
 
-  // Publishing a user submission from the edit form tells them it's live,
-  // same as the Approve button (once per tool; skipped for admins).
-  let email: string | undefined;
+  // Publishing from the edit form starts the same review workflow as Approve.
   if (status === "published" && previous && previous.status !== "published") {
-    email = await sendApprovedEmail(toolId);
+    await emitToolReviewEvent(toolId, "published").catch(() => {});
   }
 
-  return NextResponse.json({ ok: true, email });
+  return NextResponse.json({ ok: true });
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

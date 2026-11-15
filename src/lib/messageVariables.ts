@@ -31,6 +31,14 @@ export const TEMPLATE_VARIABLES: MessageVariable[] = [
   { token: "data.code", label: "Verification code (workflow)" },
   { token: "data.verification_url", label: "Verification link (workflow)" },
   { token: "data.magic_link_url", label: "Magic link (workflow)" },
+  { token: "data.tool_name", label: "Tool name (workflow)" },
+  { token: "data.website_url", label: "Tool website (workflow)" },
+  { token: "data.tool_url", label: "Published tool link (workflow)" },
+  { token: "data.edit_url", label: "Edit submission link (workflow)" },
+  { token: "data.manage_url", label: "Manage tools link (workflow)" },
+  { token: "data.payment_url", label: "Listing payment link (workflow)" },
+  { token: "data.status", label: "Tool review status (workflow)" },
+  { token: "data.note", label: "Tool review note (workflow)" },
 ];
 
 /** Event values already supplied to each email automation trigger. */

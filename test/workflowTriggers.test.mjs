@@ -1,12 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { workflowTriggerOptions, VERIFIED_CONTACT_SOURCES, workflowReadinessIssues } from "../src/lib/workflowGraph.ts";
+import { workflowTriggerOptions, VERIFIED_CONTACT_SOURCES, VERIFIED_CONTACT_SOURCE_OPTIONS, workflowReadinessIssues } from "../src/lib/workflowGraph.ts";
 import { isValidWebhookEventType } from "../src/lib/webhookEventCatalogue.ts";
 
 test("new site workflows offer only the requested high-level events", () => {
   assert.deepEqual(workflowTriggerOptions.map((option) => option.value), [
     "contact.verified", "newsletter.unsubscribed", "course.enrolled", "course.upgraded",
-    "course.revoked", "course.completed", "course.inactivity", "payment.succeeded", "payment.failed", "contact.verification_requested",
+    "course.revoked", "course.completed", "course.inactivity", "payment.succeeded", "payment.failed",
+    "directory_tool.submitted", "directory_tool.reviewed", "contact.verification_requested",
   ]);
   assert.equal(workflowTriggerOptions[1].label, "Email unsubscribed");
   assert.equal(isValidWebhookEventType("contact.verification_requested"), false, "one-time credentials stay out of outbound webhooks");
@@ -16,6 +17,9 @@ test("new site workflows offer only the requested high-level events", () => {
 test("verified contact source choices correspond to verified entry points", () => {
   assert.deepEqual(VERIFIED_CONTACT_SOURCES.map((source) => source.value), [
     "signup", "google", "linkedin", "github", "newsletter", "contact_form", "guide", "custom_form",
+  ]);
+  assert.deepEqual(VERIFIED_CONTACT_SOURCE_OPTIONS.map((source) => source.value), [
+    "account", "newsletter", "contact_form", "guide", "custom_form",
   ]);
 });
 

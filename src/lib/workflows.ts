@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import { pool, withTransaction } from "@/lib/db";
-import { workflowGraphSchema, workflowReadinessIssues, workflowTriggerOptions, isSupportedWorkflowEvent, workflowEventLabel, VERIFICATION_REQUESTED_EVENT, type WorkflowGraph, type WorkflowNode } from "@/lib/workflowGraph";
+import { workflowGraphSchema, workflowReadinessIssues, workflowTriggerOptions, isSupportedWorkflowEvent, workflowEventLabel, VERIFICATION_REQUESTED_EVENT, ACCOUNT_VERIFIED_SOURCES, type WorkflowGraph, type WorkflowNode } from "@/lib/workflowGraph";
 import { sendEmailWithRetry } from "@/lib/emailOutbox";
 import { sendEmail } from "@/lib/email";
 import { getEmailTemplateOptional } from "@/lib/emailTemplates";
@@ -480,7 +480,10 @@ async function executeRun(run: { id: number; workflow_id: number; trigger_payloa
   if (!trigger) throw new Error("Workflow trigger node is missing.");
   if (!test) {
     const triggerConfig = trigger.data.config;
-    if (rawPayload.event_type === "contact.verified" && triggerConfig.source && triggerConfig.source !== valueAtPath(rawPayload, "data.source")) {
+    if (rawPayload.event_type === "contact.verified" && triggerConfig.source &&
+        (triggerConfig.source === "account"
+          ? !ACCOUNT_VERIFIED_SOURCES.some((source) => source === valueAtPath(rawPayload, "data.source"))
+          : triggerConfig.source !== valueAtPath(rawPayload, "data.source"))) {
       return { __workflowExited: true, reason: "Verified contact source does not match." };
     }
     if (rawPayload.event_type === VERIFICATION_REQUESTED_EVENT.value && triggerConfig.source && triggerConfig.source !== valueAtPath(rawPayload, "data.source")) {
