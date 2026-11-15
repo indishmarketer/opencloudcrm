@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createMagicLinkToken } from "@/lib/auth";
 import { isAuthorizedConsoleEmail } from "@/lib/consoleAdmins";
-import { isEmailProviderConfigured } from "@/lib/email";
-import { emitWebhookEvent } from "@/lib/webhookEvents";
+import { isEmailProviderConfigured, sendEmail } from "@/lib/email";
+import { escapeHtml } from "@/lib/escapeHtml";
 import { checkRateLimit, privateRateLimitKey } from "@/lib/rateLimit";
 import { requestOrigin } from "@/lib/requestOrigin";
 
@@ -35,39 +35,38 @@ export async function POST(req: NextRequest) {
     const token = await createMagicLinkToken(normalized);
     const link = `${requestOrigin(req)}/api/console/verify?token=${token}`;
 
-    // No SES or Brevo configured yet: this is most likely a fresh deploy
-    // with nobody able to log in at all otherwise (console login IS the
-    // magic link -- see README.md), not just a routine missed send. Print
-    // the real, usable link to the server's own logs (visible in Coolify's
-    // Runtime Logs, same place deploy issues have already been diagnosed
-    // from all session) instead of silently trying and failing to email
-    // it. This pre-existing safety net is kept exactly as it was --
-    // nothing about converting the normal path to an automation should be
-    // able to lock an admin out of their own console.
-    if (!isEmailProviderConfigured()) {
-      console.warn(
-        `\n==================== CONSOLE LOGIN LINK ====================\n` +
-        `No email provider (SES or Brevo) is configured yet, so this\n` +
-        `couldn't be emailed to ${normalized}. Open it directly to log in:\n\n` +
-        `${link}\n\n` +
-        `It expires soon and is single-use. Once SES_* or BREVO_API_KEY\n` +
-        `is set, this message stops appearing and magic links are emailed\n` +
-        `normally.\n` +
-        `==============================================================\n`
-      );
-      return NextResponse.json({ ok: true });
+    // Console login cannot depend on a workflow or editable template.
+    let delivered = false;
+    if (isEmailProviderConfigured()) {
+      try {
+        const safeLink = escapeHtml(link);
+        const sent = await sendEmail({
+          to: normalized,
+          subject: "Your console login link",
+          html: `<p>Use this one-time link to log in to the console:</p><p><a href="${safeLink}">Log in to the console</a></p><p>This link expires in 15 minutes. If you did not request it, you can ignore this email.</p>`,
+          category: "system",
+          critical: true,
+          trackOpens: false,
+          trackClicks: false,
+        });
+        delivered = sent.ok && !sent.skipped;
+      } catch (error) {
+        console.error("Console login email failed:", error);
+      }
     }
 
-    // Real, self-built automation now (trigger "Console login link
-    // requested"). Add a condition on contact.email to restrict this to
-    // one specific admin address if that's all you want it going to.
-    emitWebhookEvent({
-      eventType: "console_admin.login_link_requested",
-      source: "console_admins",
-      sourceRecordId: normalized,
-      contactEmail: normalized,
-      data: { link, email: normalized },
-    }).catch(() => {});
+    // Existing bootstrap recovery path for an authorized admin when email
+    // delivery is unavailable. The link is never returned to the browser.
+    if (!delivered) {
+      console.warn(
+        `\n==================== CONSOLE LOGIN LINK ====================\n` +
+        `The login email could not be delivered to ${normalized}.\n` +
+        `Open this link directly to log in:\n\n` +
+        `${link}\n\n` +
+        `It expires in 15 minutes and is single-use.\n` +
+        `==============================================================\n`
+      );
+    }
   }
 
   return NextResponse.json({ ok: true });
