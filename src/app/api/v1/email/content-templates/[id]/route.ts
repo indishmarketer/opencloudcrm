@@ -23,9 +23,15 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const subject = typeof body.subject === "string" ? body.subject : "";
   const bodyHtml = typeof body.bodyHtml === "string" ? body.bodyHtml : "";
   if (!name) return NextResponse.json({ error: "Give this template a name." }, { status: 400 });
+  if (body.category !== undefined && body.category !== "marketing" && body.category !== "transactional") {
+    return NextResponse.json({ error: "Choose marketing or transactional." }, { status: 400 });
+  }
+  if (body.blocks !== undefined && !Array.isArray(body.blocks) && body.blocks !== null) {
+    return NextResponse.json({ error: "Blocks must be an array or null." }, { status: 400 });
+  }
 
   const actor = auth.via === "session" ? auth.email : "api";
-  const template = await updateContentTemplate(id, { name, subject, bodyHtml, blocks: null }, actor);
+  const template = await updateContentTemplate(id, { name, subject, bodyHtml, category: body.category, blocks: body.blocks === undefined ? null : body.blocks }, actor);
   if (!template) return NextResponse.json({ error: "Template not found." }, { status: 404 });
   return NextResponse.json({ template });
 }

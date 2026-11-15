@@ -205,6 +205,12 @@ export function createTools(apiBase, token) {
       handler: async () => call("/api/v1/workflows"),
     },
     {
+      name: "get_workflow_capabilities",
+      description: "Discover current workflow triggers, action node kinds, graph/email configuration, sender addresses, visual email blocks, and the shared email attribute tokens. Call before building a workflow; newly added triggers and attributes appear here automatically.",
+      inputSchema: {},
+      handler: async () => call("/api/v1/workflows/capabilities"),
+    },
+    {
       name: "create_workflow",
       description: "Create a database-backed workflow that starts from a supported site event or an incoming webhook. The response includes a one-time webhook URL when triggerType is webhook. Add nodes and edges with update_workflow, then activate it.",
       inputSchema: { name: z.string().optional(), description: z.string().optional(), triggerType: z.enum(["event", "webhook"]).optional(), triggerKey: z.string().optional() },
@@ -218,7 +224,7 @@ export function createTools(apiBase, token) {
     },
     {
       name: "update_workflow",
-      description: "Save a visual workflow graph. Graph shape: {nodes:[{id,type:'workflow',position:{x,y},data:{kind,label,config}}],edges:[{id,source,target,sourceHandle?}]}. Node kinds: trigger, condition, wait, email, whatsapp, webhook, course_access, contact_update, contact_unsubscribe, contact_delete, stop. Email config supports from set to one of the deployment's Personal, Support, Reach, or Academy sender addresses. For condition branches connect sourceHandle true and false. Set status active only after all required action settings are complete.",
+      description: "Save workflow metadata, graph, or status. Call get_workflow_capabilities for current triggers, node kinds, attributes, senders, and graph example. Email config supports custom subject/body HTML/from/to/messageType or contentMode template with templateKind and templateKey. For condition branches connect sourceHandle true and false. Save draft and activate only after all required settings are complete.",
       inputSchema: { id: z.number().int().positive(), name: z.string().optional(), description: z.string().optional(), triggerType: z.enum(["event", "webhook"]).optional(), triggerKey: z.string().optional(), graph: z.unknown().optional(), status: z.enum(["draft", "active", "paused"]).optional() },
       handler: async ({ id, ...updates }) => call(`/api/v1/workflows/${id}`, { method: "PATCH", body: JSON.stringify(updates) }),
     },
@@ -514,6 +520,12 @@ export function createTools(apiBase, token) {
       handler: async () => call("/api/v1/email"),
     },
     {
+      name: "list_email_attributes",
+      description: "List the same grouped personalization tokens and visual block definitions used by the email composer. Event data tokens require a matching workflow event payload.",
+      inputSchema: {},
+      handler: async () => call("/api/v1/email/attributes"),
+    },
+    {
       name: "get_email_template",
       description: "Get one email template's full subject/body and which {{vars}} it supports, by key.",
       inputSchema: { key: z.string() },
@@ -539,11 +551,13 @@ export function createTools(apiBase, token) {
     },
     {
       name: "create_content_template",
-      description: "Create a new Email Library content template (name, subject, HTML body). Unlike transactional templates, these can be freely created.",
+      description: "Create a reusable Email Library template in the marketing or transactional category. Supply HTML body or visual blocks; blocks render into HTML on save. Get current blocks and attributes from list_email_attributes.",
       inputSchema: {
         name: z.string(),
         subject: z.string(),
         bodyHtml: z.string(),
+        category: z.enum(["marketing", "transactional"]).optional(),
+        blocks: z.array(z.unknown()).nullable().optional(),
       },
       handler: async (args) => call("/api/v1/email/content-templates", { method: "POST", body: JSON.stringify(args) }),
     },
@@ -555,12 +569,14 @@ export function createTools(apiBase, token) {
     },
     {
       name: "update_content_template",
-      description: "Edit an existing Email Library content template's name, subject or body.",
+      description: "Edit a reusable Email Library template. Pass blocks to save its visual layout, or null to replace it with bodyHtml in Classic/HTML mode.",
       inputSchema: {
         id: z.number(),
         name: z.string(),
         subject: z.string(),
         bodyHtml: z.string(),
+        category: z.enum(["marketing", "transactional"]).optional(),
+        blocks: z.array(z.unknown()).nullable().optional(),
       },
       handler: async ({ id, ...rest }) =>
         call(`/api/v1/email/content-templates/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(rest) }),
