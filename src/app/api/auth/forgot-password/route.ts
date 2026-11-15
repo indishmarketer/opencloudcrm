@@ -4,8 +4,11 @@ import { createPasswordResetToken } from "@/lib/auth";
 import { checkRateLimit, privateRateLimitKey } from "@/lib/rateLimit";
 import { verifyTurnstile } from "@/lib/turnstile";
 import { firstNameOf } from "@/lib/emailAutomation";
-import { emitWebhookEvent } from "@/lib/webhookEvents";
 import { SITE_URL } from "@/lib/liveSiteUrl";
+import { sendEmail } from "@/lib/email";
+import { getBusiness } from "@/lib/businessProfile";
+import { escapeHtml } from "@/lib/escapeHtml";
+import { SITE_NAME } from "@/config/brand";
 import { z } from "zod";
 
 const ForgotSchema = z.object({
@@ -40,23 +43,32 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Could not verify you're human. Try again." }, { status: 400 });
   }
 
-  const result = await pool.query("SELECT id, email, name FROM users WHERE email = $1", [email]);
+  const result = await pool.query("SELECT id, email, name FROM users WHERE lower(email) = $1", [email]);
   const user = result.rows[0];
   if (!user) return genericResponse();
 
   const token = await createPasswordResetToken(user.id, user.email);
-  // Real, self-built automation now (trigger "Password reset requested") --
-  // no direct send. The generic response stays identical either way, so
-  // this still can't be used to enumerate accounts.
-  emitWebhookEvent({
-    eventType: "account.password_reset_requested",
-    source: "users",
-    sourceRecordId: user.id,
-    contactEmail: user.email,
-    contactName: user.name,
-    userId: user.id,
-    data: { reset_url: `${SITE_URL}/reset-password?token=${token}`, first_name: firstNameOf(user.name) },
-  }).catch(() => {});
+  // Sent directly, not through an automation: a reset must work on every
+  // install without anyone building a workflow first, and the link must
+  // not pass through webhooks or run history. It goes only to the address
+  // already on the account (from the users row, never the request body).
+  const resetUrl = `${SITE_URL}/reset-password?token=${encodeURIComponent(token)}`;
+  const brand = (await getBusiness().catch(() => null))?.brand || SITE_NAME;
+  const firstName = escapeHtml(firstNameOf(user.name));
+  await sendEmail({
+    to: user.email,
+    subject: `Reset your ${brand} password`,
+    html:
+      `<p>Hi ${firstName},</p>` +
+      `<p>We received a request to reset the password for your ${escapeHtml(brand)} account. This link works once and expires in 30 minutes.</p>` +
+      `<p><a href="${resetUrl}" style="display:inline-block;padding:12px 20px;background:#111;color:#fff;border-radius:999px;text-decoration:none;">Reset password</a></p>` +
+      `<p>If you didn’t ask for this, you can ignore this email. Your password won’t change.</p>`,
+    critical: true,
+    category: "fixed",
+    templateKey: "password-reset",
+    trackClicks: false,
+    trackOpens: false,
+  }).catch((error) => console.error("Password reset email failed:", error));
 
   return genericResponse();
 }
