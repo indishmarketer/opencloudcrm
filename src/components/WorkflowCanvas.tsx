@@ -2,9 +2,9 @@
 
 import { useCallback, useMemo, useRef, useState } from "react";
 import {
-  addEdge, Background, Controls, Handle, MiniMap, Position, ReactFlow,
+  addEdge, Background, BaseEdge, Controls, EdgeLabelRenderer, getBezierPath, Handle, MiniMap, Position, ReactFlow, reconnectEdge,
   applyEdgeChanges, applyNodeChanges, useReactFlow, type Connection, type Edge, type Node,
-  type NodeProps, type OnEdgesChange, type OnNodesChange,
+  type EdgeProps, type NodeProps, type OnEdgesChange, type OnNodesChange,
 } from "@xyflow/react";
 import { useRouter } from "next/navigation";
 import BrandSelect from "@/components/BrandSelect";
@@ -68,6 +68,56 @@ function WorkflowNodeView({ id, data, selected }: NodeProps<CanvasNode>) {
 }
 
 const nodeTypes = { workflow: WorkflowNodeView };
+
+/** A connection line with a delete button at its midpoint. Its ends can
+ * also be dragged onto another step (see onReconnect). */
+function DeletableEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, style, markerEnd }: EdgeProps) {
+  const { deleteElements } = useReactFlow();
+  const [path, labelX, labelY] = getBezierPath({ sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition });
+  return <>
+    <BaseEdge id={id} path={path} style={style} markerEnd={markerEnd} />
+    <EdgeLabelRenderer>
+      <button type="button" aria-label="Delete connection" title="Delete connection" onClick={(event) => { event.stopPropagation(); void deleteElements({ edges: [{ id }] }); }} style={{ transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`, pointerEvents: "all" }} className="nodrag nopan absolute flex h-6 w-6 items-center justify-center rounded-full border border-line bg-paper text-ink-soft shadow-sm hover:border-red-300 hover:text-red-700">
+        <svg viewBox="0 0 24 24" aria-hidden="true" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 7h16M10 7V4h4v3m-9 0 1 13h12l1-13M10 11v5m4-5v5" /></svg>
+      </button>
+    </EdgeLabelRenderer>
+  </>;
+}
+const edgeTypes = { deletable: DeletableEdge };
+
+/** Why a connection would break the run, or null if it's sound. `ignoreEdgeId`
+ * is the line being moved, which no longer counts once it moves. */
+function connectionProblem(connection: { source: string | null; target: string | null; sourceHandle?: string | null }, nodes: CanvasNode[], edges: CanvasEdge[], ignoreEdgeId?: string): string | null {
+  const { source, target } = connection;
+  if (!source || !target) return "Drop the line on a step.";
+  if (source === target) return "A step can't connect to itself.";
+  const targetNode = nodes.find((node) => node.id === target);
+  const sourceNode = nodes.find((node) => node.id === source);
+  if (!targetNode || !sourceNode) return "That step no longer exists.";
+  if (targetNode.data.kind === "trigger") return "Nothing can lead into the trigger. It's always the first step.";
+  if (sourceNode.data.kind === "stop") return "End finishes the path, so nothing can come after it.";
+  if ((sourceNode.data.kind === "condition" || sourceNode.data.kind === "email_condition") && !["true", "false"].includes(String(connection.sourceHandle))) return "Connect from the condition's Yes or No dot.";
+  const others = edges.filter((edge) => edge.id !== ignoreEdgeId);
+  if (others.some((edge) => edge.source === source && edge.target === target && (edge.sourceHandle || null) === (connection.sourceHandle || null))) return "These steps are already connected.";
+  // A loop would make the run repeat steps (and messages) forever.
+  const reachable = new Set<string>([target]);
+  const stack = [target];
+  while (stack.length) {
+    const current = stack.pop()!;
+    for (const edge of others) if (edge.source === current && !reachable.has(edge.target)) { reachable.add(edge.target); stack.push(edge.target); }
+  }
+  if (reachable.has(source)) return "That would create a loop: the run would come back to an earlier step and repeat it.";
+  return null;
+}
+
+/** Sound but worth a second look: a step reached from two paths runs only
+ * once per run, on whichever path gets there first. */
+function connectionWarning(connection: { source: string | null; target: string | null }, nodes: CanvasNode[], edges: CanvasEdge[], ignoreEdgeId?: string): string {
+  const incoming = edges.filter((edge) => edge.id !== ignoreEdgeId && edge.target === connection.target && edge.source !== connection.source);
+  if (!incoming.length) return "";
+  const label = nodes.find((node) => node.id === connection.target)?.data.label || "This step";
+  return `Heads up: "${label}" is now reached from more than one step. It still runs only once per run. If you meant to move it, delete its other connection.`;
+}
 
 function flattenFields(value: unknown, prefix: string, out: { path: string; value: string }[] = []) {
   if (out.length >= 80) return out;
@@ -228,9 +278,22 @@ export default function WorkflowCanvas({
     setEdges((current) => applyEdgeChanges(changes, current));
   }, [nodes, edges, triggerType, triggerKey]);
   const onConnect = useCallback((connection: Connection) => {
+    const problem = connectionProblem(connection, nodes, edges);
+    if (problem) { setMessage(""); setError(problem); return; }
+    setError(""); setMessage(connectionWarning(connection, nodes, edges));
     pushHistory();
     setEdges((current) => addEdge({ ...connection, id: crypto.randomUUID(), animated: true, style: { stroke: "#525252", strokeWidth: 2 } }, current));
   }, [nodes, edges, triggerType, triggerKey]);
+
+  const onReconnect = useCallback((oldEdge: CanvasEdge, connection: Connection) => {
+    const problem = connectionProblem(connection, nodes, edges, oldEdge.id);
+    if (problem) { setMessage(""); setError(problem); return; }
+    setError(""); setMessage(connectionWarning(connection, nodes, edges, oldEdge.id));
+    pushHistory();
+    setEdges((current) => reconnectEdge(oldEdge, connection, current));
+  }, [nodes, edges, triggerType, triggerKey]);
+  // Display only: every line gets the delete button. Not saved with the graph.
+  const displayEdges = useMemo(() => edges.map((edge) => ({ ...edge, type: "deletable" })), [edges]);
 
   const graph: WorkflowGraph = useMemo(() => ({ nodes, edges }), [nodes, edges]);
 
@@ -409,6 +472,7 @@ export default function WorkflowCanvas({
         <span className={`rounded-full px-3 py-1 text-xs font-semibold ${status === "active" ? "bg-emerald-100 text-emerald-800" : "bg-paper-soft text-ink-soft"}`}>{status}</span>
         <span className="ml-auto flex items-center gap-1">
           <button type="button" disabled={historyState.past === 0} onClick={undo} aria-label="Undo" title="Undo" className="rounded-lg border border-line p-2 text-ink disabled:opacity-35"><svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h9a7 7 0 0 1 0 14h-1"/></svg></button>
+          <a href={`/api/console/workflows/${initialWorkflow.id}/export`} download onClick={() => { if (isDirty) setMessage("Shared the last saved version. Save first to include your latest edits."); }} aria-label="Share workflow" title="Share: download a file another OpenCloudCRM can import" className="order-last ml-1 rounded-lg border border-line p-2 text-ink"><svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="m8.2 10.8 7.6-4.6M8.2 13.2l7.6 4.6"/></svg></a>
           <button type="button" disabled={historyState.future === 0} onClick={redo} aria-label="Redo" title="Redo" className="rounded-lg border border-line p-2 text-ink disabled:opacity-35"><svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="m15 14 5-5-5-5"/><path d="M20 9h-9a7 7 0 0 0 0 14h1"/></svg></button>
         </span>
         <button type="button" disabled={saving} onClick={() => void save()} className="rounded-full border border-line px-4 py-2 text-sm font-medium disabled:opacity-50">Save</button>
@@ -430,7 +494,7 @@ export default function WorkflowCanvas({
             {(["condition", "email_condition", "wait", "email", "whatsapp", "google_review_request", "webhook", "course_access", "contact_update", "contact_unsubscribe", "contact_delete", "stop"] as const).map((kind) => <button key={kind} type="button" onClick={() => addNode(kind, actionPicker.source, actionPicker.sourceHandle)} className="block w-full rounded-lg px-3 py-2.5 text-left text-sm hover:bg-paper-soft">{kindLabel[kind]}</button>)}
           </div>}
           <ReactFlow
-            nodes={nodes} edges={edges} nodeTypes={nodeTypes} onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onConnect={onConnect}
+            nodes={nodes} edges={displayEdges} nodeTypes={nodeTypes} edgeTypes={edgeTypes} onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onConnect={onConnect} onReconnect={onReconnect} edgesReconnectable
             onNodeDragStart={pushHistory}
             onConnectEnd={(event, connectionState) => {
               if (!connectionState.isValid && connectionState.fromNode) {

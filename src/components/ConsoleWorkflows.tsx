@@ -81,6 +81,15 @@ export default function ConsoleWorkflows({ workflows, triggers, emailFlows, fold
   const [showFolderForm, setShowFolderForm] = useState(false);
   const [folderName, setFolderName] = useState("");
   const [renaming, setRenaming] = useState(false);
+  const importInput = useRef<HTMLInputElement>(null);
+
+  async function importFile(file: File) {
+    setError("");
+    const response = await fetch("/api/console/workflows/import", { method: "POST", headers: { "Content-Type": "application/json" }, body: await file.text() }).catch(() => null);
+    const body = await response?.json().catch(() => ({})) || {};
+    if (!response?.ok) { setError(body.error || "Could not import this workflow."); return; }
+    router.push(`/console/workflows/${body.workflow.id}`);
+  }
   const [renameValue, setRenameValue] = useState("");
   const activeFolderRow = folderList.find((f) => String(f.id) === activeFolder);
   const triggerName = (key: string | null) => triggers.find((item) => item.value === key)?.label || key || "Incoming webhook";
@@ -194,6 +203,8 @@ export default function ConsoleWorkflows({ workflows, triggers, emailFlows, fold
       <section>
         <div className="mb-4 flex flex-wrap items-center gap-3">
           <label className="relative min-w-56 flex-1 sm:max-w-md"><span className="sr-only">Search workflows</span><svg viewBox="0 0 24 24" aria-hidden="true" className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-soft" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4 4"/></svg><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search workflows" className="w-full rounded-lg border border-line bg-paper py-2.5 pl-9 pr-3 text-sm outline-none focus:border-ink" /></label>
+          <button type="button" onClick={() => importInput.current?.click()} title="Import a workflow file shared from another OpenCloudCRM" className="rounded-full border border-line px-4 py-2.5 text-sm font-medium hover:border-ink">Import</button>
+          <input ref={importInput} type="file" accept=".json,application/json" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; if (file) void importFile(file); }} />
           <button type="button" onClick={() => setShowFolderForm(true)} className="rounded-full border border-line px-4 py-2.5 text-sm font-medium hover:border-ink">+ New folder</button>
         </div>
         <div className="mb-4 flex flex-wrap items-center gap-2" role="tablist" aria-label="Workflow folders">
@@ -214,13 +225,13 @@ export default function ConsoleWorkflows({ workflows, triggers, emailFlows, fold
         <p className="mb-3 text-sm text-ink-soft">Build event-based or email workflows on the canvas. Delete stops future sends and keeps existing history.</p>
         {!visibleWorkflows.length && !visibleEmailFlows.length ? <p className="rounded-2xl border border-dashed border-line p-8 text-center text-sm text-ink-soft">{workflows.length || emailFlows.length ? "No workflows match this folder or search." : "No workflows yet. Start with a site event or an incoming webhook."}</p> : <div className="overflow-x-auto rounded-xl border border-line bg-paper">
           <table className="w-full min-w-[680px] table-fixed border-collapse text-left">
-            <thead><tr className="border-b border-line text-sm text-ink-soft"><th scope="col" className="w-[38%] px-4 py-3 font-medium">Name</th><th scope="col" className="w-32 px-4 py-3 font-medium">Status</th><th scope="col" className="px-4 py-3 font-medium">Tools</th><th scope="col" className="w-36 px-4 py-3 text-center font-medium">Actions</th></tr></thead>
+            <thead><tr className="border-b border-line text-sm text-ink-soft"><th scope="col" className="w-[38%] px-4 py-3 font-medium">Name</th><th scope="col" className="w-32 px-4 py-3 font-medium">Status</th><th scope="col" className="px-4 py-3 font-medium">Tools</th><th scope="col" className="w-48 px-4 py-3 text-center font-medium">Actions</th></tr></thead>
             <tbody>
               {visibleWorkflows.map((workflow) => <tr key={`workflow-${workflow.id}`} className="border-b border-line last:border-0 hover:bg-paper-soft/60">
                 <td className="px-4 py-3"><a href={`/console/workflows/${workflow.id}`} className="flex min-w-0 items-center gap-3 font-medium text-ink hover:underline"><span className="shrink-0 text-ink"><TriggerIcon /></span><span className="truncate">{workflow.name}</span></a></td>
                 <td className="px-4 py-3"><WorkflowToggle on={workflow.status === "active"} label={`${workflow.status === "active" ? "Turn off" : "Turn on"} ${workflow.name}`} disabled={savingKey === `workflow-${workflow.id}`} onToggle={() => void toggleCustomWorkflow(workflow)} /></td>
                 <td className="px-4 py-3"><ToolIcons tools={toolsForWorkflow(workflow)} /></td>
-                <td className="px-4 py-3"><div className="flex items-center justify-center gap-2"><MoveToFolderMenu name={workflow.name} value={workflow.folder_id} folders={folderList} disabled={savingKey === `workflow-${workflow.id}`} onMove={(value) => void moveToFolder("workflow", workflow.id, value)} /><button type="button" onClick={() => void deleteCustomWorkflow(workflow)} aria-label={`Delete ${workflow.name}`} title="Delete workflow" className="inline-flex rounded-full border border-red-200 p-2 text-red-700 hover:bg-red-50"><TrashIcon /></button></div></td>
+                <td className="px-4 py-3"><div className="flex items-center justify-center gap-2"><MoveToFolderMenu name={workflow.name} value={workflow.folder_id} folders={folderList} disabled={savingKey === `workflow-${workflow.id}`} onMove={(value) => void moveToFolder("workflow", workflow.id, value)} /><a href={`/api/console/workflows/${workflow.id}/export`} download aria-label={`Share ${workflow.name}`} title="Share: download a file another OpenCloudCRM can import" className="flex h-9 w-10 items-center justify-center rounded-lg border border-line text-ink-soft hover:border-ink"><svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="m8.2 10.8 7.6-4.6M8.2 13.2l7.6 4.6"/></svg></a><button type="button" onClick={() => void deleteCustomWorkflow(workflow)} aria-label={`Delete ${workflow.name}`} title="Delete workflow" className="inline-flex rounded-full border border-red-200 p-2 text-red-700 hover:bg-red-50"><TrashIcon /></button></div></td>
               </tr>)}
               {visibleEmailFlows.map((flow) => <tr key={`email-${flow.id}`} className="border-b border-line last:border-0 hover:bg-paper-soft/60">
                 <td className="px-4 py-3"><a href={`/console/workflows/email/${flow.id}`} className="flex min-w-0 items-center gap-3 font-medium text-ink hover:underline"><span className="shrink-0 text-ink"><TriggerIcon /></span><span className="truncate">{flow.name}</span></a></td>
