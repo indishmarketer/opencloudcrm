@@ -1,6 +1,6 @@
 "use client";
 
-import PageSourceField from "@/components/PageSourceField";
+import PageSourceField, { usePageSource } from "@/components/PageSourceField";
 import { sourcePath } from "@/lib/pageSourcesShape";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -409,6 +409,9 @@ export default function ConsolePageEditor({
 
   const isPage = page.kind === "page";
   const isHome = page.path === "/";
+  // A course/tool page's sections live at that course's or tool's address.
+  const sourceAddress = isPage ? page.path || null : publicUrl ? sourcePath(publicUrl) : null;
+  const pageSource = usePageSource(sourceAddress);
   const canGoOffline = isPage && !isHome;
   const hasBuiltInBlock = blocks.some((b) => b.type === "builtIn");
 
@@ -472,6 +475,8 @@ export default function ConsolePageEditor({
         setPage((p) => ({ ...p, ...data.page }));
         setBlocks(data.page.blocks);
         setMeta((m) => ({ ...m, path: data.page.path || "" }));
+        // Saved with the page, keyed by its (possibly just changed) address.
+        await pageSource.save(isPage ? data.page.path || null : sourceAddress);
         setDirty(false);
         setMessage(opts.publish ? "Published. It's live now." : "Saved as a draft. Publish when you're ready.");
         return true;
@@ -482,7 +487,7 @@ export default function ConsolePageEditor({
         setBusy(null);
       }
     },
-    [blocks, meta, page.id, page.builtIn, isPage, isHome]
+    [blocks, meta, page.id, page.builtIn, isPage, isHome, pageSource, sourceAddress]
   );
 
   useEffect(() => {
@@ -912,7 +917,7 @@ export default function ConsolePageEditor({
                 Hide this page from search engines
               </label>
               <h2 className="pt-2 font-display text-lg font-semibold">Contact tracking</h2>
-              <PageSourceField path={page.path || null} />
+              <PageSourceField path={sourceAddress} value={pageSource.value} onChange={(v) => { pageSource.setValue(v); setDirty(true); }} />
               <MergeTagHint />
               {(canGoOffline || !isHome) && (
                 <div className="flex flex-wrap gap-2 border-t border-line pt-4">
@@ -936,7 +941,7 @@ export default function ConsolePageEditor({
                 videos, a call to action, anything from the section library.
               </p>
               <p>Changes go live when you click Publish.</p>
-              <div className="text-ink"><PageSourceField path={publicUrl ? sourcePath(publicUrl) : null} /></div>
+              <div className="text-ink"><PageSourceField path={sourceAddress} value={pageSource.value} onChange={(v) => { pageSource.setValue(v); setDirty(true); }} /></div>
               <MergeTagHint />
               <div className="border-t border-line pt-4">
                 <button type="button" onClick={removePage} disabled={busy !== null} className={`${button} text-red-600 hover:border-red-600`}>

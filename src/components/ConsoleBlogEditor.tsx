@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import SafeImage from "@/components/SafeImage";
-import PageSourceField from "@/components/PageSourceField";
+import PageSourceField, { usePageSource } from "@/components/PageSourceField";
 import { useRouter } from "next/navigation";
 import BrandSelect from "@/components/BrandSelect";
 import RichTextEditor from "@/components/RichTextEditor";
@@ -105,6 +105,7 @@ export default function ConsoleBlogEditor({
   const savedRevisionRef = useRef(initial ? 0 : -1);
   const savedIdRef = useRef(initial?.id || "");
   const savedSlugRef = useRef(initial?.slug || "");
+  const pageSource = usePageSource(initial?.slug ? `/blog/${initial.slug}` : null);
   const newDraftIdRef = useRef("");
 
   const publishedAtOpen = mode === "edit" && initial?.status === "published";
@@ -264,11 +265,17 @@ export default function ConsoleBlogEditor({
     const statusValue = submitter?.dataset.postStatus;
     const status = statusValue === "draft" || statusValue === "published" ? statusValue : form.status;
 
+    // The contact source is saved with the post, keyed by its address.
+    const saveSource = async (slug: string | undefined) => {
+      try { await pageSource.save(slug ? `/blog/${slug}` : null); return true; }
+      catch (sourceError) { setError(sourceError instanceof Error ? sourceError.message : "Could not save the contact source."); return false; }
+    };
+
     if (status === "draft" && !publishedAtOpen) {
       setSavingAction(true);
       const saved = await flushDraft();
       setSavingAction(false);
-      if (saved) router.push("/console/blog");
+      if (saved && await saveSource(savedSlugRef.current || initial?.slug)) router.push("/console/blog");
       return;
     }
 
@@ -317,6 +324,7 @@ export default function ConsoleBlogEditor({
       setError(body.error || "Could not save this post.");
       return;
     }
+    if (!(await saveSource(typeof body.slug === "string" ? body.slug : payload.slug))) return;
 
     const firstPublish = status === "published" && !publishedAtOpen;
     if (firstPublish && typeof body.slug === "string") {
@@ -546,7 +554,7 @@ export default function ConsoleBlogEditor({
 
               <section className="border-b border-line py-4">
                 <h3 className="mb-3 text-sm font-semibold">Contact tracking</h3>
-                <PageSourceField path={mode === "edit" && initial?.slug ? `/blog/${initial.slug}` : null} />
+                <PageSourceField path={form.slug ? `/blog/${form.slug}` : null} value={pageSource.value} onChange={pageSource.setValue} />
               </section>
 
               <section className="py-4">

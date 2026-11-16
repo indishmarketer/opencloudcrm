@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import SafeImage from "@/components/SafeImage";
-import PageSourceField from "@/components/PageSourceField";
+import PageSourceField, { usePageSource } from "@/components/PageSourceField";
 import { useConfirm } from "@/components/ConfirmDialog";
 import MediaLibraryPicker from "@/components/MediaLibraryPicker";
 import BrandSelect from "@/components/BrandSelect";
@@ -49,6 +49,7 @@ export default function ConsoleCourseSettings({
 }) {
   const router = useRouter();
   const [form, setForm] = useState(course);
+  const pageSource = usePageSource(course.slug ? `/courses/${course.slug}` : null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
@@ -106,6 +107,9 @@ export default function ConsoleCourseSettings({
         return;
       }
       if (response.course) setForm(response.course);
+      // The contact source is keyed by the course's public address, so it
+      // saves against the slug as just saved.
+      await pageSource.save(`/courses/${(response.course || form).slug}`);
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
       router.refresh();
@@ -157,10 +161,7 @@ export default function ConsoleCourseSettings({
     }
   }
 
-  const coverCanPreview = Boolean(
-    form.cover_image_url &&
-    (form.cover_image_url.startsWith("/") || form.cover_image_url.startsWith(`https://${ASSET_DOMAIN}/`)),
-  );
+  const coverCanPreview = Boolean(form.cover_image_url && /^(https?:\/\/|\/)/.test(form.cover_image_url));
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -186,7 +187,7 @@ export default function ConsoleCourseSettings({
             />
           </div>
 
-          <PageSourceField path={form.slug ? `/courses/${form.slug}` : null} />
+          <PageSourceField path={form.slug ? `/courses/${form.slug}` : null} value={pageSource.value} onChange={pageSource.setValue} />
 
           <div>
             <label className="text-xs font-medium text-ink-soft">Subtitle (short description)</label>
@@ -209,11 +210,6 @@ export default function ConsoleCourseSettings({
 
           <div>
             <label className="text-xs font-medium text-ink-soft mb-1 block">Course cover</label>
-            {coverCanPreview && form.cover_image_url && (
-              <div className="relative mb-3 aspect-[1200/650] overflow-hidden rounded-xl border border-line">
-                <SafeImage src={form.cover_image_url} alt={`${form.title} course cover`} fill className="object-cover" />
-              </div>
-            )}
             <input
               value={form.cover_image_url || ""}
               onChange={(e) => setForm({ ...form, cover_image_url: e.target.value })}
@@ -252,6 +248,12 @@ export default function ConsoleCourseSettings({
               )}
               <span className="text-xs text-ink-soft">PNG, JPEG, GIF, or WEBP · maximum 5MB</span>
             </div>
+            {coverCanPreview && form.cover_image_url && (
+              // Plain <img>: a preview of whatever is in the field right now,
+              // including an external URL that is only copied to storage on save.
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={form.cover_image_url} alt={`${form.title} course cover`} className="mt-4 block h-auto w-full rounded-xl border border-line bg-paper-soft object-contain" />
+            )}
           </div>
         </div>
 

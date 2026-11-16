@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import ConsoleModal from "@/components/ConsoleModal";
-import PageSourceField from "@/components/PageSourceField";
+import PageSourceField, { usePageSource } from "@/components/PageSourceField";
 import WebinarArtwork from "@/components/WebinarArtwork";
 import { useConfirm } from "@/components/ConfirmDialog";
 
@@ -83,13 +83,13 @@ function Field({ label, children, hint }: { label: string; children: React.React
   return <label className="block text-xs font-medium text-ink-soft">{label}{children}{hint && <span className="mt-1 block font-normal">{hint}</span>}</label>;
 }
 
-function Editor({ form, setForm }: { form: FormState; setForm: (value: FormState) => void }) {
+function Editor({ form, setForm, source, setSource }: { form: FormState; setForm: (value: FormState) => void; source: string; setSource: (value: string) => void }) {
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) => setForm({ ...form, [key]: value });
   return <div className="space-y-7">
     <section><h4 className="font-medium">Landing page</h4><div className="mt-3 grid gap-4 md:grid-cols-2">
       <Field label="Title"><input className={inputClass} value={form.title} onChange={(e) => set("title", e.target.value)} /></Field>
       <Field label="URL slug"><input className={inputClass} value={form.slug} onChange={(e) => set("slug", e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))} /></Field>
-      <div className="md:col-span-2"><PageSourceField path={form.slug ? `/webinars/${form.slug}` : null} /></div>
+      <div className="md:col-span-2"><PageSourceField path={form.slug ? `/webinars/${form.slug}` : null} value={source} onChange={setSource} /></div>
       <div className="md:col-span-2"><Field label="Short promise"><input className={inputClass} value={form.subtitle} onChange={(e) => set("subtitle", e.target.value)} placeholder="One sentence that makes the outcome clear" /></Field></div>
       <div className="md:col-span-2"><Field label="Full description"><textarea className={inputClass} rows={5} value={form.description} onChange={(e) => set("description", e.target.value)} /></Field></div>
       <div className="md:col-span-2"><Field label="Who this is for"><textarea className={inputClass} rows={3} value={form.audience} onChange={(e) => set("audience", e.target.value)} /></Field></div>
@@ -120,6 +120,8 @@ export default function ConsoleWebinars({ initialWebinars }: { initialWebinars: 
   const [webinars, setWebinars] = useState(initialWebinars);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [editing, setEditing] = useState<Webinar | null>(null);
+  // Saved together with the webinar by save(), keyed by its public address.
+  const pageSource = usePageSource(editing ? `/webinars/${editing.slug}` : null);
   const [creating, setCreating] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -141,6 +143,7 @@ export default function ConsoleWebinars({ initialWebinars }: { initialWebinars: 
     const response = await fetch(editing ? `/api/console/webinars/${editing.id}` : "/api/console/webinars", { method: editing ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(requestBody(form)) });
     const body = await response.json().catch(() => ({})); setBusy(false);
     if (!response.ok) return setError(body.error || "Could not save the webinar.");
+    try { await pageSource.save(`/webinars/${body.webinar.slug}`); } catch (sourceError) { return setError(sourceError instanceof Error ? sourceError.message : "Could not save the contact source."); }
     setWebinars((current) => editing ? current.map((w) => w.id === body.webinar.id ? body.webinar : w) : [body.webinar, ...current]);
     setEditing(null); setCreating(false); setForm(emptyForm);
   }
@@ -290,6 +293,6 @@ export default function ConsoleWebinars({ initialWebinars }: { initialWebinars: 
       })}
       {!shown.length && <p className="rounded-2xl border border-dashed border-line p-10 text-center text-sm text-ink-soft">{webinars.length ? "No webinars match your search." : "No webinars yet. Create the first one to open the studio."}</p>}
     </div>
-    {(creating || editing) && <ConsoleModal wide title={editing ? "Edit webinar" : "Create webinar"} onClose={() => { setCreating(false); setEditing(null); setError(""); }}><Editor form={form} setForm={setForm} />{error && <p role="alert" className="mt-5 text-sm text-red-600">{error}</p>}<div className="mt-7 flex justify-end gap-3"><button className={buttonClass} onClick={() => { setCreating(false); setEditing(null); }}>Cancel</button><button className="rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-paper disabled:opacity-40" disabled={busy} onClick={save}>{busy ? "Saving..." : editing ? "Save changes" : "Create draft"}</button></div></ConsoleModal>}{dialog}
+    {(creating || editing) && <ConsoleModal wide title={editing ? "Edit webinar" : "Create webinar"} onClose={() => { setCreating(false); setEditing(null); setError(""); }}><Editor form={form} setForm={setForm} source={pageSource.value} setSource={pageSource.setValue} />{error && <p role="alert" className="mt-5 text-sm text-red-600">{error}</p>}<div className="mt-7 flex justify-end gap-3"><button className={buttonClass} onClick={() => { setCreating(false); setEditing(null); }}>Cancel</button><button className="rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-paper disabled:opacity-40" disabled={busy} onClick={save}>{busy ? "Saving..." : editing ? "Save changes" : "Create draft"}</button></div></ConsoleModal>}{dialog}
   </div>;
 }

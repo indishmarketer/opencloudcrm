@@ -1,6 +1,5 @@
 import ConsoleMeetingsTabs from "@/components/ConsoleMeetingsTabs";
-import PageSourceField from "@/components/PageSourceField";
-import { MEETING_SOURCE_PATH } from "@/lib/pageSourcesShape";
+import ConsoleMeetingSource from "@/components/ConsoleMeetingSource";
 
 export default function ConsoleMeetingSourcePage() {
   return (
@@ -11,7 +10,7 @@ export default function ConsoleMeetingSourcePage() {
       </div>
       <div className="mt-6"><ConsoleMeetingsTabs /></div>
       <div className="mt-6 max-w-xl rounded-2xl border border-line bg-paper p-5">
-        <PageSourceField path={MEETING_SOURCE_PATH} />
+        <ConsoleMeetingSource />
       </div>
     </div>
   );
