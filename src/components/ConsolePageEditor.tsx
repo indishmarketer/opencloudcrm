@@ -1,5 +1,7 @@
 "use client";
 
+import PageSourceField from "@/components/PageSourceField";
+import { sourcePath } from "@/lib/pageSourcesShape";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -909,6 +911,8 @@ export default function ConsolePageEditor({
                 />
                 Hide this page from search engines
               </label>
+              <h2 className="pt-2 font-display text-lg font-semibold">Contact tracking</h2>
+              <PageSourceField path={page.path || null} />
               <MergeTagHint />
               {(canGoOffline || !isHome) && (
                 <div className="flex flex-wrap gap-2 border-t border-line pt-4">
@@ -932,6 +936,7 @@ export default function ConsolePageEditor({
                 videos, a call to action, anything from the section library.
               </p>
               <p>Changes go live when you click Publish.</p>
+              <div className="text-ink"><PageSourceField path={publicUrl ? sourcePath(publicUrl) : null} /></div>
               <MergeTagHint />
               <div className="border-t border-line pt-4">
                 <button type="button" onClick={removePage} disabled={busy !== null} className={`${button} text-red-600 hover:border-red-600`}>

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { pageSourceFromRequest } from "@/lib/pageSources";
 import bcrypt from "bcryptjs";
 import { pool, withTransaction } from "@/lib/db";
 import { safeRedirectPath } from "@/lib/auth";
@@ -94,7 +95,7 @@ export async function POST(req: NextRequest) {
     // creates one with user_id left NULL -- that gap was why real,
     // already-verified accounts couldn't be reliably matched back to their
     // users row later (e.g. for deliverability recovery, review requests).
-    await ensureContact({ source: "account",
+    await ensureContact({ source: "account", sourceDetail: (await pageSourceFromRequest(req)) || null,
       email: user.email,
       userId: user.id,
       name: name || null,

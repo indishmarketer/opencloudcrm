@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import SafeImage from "@/components/SafeImage";
+import PageSourceField from "@/components/PageSourceField";
 import { useRouter } from "next/navigation";
 import BrandSelect from "@/components/BrandSelect";
 import RichTextEditor from "@/components/RichTextEditor";
@@ -541,6 +542,11 @@ export default function ConsoleBlogEditor({
                 <input id="meta-title" value={form.metaTitle} onChange={(event) => setField("metaTitle", event.target.value)} placeholder="Optional custom meta title" className="mt-1.5 w-full rounded-lg border border-line px-3 py-2.5 text-sm outline-none focus:border-ink" />
                 <label className="mt-3 block text-xs font-medium text-ink-soft" htmlFor="meta-description">Meta description</label>
                 <textarea id="meta-description" value={form.metaDescription} onChange={(event) => setField("metaDescription", event.target.value)} placeholder="Optional custom meta description" rows={3} className="mt-1.5 w-full resize-y rounded-lg border border-line px-3 py-2.5 text-sm outline-none focus:border-ink" />
+              </section>
+
+              <section className="border-b border-line py-4">
+                <h3 className="mb-3 text-sm font-semibold">Contact tracking</h3>
+                <PageSourceField path={mode === "edit" && initial?.slug ? `/blog/${initial.slug}` : null} />
               </section>
 
               <section className="py-4">

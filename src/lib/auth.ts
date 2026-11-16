@@ -21,6 +21,9 @@ export type SessionPayload = {
 export async function createSession(payload: { userId: number; email: string }) {
   const result = await pool.query("SELECT session_version FROM users WHERE id = $1", [payload.userId]);
   const sessionVersion = result.rows[0]?.session_version || 1;
+  // Logging in is website activity in itself, even if the next page view
+  // doesn't check the session within the 10-minute throttle window.
+  recordSiteActivity(payload.userId);
 
   const token = await new SignJWT({ ...payload, sessionVersion })
     .setProtectedHeader({ alg: "HS256" })

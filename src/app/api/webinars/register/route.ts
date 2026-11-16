@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { pageSourceFromRequest } from "@/lib/pageSources";
 import { z } from "zod";
 import { getSession } from "@/lib/auth";
 import { ensureContact } from "@/lib/contacts";
@@ -16,6 +17,7 @@ const registrationSchema = z.object({
 }).strict();
 
 export async function POST(req: NextRequest) {
+  const pageSourceLabel = (await pageSourceFromRequest(req)) || null;
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Log in or create your account to join." }, { status: 401 });
 
@@ -61,7 +63,7 @@ export async function POST(req: NextRequest) {
   const email = String(user.email).trim().toLowerCase();
   const name = String(user.name || email.split("@")[0]);
   const registration = await withTransaction(async (client) => {
-    const contactId = await ensureContact({ source: "webinar", email, name, userId: session.userId }, client);
+    const contactId = await ensureContact({ source: "webinar", sourceDetail: pageSourceLabel, email, name, userId: session.userId }, client);
     const existing = await client.query(
       `SELECT id, session_start_at, attendee_timezone, registered_at, watch_seconds, completed_at, left_at
        FROM webinar_access

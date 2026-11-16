@@ -277,21 +277,28 @@ function contactKey(row: ContactRow): string {
   return `c-${row.contact_id}`;
 }
 
-/** Labels for contacts.source -- mirrors CONTACT_SOURCE_LABELS in
- * src/lib/contacts.ts (server-only module). */
-const FIRST_SOURCE_LABELS: Record<string, string> = {
-  synced: "Unknown", email: "Sent an email", manual: "Added by you", import: "Imported", open_source: "Open-source waitlist",
-  account: "Account signup", newsletter: "Newsletter", contact_form: "Contact form", form: "Form", guide: "Free guide",
-  meeting: "Meeting booking", webinar: "Webinar", course: "Course", tool_submission: "Tool submission", author: "Author application",
-  payment: "Payment", review: "Review", community: "Community", event: "Site event",
-};
+/** The Source column header, with an (i) explaining where labels come from. */
+function SourceHeader() {
+  const [open, setOpen] = useState(false);
+  return (
+    <span className="relative inline-flex items-center gap-1.5">
+      Source
+      <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} aria-label="How sources work" className="flex h-4 w-4 items-center justify-center rounded-full border border-line text-[10px] font-semibold text-ink-soft hover:border-ink hover:text-ink">i</button>
+      {open && <span role="tooltip" className="absolute left-0 top-6 z-20 w-72 rounded-xl border border-line bg-paper p-3 text-xs font-normal normal-case leading-5 text-ink-soft shadow-lg">
+        The first tag is where the contact first signed up, using the source you wrote for that page. Add one in Pages → Edit → Page settings, in a blog post&apos;s settings, or under Pages → &quot;Contact sources for other pages&quot; (meetings, webinars, courses, sign-up). A form&apos;s own source is used on its direct link. &quot;Unknown&quot; means the page had no source yet. The other tags show what they&apos;ve done since.
+      </span>}
+    </span>
+  );
+}
+
+/** Where the contact came from: the source label you wrote on the page (or
+ * form) they signed up on. Only bookings have a built-in label. */
 function firstSourceLabel(row: { source: string; source_detail: string | null }) {
-  const base = FIRST_SOURCE_LABELS[row.source] || row.source;
-  return row.source_detail ? `${base}: ${row.source_detail}` : base;
+  return row.source_detail || (row.source === "meeting" ? "Booking" : "Unknown");
 }
 /** Same name ignoring case, dashes and a trailing "form", so "Contact" and
  * "Contact form" count once. */
-const normalSource = (value: string) => value.toLowerCase().replace(/[-_]+/g, " ").replace(/s*form$/, "").trim();
+const normalSource = (value: string) => value.toLowerCase().replace(/[-_]+/g, " ").replace(/\s*form$/, "").trim();
 const sameSource = (a: string, b: string) => normalSource(a) === normalSource(b);
 
 function SourceTags({ row }: { row: ContactRow }) {
@@ -316,7 +323,7 @@ function SourceTags({ row }: { row: ContactRow }) {
   const first = firstSourceLabel(row);
   return (
     <div className="flex flex-wrap gap-1">
-      <span title="Where this contact first came from" className={`whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${row.source === "synced" ? "border border-dashed border-line text-ink-soft" : "bg-paper-soft text-ink"}`}>{first}</span>
+      <span title="Where this contact first came from" className="whitespace-nowrap rounded-full border border-line px-2 py-0.5 text-xs text-ink-soft">{first}</span>
       {tags.map((t) => (
         sameSource(t, first) ? null : <span key={t} className="whitespace-nowrap rounded-full border border-line px-2 py-0.5 text-xs text-ink-soft">
           {t}
@@ -707,7 +714,7 @@ function ContactsListInner({
               <th className="px-4 py-3 font-medium">Name</th>
               <th className="px-4 py-3 font-medium">Email</th>
               <th className="px-4 py-3 font-medium">Phone</th>
-              <th className="px-4 py-3 font-medium">Source</th>
+              <th className="px-4 py-3 font-medium"><SourceHeader /></th>
               <th className="px-4 py-3 font-medium">Email status</th>
               <th className="px-4 py-3 font-medium">Last activity</th>
               <th className="px-4 py-3 font-medium">First seen</th>
@@ -750,8 +757,12 @@ function ContactsListInner({
                         page (IM-WEBSITE-K/M) before b7621f38 added the
                         missing columns. A dash in one cell is the right
                         failure here, not a 500. */}
-                    <p>Email: {formatDay(r.open_days?.[0])}</p>
-                    {r.has_account && <p>Website: {formatDay(r.site_days?.[0])}</p>}
+                    {/* Only real visits: signed-in days on the site and
+                        clicks through from an email. Email opens are left
+                        out -- Gmail and Apple Mail load the tracking image
+                        themselves, often as the email arrives, so an open
+                        says nothing about the person being active. */}
+                    <p>{formatDay([r.site_days?.[0], r.click_days?.[0]].filter(Boolean).sort().pop())}</p>
                   </td>
                   <td className="px-4 py-3 text-ink-soft">{formatTimestamp(r.first_seen)}</td>
                 </tr>

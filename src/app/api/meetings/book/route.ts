@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { pageSourceFromRequest } from "@/lib/pageSources";
 import { z } from "zod";
 import { getAdminSession, getSession } from "@/lib/auth";
 import { sendTransactionalWhatsApp } from "@/lib/whatsappTransactional";
@@ -61,6 +62,8 @@ export async function POST(req: NextRequest) {
 
   const session = await getSession();
   const userId = session && session.email.toLowerCase() === email ? session.userId : null;
+  // The booking page's own source, or the built-in "Booking".
+  const pageSourceLabel = (await pageSourceFromRequest(req)) || "Booking";
   let calResult;
   try {
     calResult = await createBooking({ meetingType, start: startDate.toISOString(), attendee: { name, email, timeZone: timezone }, metadata: notes ? { notes } : undefined });
@@ -78,7 +81,7 @@ export async function POST(req: NextRequest) {
   const saved = await withTransaction(async (client) => {
     // Country is no longer asked for: it comes from the visitor's network.
     const country = normalizeCountry(parsed.data.country) ?? normalizeCountry(req.headers.get("cf-ipcountry"));
-    const contactId = await ensureContact({ source: "meeting",
+    const contactId = await ensureContact({ source: "meeting", sourceDetail: pageSourceLabel,
       email, name, userId, country, countrySource: "ip",
       phone: parsed.data.phone || null,
       phoneSource: parsed.data.phone ? "form" : undefined,

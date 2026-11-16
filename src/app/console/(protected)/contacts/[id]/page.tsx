@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import { CONTACT_SOURCE_LABELS } from "@/lib/contacts";
 import { pool } from "@/lib/db";
 import ContactActions from "@/components/ContactActions";
 import { getReplyToEmail } from "@/lib/businessProfile";
@@ -279,7 +278,7 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
             <p className="text-xs font-medium uppercase tracking-wide text-ink-soft">
               {user ? "Account" : "Guest — no account yet"}
             </p>
-            <h1 className="mt-1 font-display text-2xl font-semibold sm:text-3xl">{user?.name || contact.name || email}</h1>
+            <h1 className="mt-1 font-display text-2xl font-semibold sm:text-3xl">{contact.name || user?.name || email}</h1>
           </div>
           <div className="ml-auto flex shrink-0 items-center gap-3">
             <ContactEditForm
@@ -345,7 +344,7 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
             </div>
             <div className="flex items-baseline justify-between gap-4">
               <dt className="text-ink-soft">Came from</dt>
-              <dd className="text-right font-medium">{(CONTACT_SOURCE_LABELS as Record<string, string>)[contact.source] || contact.source}{contact.source_detail ? `: ${contact.source_detail}` : ""}</dd>
+              <dd className="text-right font-medium">{contact.source_detail || (contact.source === "meeting" ? "Booking" : "Unknown")}</dd>
             </div>
             <div className="flex items-baseline justify-between gap-4">
               <dt className="text-ink-soft">Deliverability</dt>
@@ -387,7 +386,7 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
 
       <ContactActions
         contactId={contactId}
-        name={user?.name || contact.name || null}
+        name={contact.name || user?.name || null}
         email={email}
         phone={contact.phone || null}
         hasAccount={!!user}

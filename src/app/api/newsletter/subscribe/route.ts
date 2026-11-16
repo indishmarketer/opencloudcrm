@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { pageSourceFromRequest } from "@/lib/pageSources";
 import { pool } from "@/lib/db";
 import { checkRateLimit, privateRateLimitKey } from "@/lib/rateLimit";
 import { requestOtp } from "@/lib/otp";
@@ -59,7 +60,7 @@ export async function POST(req: NextRequest) {
   // though we had their real name right here. The country is no longer
   // asked for -- it is detected from the visitor's IP.
   const country = normalizeCountry(req.headers.get("cf-ipcountry"));
-  await ensureContact({ source: "newsletter",
+  await ensureContact({ source: "newsletter", sourceDetail: (await pageSourceFromRequest(req)) || null,
     email, name, userId, country, countrySource: country ? "ip" : undefined,
   }).catch((err) => console.error("newsletter ensureContact failed (non-fatal):", err));
 

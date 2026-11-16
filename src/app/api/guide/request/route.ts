@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { pageSourceFromRequest } from "@/lib/pageSources";
 import { z } from "zod";
 import { checkRateLimit, privateRateLimitKey } from "@/lib/rateLimit";
 import { requestOtp } from "@/lib/otp";
@@ -104,7 +105,7 @@ export async function POST(req: NextRequest) {
   // (via sendEmail -> ensureContact) with no name on it. Someone who opens
   // that email but never returns to finish verifying would otherwise stay
   // permanently nameless even though we had their real name right here.
-  await ensureContact({ source: "guide", sourceDetail: guide.title,
+  await ensureContact({ source: "guide", sourceDetail: (await pageSourceFromRequest(req)) || null,
     email, name, phone: phone || null, phoneSource: phone ? "form" : undefined,
   }).catch((err) => console.error("guide request ensureContact failed (non-fatal):", err));
 

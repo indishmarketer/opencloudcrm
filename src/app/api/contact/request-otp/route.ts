@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { pageSourceFromRequest } from "@/lib/pageSources";
 import { verifyTurnstile } from "@/lib/turnstile";
 import { checkRateLimit, privateRateLimitKey } from "@/lib/rateLimit";
 import { requestOtp } from "@/lib/otp";
@@ -44,7 +45,7 @@ export async function POST(req: NextRequest) {
   // email but never returns to enter the code would otherwise stay
   // permanently nameless even though we had their real name right here.
   // The country is no longer asked for -- it is detected from the IP.
-  await ensureContact({ source: "contact_form",
+  await ensureContact({ source: "contact_form", sourceDetail: (await pageSourceFromRequest(req)) || null,
     email, name, country, countrySource: country ? "ip" : undefined,
   }).catch((err) => console.error("contact form ensureContact failed (non-fatal):", err));
   const sent = await requestOtp(email, "contact", { name, message, updatesOptIn, attribution, country });

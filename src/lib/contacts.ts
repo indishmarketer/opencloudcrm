@@ -58,7 +58,8 @@ export async function ensureContact(
      * once set, except that the weak "synced"/"email" give way to the
      * first real one. */
     source?: ContactSource;
-    /** Human detail for the source, e.g. the form or guide name. */
+    /** The owner-written source label shown in Contacts: the page's source
+     * (src/lib/pageSources.ts), else the form's own source. Never generated. */
     sourceDetail?: string | null;
   },
   db: Queryable = pool,
@@ -72,8 +73,8 @@ export async function ensureContact(
      ON CONFLICT (normalized_email) DO UPDATE SET
        source = CASE WHEN contacts.source IN ('synced', 'email') AND EXCLUDED.source NOT IN ('synced', 'email') THEN EXCLUDED.source
          WHEN contacts.source = 'synced' THEN EXCLUDED.source ELSE contacts.source END,
-       source_detail = CASE WHEN contacts.source IN ('synced', 'email') AND EXCLUDED.source NOT IN ('synced', 'email') THEN EXCLUDED.source_detail
-         ELSE COALESCE(contacts.source_detail, EXCLUDED.source_detail) END,
+       -- The owner-written source label: the first one a contact gets stays.
+       source_detail = COALESCE(contacts.source_detail, EXCLUDED.source_detail),
        user_id = COALESCE(contacts.user_id, EXCLUDED.user_id),
        name = COALESCE(EXCLUDED.name, contacts.name),
        -- Name parts and address only ever fill an empty slot: a form answer

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { pageSourceFromRequest } from "@/lib/pageSources";
 import bcrypt from "bcryptjs";
 import crypto from "node:crypto";
 import { z } from "zod";
@@ -69,7 +70,7 @@ export async function POST(req: NextRequest) {
     if (updates_opt_in === true) {
       await pool.query("UPDATE users SET updates_opt_in = true WHERE id = $1 AND updates_opt_in = false", [user.id]);
     }
-    await ensureContact({ source: "webinar", email: user.email, userId: user.id, country, countrySource });
+    await ensureContact({ source: "webinar", sourceDetail: (await pageSourceFromRequest(req)) || null, email: user.email, userId: user.id, country, countrySource });
   } else {
     // Unusable random password -- satisfies the NOT NULL column without
     // anyone ever authenticating with it; they can set a real password
@@ -93,7 +94,7 @@ export async function POST(req: NextRequest) {
         }
       }
       if (!created) throw new Error("Could not create account after retries.");
-      await ensureContact({ source: "webinar", email: created.email, userId: created.id, name, country, countrySource }, client);
+      await ensureContact({ source: "webinar", sourceDetail: (await pageSourceFromRequest(req)) || null, email: created.email, userId: created.id, name, country, countrySource }, client);
 
       await client.query("UPDATE contact_submissions SET user_id = $1 WHERE email = $2 AND user_id IS NULL", [created.id, created.email]);
       await client.query("UPDATE newsletter_subscribers SET user_id = $1 WHERE email = $2 AND user_id IS NULL", [created.id, created.email]);

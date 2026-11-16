@@ -5,6 +5,8 @@ import { BUILT_IN_PATHS } from "@/lib/defaultPages";
 import { hasUnpublishedChanges } from "@/lib/sitePagesShape";
 import ConsolePages, { type PageRow } from "@/components/ConsolePages";
 import ConsolePagesTabs from "@/components/ConsolePagesTabs";
+import ConsoleOtherPageSources from "@/components/ConsoleOtherPageSources";
+import { pool } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Pages | Console" };
@@ -52,6 +54,7 @@ export default async function ConsolePagesPage({ searchParams }: { searchParams:
     console.error("[console pages]", error);
     return null;
   });
+  const otherPages = await loadOtherPublicPages().catch(() => []);
 
   return (
     <div className="max-w-5xl space-y-6">
@@ -71,6 +74,23 @@ export default async function ConsolePagesPage({ searchParams }: { searchParams:
       ) : (
         <ConsolePages rows={rows} />
       )}
+      <ConsoleOtherPageSources pages={otherPages} />
     </div>
   );
+}
+
+/** Public pages that live outside the page builder, for their contact source. */
+async function loadOtherPublicPages() {
+  const [meetings, webinars, courses] = await Promise.all([
+    pool.query<{ slug: string; name: string }>("SELECT slug, name FROM meeting_types ORDER BY name"),
+    pool.query<{ slug: string; title: string }>("SELECT slug, title FROM webinars ORDER BY title"),
+    pool.query<{ slug: string; title: string }>("SELECT slug, title FROM courses ORDER BY title"),
+  ]);
+  return [
+    { path: "/signup", title: "Sign up", group: "Account" },
+    { path: "/login", title: "Log in", group: "Account" },
+    ...meetings.rows.map((m) => ({ path: `/book/${m.slug}`, title: m.name, group: "Meeting booking pages" })),
+    ...webinars.rows.map((w) => ({ path: `/webinars/${w.slug}`, title: w.title, group: "Webinar pages" })),
+    ...courses.rows.map((c) => ({ path: `/courses/${c.slug}`, title: c.title, group: "Course pages" })),
+  ];
 }
