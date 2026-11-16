@@ -27,7 +27,8 @@ import {
   styleFields,
   type PageBlock,
 } from "@/lib/pageBlocks";
-import { DEFAULT_POPUP_SETTINGS, type PopupSettings } from "@/lib/popupsShape";
+import { DEFAULT_POPUP_SETTINGS, POPUP_AUDIENCE, POPUP_FREQUENCY, POPUP_SHOW_ON, type PopupSettings } from "@/lib/popupsShape";
+import BrandSelect from "@/components/BrandSelect";
 
 /** The popup designer.
  *
@@ -519,6 +520,7 @@ export default function ConsolePopupEditor({
                   Open this popup from any page: add a Button and set &quot;Button opens&quot; to &quot;A popup&quot;, or
                   select text and add a link set to &quot;Open a popup&quot; -- then pick this one.
                 </p>
+                <AutoOpenSettings settings={settings} onChange={(next) => { setSettings(next); setDirty(true); }} />
               </>
             )}
           </aside>
@@ -530,6 +532,39 @@ export default function ConsolePopupEditor({
           )}
         </DragOverlay>
       </DndContext>
+    </div>
+  );
+}
+
+/** "Open by itself": when, where, for whom and how often this popup opens
+ * without a click. Applies to every popup the same way (see AutoPopups). */
+function AutoOpenSettings({ settings, onChange }: { settings: PopupSettings; onChange: (next: PopupSettings) => void }) {
+  const set = <K extends keyof PopupSettings>(key: K, value: PopupSettings[K]) => onChange({ ...settings, [key]: value });
+  return (
+    <div className="space-y-3 border-t border-line pt-4">
+      <label className="flex items-start gap-2 text-sm font-medium">
+        <input type="checkbox" checked={settings.autoOpen} onChange={(e) => set("autoOpen", e.target.checked)} className="mt-0.5 h-4 w-4" />
+        <span>Open by itself<span className="block text-xs font-normal text-ink-soft">Without anyone clicking a button.</span></span>
+      </label>
+      {settings.autoOpen && <>
+        <label className="grid gap-1.5 text-sm font-medium">
+          Open after (seconds)
+          <input type="number" min={0} max={300} value={settings.delaySeconds} onChange={(e) => set("delaySeconds", Math.max(0, Math.min(300, Number(e.target.value) || 0)))} className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-sm outline-none focus:border-ink" />
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={settings.exitIntent} onChange={(e) => set("exitIntent", e.target.checked)} className="h-4 w-4" />
+          Also when someone is about to leave (desktop)
+        </label>
+        <div className="grid gap-1.5 text-sm font-medium">Show on<BrandSelect value={settings.showOn} onChange={(v) => set("showOn", v as PopupSettings["showOn"])} options={POPUP_SHOW_ON.map((o) => ({ value: o.value, label: o.label }))} /></div>
+        {settings.showOn === "pages" && <label className="grid gap-1.5 text-sm font-medium">
+          Pages (one per line)
+          <textarea rows={4} value={settings.paths.join("\n")} onChange={(e) => set("paths", e.target.value.split("\n"))} placeholder={"/newsletter\n/tools/*"} className="w-full rounded-xl border border-line bg-paper px-3 py-2 font-mono text-xs outline-none focus:border-ink" />
+          <span className="text-xs font-normal text-ink-soft">Use /* for a whole section, like /blog/*. Never shows in the console or account pages.</span>
+        </label>}
+        <div className="grid gap-1.5 text-sm font-medium">Who sees it<BrandSelect value={settings.audience} onChange={(v) => set("audience", v as PopupSettings["audience"])} options={POPUP_AUDIENCE.map((o) => ({ value: o.value, label: o.label }))} /></div>
+        <div className="grid gap-1.5 text-sm font-medium">How often<BrandSelect value={settings.frequency} onChange={(v) => set("frequency", v as PopupSettings["frequency"])} options={POPUP_FREQUENCY.map((o) => ({ value: o.value, label: o.label }))} /></div>
+        <p className="text-xs text-ink-soft">If more than one popup could open on a page, only the first opens.</p>
+      </>}
     </div>
   );
 }

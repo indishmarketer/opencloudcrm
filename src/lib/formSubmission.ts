@@ -109,7 +109,7 @@ export async function completeFormSubmission(input: {
   const country = normalizeCountry(contactData.country) || normalizeCountry(input.ipCountry);
 
   const contactId = email
-    ? await ensureContact({
+    ? await ensureContact({ source: "form", sourceDetail: input.form.source || input.form.name,
         email,
         name: contactData.name,
         firstName: contactData.firstName,

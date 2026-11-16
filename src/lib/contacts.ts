@@ -32,6 +32,15 @@ const PHONE_WINS = `EXCLUDED.phone IS NOT NULL AND (
   EXCLUDED.phone_source IN ('self', 'owner')
   OR contacts.phone IS NULL)`;
 
+/** Every way a contact can first arrive, and how the console labels it. */
+export const CONTACT_SOURCE_LABELS = {
+  synced: "Unknown", email: "Sent an email", manual: "Added by you", import: "Imported", open_source: "Open-source waitlist",
+  account: "Account signup", newsletter: "Newsletter", contact_form: "Contact form", form: "Form", guide: "Free guide",
+  meeting: "Meeting booking", webinar: "Webinar", course: "Course", tool_submission: "Tool submission", author: "Author application",
+  payment: "Payment", review: "Review", community: "Community", event: "Site event",
+} as const;
+export type ContactSource = keyof typeof CONTACT_SOURCE_LABELS;
+
 export async function ensureContact(
   input: {
     email: string;
@@ -45,6 +54,12 @@ export async function ensureContact(
     countrySource?: CountrySource;
     phone?: string | null;
     phoneSource?: PhoneSource;
+    /** How this person first arrived (see CONTACT_SOURCE_LABELS). Kept
+     * once set, except that the weak "synced"/"email" give way to the
+     * first real one. */
+    source?: ContactSource;
+    /** Human detail for the source, e.g. the form or guide name. */
+    sourceDetail?: string | null;
   },
   db: Queryable = pool,
 ): Promise<number> {
@@ -52,9 +67,13 @@ export async function ensureContact(
   const country = input.country && input.countrySource ? input.country : null;
   const phone = input.phone && input.phoneSource ? input.phone : null;
   const result = await db.query<{ id: string }>(
-    `INSERT INTO contacts (email, normalized_email, user_id, name, first_name, last_name, address, first_seen_at, last_seen_at, country, country_source, phone, phone_source)
-     VALUES ($1, $1, $2, $3, $9, $10, $11, COALESCE($4, now()), COALESCE($4, now()), $5, $6, $7, $8)
+    `INSERT INTO contacts (email, normalized_email, user_id, name, first_name, last_name, address, first_seen_at, last_seen_at, country, country_source, phone, phone_source, source, source_detail)
+     VALUES ($1, $1, $2, $3, $9, $10, $11, COALESCE($4, now()), COALESCE($4, now()), $5, $6, $7, $8, COALESCE($12, 'synced'), $13)
      ON CONFLICT (normalized_email) DO UPDATE SET
+       source = CASE WHEN contacts.source IN ('synced', 'email') AND EXCLUDED.source NOT IN ('synced', 'email') THEN EXCLUDED.source
+         WHEN contacts.source = 'synced' THEN EXCLUDED.source ELSE contacts.source END,
+       source_detail = CASE WHEN contacts.source IN ('synced', 'email') AND EXCLUDED.source NOT IN ('synced', 'email') THEN EXCLUDED.source_detail
+         ELSE COALESCE(contacts.source_detail, EXCLUDED.source_detail) END,
        user_id = COALESCE(contacts.user_id, EXCLUDED.user_id),
        name = COALESCE(EXCLUDED.name, contacts.name),
        -- Name parts and address only ever fill an empty slot: a form answer
@@ -75,6 +94,7 @@ export async function ensureContact(
       country, country ? input.countrySource : null,
       phone, phone ? input.phoneSource : null,
       input.firstName?.trim() || null, input.lastName?.trim() || null, input.address?.trim() || null,
+      input.source ?? null, input.sourceDetail?.trim().slice(0, 200) || null,
     ],
   );
   return Number(result.rows[0].id);

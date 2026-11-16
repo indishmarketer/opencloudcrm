@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { CONTACT_SOURCE_LABELS } from "@/lib/contacts";
 import { pool } from "@/lib/db";
 import ContactActions from "@/components/ContactActions";
 import { getReplyToEmail } from "@/lib/businessProfile";
@@ -48,7 +49,7 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
   const contactResult = await pool.query(
     `SELECT c.id, c.email, c.user_id, c.name, c.first_name, c.last_name, c.address,
             c.phone, c.marketing_status, c.deliverability_status, now() AS request_now,
-            c.first_seen_at, c.last_seen_at, c.last_emailed_at, c.last_engaged_at,
+            c.source, c.source_detail, c.first_seen_at, c.last_seen_at, c.last_emailed_at, c.last_engaged_at,
             c.country, c.country_source, c.whatsapp_status
      FROM contacts c
      WHERE ($1::bigint IS NOT NULL AND c.id = $1)
@@ -341,6 +342,10 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
             <div className="flex items-baseline justify-between gap-4">
               <dt className="text-ink-soft">{user ? "Joined" : "First seen"}</dt>
               <dd className="font-medium">{joinedLabel}</dd>
+            </div>
+            <div className="flex items-baseline justify-between gap-4">
+              <dt className="text-ink-soft">Came from</dt>
+              <dd className="text-right font-medium">{(CONTACT_SOURCE_LABELS as Record<string, string>)[contact.source] || contact.source}{contact.source_detail ? `: ${contact.source_detail}` : ""}</dd>
             </div>
             <div className="flex items-baseline justify-between gap-4">
               <dt className="text-ink-soft">Deliverability</dt>

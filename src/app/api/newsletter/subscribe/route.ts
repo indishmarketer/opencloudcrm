@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
   // though we had their real name right here. The country is no longer
   // asked for -- it is detected from the visitor's IP.
   const country = normalizeCountry(req.headers.get("cf-ipcountry"));
-  await ensureContact({
+  await ensureContact({ source: "newsletter",
     email, name, userId, country, countrySource: country ? "ip" : undefined,
   }).catch((err) => console.error("newsletter ensureContact failed (non-fatal):", err));
 

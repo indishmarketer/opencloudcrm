@@ -17,7 +17,51 @@ export type PopupSettings = {
   overlayOpacity: number;
   /** Shown as the dialog's accessible name when no heading is present. */
   ariaLabel: string;
+  /** Opens by itself (besides any button or link that opens it). */
+  autoOpen: boolean;
+  /** Seconds after the page loads. */
+  delaySeconds: number;
+  /** Also open when the cursor heads out of the window (desktop). */
+  exitIntent: boolean;
+  /** Where it opens by itself. */
+  showOn: PopupShowOn;
+  /** For showOn "pages": paths like /newsletter, or /blog/* for a whole section. */
+  paths: string[];
+  audience: PopupAudience;
+  /** How often one visitor sees it open by itself. */
+  frequency: PopupFrequency;
 };
+
+export const POPUP_SHOW_ON = [
+  { value: "everywhere", label: "Every page" },
+  { value: "blog_posts", label: "All blog posts" },
+  { value: "pages", label: "Only these pages" },
+] as const;
+export type PopupShowOn = (typeof POPUP_SHOW_ON)[number]["value"];
+export const POPUP_AUDIENCE = [
+  { value: "logged_out", label: "Only visitors who aren't logged in" },
+  { value: "everyone", label: "Everyone" },
+] as const;
+export type PopupAudience = (typeof POPUP_AUDIENCE)[number]["value"];
+export const POPUP_FREQUENCY = [
+  { value: "session", label: "Once per visit" },
+  { value: "day", label: "Once a day" },
+  { value: "week", label: "Once a week" },
+  { value: "once", label: "Only once, ever" },
+] as const;
+export type PopupFrequency = (typeof POPUP_FREQUENCY)[number]["value"];
+
+/** Whether a popup set to open by itself belongs on this path. Never on
+ * console or account pages. */
+export function popupMatchesPath(settings: PopupSettings, pathname: string): boolean {
+  if (/^\/(console|account|login|signup)(\/|$)/.test(pathname)) return false;
+  if (settings.showOn === "everywhere") return true;
+  if (settings.showOn === "blog_posts") return /^\/blog\/[^/]+\/?$/.test(pathname) && !pathname.startsWith("/blog/preview");
+  const trim = (value: string) => (value.length > 1 ? value.replace(/\/$/, "") : value);
+  return settings.paths.some((path) => path.endsWith("/*")
+    ? pathname === path.slice(0, -2) || pathname.startsWith(path.slice(0, -1))
+    : trim(pathname) === trim(path));
+}
 
 export const DEFAULT_POPUP_SETTINGS: PopupSettings = {
   maxWidth: 480,
@@ -26,7 +70,18 @@ export const DEFAULT_POPUP_SETTINGS: PopupSettings = {
   backgroundColor: "",
   overlayOpacity: 60,
   ariaLabel: "",
+  autoOpen: false,
+  delaySeconds: 5,
+  exitIntent: true,
+  showOn: "blog_posts",
+  paths: [],
+  audience: "logged_out",
+  frequency: "session",
 };
+
+function pick<T extends string>(value: unknown, allowed: readonly { value: T }[], fallback: T): T {
+  return allowed.some((item) => item.value === value) ? (value as T) : fallback;
+}
 
 export const MAX_POPUP_NAME = 100;
 
@@ -48,6 +103,15 @@ export function normalizePopupSettings(input: unknown): PopupSettings {
     backgroundColor: str(raw.backgroundColor, 120),
     overlayOpacity: int(raw.overlayOpacity, DEFAULT_POPUP_SETTINGS.overlayOpacity, 0, 100),
     ariaLabel: str(raw.ariaLabel, 120),
+    autoOpen: raw.autoOpen === true,
+    delaySeconds: int(raw.delaySeconds, DEFAULT_POPUP_SETTINGS.delaySeconds, 0, 300),
+    exitIntent: raw.exitIntent === undefined ? DEFAULT_POPUP_SETTINGS.exitIntent : raw.exitIntent === true,
+    showOn: pick(raw.showOn, POPUP_SHOW_ON, DEFAULT_POPUP_SETTINGS.showOn),
+    paths: Array.isArray(raw.paths)
+      ? raw.paths.filter((path): path is string => typeof path === "string").map((path) => path.trim()).filter((path) => /^\/[\w\-./*]*$/.test(path)).slice(0, 30)
+      : [],
+    audience: pick(raw.audience, POPUP_AUDIENCE, DEFAULT_POPUP_SETTINGS.audience),
+    frequency: pick(raw.frequency, POPUP_FREQUENCY, DEFAULT_POPUP_SETTINGS.frequency),
   };
 }
 

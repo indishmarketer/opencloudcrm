@@ -172,7 +172,7 @@ export async function completeGuideVerification(email: string, payload: GuidePay
   const guide = await getLeadMagnetById(payload.guideId);
   if (!guide) return null;
 
-  const contactId = await ensureContact({
+  const contactId = await ensureContact({ source: "guide", sourceDetail: guide.title,
     email,
     name: String(payload.name || "").slice(0, 200) || null,
     phone: payload.phone ? String(payload.phone).slice(0, 30) : null,

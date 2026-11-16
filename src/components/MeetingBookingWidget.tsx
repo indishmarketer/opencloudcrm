@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import BrandSelect from "@/components/BrandSelect";
 import UpdatesOptIn from "@/components/UpdatesOptIn";
+import Turnstile from "@/components/Turnstile";
 import { detectCountry } from "@/components/CountrySelect";
 import PhoneInput, { toE164 } from "@/components/PhoneInput";
 import { MonthCalendar, toDateKey } from "@/components/MonthCalendar";
@@ -35,6 +36,10 @@ export function MeetingBookingWidget({ slug, prefillName, prefillEmail }: { slug
   const [country, setCountry] = useState("");
   const [phone, setPhone] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState("");
+  // A Turnstile token works once; remounting the widget gets a fresh one
+  // after a failed attempt.
+  const [turnstileKey, setTurnstileKey] = useState(0);
   const [error, setError] = useState("");
 
   const timeZoneOptions = useMemo(() => allTimeZones().map((tz) => ({ value: tz, label: tz.replace(/_/g, " ") })), []);
@@ -98,6 +103,10 @@ export function MeetingBookingWidget({ slug, prefillName, prefillEmail }: { slug
       setError("Enter your phone number.");
       return;
     }
+    if (!turnstileToken) {
+      setError("Please wait for the security check to finish.");
+      return;
+    }
 
     setIsSubmitting(true);
     setError("");
@@ -118,6 +127,7 @@ export function MeetingBookingWidget({ slug, prefillName, prefillEmail }: { slug
           whatsappOptIn,
           country,
           phone: e164Phone,
+          turnstileToken,
         }),
       });
 
@@ -132,6 +142,8 @@ export function MeetingBookingWidget({ slug, prefillName, prefillEmail }: { slug
       const msg = err instanceof Error ? err.message : "Booking failed";
       setError(msg);
       setIsSubmitting(false);
+      setTurnstileToken("");
+      setTurnstileKey((k) => k + 1);
     }
   };
 
@@ -259,9 +271,11 @@ export function MeetingBookingWidget({ slug, prefillName, prefillEmail }: { slug
         hasPhone={!!toE164(country, phone)}
       />
 
+      <Turnstile key={turnstileKey} onToken={setTurnstileToken} />
+
       <button
         type="submit"
-        disabled={isSubmitting}
+        disabled={isSubmitting || !turnstileToken}
         className="mt-4 w-full rounded-full bg-ink px-4 py-2.5 text-sm font-medium text-paper transition-opacity hover:opacity-80 disabled:opacity-50"
       >
         {isSubmitting ? "Booking…" : "Confirm booking"}

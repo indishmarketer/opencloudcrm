@@ -104,7 +104,7 @@ export async function POST(req: NextRequest) {
   // (via sendEmail -> ensureContact) with no name on it. Someone who opens
   // that email but never returns to finish verifying would otherwise stay
   // permanently nameless even though we had their real name right here.
-  await ensureContact({
+  await ensureContact({ source: "guide", sourceDetail: guide.title,
     email, name, phone: phone || null, phoneSource: phone ? "form" : undefined,
   }).catch((err) => console.error("guide request ensureContact failed (non-fatal):", err));
 

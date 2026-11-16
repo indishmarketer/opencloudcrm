@@ -48,7 +48,7 @@ async function upsertBooking(client: PoolClient, data: JsonRecord, oldBookingId:
   let contactId = existing.rows[0]?.contact_id || null;
   let userId = existing.rows[0]?.user_id || null;
   if (attendee.email) {
-    contactId = await ensureContact({ email: attendee.email, name: attendee.name, userId }, client);
+    contactId = await ensureContact({ source: "meeting", email: attendee.email, name: attendee.name, userId }, client);
     if (!userId) {
       const user = await client.query("SELECT id FROM users WHERE lower(email) = lower($1) LIMIT 1", [attendee.email]);
       userId = user.rows[0]?.id || null;

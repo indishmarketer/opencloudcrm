@@ -177,7 +177,7 @@ export async function confirmPhoneVerification(
 
     // The contact write and OTP consumption are one transaction. A database
     // error therefore leaves the code usable instead of stranding the user.
-    const contactId = await ensureContact({ email, userId, phone: row.phone, phoneSource: "self" }, client);
+    const contactId = await ensureContact({ source: "account", email, userId, phone: row.phone, phoneSource: "self" }, client);
     await client.query("UPDATE contacts SET phone_verified_at = now() WHERE id = $1", [contactId]);
     await client.query("UPDATE account_phone_verifications SET consumed_at = now(), attempts = $2 WHERE id = $1", [row.id, attempts]);
     await client.query("COMMIT");

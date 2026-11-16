@@ -9,12 +9,13 @@ import { pool, withTransaction } from "@/lib/db";
 import { sendMeetingConfirmation, sendMeetingOwnerNotification } from "@/lib/meetingEmails";
 import { bookingDataFromCalcom, getMeetingTypeBySlug, isValidDateTime, isValidTimeZone } from "@/lib/meetingUtils";
 import { consumeRateLimit } from "@/lib/rateLimit";
+import { verifyTurnstile } from "@/lib/turnstile";
 import { normalizeCountry } from "@/lib/countries";
 import { SITE_URL } from "@/lib/liveSiteUrl";
 import { emitWebhookEvent } from "@/lib/webhookEvents";
 import { hasActiveWorkflowActionForEvent } from "@/lib/workflows";
 
-const bookingSchema = z.object({ slug: z.string().trim().regex(/^[a-z0-9][a-z0-9-]*$/).max(120), start: z.string().trim().min(10).max(64), name: z.string().trim().min(1).max(120), email: z.string().trim().email().max(254), timezone: z.string().trim().min(1).max(100), notes: z.string().trim().max(1000).optional(), updatesOptIn: z.boolean().optional(), whatsappOptIn: z.boolean().optional(), country: z.string().trim().max(2).optional(), phone: z.string().trim().regex(/^\d{4,15}$/).optional() });
+const bookingSchema = z.object({ slug: z.string().trim().regex(/^[a-z0-9][a-z0-9-]*$/).max(120), start: z.string().trim().min(10).max(64), name: z.string().trim().min(1).max(120), email: z.string().trim().email().max(254), timezone: z.string().trim().min(1).max(100), notes: z.string().trim().max(1000).optional(), updatesOptIn: z.boolean().optional(), whatsappOptIn: z.boolean().optional(), country: z.string().trim().max(2).optional(), phone: z.string().trim().regex(/^\d{4,15}$/).optional(), turnstileToken: z.string().max(4096).optional() });
 
 export async function POST(req: NextRequest) {
   const ip = req.headers.get("cf-connecting-ip") || req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
@@ -34,8 +35,14 @@ export async function POST(req: NextRequest) {
   // booking" tool posts here too (see ConsoleAddMeeting.tsx), for someone
   // who agreed a time by phone or email, and the owner may not have their
   // number, so an admin session is allowed to book without one.
-  if (!parsed.data.phone && !(await getAdminSession())) {
+  const isAdmin = await getAdminSession();
+  if (!parsed.data.phone && !isAdmin) {
     return NextResponse.json({ error: "Enter your phone number." }, { status: 400 });
+  }
+  // Public bookings must pass the human check; the console's own Add
+  // booking tool (an admin session) doesn't show one.
+  if (!isAdmin && !(await verifyTurnstile(parsed.data.turnstileToken, ip === "unknown" ? undefined : ip))) {
+    return NextResponse.json({ error: "Could not verify you're human. Please try again." }, { status: 400 });
   }
 
   // Defense in depth: Cal.com's own bookerActiveBookingsLimit enforces this
@@ -71,7 +78,7 @@ export async function POST(req: NextRequest) {
   const saved = await withTransaction(async (client) => {
     // Country is no longer asked for: it comes from the visitor's network.
     const country = normalizeCountry(parsed.data.country) ?? normalizeCountry(req.headers.get("cf-ipcountry"));
-    const contactId = await ensureContact({
+    const contactId = await ensureContact({ source: "meeting",
       email, name, userId, country, countrySource: "ip",
       phone: parsed.data.phone || null,
       phoneSource: parsed.data.phone ? "form" : undefined,

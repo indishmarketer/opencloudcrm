@@ -94,7 +94,7 @@ export async function POST(req: NextRequest) {
     // creates one with user_id left NULL -- that gap was why real,
     // already-verified accounts couldn't be reliably matched back to their
     // users row later (e.g. for deliverability recovery, review requests).
-    await ensureContact({
+    await ensureContact({ source: "account",
       email: user.email,
       userId: user.id,
       name: name || null,

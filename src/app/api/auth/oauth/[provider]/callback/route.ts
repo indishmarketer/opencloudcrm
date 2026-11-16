@@ -152,7 +152,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
 
   const ipCountry = normalizeCountry(req.headers.get("cf-ipcountry"));
   try {
-    await ensureContact({
+    await ensureContact({ source: "account",
       email,
       userId,
       name,

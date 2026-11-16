@@ -182,7 +182,7 @@ export async function sendEmail({
   let deliveryId: number | null = null;
 
   try {
-    const contactId = isTest ? null : await ensureContact({ email: normalizedTo });
+    const contactId = isTest ? null : await ensureContact({ source: "email", email: normalizedTo });
     const delivery = await pool.query<{ id: string }>(
       `INSERT INTO email_deliveries
          (tracking_id, contact_id, recipient_email, template_key, category, campaign_id, flow_step_id, flow_run_id, workflow_run_id, workflow_node_id, subject, is_test)

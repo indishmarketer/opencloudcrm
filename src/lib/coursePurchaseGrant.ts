@@ -249,7 +249,7 @@ export async function grantCoursePurchase(input: {
   // ask for it, so without this fallback a buyer whose number we already
   // had from signup would get no WhatsApp at all.
   if (input.phone) {
-    await ensureContact({ email: user.email, userId, phone: input.phone, phoneSource: method }).catch(() => {});
+    await ensureContact({ source: "course", email: user.email, userId, phone: input.phone, phoneSource: method }).catch(() => {});
   }
   const whatsappContact = await pool.query<{ id: number; name: string | null; email: string; phone: string | null }>(
     "SELECT id, name, email, phone FROM contacts WHERE user_id = $1 LIMIT 1",

@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
   // email but never returns to enter the code would otherwise stay
   // permanently nameless even though we had their real name right here.
   // The country is no longer asked for -- it is detected from the IP.
-  await ensureContact({
+  await ensureContact({ source: "contact_form",
     email, name, country, countrySource: country ? "ip" : undefined,
   }).catch((err) => console.error("contact form ensureContact failed (non-fatal):", err));
   const sent = await requestOtp(email, "contact", { name, message, updatesOptIn, attribution, country });

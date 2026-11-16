@@ -5,7 +5,6 @@ import { resolveImage } from "@/lib/images";
 import { getAuthorViewBySlug, getDefaultAuthorView } from "@/lib/blogAuthors";
 import AuthorByline from "@/components/AuthorByline";
 import ShareButtons from "@/components/ShareButtons";
-import NewsletterPopup from "@/components/NewsletterPopup";
 import BlogCommentSection from "@/components/community/BlogCommentSection";
 import RelatedPosts from "@/components/RelatedPosts";
 import RelatedTools from "@/components/RelatedTools";
@@ -166,7 +165,6 @@ export default async function BlogPostArticle({ post, indexEntry, preview = fals
       <RelatedTools tools={relatedTools} />
       <RelatedPosts currentSlug={post.slug} category={indexEntry?.category} />
       {!preview && <BlogCommentSection postSlug={post.slug} />}
-      {!preview && <NewsletterPopup />}
     </article>
   );
 }

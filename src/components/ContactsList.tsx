@@ -133,6 +133,8 @@ type ContactRow = {
   has_webhook_lead: boolean;
   /** Distinct source slugs (the URL segment used in the inbound webhook) that registered this contact as a lead. */
   webhook_lead_sources: string[];
+  source: string;
+  source_detail: string | null;
   form_sources: string[];
   marketing_status: string;
   deliverability_status: string;
@@ -275,6 +277,23 @@ function contactKey(row: ContactRow): string {
   return `c-${row.contact_id}`;
 }
 
+/** Labels for contacts.source -- mirrors CONTACT_SOURCE_LABELS in
+ * src/lib/contacts.ts (server-only module). */
+const FIRST_SOURCE_LABELS: Record<string, string> = {
+  synced: "Unknown", email: "Sent an email", manual: "Added by you", import: "Imported", open_source: "Open-source waitlist",
+  account: "Account signup", newsletter: "Newsletter", contact_form: "Contact form", form: "Form", guide: "Free guide",
+  meeting: "Meeting booking", webinar: "Webinar", course: "Course", tool_submission: "Tool submission", author: "Author application",
+  payment: "Payment", review: "Review", community: "Community", event: "Site event",
+};
+function firstSourceLabel(row: { source: string; source_detail: string | null }) {
+  const base = FIRST_SOURCE_LABELS[row.source] || row.source;
+  return row.source_detail ? `${base}: ${row.source_detail}` : base;
+}
+/** Same name ignoring case, dashes and a trailing "form", so "Contact" and
+ * "Contact form" count once. */
+const normalSource = (value: string) => value.toLowerCase().replace(/[-_]+/g, " ").replace(/s*form$/, "").trim();
+const sameSource = (a: string, b: string) => normalSource(a) === normalSource(b);
+
 function SourceTags({ row }: { row: ContactRow }) {
   const tags: string[] = [];
   if (row.has_account) tags.push("Account");
@@ -292,12 +311,14 @@ function SourceTags({ row }: { row: ContactRow }) {
     if (!tags.includes(label)) tags.push(label);
   }
   for (const source of row.form_sources || []) {
-    if (!tags.includes(source)) tags.push(source);
+    if (!tags.some((tag) => sameSource(tag, source))) tags.push(source);
   }
+  const first = firstSourceLabel(row);
   return (
     <div className="flex flex-wrap gap-1">
+      <span title="Where this contact first came from" className={`whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${row.source === "synced" ? "border border-dashed border-line text-ink-soft" : "bg-paper-soft text-ink"}`}>{first}</span>
       {tags.map((t) => (
-        <span key={t} className="whitespace-nowrap rounded-full border border-line px-2 py-0.5 text-xs text-ink-soft">
+        sameSource(t, first) ? null : <span key={t} className="whitespace-nowrap rounded-full border border-line px-2 py-0.5 text-xs text-ink-soft">
           {t}
         </span>
       ))}

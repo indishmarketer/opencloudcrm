@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
   const email = String(user.email).trim().toLowerCase();
   const name = String(user.name || email.split("@")[0]);
   const registration = await withTransaction(async (client) => {
-    const contactId = await ensureContact({ email, name, userId: session.userId }, client);
+    const contactId = await ensureContact({ source: "webinar", email, name, userId: session.userId }, client);
     const existing = await client.query(
       `SELECT id, session_start_at, attendee_timezone, registered_at, watch_seconds, completed_at, left_at
        FROM webinar_access

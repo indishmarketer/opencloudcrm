@@ -46,7 +46,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const saved = await withTransaction(async (client) => {
     await client.query("UPDATE meeting_bookings SET status = 'rescheduled', updated_at = now() WHERE id = $1", [bookingId]);
     if (!next.uid || next.uid === booking.calcom_booking_uid) return null;
-    const contactId = booking.contact_id || await ensureContact({ email: booking.attendee_email, name: booking.attendee_name, userId: booking.user_id }, client);
+    const contactId = booking.contact_id || await ensureContact({ source: "meeting", email: booking.attendee_email, name: booking.attendee_name, userId: booking.user_id }, client);
     await client.query(`INSERT INTO meeting_bookings (meeting_type_id, calcom_booking_uid, user_id, contact_id, attendee_name, attendee_email, attendee_timezone, scheduled_start, scheduled_end, status, rescheduled_from_booking_id, notes) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'confirmed', $10, $11) ON CONFLICT (calcom_booking_uid) DO NOTHING`, [booking.meeting_type_id, next.uid, booking.user_id, contactId, booking.attendee_name, booking.attendee_email, parsed.data.timezone || booking.attendee_timezone, next.start, next.end, bookingId, booking.notes]);
     const row = await client.query("SELECT id, calcom_booking_uid, attendee_email, attendee_name, attendee_timezone, scheduled_start, scheduled_end, status, notes FROM meeting_bookings WHERE calcom_booking_uid = $1", [next.uid]);
     return row.rows[0] || null;

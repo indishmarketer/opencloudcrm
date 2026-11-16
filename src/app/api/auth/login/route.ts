@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
   // replaces a country the person or the owner picked.
   const ipCountry = normalizeCountry(req.headers.get("cf-ipcountry"));
   if (ipCountry) {
-    await ensureContact({ email: user.email, userId: user.id, country: ipCountry, countrySource: "ip" })
+    await ensureContact({ source: "account", email: user.email, userId: user.id, country: ipCountry, countrySource: "ip" })
       .catch((err) => console.error("login country fill failed (non-fatal):", err));
   }
   return NextResponse.json({ ok: true });
