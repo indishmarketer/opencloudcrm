@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { pageSourceFromRequest } from "@/lib/pageSources";
+import { getPageSource } from "@/lib/pageSources";
+import { MEETING_SOURCE_PATH } from "@/lib/pageSourcesShape";
 import { z } from "zod";
 import { getAdminSession, getSession } from "@/lib/auth";
 import { sendTransactionalWhatsApp } from "@/lib/whatsappTransactional";
@@ -62,8 +63,8 @@ export async function POST(req: NextRequest) {
 
   const session = await getSession();
   const userId = session && session.email.toLowerCase() === email ? session.userId : null;
-  // The booking page's own source, or the built-in "Booking".
-  const pageSourceLabel = (await pageSourceFromRequest(req)) || "Booking";
+  // The source set in Meetings → Source, for every meeting type.
+  const pageSourceLabel = (await getPageSource(MEETING_SOURCE_PATH)) || null;
   let calResult;
   try {
     calResult = await createBooking({ meetingType, start: startDate.toISOString(), attendee: { name, email, timeZone: timezone }, metadata: notes ? { notes } : undefined });

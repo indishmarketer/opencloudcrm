@@ -26,6 +26,19 @@ export async function listPageSources(): Promise<{ path: string; label: string }
   return result.rows;
 }
 
+/** The source label of the last ordinary page the visitor viewed before
+ * signing up (SourcePathTracker's cookie), for a new account's second
+ * source. */
+export async function originPageSource(req: NextRequest): Promise<string> {
+  const raw = req.cookies.get("im_src_path")?.value;
+  if (!raw) return "";
+  try {
+    return await getPageSource(decodeURIComponent(raw));
+  } catch {
+    return "";
+  }
+}
+
 /** The source label of the page a request was made from (its Referer),
  * when it is one of this site's own pages. */
 export async function pageSourceFromRequest(req: NextRequest | Request): Promise<string> {

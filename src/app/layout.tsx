@@ -6,6 +6,7 @@ import "./globals.css";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
 import SiteAutoPopups from "@/components/SiteAutoPopups";
+import SourcePathTracker from "@/components/SourcePathTracker";
 import PublicSiteOnly from "@/components/PublicSiteOnly";
 import Analytics from "@/components/Analytics";
 import EarlyBirdBanner from "@/components/EarlyBirdBanner";
@@ -197,6 +198,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <main className="flex-1">{children}</main>
         <PublicSiteOnly suppressOnHome={!siteIsLive}><Footer /></PublicSiteOnly>
         <PublicSiteOnly suppressOnHome={!siteIsLive}><SiteAutoPopups /></PublicSiteOnly>
+        <SourcePathTracker />
         {/* Sitewide early-bird promo, temporary -- remove this one line
             (and optionally the component file) to take it down. */}
         <PublicSiteOnly suppressOnHome={!siteIsLive}><EarlyBirdBanner /></PublicSiteOnly>

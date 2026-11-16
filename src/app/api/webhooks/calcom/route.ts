@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { PoolClient } from "pg";
 import { ensureContact } from "@/lib/contacts";
+import { getPageSource } from "@/lib/pageSources";
+import { MEETING_SOURCE_PATH } from "@/lib/pageSourcesShape";
 import { verifyCalcomWebhookSignature } from "@/lib/calcom";
 import { sendMeetingOwnerNotification, sendMeetingNoShowRecovery, sendMeetingFollowUp, sendMeetingUnrecognizedTypeAlert } from "@/lib/meetingEmails";
 import { pool, withTransaction } from "@/lib/db";
@@ -48,7 +50,7 @@ async function upsertBooking(client: PoolClient, data: JsonRecord, oldBookingId:
   let contactId = existing.rows[0]?.contact_id || null;
   let userId = existing.rows[0]?.user_id || null;
   if (attendee.email) {
-    contactId = await ensureContact({ source: "meeting", sourceDetail: "Booking", email: attendee.email, name: attendee.name, userId }, client);
+    contactId = await ensureContact({ source: "meeting", sourceDetail: (await getPageSource(MEETING_SOURCE_PATH)) || null, email: attendee.email, name: attendee.name, userId }, client);
     if (!userId) {
       const user = await client.query("SELECT id FROM users WHERE lower(email) = lower($1) LIMIT 1", [attendee.email]);
       userId = user.rows[0]?.id || null;

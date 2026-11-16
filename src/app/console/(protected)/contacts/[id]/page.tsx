@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { pool } from "@/lib/db";
 import ContactActions from "@/components/ContactActions";
+import ContactSourcesEditor from "@/components/ContactSourcesEditor";
 import { getReplyToEmail } from "@/lib/businessProfile";
 import ContactActivity, {
   type BookingRow,
@@ -59,6 +60,9 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
   );
   const contact = contactResult.rows[0];
   if (!contact) notFound();
+  const contactSources = await pool.query<{ label: string; path: string | null }>(
+    "SELECT label, path FROM contact_sources WHERE contact_id = $1 ORDER BY created_at, id", [contact.id],
+  ).then((r) => r.rows).catch(() => []);
   const contactId = Number(contact.id);
   const formSubmissions = await pool.query<{
     id: number; form_id: number; name: string; source: string; field_values: Record<string, string>;
@@ -343,8 +347,8 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
               <dd className="font-medium">{joinedLabel}</dd>
             </div>
             <div className="flex items-baseline justify-between gap-4">
-              <dt className="text-ink-soft">Came from</dt>
-              <dd className="text-right font-medium">{contact.source_detail || (contact.source === "meeting" ? "Booking" : "Unknown")}</dd>
+              <dt className="text-ink-soft">Source</dt>
+              <dd><ContactSourcesEditor contactId={Number(contact.id)} initialSources={contactSources} /></dd>
             </div>
             <div className="flex items-baseline justify-between gap-4">
               <dt className="text-ink-soft">Deliverability</dt>

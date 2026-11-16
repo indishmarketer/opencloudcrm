@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import ConsoleModal from "@/components/ConsoleModal";
+import PageSourceField from "@/components/PageSourceField";
 import WebinarArtwork from "@/components/WebinarArtwork";
 import { useConfirm } from "@/components/ConfirmDialog";
 
@@ -88,6 +89,7 @@ function Editor({ form, setForm }: { form: FormState; setForm: (value: FormState
     <section><h4 className="font-medium">Landing page</h4><div className="mt-3 grid gap-4 md:grid-cols-2">
       <Field label="Title"><input className={inputClass} value={form.title} onChange={(e) => set("title", e.target.value)} /></Field>
       <Field label="URL slug"><input className={inputClass} value={form.slug} onChange={(e) => set("slug", e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))} /></Field>
+      <div className="md:col-span-2"><PageSourceField path={form.slug ? `/webinars/${form.slug}` : null} /></div>
       <div className="md:col-span-2"><Field label="Short promise"><input className={inputClass} value={form.subtitle} onChange={(e) => set("subtitle", e.target.value)} placeholder="One sentence that makes the outcome clear" /></Field></div>
       <div className="md:col-span-2"><Field label="Full description"><textarea className={inputClass} rows={5} value={form.description} onChange={(e) => set("description", e.target.value)} /></Field></div>
       <div className="md:col-span-2"><Field label="Who this is for"><textarea className={inputClass} rows={3} value={form.audience} onChange={(e) => set("audience", e.target.value)} /></Field></div>

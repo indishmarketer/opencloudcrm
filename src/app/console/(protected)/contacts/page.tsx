@@ -6,7 +6,9 @@ export default async function ConsoleContactsPage() {
   const [result, courses] = await Promise.all([
     pool.query(`
       SELECT c.id AS contact_id, c.user_id, c.email, COALESCE(c.name, u.name) AS name, c.phone,
-        c.first_seen_at AS first_seen, c.source, c.source_detail, c.marketing_status, c.deliverability_status,
+        c.first_seen_at AS first_seen, c.source, c.source_detail, c.marketing_status,
+        COALESCE((SELECT json_agg(json_build_object('label', cs.label, 'path', cs.path) ORDER BY cs.created_at, cs.id)
+          FROM contact_sources cs WHERE cs.contact_id = c.id), '[]'::json) AS sources, c.deliverability_status,
         (c.user_id IS NOT NULL) AS has_account,
         EXISTS (SELECT 1 FROM contact_submissions cs WHERE lower(trim(cs.email)) = c.normalized_email) AS has_contact,
         EXISTS (SELECT 1 FROM newsletter_subscribers ns WHERE lower(trim(ns.email)) = c.normalized_email) AS has_newsletter,

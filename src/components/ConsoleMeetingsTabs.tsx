@@ -7,6 +7,7 @@ const TABS = [
   { href: "/console/meetings", label: "Bookings", exact: true },
   { href: "/console/meetings/types", label: "Meeting types" },
   { href: "/console/meetings/availability", label: "Availability" },
+  { href: "/console/meetings/source", label: "Source" },
   { href: "/console/meetings/analytics", label: "Analytics" },
 ];
 

@@ -135,6 +135,7 @@ type ContactRow = {
   webhook_lead_sources: string[];
   source: string;
   source_detail: string | null;
+  sources?: ContactSourceTag[];
   form_sources: string[];
   marketing_status: string;
   deliverability_status: string;
@@ -285,17 +286,24 @@ function SourceHeader() {
       Source
       <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} aria-label="How sources work" className="flex h-4 w-4 items-center justify-center rounded-full border border-line text-[10px] font-semibold text-ink-soft hover:border-ink hover:text-ink">i</button>
       {open && <span role="tooltip" className="absolute left-0 top-6 z-20 w-72 rounded-xl border border-line bg-paper p-3 text-xs font-normal normal-case leading-5 text-ink-soft shadow-lg">
-        The first tag is where the contact first signed up, using the source you wrote for that page. Add one in Pages → Edit → Page settings, in a blog post&apos;s settings, or under Pages → &quot;Contact sources for other pages&quot; (meetings, webinars, courses, sign-up). A form&apos;s own source is used on its direct link. &quot;Unknown&quot; means the page had no source yet. The other tags show what they&apos;ve done since.
+        Where the contact came from, using the source you wrote for each page. Set it in a page&apos;s Page settings, a blog post&apos;s settings, a course&apos;s or webinar&apos;s details, or Meetings → Source. A form&apos;s own source is used on its direct link. Anyone who creates an account is also tagged Account, plus the page they came from. Click a source to open that page. &quot;Unknown&quot; means it had no source yet; you can set one on the contact.
       </span>}
     </span>
   );
 }
 
-/** Where the contact came from: the source label you wrote on the page (or
- * form) they signed up on. Only bookings have a built-in label. */
-function firstSourceLabel(row: { source: string; source_detail: string | null }) {
-  return row.source_detail || (row.source === "meeting" ? "Booking" : "Unknown");
+const tagClass = "whitespace-nowrap rounded-full border border-line px-2 py-0.5 text-xs text-ink-soft";
+
+/** A contact's sources, oldest first: labels you wrote on the pages they
+ * signed up on (plus "Account"). Each opens the page it came from. */
+export function ContactSourceTags({ sources }: { sources: ContactSourceTag[] }) {
+  if (!sources.length) return <span className={tagClass}>Unknown</span>;
+  return <>{sources.map((source) => source.path
+    ? <a key={source.label} href={source.path} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} title={`Opens ${source.path}`} className={`${tagClass} hover:border-ink hover:text-ink`}>{source.label}</a>
+    : <span key={source.label} className={tagClass}>{source.label}</span>)}</>;
 }
+export type ContactSourceTag = { label: string; path: string | null };
+
 /** Same name ignoring case, dashes and a trailing "form", so "Contact" and
  * "Contact form" count once. */
 const normalSource = (value: string) => value.toLowerCase().replace(/[-_]+/g, " ").replace(/\s*form$/, "").trim();
@@ -320,12 +328,12 @@ function SourceTags({ row }: { row: ContactRow }) {
   for (const source of row.form_sources || []) {
     if (!tags.some((tag) => sameSource(tag, source))) tags.push(source);
   }
-  const first = firstSourceLabel(row);
+  const sources = row.sources || [];
   return (
     <div className="flex flex-wrap gap-1">
-      <span title="Where this contact first came from" className="whitespace-nowrap rounded-full border border-line px-2 py-0.5 text-xs text-ink-soft">{first}</span>
+      <ContactSourceTags sources={sources} />
       {tags.map((t) => (
-        sameSource(t, first) ? null : <span key={t} className="whitespace-nowrap rounded-full border border-line px-2 py-0.5 text-xs text-ink-soft">
+        sources.some((source) => sameSource(source.label, t)) ? null : <span key={t} className={tagClass}>
           {t}
         </span>
       ))}

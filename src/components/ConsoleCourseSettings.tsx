@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import SafeImage from "@/components/SafeImage";
+import PageSourceField from "@/components/PageSourceField";
 import { useConfirm } from "@/components/ConfirmDialog";
 import MediaLibraryPicker from "@/components/MediaLibraryPicker";
 import BrandSelect from "@/components/BrandSelect";
@@ -184,6 +185,8 @@ export default function ConsoleCourseSettings({
               className="mt-1 w-full rounded-lg border border-line bg-paper px-4 py-2.5 text-sm outline-none focus:border-ink"
             />
           </div>
+
+          <PageSourceField path={form.slug ? `/courses/${form.slug}` : null} />
 
           <div>
             <label className="text-xs font-medium text-ink-soft">Subtitle (short description)</label>

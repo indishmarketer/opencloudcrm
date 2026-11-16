@@ -4,6 +4,12 @@
 export const MAX_SOURCE_WORDS = 3;
 export const MAX_SOURCE_LENGTH = 40;
 
+/** Where the one meeting-booking source is kept (Meetings → Source); it
+ * applies to every meeting type's booking page under /book. */
+export const MEETING_SOURCE_PATH = "/book";
+/** The fixed source of anyone who creates an account, however they sign up. */
+export const ACCOUNT_SOURCE_LABEL = "Account";
+
 /** The cleaned label, "" for none, or null when it is too long. */
 export function cleanSourceLabel(input: unknown): string | null {
   const label = typeof input === "string" ? input.trim().replace(/\s+/g, " ") : "";

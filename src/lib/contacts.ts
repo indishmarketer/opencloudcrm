@@ -1,5 +1,6 @@
 import type { Pool, PoolClient } from "pg";
 import { pool } from "@/lib/db";
+import { ACCOUNT_SOURCE_LABEL } from "@/lib/pageSourcesShape";
 
 type Queryable = Pick<Pool | PoolClient, "query">;
 
@@ -61,6 +62,9 @@ export async function ensureContact(
     /** The owner-written source label shown in Contacts: the page's source
      * (src/lib/pageSources.ts), else the form's own source. Never generated. */
     sourceDetail?: string | null;
+    /** More source labels to record alongside, e.g. the page someone came
+     * from before creating an account. */
+    extraSources?: (string | null | undefined)[];
   },
   db: Queryable = pool,
 ): Promise<number> {
@@ -98,7 +102,24 @@ export async function ensureContact(
       input.source ?? null, input.sourceDetail?.trim().slice(0, 200) || null,
     ],
   );
-  return Number(result.rows[0].id);
+  const contactId = Number(result.rows[0].id);
+  const labels = [input.sourceDetail, ...(input.extraSources || [])]
+    .map((label) => label?.trim().replace(/\s+/g, " ").slice(0, 40))
+    .filter((label): label is string => !!label);
+  if (labels.length) {
+    // One row per label, oldest first; a label a contact already has is
+    // kept as it was. The path (for the console link) is the page that
+    // carries that label, or /signup for Account.
+    await db.query(
+      `INSERT INTO contact_sources (contact_id, label, path)
+       SELECT $1, l.label, CASE WHEN lower(l.label) = lower($3) THEN '/signup'
+         ELSE (SELECT ps.path FROM page_sources ps WHERE lower(ps.label) = lower(l.label) ORDER BY ps.path LIMIT 1) END
+       FROM unnest($2::text[]) WITH ORDINALITY AS l(label, ord) ORDER BY l.ord
+       ON CONFLICT DO NOTHING`,
+      [contactId, labels, ACCOUNT_SOURCE_LABEL],
+    ).catch((error) => console.error("recording contact source failed (non-fatal):", error));
+  }
+  return contactId;
 }
 
 export async function markContactSuppressed(
