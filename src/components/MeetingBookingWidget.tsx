@@ -6,7 +6,9 @@ import BrandSelect from "@/components/BrandSelect";
 import UpdatesOptIn from "@/components/UpdatesOptIn";
 import Turnstile from "@/components/Turnstile";
 import { detectCountry } from "@/components/CountrySelect";
-import PhoneInput, { toE164 } from "@/components/PhoneInput";
+import PhoneInput, { toE164, validatePhoneNumber } from "@/components/PhoneInput";
+import EmailInput from "@/components/EmailInput";
+import { detectEmailTypo } from "@/lib/emailValidation";
 import { MonthCalendar, toDateKey } from "@/components/MonthCalendar";
 
 // Every modern browser Next.js targets supports Intl.supportedValuesOf --
@@ -98,11 +100,28 @@ export function MeetingBookingWidget({ slug, prefillName, prefillEmail }: { slug
   const handleBook = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedSlot) return;
-    const e164Phone = toE164(country, phone);
+
+    // Check phone validation
+    const phoneVal = validatePhoneNumber(country, phone, false);
+    if (!phoneVal.isValid && phoneVal.error) {
+      setError(phoneVal.error);
+      return;
+    }
+
+    const e164Phone = phoneVal.e164 || toE164(country, phone);
     if (!e164Phone) {
       setError("Enter your phone number.");
       return;
     }
+
+    // Check email typo
+    const typo = detectEmailTypo(email);
+    let finalEmail = email.trim();
+    if (typo.hasTypo && typo.suggestedEmail) {
+      finalEmail = typo.suggestedEmail;
+      setEmail(finalEmail);
+    }
+
     if (!turnstileToken) {
       setError("Please wait for the security check to finish.");
       return;
@@ -121,7 +140,7 @@ export function MeetingBookingWidget({ slug, prefillName, prefillEmail }: { slug
           end: selectedSlot.end,
           timezone,
           name,
-          email,
+          email: finalEmail,
           notes: notes.trim() || undefined,
           updatesOptIn,
           whatsappOptIn,
@@ -236,11 +255,10 @@ export function MeetingBookingWidget({ slug, prefillName, prefillEmail }: { slug
 
       <div>
         <label className="mb-1 block text-xs font-medium text-ink-soft">Email</label>
-        <input
-          type="email"
+        <EmailInput
           required
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={setEmail}
           className="w-full rounded-lg border border-line bg-paper px-3 py-2.5 text-sm outline-none focus:border-ink"
         />
       </div>

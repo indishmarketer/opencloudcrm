@@ -6,6 +6,9 @@ import Turnstile from "@/components/Turnstile";
 import UpdatesOptIn from "@/components/UpdatesOptIn";
 import CountrySelect from "@/components/CountrySelect";
 import PhoneInput, { toE164 } from "@/components/PhoneInput";
+import EmailInput from "@/components/EmailInput";
+import { detectEmailTypo } from "@/lib/emailValidation";
+import { validatePhoneNumber } from "@/lib/phoneValidation";
 import { trackEvent } from "@/lib/gtag";
 import type { FormDesign } from "@/lib/formsShape";
 
@@ -42,6 +45,7 @@ export default function AuthForm({ mode, design }: { mode: "signup" | "login"; d
 
   const [status, setStatus] = useState<"idle" | "submitting" | "error" | "check-email">("idle");
   const [error, setError] = useState("");
+  const [email, setEmail] = useState("");
   const [needsVerification, setNeedsVerification] = useState(false);
   const [lastEmail, setLastEmail] = useState("");
   const [resent, setResent] = useState(false);
@@ -100,24 +104,41 @@ export default function AuthForm({ mode, design }: { mode: "signup" | "login"; d
       setError("Select your country.");
       return;
     }
+
+    if (mode === "signup" && phone.trim()) {
+      const phoneVal = validatePhoneNumber(country, phone, true);
+      if (!phoneVal.isValid && phoneVal.error) {
+        setStatus("error");
+        setError(phoneVal.error);
+        return;
+      }
+    }
+
+    // Check for email typo
+    const typo = detectEmailTypo(email);
+    let finalEmail = email.trim();
+    if (typo.hasTypo && typo.suggestedEmail) {
+      finalEmail = typo.suggestedEmail;
+      setEmail(finalEmail);
+    }
+
     const e164Phone = mode === "signup" ? toE164(country, phone) : null;
     setStatus("submitting");
     setError("");
     setNeedsVerification(false);
     setResent(false);
     const form = e.currentTarget;
-    const email = (form.elements.namedItem("email") as HTMLInputElement).value;
     const password = (form.elements.namedItem("password") as HTMLInputElement).value;
     const name =
       mode === "signup" ? (form.elements.namedItem("name") as HTMLInputElement).value : undefined;
-    setLastEmail(email);
+    setLastEmail(finalEmail);
 
     try {
       const res = await fetch(`/api/auth/${mode}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email,
+          email: finalEmail,
           password,
           name,
           interested_in: interest,
@@ -230,12 +251,13 @@ export default function AuthForm({ mode, design }: { mode: "signup" | "login"; d
         <label className="text-sm font-medium" htmlFor="email">
           Email
         </label>
-        <input
+        <EmailInput
           id="email"
           name="email"
-          type="email"
           required
           autoComplete={mode === "signup" ? "email" : "username email"}
+          value={email}
+          onChange={setEmail}
           className="mt-2 w-full rounded-lg border border-line bg-paper px-4 py-3 text-sm outline-none focus:border-ink"
           style={inputStyles(design)}
         />

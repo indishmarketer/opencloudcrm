@@ -11,6 +11,8 @@ import { getAttributionFromRequest } from "@/lib/attribution";
 import { checkRateLimit, privateRateLimitKey } from "@/lib/rateLimit";
 import { ensureContact, markContactSubscriptionPending } from "@/lib/contacts";
 import { normalizeCountry } from "@/lib/countries";
+import { detectEmailTypo } from "@/lib/emailValidation";
+import { validatePhoneNumber } from "@/lib/phoneValidation";
 import { z } from "zod";
 
 const SignupSchema = z.object({
@@ -24,7 +26,7 @@ const SignupSchema = z.object({
   updates_opt_in: z.boolean().optional(),
   whatsapp_opt_in: z.boolean().optional(),
   country: z.string().trim().max(2).optional(),
-  phone: z.string().trim().regex(/^\d{4,15}$/).optional(),
+  phone: z.string().trim().regex(/^(\+?\d{4,15}|\d{4,15})$/).optional(),
 }).strict();
 
 export async function POST(req: NextRequest) {
@@ -45,7 +47,19 @@ export async function POST(req: NextRequest) {
   // decide both. Phone is always optional, for every country.
   const country = normalizeCountry(parsed.data.country);
   if (!country) return NextResponse.json({ error: "Select your country." }, { status: 400 });
-  if (!(await checkRateLimit(`signup-email:${privateRateLimitKey(email)}`, 3, 24 * 60 * 60 * 1000))) {
+
+  if (parsed.data.phone) {
+    const phoneVal = validatePhoneNumber(country, parsed.data.phone, true);
+    if (!phoneVal.isValid && phoneVal.error) {
+      return NextResponse.json({ error: phoneVal.error }, { status: 400 });
+    }
+  }
+
+  // Detect and auto-correct common email typos
+  const typo = detectEmailTypo(email);
+  const cleanEmail = typo.hasTypo && typo.suggestedEmail ? typo.suggestedEmail : email;
+
+  if (!(await checkRateLimit(`signup-email:${privateRateLimitKey(cleanEmail)}`, 3, 24 * 60 * 60 * 1000))) {
     return NextResponse.json({ error: "Too many signup attempts." }, { status: 429 });
   }
 
@@ -54,7 +68,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Could not verify you're human. Try again." }, { status: 400 });
   }
 
-  const existing = await pool.query("SELECT id FROM users WHERE lower(email) = $1", [email]);
+  const existing = await pool.query("SELECT id FROM users WHERE lower(email) = $1", [cleanEmail]);
   if (existing.rows.length > 0) {
     return NextResponse.json({ error: "An account with this email already exists." }, { status: 409 });
   }
@@ -68,7 +82,7 @@ export async function POST(req: NextRequest) {
   const user = await withTransaction(async (client) => {
     let user: { id: number; email: string } | undefined;
     for (let attempt = 0; attempt < 3 && !user; attempt++) {
-      const username = await generateUniqueUsername(name || email);
+      const username = await generateUniqueUsername(name || cleanEmail);
       await client.query("SAVEPOINT signup_username_attempt");
       try {
         const result = await client.query(
@@ -77,7 +91,7 @@ export async function POST(req: NextRequest) {
           // created with a mistyped or someone-else's email address can't be used
           // (or get free course access) until the real owner of that inbox acts.
           "INSERT INTO users (email, password_hash, name, interested_in, username, updates_opt_in, whatsapp_opt_in) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, email",
-          [email, passwordHash, name || null, interested_in || null, username, updatesOptIn, whatsappOptIn]
+          [cleanEmail, passwordHash, name || null, interested_in || null, username, updatesOptIn, whatsappOptIn]
         );
         user = result.rows[0];
         await client.query("RELEASE SAVEPOINT signup_username_attempt");

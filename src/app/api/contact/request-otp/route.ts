@@ -7,6 +7,7 @@ import { getAttributionFromRequest } from "@/lib/attribution";
 import { z } from "zod";
 import { normalizeCountry } from "@/lib/countries";
 import { ensureContact } from "@/lib/contacts";
+import { detectEmailTypo } from "@/lib/emailValidation";
 
 const RequestSchema = z.object({
   email: z.string().trim().toLowerCase().email().max(320),
@@ -24,7 +25,12 @@ export async function POST(req: NextRequest) {
 
   const parsed = RequestSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid request." }, { status: 400 });
-  const { email, name, message, updatesOptIn, turnstileToken } = parsed.data;
+  const { name, message, updatesOptIn, turnstileToken } = parsed.data;
+
+  // Auto-correct common email typos
+  const typo = detectEmailTypo(parsed.data.email);
+  const email = typo.hasTypo && typo.suggestedEmail ? typo.suggestedEmail : parsed.data.email;
+
   if (!(await checkRateLimit(`contact-otp-email:${privateRateLimitKey(email)}`, 3, 60 * 60 * 1000))) {
     return NextResponse.json({ error: "Too many attempts. Try again later." }, { status: 429 });
   }

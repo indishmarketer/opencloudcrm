@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import EmailInput from "@/components/EmailInput";
+import { detectEmailTypo } from "@/lib/emailValidation";
 
 export default function AccountEmailForm({ currentEmail }: { currentEmail: string }) {
   const [isEditing, setIsEditing] = useState(false);
@@ -10,13 +12,17 @@ export default function AccountEmailForm({ currentEmail }: { currentEmail: strin
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
+    const typo = detectEmailTypo(email);
+    const finalEmail = typo.hasTypo && typo.suggestedEmail ? typo.suggestedEmail : email.trim();
+    if (typo.hasTypo && typo.suggestedEmail) setEmail(finalEmail);
+
     setStatus("saving");
     setError("");
     try {
       const res = await fetch("/api/account/email/change", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: finalEmail }),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || "Could not start the change.");
@@ -69,13 +75,13 @@ export default function AccountEmailForm({ currentEmail }: { currentEmail: strin
 
       {isEditing && (
         <form onSubmit={submit} className="mt-3 space-y-3">
-          <input
+          <EmailInput
             id="new-email"
-            type="email"
+            name="newEmail"
             required
             autoComplete="email"
             value={email}
-            onChange={(event) => setEmail(event.target.value)}
+            onChange={setEmail}
             placeholder="New email address"
             className="h-10 w-full rounded-lg border border-line bg-paper px-4 text-sm outline-none focus:border-ink"
           />

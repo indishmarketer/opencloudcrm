@@ -4,6 +4,10 @@ import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import SafeImage from "@/components/SafeImage";
 import Turnstile from "@/components/Turnstile";
+import EmailInput from "@/components/EmailInput";
+import PhoneInput, { toE164, validatePhoneNumber } from "@/components/PhoneInput";
+import { detectCountry } from "@/components/CountrySelect";
+import { detectEmailTypo } from "@/lib/emailValidation";
 
 type GuideSummary = {
   id: number;
@@ -38,12 +42,13 @@ export default function GuidePopup({
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [country, setCountry] = useState("IN");
   const [submittedEmail, setSubmittedEmail] = useState("");
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [turnstileToken, setTurnstileToken] = useState("");
   const handleToken = useCallback((t: string) => setTurnstileToken(t), []);
 
-  // Pre-fill email if user is already logged in
+  // Pre-fill email if user is already logged in, and detect country for phone input
   useEffect(() => {
     fetch("/api/auth/me")
       .then((r) => (r.ok ? r.json() : null))
@@ -53,6 +58,10 @@ export default function GuidePopup({
         }
       })
       .catch(() => {});
+
+    void detectCountry().then((c) => {
+      if (c) setCountry(c);
+    });
   }, []);
 
   useEffect(() => {
@@ -81,6 +90,25 @@ export default function GuidePopup({
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!email.trim() || !name.trim()) return;
+
+    if (phone.trim()) {
+      const phoneVal = validatePhoneNumber(country, phone, true);
+      if (!phoneVal.isValid && phoneVal.error) {
+        setStatus("error");
+        setError(phoneVal.error);
+        return;
+      }
+    }
+
+    // Check for email typo
+    const typo = detectEmailTypo(email);
+    let finalEmail = email.trim();
+    if (typo.hasTypo && typo.suggestedEmail) {
+      finalEmail = typo.suggestedEmail;
+      setEmail(finalEmail);
+    }
+
+    const e164Phone = phone.trim() ? toE164(country, phone) : null;
     setStatus("submitting");
     setError("");
 
@@ -91,8 +119,8 @@ export default function GuidePopup({
         body: JSON.stringify({
           guideId: guide.id,
           name: name.trim(),
-          email: email.trim(),
-          phone: phone.trim() || undefined,
+          email: finalEmail,
+          phone: e164Phone ?? undefined,
           turnstileToken,
         }),
       });
@@ -100,7 +128,7 @@ export default function GuidePopup({
       if (!res.ok) {
         throw new Error(data.error || "Something went wrong.");
       }
-      setSubmittedEmail(email.trim());
+      setSubmittedEmail(finalEmail);
 
       if (data.alreadyVerified && data.downloadUrl) {
         // Contact is already in database: instant unlock!
@@ -199,13 +227,12 @@ export default function GuidePopup({
                   <label htmlFor="guide-email" className="sr-only">
                     Email address
                   </label>
-                  <input
+                  <EmailInput
                     id="guide-email"
                     name="email"
-                    type="email"
                     required
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={setEmail}
                     placeholder="you@email.com"
                     autoComplete="email"
                     className={field}
@@ -216,15 +243,12 @@ export default function GuidePopup({
                   <label htmlFor="guide-phone" className="sr-only">
                     Phone number (optional)
                   </label>
-                  <input
+                  <PhoneInput
                     id="guide-phone"
-                    name="phone"
-                    type="tel"
+                    country={country}
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
+                    onChange={setPhone}
                     placeholder="Phone number (optional)"
-                    autoComplete="tel"
-                    className={field}
                   />
                 </div>
 

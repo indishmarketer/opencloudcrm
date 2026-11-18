@@ -8,6 +8,8 @@ import { getAttributionFromRequest } from "@/lib/attribution";
 import { completeFormSubmission, extractContactData, formSubmitPurpose } from "@/lib/formSubmission";
 import { emitVerifiedContactEvent } from "@/lib/verifiedContactEvent";
 import type { FormDefinition } from "@/lib/formsShape";
+import { correctEmailTypo } from "@/lib/emailValidation";
+import { validatePhoneNumber } from "@/lib/phoneValidation";
 
 /** A saved form's submission. Three modes, all validated below:
  *
@@ -35,9 +37,21 @@ function validatedValues(form: FormDefinition, submitted: Record<string, string>
   };
   const values: Record<string, string> = {};
   for (const field of form.fields) {
-    const value = field.hidden ? field.defaultValue : (submitted[field.key] || "").trim();
+    let value = field.hidden ? field.defaultValue : (submitted[field.key] || "").trim();
+    if (field.type === "email" && value) {
+      value = correctEmailTypo(value);
+    }
     if (field.required && !field.hidden && !value) return { values, error: `${field.label || "A required field"} is required.` };
     if (field.type === "email" && value && !z.email().safeParse(value).success) return { values, error: `Enter a valid ${field.label || "email"}.` };
+    if (field.type === "phone" && value) {
+      const phoneRes = validatePhoneNumber(value);
+      if (!phoneRes.valid && field.required) {
+        return { values, error: phoneRes.error || `Enter a valid ${field.label || "phone number"}.` };
+      }
+      if (phoneRes.formatted) {
+        value = phoneRes.formatted;
+      }
+    }
     if (field.type === "number" && value && !Number.isFinite(Number(value))) return { values, error: `${field.label || "This field"} must be a number.` };
     if (field.type === "date" && value && Number.isNaN(Date.parse(value))) return { values, error: `${field.label || "This field"} must be a date.` };
     if (["select", "radio", "multiselect"].includes(field.type) && value && field.options) {

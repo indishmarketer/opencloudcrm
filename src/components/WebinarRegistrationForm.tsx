@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "
 import { useRouter } from "next/navigation";
 import Turnstile from "@/components/Turnstile";
 import UpdatesOptIn from "@/components/UpdatesOptIn";
+import EmailInput from "@/components/EmailInput";
 import { trackEvent } from "@/lib/gtag";
 import { SITE_NAME } from "@/config/brand";
 
@@ -33,6 +34,7 @@ export default function WebinarRegistrationForm({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [checkEmail, setCheckEmail] = useState("");
+  const [guestEmail, setGuestEmail] = useState("");
   const [turnstileToken, setTurnstileToken] = useState("");
   const [updatesOptIn, setUpdatesOptIn] = useState(true);
   const attendeeTimeZone = useSyncExternalStore(
@@ -77,7 +79,7 @@ export default function WebinarRegistrationForm({
     setBusy(true);
     setError("");
     const form = new FormData(event.currentTarget);
-    const email = String(form.get("email") || "").trim();
+    const email = guestEmail.trim() || String(form.get("email") || "").trim();
     const redirect = `/webinars/${webinarSlug}?join=1${sessionStartAt ? `&session=${encodeURIComponent(sessionStartAt)}` : ""}`;
     const response = await fetch("/api/webinars/register-guest", {
       method: "POST",
@@ -119,7 +121,21 @@ export default function WebinarRegistrationForm({
   return <form onSubmit={registerGuest} className="space-y-4">
     {nextBroadcast}
     <div><label htmlFor={`webinar-name-${webinarId}`} className="text-sm font-medium">Name</label><input id={`webinar-name-${webinarId}`} name="name" autoComplete="name" required maxLength={200} className="mt-1.5 w-full rounded-xl border border-line bg-paper px-4 py-3 text-sm outline-none focus:border-ink" /></div>
-    <div><label htmlFor={`webinar-email-${webinarId}`} className="text-sm font-medium">Email</label><input id={`webinar-email-${webinarId}`} name="email" type="email" autoComplete="email" required maxLength={320} className="mt-1.5 w-full rounded-xl border border-line bg-paper px-4 py-3 text-sm outline-none focus:border-ink" /><p className="mt-1 text-xs text-ink-soft">We&apos;ll email you a link to enter &mdash; no password to create.</p></div>
+    <div>
+      <label htmlFor={`webinar-email-${webinarId}`} className="text-sm font-medium">Email</label>
+      <div className="mt-1.5">
+        <EmailInput
+          id={`webinar-email-${webinarId}`}
+          name="email"
+          autoComplete="email"
+          required
+          value={guestEmail}
+          onChange={setGuestEmail}
+          placeholder="you@domain.com"
+        />
+      </div>
+      <p className="mt-1 text-xs text-ink-soft">We&apos;ll email you a link to enter &mdash; no password to create.</p>
+    </div>
     <UpdatesOptIn checked={updatesOptIn} onChange={setUpdatesOptIn} />
     <Turnstile onToken={setTurnstileToken} />
     {error && <p role="alert" className="text-sm text-red-600">{error}</p>}

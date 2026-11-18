@@ -16,15 +16,19 @@ import { normalizeCountry } from "@/lib/countries";
 import { SITE_URL } from "@/lib/liveSiteUrl";
 import { emitWebhookEvent } from "@/lib/webhookEvents";
 import { hasActiveWorkflowActionForEvent } from "@/lib/workflows";
+import { detectEmailTypo } from "@/lib/emailValidation";
+import { validatePhoneNumber } from "@/lib/phoneValidation";
 
-const bookingSchema = z.object({ slug: z.string().trim().regex(/^[a-z0-9][a-z0-9-]*$/).max(120), start: z.string().trim().min(10).max(64), name: z.string().trim().min(1).max(120), email: z.string().trim().email().max(254), timezone: z.string().trim().min(1).max(100), notes: z.string().trim().max(1000).optional(), updatesOptIn: z.boolean().optional(), whatsappOptIn: z.boolean().optional(), country: z.string().trim().max(2).optional(), phone: z.string().trim().regex(/^\d{4,15}$/).optional(), turnstileToken: z.string().max(4096).optional() });
+const bookingSchema = z.object({ slug: z.string().trim().regex(/^[a-z0-9][a-z0-9-]*$/).max(120), start: z.string().trim().min(10).max(64), name: z.string().trim().min(1).max(120), email: z.string().trim().email().max(254), timezone: z.string().trim().min(1).max(100), notes: z.string().trim().max(1000).optional(), updatesOptIn: z.boolean().optional(), whatsappOptIn: z.boolean().optional(), country: z.string().trim().max(2).optional(), phone: z.string().trim().regex(/^(\+?\d{4,15}|\d{4,15})$/).optional(), turnstileToken: z.string().max(4096).optional() });
 
 export async function POST(req: NextRequest) {
   const ip = req.headers.get("cf-connecting-ip") || req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
   if (!(await consumeRateLimit(`meeting-book:${ip}`, 10, 60 * 60 * 1000))) return NextResponse.json({ error: "Too many booking attempts. Try again later." }, { status: 429 });
   const parsed = bookingSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid booking details." }, { status: 400 });
-  const { slug, start, name, timezone } = parsed.data; const email = parsed.data.email.toLowerCase();
+  const { slug, start, name, timezone } = parsed.data;
+  const typo = detectEmailTypo(parsed.data.email);
+  const email = (typo.hasTypo && typo.suggestedEmail ? typo.suggestedEmail : parsed.data.email).toLowerCase();
   const notes = parsed.data.notes || null;
   if (!isValidDateTime(start) || !isValidTimeZone(timezone)) return NextResponse.json({ error: "Invalid start time or timezone." }, { status: 400 });
   const startDate = new Date(start);
@@ -40,6 +44,14 @@ export async function POST(req: NextRequest) {
   const isAdmin = await getAdminSession();
   if (!parsed.data.phone && !isAdmin) {
     return NextResponse.json({ error: "Enter your phone number." }, { status: 400 });
+  }
+
+  // Validate phone number format against country specifications
+  if (parsed.data.phone && !isAdmin) {
+    const phoneVal = validatePhoneNumber(parsed.data.country, parsed.data.phone, false);
+    if (!phoneVal.isValid && phoneVal.error) {
+      return NextResponse.json({ error: phoneVal.error }, { status: 400 });
+    }
   }
   // Public bookings must pass the human check; the console's own Add
   // booking tool (an admin session) doesn't show one.

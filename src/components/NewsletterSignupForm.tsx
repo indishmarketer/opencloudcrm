@@ -2,6 +2,8 @@
 
 import { useCallback, useState } from "react";
 import Turnstile from "@/components/Turnstile";
+import EmailInput from "@/components/EmailInput";
+import { detectEmailTypo } from "@/lib/emailValidation";
 
 type Step = "idle" | "submitting" | "verify" | "success" | "error";
 
@@ -17,13 +19,22 @@ export default function NewsletterSignupForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim() || !email.trim()) return;
+
+    // Check for common typos before submitting
+    const typo = detectEmailTypo(email);
+    let finalEmail = email.trim().toLowerCase();
+    if (typo.hasTypo && typo.suggestedEmail) {
+      finalEmail = typo.suggestedEmail;
+      setEmail(finalEmail);
+    }
+
     setStep("submitting");
     setErrorMsg("");
     try {
       const res = await fetch("/api/newsletter/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name.trim(), email: email.trim().toLowerCase(), turnstileToken: token }),
+        body: JSON.stringify({ name: name.trim(), email: finalEmail, turnstileToken: token }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -77,14 +88,14 @@ export default function NewsletterSignupForm() {
       </div>
       <div>
         <label htmlFor="nl-email" className="sr-only">Email address</label>
-        <input
+        <EmailInput
           id="nl-email"
-          type="email"
+          name="email"
           autoComplete="email"
           placeholder="Your email address"
           required
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={setEmail}
           disabled={step === "submitting"}
           className="w-full rounded-xl border border-line bg-paper px-4 py-3 text-sm outline-none transition focus:border-ink disabled:opacity-60"
         />

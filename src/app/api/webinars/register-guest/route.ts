@@ -16,6 +16,7 @@ import { consumeRateLimit, privateRateLimitKey } from "@/lib/rateLimit";
 import { ensureContact } from "@/lib/contacts";
 import { normalizeCountry } from "@/lib/countries";
 import { SITE_URL } from "@/lib/liveSiteUrl";
+import { correctEmailTypo } from "@/lib/emailValidation";
 
 const RegisterGuestSchema = z.object({
   webinarId: z.coerce.number().int().positive(),
@@ -42,7 +43,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Too many attempts. Try again later." }, { status: 429 });
   }
 
-  const parsed = RegisterGuestSchema.safeParse(await req.json().catch(() => null));
+  const rawBody = (await req.json().catch(() => null)) as Record<string, unknown> | null;
+  if (rawBody && typeof rawBody.email === "string") {
+    rawBody.email = correctEmailTypo(rawBody.email);
+  }
+  const parsed = RegisterGuestSchema.safeParse(rawBody);
   if (!parsed.success) return NextResponse.json({ error: "Invalid registration details." }, { status: 400 });
   const { webinarId, slug, name, email, turnstileToken, redirect, updates_opt_in } = parsed.data;
   // Country is no longer asked for: it is detected from the visitor's IP.

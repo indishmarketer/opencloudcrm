@@ -2,9 +2,11 @@
 
 import { useCallback, useState } from "react";
 import Turnstile from "@/components/Turnstile";
+import EmailInput from "@/components/EmailInput";
 
 export default function ForgotPasswordForm() {
   const [status, setStatus] = useState<"idle" | "submitting" | "done" | "error">("idle");
+  const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [turnstileToken, setTurnstileToken] = useState("");
   const handleToken = useCallback((t: string) => setTurnstileToken(t), []);
@@ -13,13 +15,12 @@ export default function ForgotPasswordForm() {
     e.preventDefault();
     setStatus("submitting");
     setError("");
-    const email = (e.currentTarget.elements.namedItem("email") as HTMLInputElement).value;
 
     try {
       const res = await fetch("/api/auth/forgot-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, turnstileToken }),
+        body: JSON.stringify({ email: email.trim(), turnstileToken }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -46,12 +47,13 @@ export default function ForgotPasswordForm() {
         <label className="text-sm font-medium" htmlFor="email">
           Email
         </label>
-        <input
+        <EmailInput
           id="email"
           name="email"
-          type="email"
           required
           autoComplete="email"
+          value={email}
+          onChange={setEmail}
           className="mt-2 w-full rounded-lg border border-line bg-paper px-4 py-3 text-sm outline-none focus:border-ink"
         />
       </div>

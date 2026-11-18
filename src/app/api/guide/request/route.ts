@@ -11,6 +11,9 @@ import { sendEmail } from "@/lib/email";
 import { ensureContact } from "@/lib/contacts";
 import { escapeHtml } from "@/lib/escapeHtml";
 import { SITE_URL } from "@/lib/liveSiteUrl";
+import { detectEmailTypo } from "@/lib/emailValidation";
+import { validatePhoneNumber } from "@/lib/phoneValidation";
+import { normalizeCountry } from "@/lib/countries";
 
 const RequestSchema = z.object({
   guideId: z.coerce.number().int().positive(),
@@ -37,7 +40,20 @@ export async function POST(req: NextRequest) {
 
   const parsed = RequestSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Check those details." }, { status: 400 });
-  const { guideId, name, email, phone, turnstileToken } = parsed.data;
+  const { guideId, name, phone, turnstileToken } = parsed.data;
+
+  // Auto-correct common email typos
+  const typo = detectEmailTypo(parsed.data.email);
+  const email = typo.hasTypo && typo.suggestedEmail ? typo.suggestedEmail : parsed.data.email;
+
+  // Validate phone if supplied
+  const detectedCountry = normalizeCountry(req.headers.get("cf-ipcountry"));
+  if (phone) {
+    const phoneVal = validatePhoneNumber(detectedCountry, phone, true);
+    if (!phoneVal.isValid && phoneVal.error) {
+      return NextResponse.json({ error: phoneVal.error }, { status: 400 });
+    }
+  }
 
   if (!(await checkRateLimit(`guide-request-email:${privateRateLimitKey(email)}`, 5, 60 * 60 * 1000))) {
     return NextResponse.json({ error: "Too many attempts. Try again later." }, { status: 429 });

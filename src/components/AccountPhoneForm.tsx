@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { dialCode, stripDialCode } from "@/lib/dialCodes";
+import { validatePhoneNumber } from "@/lib/phoneValidation";
 
 export default function AccountPhoneForm({
   initialPhone,
@@ -46,6 +47,11 @@ export default function AccountPhoneForm({
     const cleanDigits = nationalPhone.replace(/\D/g, "");
     if (!cleanDigits) {
       setError("Please enter your phone number.");
+      return;
+    }
+    const check = validatePhoneNumber(cleanDigits, country || "IN");
+    if (!check.valid) {
+      setError(check.error || "Please enter a valid phone number.");
       return;
     }
     setBusy(true);

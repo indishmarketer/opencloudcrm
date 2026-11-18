@@ -8,6 +8,7 @@ import { getAttributionFromRequest } from "@/lib/attribution";
 import { z } from "zod";
 import { normalizeCountry } from "@/lib/countries";
 import { ensureContact, markContactSubscriptionPending } from "@/lib/contacts";
+import { detectEmailTypo } from "@/lib/emailValidation";
 
 const SubscribeSchema = z.object({
   name: z.string().trim().min(1).max(200),
@@ -24,7 +25,12 @@ export async function POST(req: NextRequest) {
 
   const parsed = SubscribeSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid subscription details." }, { status: 400 });
-  const { name, email, source, turnstileToken } = parsed.data;
+  const { name, source, turnstileToken } = parsed.data;
+
+  // Auto-correct common domain typos
+  const typo = detectEmailTypo(parsed.data.email);
+  const email = typo.hasTypo && typo.suggestedEmail ? typo.suggestedEmail : parsed.data.email;
+
   if (!(await checkRateLimit(`newsletter-email:${privateRateLimitKey(email)}`, 3, 60 * 60 * 1000))) {
     return NextResponse.json({ error: "Too many attempts. Try again later." }, { status: 429 });
   }
