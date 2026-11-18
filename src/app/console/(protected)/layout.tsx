@@ -29,7 +29,6 @@ const baseNavGroups = [
   {
     title: "Communication",
     links: [
-      { href: "/console/workflows", label: "Automation" },
       { href: "/console/email", label: "Email" },
       { href: "/console/whatsapp", label: "WhatsApp" },
     ],
@@ -39,15 +38,9 @@ const baseNavGroups = [
     links: [
       { href: "/console/pages", label: "Pages" },
       { href: "/console/blog", label: "Blog" },
-      { href: "/console/media", label: "Media Library" },
       { href: "/console/courses", label: "Courses" },
       { href: "/console/directory", label: "Tools directory" },
       { href: "/console/lead-magnets", label: "Free guides" },
-      // Forms and Popups are tabs inside Pages now (ConsolePagesTabs), not
-      // their own sidebar rows -- kept here, just hidden, so they stay
-      // searchable via ConsoleSearch, which builds its index from these
-      // same groups before ConsoleSidebar/ConsoleMobileNav filter them out.
-      { href: "/console/forms", label: "Forms", hidden: true },
       { href: "/console/popups", label: "Popups", hidden: true },
     ],
   },
@@ -68,7 +61,6 @@ const baseNavGroups = [
     title: "Config",
     links: [
       { href: "/console/payments", label: "Payments" },
-      { href: "/console/integrations", label: "Integrations" },
       { href: "/console/site-actions", label: "Site actions" },
       { href: "/console/site-settings", label: "Site Settings" },
       { href: "/console/security", label: "Security" },

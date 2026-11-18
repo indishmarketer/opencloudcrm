@@ -16,6 +16,7 @@ export default function UpdatesOptIn({
   whatsapp,
   onWhatsAppChange,
   hasPhone = true,
+  emailLocked = false,
 }: {
   checked: boolean;
   onChange: (checked: boolean) => void;
@@ -23,12 +24,18 @@ export default function UpdatesOptIn({
   whatsapp?: boolean;
   onWhatsAppChange?: (checked: boolean) => void;
   hasPhone?: boolean;
+  /** Account signup is code-configured to subscribe after verification. */
+  emailLocked?: boolean;
 }) {
   const showWhatsApp = typeof whatsapp === "boolean" && !!onWhatsAppChange;
 
   return (
     <div className="space-y-2">
-      <label className="flex items-start gap-2 text-sm text-ink-soft">
+      {emailLocked ? (
+        <p className="text-sm text-ink-soft">
+          Creating an account subscribes you to occasional email updates, tips, and feedback requests. You can unsubscribe anytime.
+        </p>
+      ) : <label className="flex items-start gap-2 text-sm text-ink-soft">
         <input
           type="checkbox"
           checked={checked}
@@ -36,7 +43,7 @@ export default function UpdatesOptIn({
           className="mt-0.5"
         />
         <span>Email me occasional updates, tips, and requests for feedback. You can unsubscribe anytime.</span>
-      </label>
+      </label>}
 
       {showWhatsApp && (
         <label className="flex items-start gap-2 text-sm text-ink-soft">

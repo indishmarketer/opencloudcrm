@@ -15,7 +15,10 @@ import { SITE_URL as FROZEN_SITE_URL } from "@/config/brand";
  * tags, JSON-LD, the sitemap, emails). Never import this from a
  * "use client" file; those still need config/brand's NEXT_PUBLIC_SITE_URL,
  * since only that one is available in the browser at all. */
-export const SITE_URL = process.env.SITE_URL || FROZEN_SITE_URL;
+// The private production application is intentionally single-tenant. Its
+// public business URL is source-controlled; credentials and provider secrets
+// remain runtime environment variables.
+export const SITE_URL = FROZEN_SITE_URL;
 
 export const SITE_HOSTNAME = new URL(SITE_URL).hostname.replace(/^www\./, "");
 

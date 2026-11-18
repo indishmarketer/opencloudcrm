@@ -3,14 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-// Pages, Forms and Popups are one section in the console menu, split into
-// tabs here instead of three separate sidebar entries -- same convention as
-// ConsoleBlogTabs. Each tab is still its own route (and its own fullscreen
-// editor for an individual page/form/popup); this only governs the three
-// list screens.
+// Forms are managed from code/MCP in the private deployment, so the console
+// only links to the remaining visual page surfaces.
 const TABS = [
   { href: "/console/pages", label: "Pages" },
-  { href: "/console/forms", label: "Forms" },
   { href: "/console/popups", label: "Popups" },
 ];
 

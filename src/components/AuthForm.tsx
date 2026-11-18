@@ -49,7 +49,6 @@ export default function AuthForm({ mode, design }: { mode: "signup" | "login"; d
   const [verifyingCode, setVerifyingCode] = useState(false);
   const [verificationError, setVerificationError] = useState("");
   const [turnstileToken, setTurnstileToken] = useState("");
-  const [updatesOptIn, setUpdatesOptIn] = useState(true);
   const [whatsappOptIn, setWhatsappOptIn] = useState(true);
   const [country, setCountry] = useState("");
   const [phone, setPhone] = useState("");
@@ -124,7 +123,7 @@ export default function AuthForm({ mode, design }: { mode: "signup" | "login"; d
           turnstileToken,
           redirect,
           ref,
-          updates_opt_in: mode === "signup" ? updatesOptIn : undefined,
+          updates_opt_in: mode === "signup" ? true : undefined,
           // Only a real number can carry consent, so an unticked box and a
           // ticked one with no number both mean no.
           whatsapp_opt_in: mode === "signup" ? whatsappOptIn && !!e164Phone : undefined,
@@ -275,8 +274,9 @@ export default function AuthForm({ mode, design }: { mode: "signup" | "login"; d
       )}
       {mode === "signup" && (
         <UpdatesOptIn
-          checked={updatesOptIn}
-          onChange={setUpdatesOptIn}
+          checked
+          onChange={() => {}}
+          emailLocked
           whatsapp={whatsappOptIn}
           onWhatsAppChange={setWhatsappOptIn}
           hasPhone={!!toE164(country, phone)}

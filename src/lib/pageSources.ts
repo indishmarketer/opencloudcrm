@@ -1,34 +1,18 @@
 import type { NextRequest } from "next/server";
-import { pool } from "@/lib/db";
 import { SITE_URL } from "@/lib/liveSiteUrl";
-import { sourcePath } from "@/lib/pageSourcesShape";
+import { HARDCODED_PAGE_SOURCES, hardcodedPageSource } from "@/lib/pageSourcesShape";
 
 export async function getPageSource(path: string): Promise<string> {
-  const clean = sourcePath(path);
-  if (!clean) return "";
-  const result = await pool.query<{ label: string }>("SELECT label FROM page_sources WHERE path = $1", [clean]).catch(() => ({ rows: [] }));
-  return result.rows[0]?.label || "";
-}
-
-export async function setPageSource(path: string, label: string): Promise<void> {
-  const clean = sourcePath(path);
-  if (!clean) throw new Error("Invalid page address.");
-  if (!label) await pool.query("DELETE FROM page_sources WHERE path = $1", [clean]);
-  else await pool.query(
-    `INSERT INTO page_sources (path, label) VALUES ($1, $2)
-     ON CONFLICT (path) DO UPDATE SET label = EXCLUDED.label, updated_at = now()`,
-    [clean, label],
-  );
+  return hardcodedPageSource(path);
 }
 
 export async function listPageSources(): Promise<{ path: string; label: string }[]> {
-  const result = await pool.query<{ path: string; label: string }>("SELECT path, label FROM page_sources ORDER BY path").catch(() => ({ rows: [] }));
-  return result.rows;
+  return HARDCODED_PAGE_SOURCES.map((source) => ({ ...source }));
 }
 
 /** The source label of the last ordinary page the visitor viewed before
  * signing up (SourcePathTracker's cookie), for a new account's second
- * source. */
+ * source. The label is derived from code, not a database setting. */
 export async function originPageSource(req: NextRequest): Promise<string> {
   const raw = req.cookies.get("im_src_path")?.value;
   if (!raw) return "";

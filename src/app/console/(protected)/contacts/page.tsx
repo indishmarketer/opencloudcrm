@@ -9,6 +9,62 @@ export default async function ConsoleContactsPage() {
         c.first_seen_at AS first_seen, c.source, c.source_detail, c.marketing_status,
         COALESCE((SELECT json_agg(json_build_object('label', cs.label, 'path', cs.path) ORDER BY cs.created_at, cs.id)
           FROM contact_sources cs WHERE cs.contact_id = c.id), '[]'::json) AS sources, c.deliverability_status,
+        -- Code-owned source fallback. Older contacts often predate
+        -- contact_sources; infer their real entry point from the canonical
+        -- source and linked records instead of presenting them as Unknown.
+        COALESCE((SELECT json_agg(json_build_object('label', d.label, 'path', d.path) ORDER BY d.ord)
+          FROM (
+            SELECT 1 AS ord,
+              CASE c.source
+                WHEN 'account' THEN 'Account signup'
+                WHEN 'newsletter' THEN 'Newsletter'
+                WHEN 'contact_form' THEN 'Contact form'
+                WHEN 'form' THEN 'Form'
+                WHEN 'guide' THEN 'Free guide'
+                WHEN 'meeting' THEN 'Meeting booking'
+                WHEN 'webinar' THEN 'Webinar'
+                WHEN 'course' THEN 'Course'
+                WHEN 'tool_submission' THEN 'Tool submission'
+                WHEN 'author' THEN 'Author application'
+                WHEN 'payment' THEN 'Payment'
+                WHEN 'review' THEN 'Review'
+                WHEN 'community' THEN 'Community'
+                WHEN 'event' THEN 'Site event'
+                WHEN 'import' THEN 'Imported'
+                WHEN 'manual' THEN 'Added directly'
+                WHEN 'open_source' THEN 'Open-source waitlist'
+                WHEN 'email' THEN 'Email engagement'
+                ELSE CASE
+                  WHEN c.user_id IS NOT NULL THEN 'Account signup'
+                  WHEN EXISTS (SELECT 1 FROM newsletter_subscribers ns WHERE lower(trim(ns.email)) = c.normalized_email) THEN 'Newsletter'
+                  WHEN EXISTS (SELECT 1 FROM contact_submissions cs WHERE lower(trim(cs.email)) = c.normalized_email) THEN 'Contact form'
+                  ELSE 'Website'
+                END
+              END AS label,
+              NULL::text AS path
+            WHERE COALESCE(trim(c.source), '') <> ''
+            UNION ALL
+            SELECT 2 AS ord, a.label, a.path
+            FROM (
+              -- split_part on '/' takes the host out of a referrer URL
+              -- ("https://www.google.com/x" -> "www.google.com") without a
+              -- regex, whose backslashes would need escaping twice to survive
+              -- this template literal.
+              SELECT COALESCE(
+                       NULLIF(trim(COALESCE(ae.utm_campaign, '')), ''),
+                       NULLIF(trim(COALESCE(ae.utm_source, '')), ''),
+                       NULLIF(split_part(COALESCE(ae.referrer, ''), '/', 3), ''),
+                       NULLIF(trim(COALESCE(ae.landing_page, '')), '')
+                     ) AS label,
+                     NULLIF(trim(COALESCE(ae.landing_page, '')), '') AS path
+              FROM attribution_events ae
+              WHERE (c.user_id IS NOT NULL AND ae.user_id = c.user_id)
+                 OR lower(trim(COALESCE(ae.email, ''))) = c.normalized_email
+              ORDER BY ae.created_at ASC
+              LIMIT 1
+            ) a
+            WHERE a.label IS NOT NULL
+          ) d), '[]'::json) AS derived_sources,
         (c.user_id IS NOT NULL) AS has_account,
         EXISTS (SELECT 1 FROM contact_submissions cs WHERE lower(trim(cs.email)) = c.normalized_email) AS has_contact,
         EXISTS (SELECT 1 FROM newsletter_subscribers ns WHERE lower(trim(ns.email)) = c.normalized_email) AS has_newsletter,

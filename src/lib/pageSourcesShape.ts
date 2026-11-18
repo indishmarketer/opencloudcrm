@@ -10,6 +10,40 @@ export const MEETING_SOURCE_PATH = "/book";
 /** The fixed source of anyone who creates an account, however they sign up. */
 export const ACCOUNT_SOURCE_LABEL = "Account";
 
+/** Production contact sources are code-owned. A path always resolves to the
+ * same short label, so attribution no longer depends on a console field or
+ * a row existing in page_sources. */
+export function hardcodedPageSource(input: string | null | undefined): string {
+  const path = sourcePath(input) || "/";
+  if (path === "/") return "Website";
+  if (/^\/blog(?:\/|$)/.test(path)) return "Blog";
+  if (/^\/courses?(?:\/|$)/.test(path)) return "Course";
+  if (/^\/webinars?(?:\/|$)/.test(path)) return "Webinar";
+  if (/^\/book(?:\/|$)/.test(path)) return "Meeting booking";
+  if (/^\/newsletter(?:\/|$)/.test(path)) return "Newsletter";
+  if (/^\/contact(?:\/|$)/.test(path)) return "Contact page";
+  if (/^\/(?:guide|guides|resources)(?:\/|$)/.test(path)) return "Free guide";
+  if (/^\/(?:directory|tools)(?:\/|$)/.test(path)) return "Tools directory";
+  if (/^\/community(?:\/|$)/.test(path)) return "Community";
+  if (/^\/reviews?(?:\/|$)/.test(path)) return "Reviews";
+  if (/^\/(?:signup|auth)(?:\/|$)/.test(path)) return ACCOUNT_SOURCE_LABEL;
+  return "Website";
+}
+
+export const HARDCODED_PAGE_SOURCES = [
+  { path: "/", label: "Website" },
+  { path: "/blog", label: "Blog" },
+  { path: "/courses", label: "Course" },
+  { path: "/webinars", label: "Webinar" },
+  { path: MEETING_SOURCE_PATH, label: "Meeting booking" },
+  { path: "/newsletter", label: "Newsletter" },
+  { path: "/contact", label: "Contact page" },
+  { path: "/resources", label: "Free guide" },
+  { path: "/directory", label: "Tools directory" },
+  { path: "/community", label: "Community" },
+  { path: "/reviews", label: "Reviews" },
+] as const;
+
 /** The cleaned label, "" for none, or null when it is too long. */
 export function cleanSourceLabel(input: unknown): string | null {
   const label = typeof input === "string" ? input.trim().replace(/\s+/g, " ") : "";

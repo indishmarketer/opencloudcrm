@@ -9,8 +9,8 @@
 // NEXT_PUBLIC_* vars are read as literal `process.env.NEXT_PUBLIC_X` member
 // expressions (never a dynamic lookup) so Next.js can statically inline them
 // if this module is ever pulled into client-bundled code.
-export const SITE_NAME = process.env.NEXT_PUBLIC_SITE_NAME || "My Business";
-export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://example.com";
+export const SITE_NAME = "Indish Marketer";
+export const SITE_URL = "https://indishmarketer.com";
 export const ASSET_DOMAIN = process.env.NEXT_PUBLIC_ASSET_DOMAIN || "images.example.com";
 export const OG_LOCALE = "en_US";
 

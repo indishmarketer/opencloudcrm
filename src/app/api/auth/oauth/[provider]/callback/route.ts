@@ -8,7 +8,7 @@ import { pool, withTransaction } from "@/lib/db";
 import { createSession, consumeJti, getSessionSecret, safeRedirectPath } from "@/lib/auth";
 import { isSsoProvider, exchangeCodeForToken, fetchSsoProfile, ssoCallbackUrl } from "@/lib/sso";
 import { checkRateLimit } from "@/lib/rateLimit";
-import { ensureContact, normalizeContactEmail } from "@/lib/contacts";
+import { confirmContactSubscribed, ensureContact, normalizeContactEmail } from "@/lib/contacts";
 import { generateUniqueUsername } from "@/lib/community";
 import { getAttributionFromRequest } from "@/lib/attribution";
 import { normalizeCountry } from "@/lib/countries";
@@ -166,6 +166,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
     return failureRedirect("oauth_failed", origin);
   }
   if (becameVerified) {
+    await confirmContactSubscribed(email).catch((error) => console.error("OAuth signup consent update failed:", error));
     await emitVerifiedContactEvent({ email, name, userId, source: provider }).catch((error) => console.error("OAuth verified contact event failed:", error));
   }
 

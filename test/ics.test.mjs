@@ -13,7 +13,7 @@ test("buildMeetingIcs produces a valid single-event calendar with escaped fields
   });
   assert.match(ics, /^BEGIN:VCALENDAR\r\n/);
   assert.match(ics, /\r\nEND:VCALENDAR\r\n$/);
-  assert.match(ics, /UID:abc123@example\.com/);
+  assert.match(ics, /UID:abc123@indishmarketer\.com/);
   assert.match(ics, /DTSTART:20260901T100000Z/);
   assert.match(ics, /DTEND:20260901T101500Z/);
   assert.match(ics, /SUMMARY:15 Min Discovery Call\\, with notes/);
@@ -55,7 +55,7 @@ test("buildIcsInvite produces a mailable REQUEST invite with organizer/attendee"
   assert.match(ics, /DTSTART:20260901T100000Z/);
   assert.match(ics, /DTEND:20260901T101500Z/);
   assert.match(ics, /SUMMARY:15 Min Discovery Call\\, with notes/);
-  assert.match(ics, /ORGANIZER;CN=My Business:mailto:info@example\.com/);
+  assert.match(ics, /ORGANIZER;CN=Indish Marketer:mailto:info@example\.com/);
   // The ATTENDEE line is long enough to be folded per RFC5545 (continuation
   // line starts with a space), so match across the fold rather than as one
   // unbroken line.

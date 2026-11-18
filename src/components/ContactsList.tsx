@@ -136,6 +136,10 @@ type ContactRow = {
   source: string;
   source_detail: string | null;
   sources?: ContactSourceTag[];
+  /** Fallback for a contact with no owner-written source: its original
+   * `contacts.source` and/or its first-touch campaign/referrer/landing page.
+   * Only used when `sources` is empty, so a written label always wins. */
+  derived_sources?: ContactSourceTag[];
   form_sources: string[];
   marketing_status: string;
   deliverability_status: string;
@@ -176,10 +180,7 @@ function FILTER_FIELDS(
       label: "Newsletter",
       options: [
         { value: "", label: "Any status" },
-        { value: "subscribed", label: "Subscribed" },
-        { value: "pending", label: "Pending confirmation" },
-        { value: "unsubscribed", label: "Unsubscribed" },
-        { value: "unknown", label: "Never subscribed" },
+        ...MARKETING_STATUS_ORDER.map((value) => ({ value, label: MARKETING_STATUS_LABELS[value] })),
       ],
     },
     {
@@ -286,11 +287,30 @@ function SourceHeader() {
       Source
       <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} aria-label="How sources work" className="flex h-4 w-4 items-center justify-center rounded-full border border-line text-[10px] font-semibold text-ink-soft hover:border-ink hover:text-ink">i</button>
       {open && <span role="tooltip" className="absolute left-0 top-6 z-20 w-72 rounded-xl border border-line bg-paper p-3 text-xs font-normal normal-case leading-5 text-ink-soft shadow-lg">
-        Where the contact came from, using the source you wrote for each page. Set it in a page&apos;s Page settings, a blog post&apos;s settings, a course&apos;s or webinar&apos;s details, or Meetings → Source. A form&apos;s own source is used on its direct link. Anyone who creates an account is also tagged Account, plus the page they came from. Click a source to open that page. &quot;Unknown&quot; means it had no source yet; you can set one on the contact.
+        Where the contact came from, using the source you wrote for each page. Set it in a page&apos;s Page settings, a blog post&apos;s settings, a course&apos;s or webinar&apos;s details, or Meetings → Source. A form&apos;s own source is used on its direct link. Anyone who creates an account is also tagged Account, plus the page they came from. Click a source to open that page. With no label written yet, the contact&apos;s original source or the campaign, referrer or landing page they first arrived on is shown instead. &quot;Unknown&quot; means nothing was recorded at all; you can set one on the contact.
       </span>}
     </span>
   );
 }
+
+/** `contacts.marketing_status` is NOT NULL DEFAULT 'unknown', so anyone who
+ * never went near the newsletter carries the literal string "unknown". The
+ * row used to print that raw value while the filter above called the very
+ * same value "Never subscribed", which read as a broken status rather than
+ * the plain fact that the person simply never subscribed. One map, used by
+ * both, so the badge and the filter can never disagree again. */
+const MARKETING_STATUS_LABELS: Record<string, string> = {
+  subscribed: "Subscribed",
+  pending: "Pending confirmation",
+  unsubscribed: "Unsubscribed",
+  unknown: "Never subscribed",
+};
+const MARKETING_STATUS_ORDER = ["subscribed", "pending", "unsubscribed", "unknown"];
+
+/** Falls back to the raw value (de-underscored) so a status added to the DB
+ * CHECK constraint later still renders readably instead of blank. */
+export const marketingStatusLabel = (value: string) =>
+  MARKETING_STATUS_LABELS[value] || value.replace(/_/g, " ");
 
 const tagClass = "whitespace-nowrap rounded-full border border-line px-2 py-0.5 text-xs text-ink-soft";
 
@@ -328,7 +348,13 @@ function SourceTags({ row }: { row: ContactRow }) {
   for (const source of row.form_sources || []) {
     if (!tags.some((tag) => sameSource(tag, source))) tags.push(source);
   }
-  const sources = row.sources || [];
+  // Code-derived sources are authoritative. Historical page labels remain as
+  // useful secondary detail, but they can no longer turn a contact into
+  // "Unknown" or override the hardcoded entry point.
+  const sources = [...(row.derived_sources || [])];
+  for (const source of row.sources || []) {
+    if (!sources.some((known) => sameSource(known.label, source.label))) sources.push(source);
+  }
   return (
     <div className="flex flex-wrap gap-1">
       <ContactSourceTags sources={sources} />
@@ -753,7 +779,7 @@ function ContactsListInner({
                     <SourceTags row={r} />
                   </td>
                   <td className="px-4 py-3 text-xs text-ink-soft">
-                    <p>{r.marketing_status.replace(/_/g, " ")}</p>
+                    <p>{marketingStatusLabel(r.marketing_status)}</p>
                     {r.deliverability_status !== "ok" && <p className="text-red-600">{r.deliverability_status}</p>}
                   </td>
                   <td className="whitespace-nowrap px-4 py-3 text-xs text-ink-soft">

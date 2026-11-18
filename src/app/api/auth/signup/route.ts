@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
 
   const parsed = SignupSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid signup details." }, { status: 400 });
-  const { email, password, name, interested_in, turnstileToken, redirect, ref, updates_opt_in } = parsed.data;
+  const { email, password, name, interested_in, turnstileToken, redirect, ref } = parsed.data;
   // Consent to WhatsApp without a number to send to is not consent to
   // anything, so the box only counts when a number came with it.
   const whatsappOptIn = parsed.data.whatsapp_opt_in === true && !!parsed.data.phone;
@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
           // created with a mistyped or someone-else's email address can't be used
           // (or get free course access) until the real owner of that inbox acts.
           "INSERT INTO users (email, password_hash, name, interested_in, username, updates_opt_in, whatsapp_opt_in) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, email",
-          [email, passwordHash, name || null, interested_in || null, username, updates_opt_in === true, whatsappOptIn]
+          [email, passwordHash, name || null, interested_in || null, username, true, whatsappOptIn]
         );
         user = result.rows[0];
         await client.query("RELEASE SAVEPOINT signup_username_attempt");
