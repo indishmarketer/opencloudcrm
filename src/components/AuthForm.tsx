@@ -1,10 +1,10 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Turnstile from "@/components/Turnstile";
 import UpdatesOptIn from "@/components/UpdatesOptIn";
-import CountrySelect from "@/components/CountrySelect";
+import CountrySelect, { detectCountry } from "@/components/CountrySelect";
 import PhoneInput, { toE164 } from "@/components/PhoneInput";
 import EmailInput from "@/components/EmailInput";
 import { detectEmailTypo } from "@/lib/emailValidation";
@@ -55,9 +55,17 @@ export default function AuthForm({ mode, design }: { mode: "signup" | "login"; d
   const [turnstileToken, setTurnstileToken] = useState("");
   const [whatsappOptIn, setWhatsappOptIn] = useState(true);
   const [updatesOptIn, setUpdatesOptIn] = useState(true);
-  const [country, setCountry] = useState("");
+  const [country, setCountry] = useState("IN");
   const [phone, setPhone] = useState("");
   const handleToken = useCallback((t: string) => setTurnstileToken(t), []);
+
+  useEffect(() => {
+    if (mode === "signup") {
+      void detectCountry().then((c) => {
+        if (c) setCountry(c);
+      });
+    }
+  }, [mode]);
 
   async function handleResend() {
     setResent(true);
@@ -282,9 +290,7 @@ export default function AuthForm({ mode, design }: { mode: "signup" | "login"; d
           <label className="text-sm font-medium" htmlFor="country">
             Country
           </label>
-          {/* No autoDetect: a pre-filled country gets skipped past, and the
-              dial code on the phone field below depends on it being right. */}
-          <CountrySelect id="country" value={country} onChange={setCountry} autoDetect={false} className="mt-2" />
+          <CountrySelect id="country" value={country} onChange={setCountry} autoDetect={true} className="mt-2" />
         </div>
       )}
       {mode === "signup" && (

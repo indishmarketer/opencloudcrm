@@ -13,6 +13,7 @@ import { serializeJsonLd } from "@/lib/jsonLd";
 import { sanitizeBlogHtml } from "@/lib/sanitizeBlogHtml";
 import { buildTableOfContents } from "@/lib/tableOfContents";
 import AuthorSocialLinks from "@/components/SocialIcon";
+import BlogNewsletterPopup from "@/components/BlogNewsletterPopup";
 import type { BlogIndexEntry, BlogSource } from "@/lib/blogPosts";
 import { SITE_NAME } from "@/config/brand";
 import { SITE_URL } from "@/lib/liveSiteUrl";
@@ -165,6 +166,7 @@ export default async function BlogPostArticle({ post, indexEntry, preview = fals
       <RelatedTools tools={relatedTools} />
       <RelatedPosts currentSlug={post.slug} category={indexEntry?.category} />
       {!preview && <BlogCommentSection postSlug={post.slug} />}
+      {!preview && <BlogNewsletterPopup postTitle={post.title} postSlug={post.slug} />}
     </article>
   );
 }

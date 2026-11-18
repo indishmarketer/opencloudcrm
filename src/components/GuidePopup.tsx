@@ -248,7 +248,6 @@ export default function GuidePopup({
                     country={country}
                     value={phone}
                     onChange={setPhone}
-                    placeholder="Phone number (optional)"
                   />
                 </div>
 
