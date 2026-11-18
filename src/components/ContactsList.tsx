@@ -339,6 +339,9 @@ function SourceTags({ row }: { row: ContactRow }) {
   // Priority: owner-written contact_sources row > derived from contacts.source
   // > first attribution_event landing page. Only the FIRST source is shown.
   const candidates = [...(row.sources || []), ...(row.derived_sources || [])]
+    // Legacy imports can contain a null label. Never let one malformed
+    // attribution row crash the whole contacts page.
+    .filter((source): source is ContactSourceTag => Boolean(source && typeof source.label === "string" && source.label.trim()))
     .filter((source, index, all) => !sameSource(source.label, "Email engagement")
       && all.findIndex((item) => sameSource(item.label, source.label) && item.path === source.path) === index);
   const genericCanonicalPath = (source: ContactSourceTag) =>
