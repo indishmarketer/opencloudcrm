@@ -330,39 +330,37 @@ const normalSource = (value: string) => value.toLowerCase().replace(/[-_]+/g, " 
 const sameSource = (a: string, b: string) => normalSource(a) === normalSource(b);
 
 function SourceTags({ row }: { row: ContactRow }) {
-  const tags: string[] = [];
-  if (row.has_account) tags.push("Account");
-  if (row.has_contact) tags.push("Contact form");
-  if (row.has_newsletter) tags.push("Newsletter");
-  if (row.has_product_lead) tags.push("Product lead");
-  if (row.has_course) tags.push("Course");
-  if (row.has_community) tags.push("Community");
-  if (row.has_author_application) tags.push("Author");
-  if (row.has_tool_submission) tags.push("Tool submitter");
-  for (const source of row.webhook_lead_sources || []) {
-    const label = source === "open-cloud-crm"
-      ? "OpenCloud"
-      : source.replace(/[-_]+/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
-    if (!tags.includes(label)) tags.push(label);
+  // Show only the single initial source — where they FIRST came from.
+  // The boolean capability tags (has_account, has_newsletter, etc.) are
+  // activity indicators, not sources; showing them here created confusing
+  // multi-source noise like "Free guide · Account · Newsletter" on a contact
+  // that simply downloaded a guide, then later created an account.
+  //
+  // Priority: owner-written contact_sources row > derived from contacts.source
+  // > first attribution_event landing page. Only the FIRST source is shown.
+  const ownerSources = (row.sources || []).filter(
+    (s) => !sameSource(s.label, "Email engagement") && !sameSource(s.label, "Website")
+  );
+  const derivedSources = (row.derived_sources || []).filter(
+    (s) => !sameSource(s.label, "Email engagement") && !sameSource(s.label, "Website")
+  );
+
+  // Prefer the owner-written source; fall back to derived; fall back to any
+  // owner-written one (even "Website"); then derived; then unknown.
+  let initialSource: ContactSourceTag[] = [];
+  if (ownerSources.length > 0) {
+    initialSource = [ownerSources[0]];
+  } else if (derivedSources.length > 0) {
+    initialSource = [derivedSources[0]];
+  } else if ((row.sources || []).length > 0) {
+    initialSource = [row.sources![0]];
+  } else if ((row.derived_sources || []).length > 0) {
+    initialSource = [row.derived_sources![0]];
   }
-  for (const source of row.form_sources || []) {
-    if (!tags.some((tag) => sameSource(tag, source))) tags.push(source);
-  }
-  // Code-derived sources are authoritative. Historical page labels remain as
-  // useful secondary detail, but they can no longer turn a contact into
-  // "Unknown" or override the hardcoded entry point.
-  const sources = [...(row.derived_sources || [])];
-  for (const source of row.sources || []) {
-    if (!sources.some((known) => sameSource(known.label, source.label))) sources.push(source);
-  }
+
   return (
     <div className="flex flex-wrap gap-1">
-      <ContactSourceTags sources={sources} />
-      {tags.map((t) => (
-        sources.some((source) => sameSource(source.label, t)) ? null : <span key={t} className={tagClass}>
-          {t}
-        </span>
-      ))}
+      <ContactSourceTags sources={initialSource} />
     </div>
   );
 }

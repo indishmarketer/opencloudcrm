@@ -12,6 +12,8 @@ export default async function ConsoleContactsPage() {
         -- Code-owned source fallback. Older contacts often predate
         -- contact_sources; infer their real entry point from the canonical
         -- source and linked records instead of presenting them as Unknown.
+        -- 'email' (auto-synced from email opens/sends) and 'synced' are NOT
+        -- real entry points and return NULL so the UI shows "Unknown" cleanly.
         COALESCE((SELECT json_agg(json_build_object('label', d.label, 'path', d.path) ORDER BY d.ord)
           FROM (
             SELECT 1 AS ord,
@@ -33,23 +35,19 @@ export default async function ConsoleContactsPage() {
                 WHEN 'import' THEN 'Imported'
                 WHEN 'manual' THEN 'Added directly'
                 WHEN 'open_source' THEN 'Open-source waitlist'
-                WHEN 'email' THEN 'Email engagement'
-                ELSE CASE
-                  WHEN c.user_id IS NOT NULL THEN 'Account signup'
-                  WHEN EXISTS (SELECT 1 FROM newsletter_subscribers ns WHERE lower(trim(ns.email)) = c.normalized_email) THEN 'Newsletter'
-                  WHEN EXISTS (SELECT 1 FROM contact_submissions cs WHERE lower(trim(cs.email)) = c.normalized_email) THEN 'Contact form'
-                  ELSE 'Website'
-                END
+                -- 'email' and 'synced' are system-internal; not real entry points.
+                -- Leave them out so the first attribution_event landing page
+                -- is used instead, or "Unknown" is shown if nothing is known.
+                ELSE NULL
               END AS label,
               NULL::text AS path
-            WHERE COALESCE(trim(c.source), '') <> ''
+            WHERE c.source NOT IN ('email', 'synced', '') AND COALESCE(trim(c.source), '') <> ''
             UNION ALL
             SELECT 2 AS ord, a.label, a.path
             FROM (
-              -- Contact source means the page on our site where the person
-              -- arrived or converted. External referrers (chatgpt.com,
-              -- google.com, campaigns) remain attribution context on the
-              -- contact detail; they must not replace the internal page here.
+              -- Contact source means the specific page on our site where the
+              -- person first landed. External referrers (google.com, chatgpt.com,
+              -- campaigns) stay as attribution context on the detail view only.
               SELECT CASE
                        WHEN ae.landing_page ~ '^/blog(?:/|$)' THEN 'Blog'
                        WHEN ae.landing_page ~ '^/courses?(?:/|$)' THEN 'Course'
@@ -61,7 +59,7 @@ export default async function ConsoleContactsPage() {
                        WHEN ae.landing_page ~ '^/(directory|tools)(?:/|$)' THEN 'Tools directory'
                        WHEN ae.landing_page ~ '^/community(?:/|$)' THEN 'Community'
                        WHEN ae.landing_page ~ '^/reviews?(?:/|$)' THEN 'Reviews'
-                       WHEN ae.landing_page IS NOT NULL THEN 'Website'
+                       -- Skip bare homepage landings — not meaningful as a source
                      END AS label,
                      NULLIF(trim(COALESCE(ae.landing_page, '')), '') AS path
               FROM attribution_events ae
