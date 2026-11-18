@@ -63,6 +63,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/scripts/migrate.mjs ./scripts/migrate.mjs
 COPY --from=builder --chown=nextjs:nodejs /app/scripts/migrations ./scripts/migrations
 COPY --from=builder --chown=nextjs:nodejs /app/scripts/cron ./scripts/cron
+COPY --from=builder --chown=nextjs:nodejs /app/scripts/submit-search-sitemap.mjs ./scripts/submit-search-sitemap.mjs
 
 USER nextjs
 EXPOSE 3000

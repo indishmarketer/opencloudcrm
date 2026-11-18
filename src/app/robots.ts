@@ -19,18 +19,7 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
         "/reset-password",
         "/verify-email",
         "/forgot-password",
-        "/community/pro",
-        "/community/pro/",
-        "/community/admin",
-        "/community/admin/",
-        "/community/settings",
-        "/community/settings/",
-        "/community/messages",
-        "/community/messages/",
         "/api/",
-        // Webinar landing pages are public, but account-specific rooms,
-        // playback tokens, chat, quizzes, and scheduled sessions are private.
-        "/webinars/*/room",
         // The self-service reschedule/cancel page -- carries a signed,
         // per-booking token in the URL, only ever reached via a private
         // confirmation-email link. /book/[slug] itself (the actual
