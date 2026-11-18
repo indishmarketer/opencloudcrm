@@ -1,6 +1,7 @@
 import { pool } from "@/lib/db";
 import { ensureContact, recordContactActivity } from "@/lib/contacts";
 import { getPageSource } from "@/lib/pageSources";
+import { sourcePath } from "@/lib/pageSourcesShape";
 import { normalizeCountry } from "@/lib/countries";
 import { sendEmail } from "@/lib/email";
 import { escapeHtml } from "@/lib/escapeHtml";
@@ -110,10 +111,15 @@ export async function completeFormSubmission(input: {
   const country = normalizeCountry(contactData.country) || normalizeCountry(input.ipCountry);
   // The page the form sits on names the source; the form's own source only
   // counts on its direct link (/f/<slug>) or a page that has none.
-  const sourceLabel = (await getPageSource(pageUrl).catch(() => "")) || form.source || null;
+  const submittedPath = sourcePath(pageUrl);
+  const isDirectForm = !!submittedPath && /^\/f(?:\/|$)/.test(submittedPath);
+  const sourceLabel = isDirectForm ? (form.source || form.name) : (await getPageSource(submittedPath || "/").catch(() => "")) || form.source || null;
+  const sourceDetail = sourceLabel && submittedPath && !isDirectForm
+    ? { label: sourceLabel, path: submittedPath }
+    : sourceLabel;
 
   const contactId = email
-    ? await ensureContact({ source: "form", sourceDetail: sourceLabel,
+    ? await ensureContact({ source: "form", sourceDetail,
         email,
         name: contactData.name,
         firstName: contactData.firstName,

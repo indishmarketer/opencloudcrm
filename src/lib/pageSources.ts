@@ -36,15 +36,25 @@ export async function originPageSourceTag(req: NextRequest): Promise<PageSourceT
 /** The source label of the page a request was made from (its Referer),
  * when it is one of this site's own pages. */
 export async function pageSourceFromRequest(req: NextRequest | Request): Promise<string> {
+  return (await pageSourceTagFromRequest(req))?.label || "";
+}
+
+/** The precise internal page that submitted a form. The short label is used
+ * for grouping in Contacts (Blog, Newsletter, Course, ...), while `path`
+ * keeps the exact clickable page such as /blog/how-to-write-a-headline.
+ * External Referers are deliberately rejected: they belong to attribution,
+ * not to the contact's on-site source. */
+export async function pageSourceTagFromRequest(req: NextRequest | Request): Promise<PageSourceTag | null> {
   const referer = req.headers.get("referer");
-  if (!referer) return "";
+  if (!referer) return null;
   try {
     const url = new URL(referer);
     const site = new URL(SITE_URL);
     const host = req.headers.get("host");
-    if (url.host !== site.host && url.host !== host) return "";
-    return await getPageSource(url.pathname);
+    if (url.host !== site.host && url.host !== host) return null;
+    const path = sourcePath(url.pathname);
+    return path ? { label: await getPageSource(path), path } : null;
   } catch {
-    return "";
+    return null;
   }
 }

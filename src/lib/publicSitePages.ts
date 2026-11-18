@@ -33,11 +33,7 @@ export const PUBLIC_SITE_PAGES: PublicSitePage[] = [
   { type: "page", title: "Terms and Conditions", desc: `The terms that govern use of ${SITE_NAME}.`, url: "/terms", changeFrequency: "yearly", priority: 0.2 },
   { type: "page", title: "Privacy Policy", desc: `How ${SITE_NAME} collects, uses, and protects information.`, url: "/privacy-policy", changeFrequency: "yearly", priority: 0.2 },
   { type: "page", title: "Cancellation & Refund Policy", desc: "How cancellations and refunds work for courses and digital products.", url: "/refund-policy", changeFrequency: "yearly", priority: 0.2 },
-  { type: "community", title: "Community", desc: "Join public discussions with indie marketers.", url: "/community/general", changeFrequency: "daily", priority: 0.6 },
-  { type: "community", title: "Community leaderboard", desc: "See active community members and contributions.", url: "/community/leaderboard", changeFrequency: "daily", priority: 0.6 },
-  { type: "community", title: "Community members", desc: "Browse public community member profiles.", url: "/community/members", changeFrequency: "daily", priority: 0.5 },
   { type: "tool", title: "Tools directory", desc: "Browse and compare tools for indie marketers.", url: "/tools", changeFrequency: "daily", priority: 0.8 },
-  { type: "webinar", title: "Webinars", desc: "Watch scheduled and on-demand webinars.", url: "/webinars", changeFrequency: "weekly", priority: 0.7 },
   // Only the landing page belongs here -- individual prompts/skills/guides
   // are dynamic DB content, registered directly in sitemap.ts (like blog
   // posts) rather than duplicated into this static list.

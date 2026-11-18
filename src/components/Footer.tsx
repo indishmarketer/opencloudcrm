@@ -3,6 +3,7 @@ import { getBusiness } from "@/lib/businessProfile";
 import { getPublicSiteChrome } from "@/lib/siteChrome";
 import { getSiteIdentity, resolveSiteName } from "@/lib/siteIdentity";
 import type { SocialPlatform } from "@/lib/siteChromeShape";
+import { isRetiredPublicPath } from "@/lib/retiredFeatures";
 
 const SOCIAL_ICONS: Record<SocialPlatform, { label: string; path: string }> = {
   facebook: { label: "Facebook", path: "M13.5 21v-8h2.7l.4-3.1h-3.1V8c0-.9.25-1.5 1.53-1.5H16.7V3.7C16.4 3.66 15.4 3.57 14.2 3.57c-2.4 0-4 1.46-4 4.15V9.9H7.5V13h2.7v8h3.3z" },
@@ -27,7 +28,9 @@ function ContactIcon({ d }: { d: string }) {
 export default async function Footer() {
   const [business, chrome, identity] = await Promise.all([getBusiness(), getPublicSiteChrome(), getSiteIdentity()]);
   const siteName = resolveSiteName(identity);
-  const columns = chrome.footer.columns;
+  const columns = chrome.footer.columns
+    .map((column) => ({ ...column, links: column.links.filter((link) => !isRetiredPublicPath(link.href)) }))
+    .filter((column) => column.links.length > 0);
   const socials = (Object.entries(chrome.socials) as [SocialPlatform, string][])
     .filter(([, href]) => href)
     .map(([platform, href]) => ({ href, ...SOCIAL_ICONS[platform] }));

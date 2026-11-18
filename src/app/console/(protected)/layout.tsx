@@ -22,8 +22,6 @@ const baseNavGroups = [
     title: "CRM & Audience",
     links: [
       { href: "/console/contacts", label: "Contacts" },
-      { href: "/console/support", label: "Support" },
-      { href: "/console/community", label: "Community" },
     ],
   },
   {
@@ -36,12 +34,10 @@ const baseNavGroups = [
   {
     title: "Content & Products",
     links: [
-      { href: "/console/pages", label: "Pages" },
       { href: "/console/blog", label: "Blog" },
       { href: "/console/courses", label: "Courses" },
       { href: "/console/directory", label: "Tools directory" },
       { href: "/console/lead-magnets", label: "Free guides" },
-      { href: "/console/popups", label: "Popups", hidden: true },
     ],
   },
   {
@@ -53,14 +49,11 @@ const baseNavGroups = [
     links: [
       { href: "/console/sales", label: "Sales" },
       { href: "/console/meetings", label: "Meetings" },
-      { href: "/console/webinars", label: "Webinars" },
-      { href: "/console/reviews", label: "Reviews" },
     ],
   },
   {
     title: "Config",
     links: [
-      { href: "/console/payments", label: "Payments" },
       { href: "/console/site-actions", label: "Site actions" },
       { href: "/console/site-settings", label: "Site Settings" },
       { href: "/console/security", label: "Security" },

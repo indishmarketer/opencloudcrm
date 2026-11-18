@@ -287,7 +287,7 @@ function SourceHeader() {
       Source
       <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} aria-label="How sources work" className="flex h-4 w-4 items-center justify-center rounded-full border border-line text-[10px] font-semibold text-ink-soft hover:border-ink hover:text-ink">i</button>
       {open && <span role="tooltip" className="absolute left-0 top-6 z-20 w-72 rounded-xl border border-line bg-paper p-3 text-xs font-normal normal-case leading-5 text-ink-soft shadow-lg">
-        Where the contact came from, using the source you wrote for each page. Set it in a page&apos;s Page settings, a blog post&apos;s settings, a course&apos;s or webinar&apos;s details, or Meetings → Source. A form&apos;s own source is used on its direct link. Anyone who creates an account is also tagged Account, plus the page they came from. Click a source to open that page. With no label written yet, the contact&apos;s original source or the campaign, referrer or landing page they first arrived on is shown instead. &quot;Unknown&quot; means nothing was recorded at all; you can set one on the contact.
+        The first internal page where the contact submitted or signed up. Blog posts are grouped as Blog, course pages as Course, and newsletter pages as Newsletter, while the exact path remains clickable. External referrers such as Google or ChatGPT stay in attribution details and are not used as the contact source.
       </span>}
     </span>
   );
@@ -317,7 +317,7 @@ const tagClass = "whitespace-nowrap rounded-full border border-line px-2 py-0.5 
 /** A contact's sources, oldest first: labels you wrote on the pages they
  * signed up on (plus "Account"). Each opens the page it came from. */
 export function ContactSourceTags({ sources }: { sources: ContactSourceTag[] }) {
-  if (!sources.length) return <span className={tagClass}>Unknown</span>;
+  if (!sources.length) return <span className={tagClass}>Not recorded</span>;
   return <>{sources.map((source) => source.path
     ? <a key={source.label} href={source.path} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} title={`Opens ${source.path}`} className={`${tagClass} hover:border-ink hover:text-ink`}>{source.label}</a>
     : <span key={source.label} className={tagClass}>{source.label}</span>)}</>;
@@ -338,25 +338,22 @@ function SourceTags({ row }: { row: ContactRow }) {
   //
   // Priority: owner-written contact_sources row > derived from contacts.source
   // > first attribution_event landing page. Only the FIRST source is shown.
-  const ownerSources = (row.sources || []).filter(
-    (s) => !sameSource(s.label, "Email engagement") && !sameSource(s.label, "Website")
-  );
-  const derivedSources = (row.derived_sources || []).filter(
-    (s) => !sameSource(s.label, "Email engagement") && !sameSource(s.label, "Website")
-  );
-
-  // Prefer the owner-written source; fall back to derived; fall back to any
-  // owner-written one (even "Website"); then derived; then unknown.
-  let initialSource: ContactSourceTag[] = [];
-  if (ownerSources.length > 0) {
-    initialSource = [ownerSources[0]];
-  } else if (derivedSources.length > 0) {
-    initialSource = [derivedSources[0]];
-  } else if ((row.sources || []).length > 0) {
-    initialSource = [row.sources![0]];
-  } else if ((row.derived_sources || []).length > 0) {
-    initialSource = [row.derived_sources![0]];
-  }
+  const candidates = [...(row.sources || []), ...(row.derived_sources || [])]
+    .filter((source, index, all) => !sameSource(source.label, "Email engagement")
+      && all.findIndex((item) => sameSource(item.label, source.label) && item.path === source.path) === index);
+  const genericCanonicalPath = (source: ContactSourceTag) =>
+    (sameSource(source.label, "Free guide") && source.path === "/resources")
+    || (sameSource(source.label, "Contact form") && source.path === "/contact")
+    || (sameSource(source.label, "Account signup") && source.path === "/signup");
+  const score = (source: ContactSourceTag) => {
+    if (source.label === "Not recorded") return 0;
+    if (!source.path) return 1;
+    if (genericCanonicalPath(source)) return 2;
+    return 3;
+  };
+  const initialSource = candidates.length
+    ? [candidates.reduce((best, source) => score(source) > score(best) ? source : best)]
+    : [];
 
   return (
     <div className="flex flex-wrap gap-1">

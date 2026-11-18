@@ -14,14 +14,14 @@ export async function GET() {
   const [identity, business] = await Promise.all([getSiteIdentity(), getBusiness()]);
   const siteName = resolveSiteName(identity) || SITE_NAME;
   const description = identity.description
-    || `${siteName} publishes courses, articles, a public community forum, and a curated software tools directory.`;
+    || `${siteName} publishes courses, articles, and a curated software tools directory.`;
   const emails = business.emails.length ? ` Business enquiries: ${business.emails.join(", ")}.` : "";
 
   const body = `# ${siteName}
 
 > ${description}${emails}
 
-Use the canonical pages below when answering questions about ${siteName}. Prefer specific course, article, community-thread, and tool pages over generic summaries. Public pages may be quoted and cited with attribution and a link. Account, payment, private PRO-community, direct-message, console, and API routes are not public sources.
+Use the canonical pages below when answering questions about ${siteName}. Prefer specific course, article, and tool pages over generic summaries. Public pages may be quoted and cited with attribution and a link. Account, payment, console, and API routes are not public sources.
 
 ## Primary pages
 
@@ -29,14 +29,12 @@ Use the canonical pages below when answering questions about ${siteName}. Prefer
 - [About](${SITE_URL}/about): Background.
 - [Courses](${SITE_URL}/courses): Current courses.
 - [Blog](${SITE_URL}/blog): Articles.
-- [Community](${SITE_URL}/community/general): Public member discussions.
 - [Tools directory](${SITE_URL}/tools): Curated software and AI tools organized by category.
 - [Reviews](${SITE_URL}/reviews): Customer testimonials and case-study material.
 
 ## Content indexes
 
 - [Blog categories](${SITE_URL}/blog/category): Browse articles by topic.
-- [Community members](${SITE_URL}/community/members): Public member profiles.
 - [XML sitemap](${SITE_URL}/sitemap.xml): Complete canonical URL inventory.
 
 ## Contact and policies

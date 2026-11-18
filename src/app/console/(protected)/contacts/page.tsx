@@ -16,7 +16,7 @@ export default async function ConsoleContactsPage() {
         -- real entry points and return NULL so the UI shows "Unknown" cleanly.
         COALESCE((SELECT json_agg(json_build_object('label', d.label, 'path', d.path) ORDER BY d.ord)
           FROM (
-            SELECT 1 AS ord,
+            SELECT 2 AS ord,
               CASE c.source
                 WHEN 'account' THEN 'Account signup'
                 WHEN 'newsletter' THEN 'Newsletter'
@@ -43,7 +43,7 @@ export default async function ConsoleContactsPage() {
               NULL::text AS path
             WHERE c.source NOT IN ('email', 'synced', '') AND COALESCE(trim(c.source), '') <> ''
             UNION ALL
-            SELECT 2 AS ord, a.label, a.path
+            SELECT 1 AS ord, a.label, a.path
             FROM (
               -- Contact source means the specific page on our site where the
               -- person first landed. External referrers (google.com, chatgpt.com,
@@ -59,16 +59,20 @@ export default async function ConsoleContactsPage() {
                        WHEN ae.landing_page ~ '^/(directory|tools)(?:/|$)' THEN 'Tools directory'
                        WHEN ae.landing_page ~ '^/community(?:/|$)' THEN 'Community'
                        WHEN ae.landing_page ~ '^/reviews?(?:/|$)' THEN 'Reviews'
-                       -- Skip bare homepage landings — not meaningful as a source
+                       WHEN ae.landing_page = '/' THEN 'Website'
+                       ELSE 'Website'
                      END AS label,
                      NULLIF(trim(COALESCE(ae.landing_page, '')), '') AS path
               FROM attribution_events ae
-              WHERE (c.user_id IS NOT NULL AND ae.user_id = c.user_id)
-                 OR lower(trim(COALESCE(ae.email, ''))) = c.normalized_email
+              WHERE ((c.user_id IS NOT NULL AND ae.user_id = c.user_id)
+                 OR lower(trim(COALESCE(ae.email, ''))) = c.normalized_email)
+                AND COALESCE(ae.landing_page, '') ~ '^/'
               ORDER BY ae.created_at ASC
               LIMIT 1
             ) a
             WHERE a.label IS NOT NULL
+            UNION ALL
+            SELECT 3 AS ord, 'Not recorded' AS label, NULL::text AS path
           ) d), '[]'::json) AS derived_sources,
         (c.user_id IS NOT NULL) AS has_account,
         EXISTS (SELECT 1 FROM contact_submissions cs WHERE lower(trim(cs.email)) = c.normalized_email) AS has_contact,

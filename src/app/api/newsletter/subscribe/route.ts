@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { pageSourceFromRequest } from "@/lib/pageSources";
+import { pageSourceTagFromRequest } from "@/lib/pageSources";
 import { pool } from "@/lib/db";
 import { checkRateLimit, privateRateLimitKey } from "@/lib/rateLimit";
 import { requestOtp } from "@/lib/otp";
@@ -7,7 +7,7 @@ import { verifyTurnstile } from "@/lib/turnstile";
 import { getAttributionFromRequest } from "@/lib/attribution";
 import { z } from "zod";
 import { normalizeCountry } from "@/lib/countries";
-import { ensureContact } from "@/lib/contacts";
+import { ensureContact, markContactSubscriptionPending } from "@/lib/contacts";
 
 const SubscribeSchema = z.object({
   name: z.string().trim().min(1).max(200),
@@ -60,9 +60,11 @@ export async function POST(req: NextRequest) {
   // though we had their real name right here. The country is no longer
   // asked for -- it is detected from the visitor's IP.
   const country = normalizeCountry(req.headers.get("cf-ipcountry"));
-  await ensureContact({ source: "newsletter", sourceDetail: (await pageSourceFromRequest(req)) || null,
+  const pageSource = await pageSourceTagFromRequest(req);
+  await ensureContact({ source: "newsletter", sourceDetail: pageSource,
     email, name, userId, country, countrySource: country ? "ip" : undefined,
   }).catch((err) => console.error("newsletter ensureContact failed (non-fatal):", err));
+  await markContactSubscriptionPending(email).catch((err) => console.error("newsletter consent update failed (non-fatal):", err));
 
   const sent = await requestOtp(email, "newsletter", { country });
   if (!sent) {

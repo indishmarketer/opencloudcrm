@@ -13,14 +13,12 @@ export default async function ConsoleHome() {
     leadsQuery,
     usersQuery,
     recentSignupsQuery,
-    communityQuery,
     toolsQuery,
     emailQuery,
     coursesQuery,
     guidesQuery,
     whatsappQuery,
     meetingsQuery,
-    reviewsQuery,
     attentionQuery,
     attributionTrendQuery,
     usersTrendQuery,
@@ -59,15 +57,6 @@ export default async function ConsoleHome() {
       FROM users 
       ORDER BY created_at DESC 
       LIMIT 6
-    `),
-    // 5. Community Stats
-    pool.query(`
-      SELECT 
-        (SELECT COUNT(*)::int FROM users WHERE username IS NOT NULL) AS members,
-        (SELECT COUNT(*)::int FROM users WHERE last_seen_at > now() - interval '7 days') AS active_week,
-        (SELECT COUNT(*)::int FROM forum_posts WHERE status = 'approved') AS approved_posts,
-        (SELECT COUNT(*)::int FROM forum_posts WHERE status = 'pending') +
-        (SELECT COUNT(*)::int FROM forum_comments WHERE status = 'pending') AS pending_moderation
     `),
     // 6. Tools Directory Stats
     pool.query(`
@@ -114,14 +103,6 @@ export default async function ConsoleHome() {
         COUNT(*) FILTER (WHERE scheduled_start >= now() AND status = 'confirmed')::int AS upcoming_meetings
       FROM meeting_bookings
     `).catch(() => ({ rows: [{ total_meetings: 0, confirmed_meetings: 0, upcoming_meetings: 0 }] })),
-    // 12. Reviews Stats
-    pool.query(`
-      SELECT
-        COUNT(*)::int AS total_reviews,
-        COUNT(*) FILTER (WHERE status = 'approved')::int AS approved_reviews,
-        COUNT(*) FILTER (WHERE status = 'pending')::int AS pending_reviews
-      FROM review_submissions
-    `).catch(() => ({ rows: [{ total_reviews: 0, approved_reviews: 0, pending_reviews: 0 }] })),
     // 13. Actionable Attention Queue
     pool.query(`
       SELECT
@@ -174,14 +155,12 @@ export default async function ConsoleHome() {
   const sales = salesQuery.rows[0] || { sales_count: 0, revenue_inr: 0, revenue_usd: 0, paying_customers: 0 };
   const leads = leadsQuery.rows[0] || { total_leads: 0, newsletter_subscribers: 0 };
   const users = usersQuery.rows[0] || { total_users: 0, new_7d: 0 };
-  const community = communityQuery.rows[0] || { members: 0, active_week: 0, approved_posts: 0, pending_moderation: 0 };
   const tools = toolsQuery.rows[0] || { total: 0, published: 0, pending: 0 };
   const emails = emailQuery.rows[0] || { active_flows: 0, sent_30d: 0, queued: 0 };
   const courses = coursesQuery.rows[0] || { total_courses: 0, published_courses: 0, total_enrollments: 0 };
   const guides = guidesQuery.rows[0] || { total_guides: 0, published_guides: 0 };
   const whatsapp = whatsappQuery.rows[0] || { sent: 0, delivered: 0 };
   const meetings = meetingsQuery.rows[0] || { total_meetings: 0, confirmed_meetings: 0, upcoming_meetings: 0 };
-  const reviews = reviewsQuery.rows[0] || { total_reviews: 0, approved_reviews: 0, pending_reviews: 0 };
   const attention = attentionQuery.rows[0] || { unreplied_support: 0, pending_reviews: 0, pending_claims: 0 };
 
   // Format trend data
@@ -199,8 +178,7 @@ export default async function ConsoleHome() {
   const hasPendingActions =
     attention.unreplied_support > 0 ||
     attention.pending_reviews > 0 ||
-    attention.pending_claims > 0 ||
-    community.pending_moderation > 0;
+    attention.pending_claims > 0;
 
   return (
     <div className="space-y-8">
@@ -225,7 +203,7 @@ export default async function ConsoleHome() {
           <div className="flex flex-wrap items-center gap-2">
             {attention.unreplied_support > 0 && (
               <Link
-                href="/console/support"
+                href="/console/attention"
                 className="rounded-full bg-white px-3 py-1 font-medium shadow-sm transition-colors hover:bg-amber-100"
               >
                 {attention.unreplied_support} support {attention.unreplied_support === 1 ? "ticket" : "tickets"} awaiting reply →
@@ -241,18 +219,10 @@ export default async function ConsoleHome() {
             )}
             {attention.pending_reviews > 0 && (
               <Link
-                href="/console/reviews"
+                href="/console/attention"
                 className="rounded-full bg-white px-3 py-1 font-medium shadow-sm transition-colors hover:bg-amber-100"
               >
                 {attention.pending_reviews} {attention.pending_reviews === 1 ? "review" : "reviews"} pending moderation →
-              </Link>
-            )}
-            {community.pending_moderation > 0 && (
-              <Link
-                href="/console/community"
-                className="rounded-full bg-white px-3 py-1 font-medium shadow-sm transition-colors hover:bg-amber-100"
-              >
-                {community.pending_moderation} community {community.pending_moderation === 1 ? "post" : "posts"} to moderate →
               </Link>
             )}
           </div>
@@ -327,24 +297,6 @@ export default async function ConsoleHome() {
       <div>
         <h2 className="font-display text-lg font-semibold sm:text-xl">Platform pillars</h2>
         <div className="mt-4 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-5">
-          {/* 1. Community */}
-          <Link
-            href="/console/community"
-            className="group flex flex-col justify-between rounded-2xl border border-line bg-paper p-4 transition-all hover:border-ink hover:shadow-sm sm:p-5"
-          >
-            <div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wider text-ink-soft">Community</span>
-                <span className="text-xs text-ink-soft group-hover:text-ink">Open →</span>
-              </div>
-              <p className="mt-2 font-display text-2xl font-semibold">{community.members}</p>
-              <p className="mt-1 text-xs text-ink-soft">Members enrolled</p>
-            </div>
-            <div className="mt-4 border-t border-line pt-3 text-xs text-ink-soft">
-              {community.active_week} active this week · {community.approved_posts} posts
-            </div>
-          </Link>
-
           {/* 2. Courses */}
           <Link
             href="/console/courses"
@@ -450,24 +402,6 @@ export default async function ConsoleHome() {
             </div>
             <div className="mt-4 border-t border-line pt-3 text-xs text-ink-soft">
               {meetings.upcoming_meetings} upcoming · {meetings.confirmed_meetings} confirmed
-            </div>
-          </Link>
-
-          {/* 8. Reviews */}
-          <Link
-            href="/console/reviews"
-            className="group flex flex-col justify-between rounded-2xl border border-line bg-paper p-4 transition-all hover:border-ink hover:shadow-sm sm:p-5"
-          >
-            <div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wider text-ink-soft">Reviews</span>
-                <span className="text-xs text-ink-soft group-hover:text-ink">Open →</span>
-              </div>
-              <p className="mt-2 font-display text-2xl font-semibold">{reviews.approved_reviews}</p>
-              <p className="mt-1 text-xs text-ink-soft">Approved reviews</p>
-            </div>
-            <div className="mt-4 border-t border-line pt-3 text-xs text-ink-soft">
-              {reviews.total_reviews} total {reviews.pending_reviews > 0 ? `· ${reviews.pending_reviews} pending` : ""}
             </div>
           </Link>
 

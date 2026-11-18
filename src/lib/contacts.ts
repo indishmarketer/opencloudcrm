@@ -62,7 +62,7 @@ export async function ensureContact(
     source?: ContactSource;
     /** The owner-written source label shown in Contacts: the page's source
      * (src/lib/pageSources.ts), else the form's own source. Never generated. */
-    sourceDetail?: string | null;
+    sourceDetail?: ContactSourceEntry;
     /** More source labels to record alongside, e.g. the page someone came
      * from before creating an account. */
     extraSources?: ContactSourceEntry[];
@@ -100,7 +100,8 @@ export async function ensureContact(
       country, country ? input.countrySource : null,
       phone, phone ? input.phoneSource : null,
       input.firstName?.trim() || null, input.lastName?.trim() || null, input.address?.trim() || null,
-      input.source ?? null, input.sourceDetail?.trim().slice(0, 200) || null,
+      input.source ?? null,
+      (typeof input.sourceDetail === "string" ? input.sourceDetail : input.sourceDetail?.label)?.trim().slice(0, 200) || null,
     ],
   );
   const contactId = Number(result.rows[0].id);

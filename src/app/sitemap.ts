@@ -11,6 +11,7 @@ import { SITE_URL as BASE_URL } from "@/lib/liveSiteUrl";
 import { buildSafe } from "@/lib/db";
 import { getCrawlSettings } from "@/lib/siteCrawlSettings";
 import { getPublishedPage } from "@/lib/sitePages";
+import { isRetiredPublicPath } from "@/lib/retiredFeatures";
 
 /** Built-in routes with their own page-builder row -- excluded from the
  * sitemap (the hub and everything under it) whenever the owner has taken
@@ -121,26 +122,6 @@ async function buildSitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
-  const forumPosts = await safeRows<{ id: number; created_at: string }>("forum posts",
-    "SELECT id, created_at FROM forum_posts WHERE space = 'general' AND status = 'approved'"
-  );
-  const forumPostRoutes: MetadataRoute.Sitemap = forumPosts.map((p) => ({
-    url: `${BASE_URL}/community/general/${p.id}`,
-    lastModified: new Date(p.created_at),
-    changeFrequency: "weekly",
-    priority: 0.5,
-  }));
-
-  const members = await safeRows<{ username: string; created_at: string }>("members",
-    "SELECT username, created_at FROM users WHERE username IS NOT NULL AND id NOT IN (SELECT user_id FROM community_bans)"
-  );
-  const memberRoutes: MetadataRoute.Sitemap = members.map((u) => ({
-    url: `${BASE_URL}/community/${u.username}`,
-    lastModified: new Date(u.created_at),
-    changeFrequency: "monthly",
-    priority: 0.4,
-  }));
-
   // /book/[slug] is the one meetings page meant to be found by search --
   // /book/manage/* (self-service reschedule/cancel) is intentionally
   // excluded here and disallowed in robots.ts, since it's only ever reached
@@ -151,14 +132,6 @@ async function buildSitemap(): Promise<MetadataRoute.Sitemap> {
     lastModified: new Date(m.updated_at),
     changeFrequency: "monthly",
     priority: 0.8,
-  }));
-
-  const webinars = await safeRows<{ slug: string; updated_at: string }>("webinars", "SELECT slug, updated_at FROM webinars WHERE status = 'published'");
-  const webinarRoutes: MetadataRoute.Sitemap = webinars.map((w) => ({
-    url: `${BASE_URL}/webinars/${w.slug}`,
-    lastModified: new Date(w.updated_at),
-    changeFrequency: "monthly",
-    priority: 0.7,
   }));
 
   // Prompt & Skill Library: fully public as of 2026-09-20 (was login-gated).
@@ -211,10 +184,7 @@ async function buildSitemap(): Promise<MetadataRoute.Sitemap> {
     ...authorRoutes,
     ...toolCategoryRoutes,
     ...toolRoutes,
-    ...forumPostRoutes,
-    ...memberRoutes,
     ...meetingTypeRoutes,
-    ...webinarRoutes,
     ...libraryBrowseRoutes,
     ...promptRoutes,
     ...skillRoutes,
@@ -224,8 +194,9 @@ async function buildSitemap(): Promise<MetadataRoute.Sitemap> {
   // Single filter point for every route above, rather than gating each
   // query individually: a managed page taken offline from Console -> Pages
   // drops out of the sitemap here, no matter which list above it came from.
-  if (!offlinePrefixes.length) return allRoutes;
-  return allRoutes.filter((route) => {
+  const activeRoutes = allRoutes.filter((route) => !isRetiredPublicPath(route.url.slice(BASE_URL.length) || "/"));
+  if (!offlinePrefixes.length) return activeRoutes;
+  return activeRoutes.filter((route) => {
     const path = route.url.slice(BASE_URL.length) || "/";
     return !offlinePrefixes.some((p) => path === p || path.startsWith(`${p}/`));
   });

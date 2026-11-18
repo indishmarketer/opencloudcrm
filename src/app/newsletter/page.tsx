@@ -6,9 +6,6 @@ import { buildSafe } from "@/lib/db";
 import { resolveImage } from "@/lib/images";
 import { SITE_NAME, OG_LOCALE, assetUrl } from "@/config/brand";
 import { SITE_URL } from "@/lib/liveSiteUrl";
-import { BuiltInPage, builtInPageMetadata } from "@/components/pageBlocks/SitePageView";
-import { getPublishedPage } from "@/lib/sitePages";
-import { notFound } from "next/navigation";
 import NewsletterSignupForm from "@/components/NewsletterSignupForm";
 
 const OG_IMAGE = assetUrl("newsletter/og-newsletter.png");
@@ -37,8 +34,7 @@ const baseMetadata: Metadata = {
 };
 
 export async function generateMetadata(): Promise<Metadata> {
-  if (!(await getPublishedPage("/newsletter"))) return {};
-  return builtInPageMetadata("/newsletter", baseMetadata);
+  return baseMetadata;
 }
 
 const WHAT_YOU_GET = [
@@ -92,11 +88,9 @@ const SOCIAL_PROOF = [
 ];
 
 export default async function NewsletterPage() {
-  if (!(await getPublishedPage("/newsletter"))) notFound();
   const recentPosts = await buildSafe(async () => (await getPublicPosts()).slice(0, 3), []);
 
   return (
-    <BuiltInPage path="/newsletter">
       <div>
 
         {/* ── HERO ─────────────────────────────────────────────── */}
@@ -278,6 +272,5 @@ export default async function NewsletterPage() {
         </section>
 
       </div>
-    </BuiltInPage>
   );
 }

@@ -70,12 +70,11 @@ test("every static public page.tsx is registered in PUBLIC_SITE_PAGES (search + 
   const EXCLUDED_PREFIXES = [
     "/account", "/console", "/login", "/forgot-password", "/reset-password", "/signup",
     "/verify", "/verify-email", "/unsubscribe", "/preview", "/book/manage", "/blog/preview",
-    "/community/admin", "/community/messages", "/community/settings", "/community/pro",
+    "/community", "/webinars", "/new-newsletter",
     "/resources/prompt-skill-library/browse",
   ];
   const EXCLUDED_EXACT = new Set([
     "/", // the homepage is a page-builder row (listPublishedPageEntries), not a static entry
-    "/community", // redirects straight to /community/general, which is registered
   ]);
 
   const registered = new Set(PUBLIC_SITE_PAGES.map((p) => p.url));
