@@ -44,6 +44,16 @@ export const HARDCODED_PAGE_SOURCES = [
   { path: "/reviews", label: "Reviews" },
 ] as const;
 
+/** Canonical public path for a code-owned source label. This is only the
+ * section fallback; when the visitor's exact path is known we store that
+ * exact path instead (for example /blog/a-specific-post). */
+export function hardcodedSourcePathForLabel(input: string | null | undefined): string | null {
+  const label = String(input || "").trim().toLowerCase();
+  if (!label) return null;
+  if (label === "account" || label === "account signup") return "/signup";
+  return HARDCODED_PAGE_SOURCES.find((source) => source.label.toLowerCase() === label)?.path || null;
+}
+
 /** The cleaned label, "" for none, or null when it is too long. */
 export function cleanSourceLabel(input: unknown): string | null {
   const label = typeof input === "string" ? input.trim().replace(/\s+/g, " ") : "";

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "node:crypto";
-import { originPageSource } from "@/lib/pageSources";
+import { originPageSourceTag } from "@/lib/pageSources";
 import { ACCOUNT_SOURCE_LABEL } from "@/lib/pageSourcesShape";
 import bcrypt from "bcryptjs";
 import { jwtVerify } from "jose";
@@ -154,7 +154,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
 
   const ipCountry = normalizeCountry(req.headers.get("cf-ipcountry"));
   try {
-    await ensureContact({ source: "account", sourceDetail: ACCOUNT_SOURCE_LABEL, extraSources: [await originPageSource(req)],
+    await ensureContact({ source: "account", sourceDetail: ACCOUNT_SOURCE_LABEL, extraSources: [await originPageSourceTag(req)],
       email,
       userId,
       name,

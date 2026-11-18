@@ -303,7 +303,7 @@ const MARKETING_STATUS_LABELS: Record<string, string> = {
   subscribed: "Subscribed",
   pending: "Pending confirmation",
   unsubscribed: "Unsubscribed",
-  unknown: "Never subscribed",
+  unknown: "Not subscribed",
 };
 const MARKETING_STATUS_ORDER = ["subscribed", "pending", "unsubscribed", "unknown"];
 

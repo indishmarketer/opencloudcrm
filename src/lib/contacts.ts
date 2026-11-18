@@ -1,8 +1,9 @@
 import type { Pool, PoolClient } from "pg";
 import { pool } from "@/lib/db";
-import { ACCOUNT_SOURCE_LABEL } from "@/lib/pageSourcesShape";
+import { hardcodedSourcePathForLabel, sourcePath } from "@/lib/pageSourcesShape";
 
 type Queryable = Pick<Pool | PoolClient, "query">;
+type ContactSourceEntry = string | { label: string; path?: string | null } | null | undefined;
 
 export function normalizeContactEmail(email: string): string {
   return email.trim().toLowerCase();
@@ -64,7 +65,7 @@ export async function ensureContact(
     sourceDetail?: string | null;
     /** More source labels to record alongside, e.g. the page someone came
      * from before creating an account. */
-    extraSources?: (string | null | undefined)[];
+    extraSources?: ContactSourceEntry[];
   },
   db: Queryable = pool,
 ): Promise<number> {
@@ -103,23 +104,39 @@ export async function ensureContact(
     ],
   );
   const contactId = Number(result.rows[0].id);
-  const labels = [input.sourceDetail, ...(input.extraSources || [])]
-    .map((label) => label?.trim().replace(/\s+/g, " ").slice(0, 40))
-    .filter((label): label is string => !!label);
-  if (labels.length) {
-    // One row per label, oldest first; a label a contact already has is
-    // kept as it was. The path (for the console link) is the page that
-    // carries that label, or /signup for Account.
+  const sourceEntries: { label: string; path: string | null }[] = [];
+  for (const value of [input.sourceDetail, ...(input.extraSources || [])]) {
+    const rawLabel = typeof value === "string" ? value : value?.label;
+    const label = rawLabel?.trim().replace(/\s+/g, " ").slice(0, 40);
+    if (!label || sourceEntries.some((entry) => entry.label.toLowerCase() === label.toLowerCase())) continue;
+    const exactPath = typeof value === "object" && value ? sourcePath(value.path) : null;
+    sourceEntries.push({ label, path: exactPath || hardcodedSourcePathForLabel(label) });
+  }
+  if (sourceEntries.length) {
+    // One row per code-owned label, with the exact internal path when known.
+    // This deliberately has no page_sources dependency: production sources
+    // are hardcoded and cannot silently disappear when a console row is absent.
     await db.query(
       `INSERT INTO contact_sources (contact_id, label, path)
-       SELECT $1, l.label, CASE WHEN lower(l.label) = lower($3) THEN '/signup'
-         ELSE (SELECT ps.path FROM page_sources ps WHERE lower(ps.label) = lower(l.label) ORDER BY ps.path LIMIT 1) END
-       FROM unnest($2::text[]) WITH ORDINALITY AS l(label, ord) ORDER BY l.ord
+       SELECT $1, s.label, s.path
+       FROM unnest($2::text[], $3::text[]) WITH ORDINALITY AS s(label, path, ord)
+       ORDER BY s.ord
        ON CONFLICT DO NOTHING`,
-      [contactId, labels, ACCOUNT_SOURCE_LABEL],
+      [contactId, sourceEntries.map((entry) => entry.label), sourceEntries.map((entry) => entry.path)],
     ).catch((error) => console.error("recording contact source failed (non-fatal):", error));
   }
   return contactId;
+}
+
+/** A new password signup has opted in but has not proved ownership of the
+ * inbox yet. Represent that accurately instead of displaying "Never
+ * subscribed". An earlier explicit unsubscribe is never overwritten. */
+export async function markContactSubscriptionPending(email: string, db: Queryable = pool): Promise<void> {
+  await db.query(
+    `UPDATE contacts SET marketing_status = 'pending', updated_at = now()
+     WHERE normalized_email = $1 AND marketing_status = 'unknown'`,
+    [normalizeContactEmail(email)],
+  );
 }
 
 export async function markContactSuppressed(

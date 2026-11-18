@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { originPageSource } from "@/lib/pageSources";
+import { originPageSourceTag } from "@/lib/pageSources";
 import { ACCOUNT_SOURCE_LABEL } from "@/lib/pageSourcesShape";
 import bcrypt from "bcryptjs";
 import { pool, withTransaction } from "@/lib/db";
@@ -9,7 +9,7 @@ import { verifyTurnstile } from "@/lib/turnstile";
 import { generateUniqueUsername } from "@/lib/community";
 import { getAttributionFromRequest } from "@/lib/attribution";
 import { checkRateLimit, privateRateLimitKey } from "@/lib/rateLimit";
-import { ensureContact } from "@/lib/contacts";
+import { ensureContact, markContactSubscriptionPending } from "@/lib/contacts";
 import { normalizeCountry } from "@/lib/countries";
 import { z } from "zod";
 
@@ -96,7 +96,7 @@ export async function POST(req: NextRequest) {
     // creates one with user_id left NULL -- that gap was why real,
     // already-verified accounts couldn't be reliably matched back to their
     // users row later (e.g. for deliverability recovery, review requests).
-    await ensureContact({ source: "account", sourceDetail: ACCOUNT_SOURCE_LABEL, extraSources: [await originPageSource(req)],
+    await ensureContact({ source: "account", sourceDetail: ACCOUNT_SOURCE_LABEL, extraSources: [await originPageSourceTag(req)],
       email: user.email,
       userId: user.id,
       name: name || null,
@@ -105,6 +105,7 @@ export async function POST(req: NextRequest) {
       phone: parsed.data.phone || null,
       phoneSource: parsed.data.phone ? "form" : undefined,
     }, client);
+    await markContactSubscriptionPending(user.email, client);
 
     // Track referral if ref was supplied
     if (ref && typeof ref === "string") {

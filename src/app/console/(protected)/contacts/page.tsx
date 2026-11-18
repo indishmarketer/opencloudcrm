@@ -46,16 +46,23 @@ export default async function ConsoleContactsPage() {
             UNION ALL
             SELECT 2 AS ord, a.label, a.path
             FROM (
-              -- split_part on '/' takes the host out of a referrer URL
-              -- ("https://www.google.com/x" -> "www.google.com") without a
-              -- regex, whose backslashes would need escaping twice to survive
-              -- this template literal.
-              SELECT COALESCE(
-                       NULLIF(trim(COALESCE(ae.utm_campaign, '')), ''),
-                       NULLIF(trim(COALESCE(ae.utm_source, '')), ''),
-                       NULLIF(split_part(COALESCE(ae.referrer, ''), '/', 3), ''),
-                       NULLIF(trim(COALESCE(ae.landing_page, '')), '')
-                     ) AS label,
+              -- Contact source means the page on our site where the person
+              -- arrived or converted. External referrers (chatgpt.com,
+              -- google.com, campaigns) remain attribution context on the
+              -- contact detail; they must not replace the internal page here.
+              SELECT CASE
+                       WHEN ae.landing_page ~ '^/blog(?:/|$)' THEN 'Blog'
+                       WHEN ae.landing_page ~ '^/courses?(?:/|$)' THEN 'Course'
+                       WHEN ae.landing_page ~ '^/webinars?(?:/|$)' THEN 'Webinar'
+                       WHEN ae.landing_page ~ '^/book(?:/|$)' THEN 'Meeting booking'
+                       WHEN ae.landing_page ~ '^/newsletter(?:/|$)' THEN 'Newsletter'
+                       WHEN ae.landing_page ~ '^/contact(?:/|$)' THEN 'Contact page'
+                       WHEN ae.landing_page ~ '^/(guide|guides|resources)(?:/|$)' THEN 'Free guide'
+                       WHEN ae.landing_page ~ '^/(directory|tools)(?:/|$)' THEN 'Tools directory'
+                       WHEN ae.landing_page ~ '^/community(?:/|$)' THEN 'Community'
+                       WHEN ae.landing_page ~ '^/reviews?(?:/|$)' THEN 'Reviews'
+                       WHEN ae.landing_page IS NOT NULL THEN 'Website'
+                     END AS label,
                      NULLIF(trim(COALESCE(ae.landing_page, '')), '') AS path
               FROM attribution_events ae
               WHERE (c.user_id IS NOT NULL AND ae.user_id = c.user_id)
