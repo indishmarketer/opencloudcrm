@@ -61,7 +61,7 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
   const contact = contactResult.rows[0];
   if (!contact) notFound();
   const contactSources = await pool.query<{ label: string; path: string | null }>(
-    "SELECT label, path FROM contact_sources WHERE contact_id = $1 ORDER BY created_at, id", [contact.id],
+    "SELECT label, path FROM contact_sources WHERE contact_id = $1 AND lower(label) <> 'free guide' ORDER BY created_at, id", [contact.id],
   ).then((r) => r.rows).catch(() => []);
   const contactId = Number(contact.id);
   const formSubmissions = await pool.query<{
@@ -209,7 +209,10 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
   const firstTouch = attribution.rows[0];
   const communityActive = membership.rows[0]?.status === "active";
   const emailEligible = contact.marketing_status !== "unsubscribed" && contact.deliverability_status === "ok";
-  const lastSeenAt = user?.last_seen_at || contact.last_seen_at;
+  // Only an authenticated user's site heartbeat is a live-site signal.
+  // contacts.last_seen_at is also touched by imports/forms/console flows and
+  // must never make a contact appear active in the console.
+  const lastSeenAt = user?.last_seen_at || null;
   const lastSeenMs = lastSeenAt ? new Date(lastSeenAt).getTime() : 0;
   const nowMs = new Date(contact.request_now).getTime();
   const isActive = lastSeenMs > 0 && nowMs - lastSeenMs <= 10 * 60 * 1000;
@@ -348,7 +351,7 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
             </div>
             <div className="flex items-baseline justify-between gap-4">
               <dt className="text-ink-soft">Source</dt>
-              <dd><ContactSourcesEditor contactId={Number(contact.id)} initialSources={contactSources} /></dd>
+            <dd><ContactSourcesEditor initialSources={contactSources} /></dd>
             </div>
             <div className="flex items-baseline justify-between gap-4">
               <dt className="text-ink-soft">Deliverability</dt>

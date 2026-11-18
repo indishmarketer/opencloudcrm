@@ -8,7 +8,7 @@ export default async function ConsoleContactsPage() {
       SELECT c.id AS contact_id, c.user_id, c.email, COALESCE(c.name, u.name) AS name, c.phone,
         c.first_seen_at AS first_seen, c.source, c.source_detail, c.marketing_status,
         COALESCE((SELECT json_agg(json_build_object('label', cs.label, 'path', cs.path) ORDER BY cs.created_at, cs.id)
-          FROM contact_sources cs WHERE cs.contact_id = c.id), '[]'::json) AS sources, c.deliverability_status,
+          FROM contact_sources cs WHERE cs.contact_id = c.id AND lower(cs.label) <> 'free guide'), '[]'::json) AS sources, c.deliverability_status,
         -- Code-owned source fallback. Older contacts often predate
         -- contact_sources; infer their real entry point from the canonical
         -- source and linked records instead of presenting them as Unknown.
@@ -22,7 +22,6 @@ export default async function ConsoleContactsPage() {
                 WHEN 'newsletter' THEN 'Newsletter'
                 WHEN 'contact_form' THEN 'Contact form'
                 WHEN 'form' THEN 'Form'
-                WHEN 'guide' THEN 'Free guide'
                 WHEN 'meeting' THEN 'Meeting booking'
                 WHEN 'webinar' THEN 'Webinar'
                 WHEN 'course' THEN 'Course'
@@ -55,12 +54,11 @@ export default async function ConsoleContactsPage() {
                        WHEN ae.landing_page ~ '^/book(?:/|$)' THEN 'Meeting booking'
                        WHEN ae.landing_page ~ '^/newsletter(?:/|$)' THEN 'Newsletter'
                        WHEN ae.landing_page ~ '^/contact(?:/|$)' THEN 'Contact page'
-                       WHEN ae.landing_page ~ '^/(guide|guides|resources)(?:/|$)' THEN 'Free guide'
                        WHEN ae.landing_page ~ '^/(directory|tools)(?:/|$)' THEN 'Tools directory'
                        WHEN ae.landing_page ~ '^/community(?:/|$)' THEN 'Community'
                        WHEN ae.landing_page ~ '^/reviews?(?:/|$)' THEN 'Reviews'
                        WHEN ae.landing_page = '/' THEN 'Website'
-                       ELSE 'Website'
+                       ELSE NULL
                      END AS label,
                      NULLIF(trim(COALESCE(ae.landing_page, '')), '') AS path
               FROM attribution_events ae
@@ -72,7 +70,7 @@ export default async function ConsoleContactsPage() {
             ) a
             WHERE a.label IS NOT NULL
             UNION ALL
-            SELECT 3 AS ord, 'Not recorded' AS label, NULL::text AS path
+            SELECT 3 AS ord, 'Unknown' AS label, NULL::text AS path
           ) d), '[]'::json) AS derived_sources,
         (c.user_id IS NOT NULL) AS has_account,
         EXISTS (SELECT 1 FROM contact_submissions cs WHERE lower(trim(cs.email)) = c.normalized_email) AS has_contact,
