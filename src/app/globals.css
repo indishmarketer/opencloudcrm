@@ -400,16 +400,81 @@ body {
   }
 }
 
+/* Sections ease in as they scroll into view.
+   Deliberately a CSS scroll-driven animation rather than JavaScript with
+   IntersectionObserver: no bundle cost, nothing to hydrate, and the
+   content is in the HTML either way so crawlers and SEO are unaffected.
+   `animation-timeline: view()` is progressive enhancement. A browser
+   without it ignores the whole @supports block and simply shows the
+   section, which is the correct resting state, so nothing can get stuck
+   invisible if the feature is missing or scripting is disabled. */
+@keyframes section-reveal {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .reveal-on-scroll {
+      animation: section-reveal linear both;
+      animation-timeline: view();
+      /* Finish well before the section is centred, so it is fully legible
+         by the time it matters, and never animates on the way back out. */
+      animation-range: entry 0% cover 28%;
+    }
+  }
+}
+
+/* Nav dropdown panels. They are conditionally rendered, so they appeared
+   instantly with no motion at all. A short fade and drop on mount gives
+   the menu the same feel as the rest of the site. The chevron beside the
+   trigger already rotates; this is the panel half of that gesture. */
+@keyframes menu-drop {
+  from { opacity: 0; transform: translateY(-6px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.menu-drop {
+  animation: menu-drop 160ms ease-out both;
+  transform-origin: top center;
+}
+@media (prefers-reduced-motion: reduce) {
+  .menu-drop { animation: none; }
+}
+
+/* Cards lift toward the brand colour on hover. Transform and box-shadow
+   only, both compositor-friendly, so this stays smooth on a phone. */
+.lift-on-hover {
+  transition: transform 220ms ease-out, box-shadow 220ms ease-out, border-color 220ms ease-out;
+}
+@media (hover: hover) {
+  .lift-on-hover:hover {
+    transform: translateY(-4px);
+    border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+    box-shadow: 0 18px 38px -18px color-mix(in srgb, var(--accent) 55%, transparent);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lift-on-hover {
+    transition: none;
+  }
+  .lift-on-hover:hover {
+    transform: none;
+  }
+}
+
 /* Page builder sections with the "Dark" background. Re-pointing the theme
    variables (not adding text-white everywhere) makes every utility inside
    -- text-ink-soft, border-line, bg-paper cards -- flip to its dark-mode
    counterpart automatically, so each block only has one set of classes. */
 .page-section-dark {
-  --paper: #0a0a0a;
-  --paper-soft: #171717;
-  --ink: #fafafa;
-  --ink-soft: rgb(255 255 255 / 0.7);
-  --line: rgb(255 255 255 / 0.16);
+  /* Tinted toward the brand purple rather than a neutral black. A flat
+     #0a0a0a here meant every dark band on the site read as "black site"
+     no matter what the theme said, because this class overrode the
+     themed tokens instead of deriving from them. */
+  --paper: #140826;
+  --paper-soft: #1f1038;
+  --ink: #faf8ff;
+  --ink-soft: rgb(237 233 254 / 0.72);
+  --line: rgb(196 181 253 / 0.22);
   background: var(--paper);
   color: var(--ink);
 }

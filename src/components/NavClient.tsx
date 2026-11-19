@@ -247,7 +247,7 @@ export default function NavClient({
                 </button>
                 {item.type === "dropdown" && menu === i && (
                   <div
-                    className={`absolute top-full mt-2 grid min-w-64 max-w-[calc(100vw-2rem)] grid-flow-col auto-cols-[minmax(13rem,1fr)] divide-x divide-line rounded-2xl border border-line bg-paper p-2 shadow-lg ${
+                    className={`menu-drop absolute top-full mt-2 grid min-w-64 max-w-[calc(100vw-2rem)] grid-flow-col auto-cols-[minmax(13rem,1fr)] divide-x divide-line rounded-2xl border border-line bg-paper p-2 shadow-lg ${
                       i >= items.length - 1 ? "right-0" : "left-0"
                     }`}
                   >
@@ -268,7 +268,7 @@ export default function NavClient({
          * row instead. Dropdowns are narrow and stay under their button. */}
         {menu !== null && items[menu]?.type === "resources" && (
           <div
-            className="absolute left-1/2 top-full mt-2 max-w-[calc(100vw-2rem)] -translate-x-1/2 divide-x divide-line rounded-2xl border border-line bg-paper shadow-lg"
+            className="menu-drop absolute left-1/2 top-full mt-2 max-w-[calc(100vw-2rem)] -translate-x-1/2 divide-x divide-line rounded-2xl border border-line bg-paper shadow-lg"
             style={{ display: "grid", width: `${resourceColumnCount * 240}px`, gridTemplateColumns: `repeat(${resourceColumnCount}, minmax(0, 1fr))` }}
           >
             {showCourses && <LearnColumn title="Courses" allHref="/courses" allLabel="View all courses" items={courses} itemHref={(slug) => `/courses/${slug}`} />}

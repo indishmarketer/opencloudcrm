@@ -149,7 +149,7 @@ export function Section({ props, children, width = "max-w-6xl" }: { props: Props
   return (
     <section
       id={str(props, "anchor") || undefined}
-      className={`${background} ${spacing} ${margin} ${radius} ${str(props, "mobileClass")}`.trim()}
+      className={`reveal-on-scroll ${background} ${spacing} ${margin} ${radius} ${str(props, "mobileClass")}`.trim()}
       style={surfaceStyle(backgroundColor)}
     >
       <div className={`mx-auto ${innerWidth} ${paddingX}`}>{children}</div>
@@ -421,7 +421,10 @@ export function HeroView({
   return (
     <section
       id={str(props, "anchor") || undefined}
-      className={`relative overflow-hidden ${dark ? "bg-ink text-paper" : "bg-paper-gradient text-ink"}`}
+      // A dark hero used a flat `bg-ink` fill, so the sitewide dark gradient
+      // (Console -> Theme) never showed anywhere the visitor actually looks.
+      // Using it here is what makes a brand colour read as the brand.
+      className={`relative overflow-hidden ${dark ? "bg-ink-gradient text-paper" : "bg-paper-gradient text-ink"}`}
       style={surfaceStyle(backgroundColor)}
     >
       {backgroundImage ? (
@@ -903,12 +906,12 @@ export function CardsBlock({ props }: { props: Props }) {
               </div>
             </>
           );
-          const cardClass = `group flex flex-col overflow-hidden rounded-2xl border bg-paper ${
-            href
-              ? "border-line transition-all duration-300 hover:-translate-y-1 hover:border-ink/40 hover:shadow-[0_16px_32px_-12px_rgba(10,10,10,0.14)]"
-              : str(item, "badge")
-                ? "border-dashed border-line"
-                : "border-line"
+          // lift-on-hover applies to every card, not just linked ones. The
+          // old rule gated the hover on `href`, so a grid of descriptive
+          // cards (no links) sat completely inert. Its shadow was also a
+          // hardcoded black, which ignored the theme's accent colour.
+          const cardClass = `group lift-on-hover flex flex-col overflow-hidden rounded-2xl border bg-paper ${
+            !href && str(item, "badge") ? "border-dashed border-line" : "border-line"
           }`;
           return href ? (
             <Link key={i} href={href} className={cardClass}>
