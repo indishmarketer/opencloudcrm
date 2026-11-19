@@ -1,5 +1,5 @@
 import { pool } from "@/lib/db";
-import { slugify } from "@/lib/promptLibrary";
+import { slugify } from "@/lib/slugify";
 import type { Author } from "@/data/authors";
 import { authors as staticAuthors, defaultAuthorSlug } from "@/data/authors";
 
