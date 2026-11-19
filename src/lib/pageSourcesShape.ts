@@ -13,9 +13,28 @@ export const ACCOUNT_SOURCE_LABEL = "Account";
 /** Production contact sources are code-owned. A path always resolves to the
  * same short label, so attribution no longer depends on a console field or
  * a row existing in page_sources. */
+/** A readable label for a page that matches no known section, built from its
+ * first path segment ("/free-guide/x" -> "Free guide"). Capped at
+ * MAX_SOURCE_WORDS so the result always survives cleanSourceLabel -- a label
+ * over three words is rejected outright, which would drop the source and put
+ * the contact back to "Unknown". */
+function labelFromPath(path: string): string {
+  const segment = path.split("/").filter(Boolean)[0] || "";
+  const words = segment.replace(/[-_]+/g, " ").trim().split(/\s+/).filter(Boolean).slice(0, MAX_SOURCE_WORDS);
+  const text = words.join(" ").slice(0, MAX_SOURCE_LENGTH).trim();
+  if (!text) return HOME_SOURCE_LABEL;
+  return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
+}
+
+/** The home page, named as a page. Never "Website": a source has to say
+ * which page someone came from, and "Website" is the one answer that says
+ * nothing -- it was also the silent fallback for an uncaptured path, so a
+ * missing source and a genuine home-page signup were indistinguishable. */
+export const HOME_SOURCE_LABEL = "Home page";
+
 export function hardcodedPageSource(input: string | null | undefined): string {
   const path = sourcePath(input) || "/";
-  if (path === "/") return "Website";
+  if (path === "/") return HOME_SOURCE_LABEL;
   if (/^\/blog(?:\/|$)/.test(path)) return "Blog";
   if (/^\/courses?(?:\/|$)/.test(path)) return "Course";
   if (/^\/webinars?(?:\/|$)/.test(path)) return "Webinar";
@@ -27,11 +46,11 @@ export function hardcodedPageSource(input: string | null | undefined): string {
   if (/^\/community(?:\/|$)/.test(path)) return "Community";
   if (/^\/reviews?(?:\/|$)/.test(path)) return "Reviews";
   if (/^\/(?:signup|auth)(?:\/|$)/.test(path)) return ACCOUNT_SOURCE_LABEL;
-  return "Website";
+  return labelFromPath(path);
 }
 
 export const HARDCODED_PAGE_SOURCES = [
-  { path: "/", label: "Website" },
+  { path: "/", label: HOME_SOURCE_LABEL },
   { path: "/blog", label: "Blog" },
   { path: "/courses", label: "Course" },
   { path: "/webinars", label: "Webinar" },

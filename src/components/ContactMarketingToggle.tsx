@@ -5,11 +5,14 @@ import { useRouter } from "next/navigation";
 import { useConfirm } from "@/components/ConfirmDialog";
 import ToggleSwitch from "@/components/ToggleSwitch";
 
+/** Keep 'unknown' in step with MARKETING_STATUS_LABELS in ContactsList:
+ * never worded as a negative, so a never-asked contact is not read as
+ * someone who opted out. */
 const STATUS_LABEL: Record<string, string> = {
   subscribed: "Subscribed",
   unsubscribed: "Unsubscribed",
   pending: "Waiting for confirmation",
-  unknown: "Not subscribed",
+  unknown: "No opt-in yet",
 };
 
 /** Lets the owner turn marketing email on or off for one contact. Turning it

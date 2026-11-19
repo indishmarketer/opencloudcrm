@@ -7,7 +7,12 @@ test("new site workflows offer only the requested high-level events", () => {
   assert.deepEqual(workflowTriggerOptions.map((option) => option.value), [
     "contact.verified", "newsletter.unsubscribed", "course.enrolled", "course.upgraded",
     "course.revoked", "course.completed", "course.inactivity", "payment.succeeded", "payment.failed",
-    "directory_tool.submitted", "directory_tool.reviewed", "contact.verification_requested",
+    // directory_tool.submitted/reviewed and contact.verification_requested
+    // stay accepted for workflows that already use them, but are no longer
+    // offered for new ones: their emails are built in (directoryEmails.ts),
+    // and signup/form verification already sends its own code email. See
+    // SITE_WORKFLOW_EVENT_KEYS in src/lib/workflowGraph.ts.
+    "directory_tool.published",
   ]);
   assert.equal(workflowTriggerOptions[1].label, "Email unsubscribed");
   assert.equal(isValidWebhookEventType("contact.verification_requested"), false, "one-time credentials stay out of outbound webhooks");

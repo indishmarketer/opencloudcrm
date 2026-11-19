@@ -294,16 +294,21 @@ function SourceHeader() {
 }
 
 /** `contacts.marketing_status` is NOT NULL DEFAULT 'unknown', so anyone who
- * never went near the newsletter carries the literal string "unknown". The
- * row used to print that raw value while the filter above called the very
- * same value "Never subscribed", which read as a broken status rather than
- * the plain fact that the person simply never subscribed. One map, used by
- * both, so the badge and the filter can never disagree again. */
+ * never went near the newsletter carries the literal string "unknown". One
+ * map, used by both the badge and the filter, so they can never disagree.
+ *
+ * 'unknown' is deliberately NOT worded as a negative. "Not subscribed" and
+ * "Never subscribed" both read as "this person opted out", which is exactly
+ * how they were being misread -- a list of ordinary never-asked contacts
+ * looked like a site-wide unsubscribe bug. 'unknown' only means nobody ever
+ * asked them: it is the default for any contact created as a side effect of
+ * being emailed or of a form that never completed opt-in. An actual opt-out
+ * is 'unsubscribed', and only that one should look like bad news. */
 const MARKETING_STATUS_LABELS: Record<string, string> = {
   subscribed: "Subscribed",
   pending: "Pending confirmation",
   unsubscribed: "Unsubscribed",
-  unknown: "Not subscribed",
+  unknown: "No opt-in yet",
 };
 const MARKETING_STATUS_ORDER = ["subscribed", "pending", "unsubscribed", "unknown"];
 
