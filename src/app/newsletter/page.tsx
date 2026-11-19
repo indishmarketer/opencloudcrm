@@ -13,7 +13,7 @@ const OG_IMAGE = assetUrl("newsletter/og-newsletter.png");
 export const dynamic = "force-dynamic";
 
 const baseMetadata: Metadata = {
-  title: "Newsletter — Indish Marketer",
+  title: "Newsletter by Indish Marketer",
   description: `Real marketing insights, no fluff. Join ${SITE_NAME}'s free newsletter and get actionable tips delivered to your inbox every week.`,
   alternates: { canonical: `${SITE_URL}/newsletter` },
   openGraph: {
@@ -45,7 +45,7 @@ const WHAT_YOU_GET = [
       </svg>
     ),
     title: "Real case studies",
-    description: "What actually worked for real Indian businesses — not theory, actual results.",
+    description: "What actually worked for real Indian businesses. Not theory, actual results.",
   },
   {
     icon: (
@@ -135,8 +135,8 @@ export default async function NewsletterPage() {
             <p className="mx-auto mt-6 max-w-xl text-lg text-ink-soft">
               Join{" "}
               <strong className="font-semibold text-ink">5,000+ marketers and creators</strong>{" "}
-              who get real insights, proven strategies, and no-fluff advice from Indish Marketer —
-              every week, free.
+              who get one email on Sunday about building and marketing your own systems instead of
+              renting tools. Free, and you can leave in one click.
             </p>
 
             {/* Social proof row */}
@@ -172,7 +172,7 @@ export default async function NewsletterPage() {
               </h2>
               <p className="mx-auto mt-3 max-w-xl text-ink-soft">
                 Each newsletter is packed with one big idea, one quick tactic, and one tool
-                worth knowing — short enough to read in 5 minutes, dense enough to act on.
+                worth knowing. Short enough to read in 5 minutes, dense enough to act on.
               </p>
             </div>
             <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
@@ -213,7 +213,7 @@ export default async function NewsletterPage() {
                 </Link>
               </div>
               <p className="mt-3 text-ink-soft">
-                A taste of what you&apos;ll get in your inbox — explore the latest from the blog.
+                A taste of what you&apos;ll get in your inbox. Have a look at the latest from the blog.
               </p>
               <div className="mt-10 grid gap-8 md:grid-cols-3">
                 {recentPosts.map((post) => {
@@ -259,7 +259,7 @@ export default async function NewsletterPage() {
               Still on the fence?
             </p>
             <h2 className="mt-2 font-display text-3xl font-semibold">
-              Join 5,000+ readers — it&apos;s free
+              Join 5,000+ readers, free
             </h2>
             <p className="mx-auto mt-3 max-w-sm text-ink-soft">
               No gatekeeping. No premium tier. Just genuine marketing content, delivered to your

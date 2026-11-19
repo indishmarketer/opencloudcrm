@@ -20,7 +20,7 @@ import BannedNotice from "@/components/community/BannedNotice";
 import { SITE_NAME } from "@/config/brand";
 
 export const metadata = {
-  title: "Leaderboard — Community",
+  title: "Leaderboard | Community",
   description: `See the top members and contributors in the ${SITE_NAME} community.`,
   alternates: { canonical: "/community/leaderboard" },
 };

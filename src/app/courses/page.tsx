@@ -99,7 +99,7 @@ export default async function CoursesIndexPage() {
           </Link>
         ))}
         {result.rows.length === 0 && (
-          <p className="text-sm text-ink-soft">No courses published yet — check back soon.</p>
+          <p className="text-sm text-ink-soft">No courses published yet. Check back soon.</p>
         )}
       </div>
     </div>
