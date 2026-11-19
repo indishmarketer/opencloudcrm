@@ -91,7 +91,7 @@ INSERT INTO email_templates (key, category, label, description, subject, body_ht
 <p>That link signs you in without a password, so there''s nothing to remember. Once you''re in you can set a password from your account settings if you want one.</p>
 <p>The course itself lives at <a href="{{course_url}}" style="color:#1a0dab;">{{course_url}}</a> any time you come back.</p>
 <p>Shubho<br>Indish Marketer</p>',
- 'academy@indishmarketer.com', true, true, ARRAY['first_name','course_title','course_url','signin_url'])
+ 'academy@indishmarketer.com', true, true, ARRAY['first_name','course_title','course_url','signin_url']),
 
 ('otp-code', 'account', 'Verification code',
  'The code and one-click link sent whenever someone has to prove they own an email address: signup, newsletter opt-in, the free guide, and the contact form. otp.ts falls back to a built-in version of this if the row is missing, so verification can never silently stop working.',
