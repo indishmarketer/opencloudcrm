@@ -107,7 +107,7 @@ export default function ManageBookingWidget({ bookingId, token, meetingTypeSlug,
         </div>
         {error && <div className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-600">{error}</div>}
         <div className="flex flex-wrap gap-3">
-          <a href={joinUrl} className="rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-paper transition-opacity hover:opacity-80">Join meeting</a>
+          <a href={joinUrl} className="rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-accent-on transition-opacity hover:opacity-80">Join meeting</a>
           <button type="button" onClick={() => setView("reschedule")} className="rounded-full border border-line px-5 py-2.5 text-sm font-medium hover:border-ink">Reschedule</button>
           <button type="button" disabled={busy} onClick={handleCancel} className="rounded-full border border-red-300 px-5 py-2.5 text-sm font-medium text-red-600 hover:border-red-500 disabled:opacity-50">Cancel meeting</button>
         </div>
@@ -127,7 +127,7 @@ export default function ManageBookingWidget({ bookingId, token, meetingTypeSlug,
           <p className="mt-1 text-sm text-ink-soft">Timezone: {timezone}</p>
         </div>
         {error && <div className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-600">{error}</div>}
-        <button type="button" disabled={busy} onClick={confirmReschedule} className="w-full rounded-full bg-ink px-4 py-2.5 text-sm font-medium text-paper transition-opacity hover:opacity-80 disabled:opacity-50">
+        <button type="button" disabled={busy} onClick={confirmReschedule} className="w-full rounded-full bg-accent px-4 py-2.5 text-sm font-medium text-accent-on transition-opacity hover:opacity-80 disabled:opacity-50">
           {busy ? "Rescheduling…" : "Confirm new time"}
         </button>
       </div>

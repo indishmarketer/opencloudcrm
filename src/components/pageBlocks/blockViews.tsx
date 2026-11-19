@@ -356,7 +356,7 @@ function SectionHeading({ heading, text, link }: { heading: string; text?: strin
       <div className="flex items-end justify-between gap-4">
         {heading && <h2 className="font-display text-3xl font-semibold"><AccentText text={heading} /></h2>}
         {link && link.label && (
-          <Link href={link.href} className="shrink-0 text-sm font-medium text-ink-soft hover:text-ink">
+          <Link href={link.href} className="shrink-0 text-sm font-medium text-accent transition-opacity hover:opacity-75">
             {link.label} →
           </Link>
         )}
@@ -380,6 +380,23 @@ function SectionHeading({ heading, text, link }: { heading: string; text?: strin
  * (the pattern the brand reference uses) without the page editor having
  * to accept raw HTML. Plain text in, JSX out, so nothing is injectable:
  * the asterisks are the only markup and anything else stays literal. */
+/** True for a hex colour light enough that text sitting in it is being
+ * read against a dark surface. Used to pick which purple an accented
+ * word gets: the brand #6d28d9 disappears on black, so a heading the
+ * page has set to white or near-white takes the light purple instead.
+ * Anything that is not a plain hex (empty, a CSS keyword, a variable)
+ * answers false, which keeps the default brand accent. */
+function isLightColor(value: string): boolean {
+  const hex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(value.trim());
+  if (!hex) return false;
+  const full = hex[1].length === 3 ? hex[1].split("").map((c) => c + c).join("") : hex[1];
+  const r = parseInt(full.slice(0, 2), 16);
+  const g = parseInt(full.slice(2, 4), 16);
+  const b = parseInt(full.slice(4, 6), 16);
+  // Rec. 601 luma, which is close enough for a light/dark decision.
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.6;
+}
+
 function AccentText({ text, accentClass = "text-accent" }: { text: string; accentClass?: string }) {
   if (!text || !text.includes("*")) return <>{text}</>;
   return (
@@ -603,7 +620,16 @@ export function HeadingBlock({ props, nested = false, editableText }: { props: P
   const t = richTextStyle(props);
   const el = (
     <Heading className="font-display" style={t}>
-      {editableText ? <InlineTextInput edit={editableText} placeholder="Heading text" /> : text}
+      {/* Plain Heading blocks were the one kind that could not carry a
+          purple phrase, so any headline built this way (the tools
+          directory hero, for one) came out flat while hero and section
+          headings next to it had the accent. While editing, the raw
+          asterisks stay visible so they can be typed and removed. */}
+      {editableText ? (
+        <InlineTextInput edit={editableText} placeholder="Heading text" />
+      ) : (
+        <AccentText text={text} accentClass={isLightColor(str(props, "textColor")) ? "text-purple-300" : "text-accent"} />
+      )}
     </Heading>
   );
   if (nested) return <RichBox props={props}>{el}</RichBox>;
@@ -937,7 +963,7 @@ export function CardsBlock({ props }: { props: Props }) {
                 <h3 className="font-display text-xl font-semibold">{str(item, "title")}</h3>
                 {str(item, "text") && <p className="mt-3 flex-1 whitespace-pre-line text-sm leading-6 text-ink-soft">{str(item, "text")}</p>}
                 {href && (
-                  <p className="mt-6 inline-flex items-center gap-1.5 text-sm font-medium text-ink">
+                  <p className="mt-6 inline-flex items-center gap-1.5 text-sm font-medium text-accent">
                     {str(item, "linkLabel") || "Learn more"}
                     <span aria-hidden="true" className="transition-transform duration-300 group-hover:translate-x-1">→</span>
                   </p>
@@ -1894,142 +1920,137 @@ export function TeamMemberBlock({ props, nested = false }: { props: Props; neste
   );
 }
 
+/* Workflow node icons. One per step, in order, matching the four stages
+   of how a build actually runs: a conversation, the machine it lands on,
+   the pieces we stack up, and the thing going live. Outline strokes at
+   1.6 so they stay light next to the card titles. */
 const WORKFLOW_STEP_ICONS: React.ReactNode[] = [
-  // 01: Consultation / Chat / Conversation
+  // 01: Two chat bubbles -- the conversation that starts it
   (
-    <svg key="0" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+    <svg key="0" className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 15.5H6a3 3 0 0 1-3-3v-4a3 3 0 0 1 3-3h7a3 3 0 0 1 3 3v.5" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M11 11h7a3 3 0 0 1 3 3v3a3 3 0 0 1-3 3h-1.5L13 22.5V20h-2a3 3 0 0 1-3-3v-3a3 3 0 0 1 3-3Z" />
+      <path strokeLinecap="round" d="M6.5 9.5h.01M9.5 9.5h.01M12.5 9.5h.01" strokeWidth={2} />
     </svg>
   ),
-  // 02: Server / VPS rack / Infrastructure
+  // 02: Laptop with code -- the server and the setup
   (
-    <svg key="1" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
+    <svg key="1" className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}>
+      <rect x="4" y="4" width="16" height="11" rx="2" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M2.5 18.5h19" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 8 9 9.5 10.5 11M13.5 8 15 9.5 13.5 11" />
     </svg>
   ),
-  // 03: Modular builder / Components / Blocks
+  // 03: Stacked layers -- the pieces built on top of each other
   (
-    <svg key="2" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+    <svg key="2" className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="m12 3 9 4.5-9 4.5-9-4.5L12 3Z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="m3 12 9 4.5 9-4.5" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="m3 16.5 9 4.5 9-4.5" />
     </svg>
   ),
-  // 04: Automation / Sparkles / Cursor / Next flow
+  // 04: Rocket -- it goes live and keeps running
   (
-    <svg key="3" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+    <svg key="3" className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 10.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M20.5 3.5c-4.6-.4-8 1.2-10.6 4.3l-2.6 3.1 2.8 2.8 3.1-2.6c3.1-2.6 4.7-6 4.3-10.6l3 3Z" transform="translate(0 0)" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9.3 13.7 7 16M6.5 11.2 4 12l1.5 1.5M12.8 17.5 12 20l1.5-1.5M4.5 19.5l2-2" />
     </svg>
   ),
 ];
 
-const WORKFLOW_STEP_TAGS = ["Trigger: Consultation", "Infrastructure Setup", "Custom Build & Polish", "Continuous Flow"];
-
+/** How this actually works.
+ *
+ * Laid out as a flow diagram, not a list: white cards on a tinted panel,
+ * joined by purple routed connectors that arch over the gaps between
+ * them, the way a node editor draws an edge. The last hop drops under
+ * the row instead of over it, so the path reads as a circuit rather than
+ * a straight line.
+ *
+ * The connectors are plain bordered boxes, not SVG. An SVG stretched to
+ * a fluid width with preserveAspectRatio="none" distorts its rounded
+ * corners; a box with `border-radius` and three borders keeps the corner
+ * radius identical at every screen width, and costs nothing to render.
+ * Their geometry comes from the same column maths the grid uses, so a
+ * leg always lands on the centre of a card:
+ *   col    = (100% - (n-1) * gap) / n
+ *   centre = col/2 + index * (col + gap)
+ *
+ * The dot grid behind everything is `background-attachment: fixed`, so
+ * the dots stay pinned to the viewport while the panel scrolls past
+ * them. That is the effect the owner asked for: the cards move, the fine
+ * dotted texture behind them does not.
+ */
 export function StepsBlock({ props, nested = false }: { props: Props; nested?: boolean }) {
   const items = list(props, "items").filter((i) => str(i, "title"));
   if (!items.length) return null;
 
+  const n = items.length;
+  const cols = n >= 4 ? "md:grid-cols-4" : n === 3 ? "md:grid-cols-3" : "md:grid-cols-2";
+  // Only the multi-column layouts get connectors; a single column has
+  // nothing to connect across.
+  const connectors = n >= 2 && n <= 4 ? Array.from({ length: n - 1 }, (_, i) => i) : [];
+  const colVars = {
+    "--wf-gap": "1.5rem",
+    "--wf-col": `calc((100% - ${n - 1} * var(--wf-gap)) / ${n})`,
+  } as React.CSSProperties;
+
   const content = (
     <div
-      className="relative overflow-hidden rounded-3xl border border-line bg-paper-soft/40 p-6 sm:p-10 shadow-sm"
-      style={{
-        backgroundImage: "radial-gradient(circle, rgba(109, 40, 217, 0.16) 1.5px, transparent 1.5px)",
-        backgroundSize: "24px 24px",
-      }}
+      className="workflow-canvas relative overflow-hidden rounded-[28px] border border-line/70 bg-paper-soft/50 px-6 py-14 sm:px-10 sm:py-16"
     >
-      <style>{`
-        @keyframes workflow-motion {
-          from { stroke-dashoffset: 24; }
-          to { stroke-dashoffset: 0; }
-        }
-        .workflow-motion-line {
-          animation: workflow-motion 1.2s linear infinite;
-        }
-      `}</style>
+      {/* Fine dotted texture, pinned to the viewport. */}
+      <div aria-hidden="true" className="workflow-dots pointer-events-none absolute inset-0" />
 
-      {/* Workflow Canvas Header */}
-      <div className="mb-8 flex items-center justify-between border-b border-line/70 pb-4">
-        <div className="flex items-center gap-2">
-          <span className="relative flex h-2.5 w-2.5">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
-          </span>
-          <span className="font-mono text-xs font-semibold uppercase tracking-wider text-ink-soft">
-            Automated System Architecture
-          </span>
-        </div>
-        <span className="hidden rounded-full border border-accent/25 bg-accent-soft px-3 py-0.5 font-mono text-xs font-semibold text-accent sm:inline-block shadow-xs">
-          {items.length} Connected Nodes
-        </span>
-      </div>
-
-      {/* Desktop Continuous Animated Moving Flow Line */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute left-0 right-0 top-[170px] hidden h-10 w-full md:block z-0"
-      >
-        <svg className="h-full w-full" preserveAspectRatio="none">
-          <defs>
-            <linearGradient id="flow-line-grad" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.3" />
-              <stop offset="50%" stopColor="#a855f7" stopOpacity="0.9" />
-              <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0.3" />
-            </linearGradient>
-          </defs>
-          <line
-            x1="12%"
-            y1="20"
-            x2="88%"
-            y2="20"
-            stroke="url(#flow-line-grad)"
-            strokeWidth="2.5"
-            strokeDasharray="6 6"
-            className="workflow-motion-line"
-          />
-        </svg>
-      </div>
-
-      <ol className={`relative z-10 grid gap-6 ${items.length >= 4 ? "md:grid-cols-4" : items.length === 3 ? "md:grid-cols-3" : "md:grid-cols-2"}`}>
-        {items.map((item, i) => {
-          const icon = WORKFLOW_STEP_ICONS[i % WORKFLOW_STEP_ICONS.length];
-          const tag = WORKFLOW_STEP_TAGS[i % WORKFLOW_STEP_TAGS.length];
+      <div className="relative" style={colVars}>
+        {/* Routed connectors. Hidden below md, where the cards stack and a
+            horizontal route would make no sense. */}
+        {connectors.map((i) => {
+          const last = i === connectors.length - 1;
+          // Pulled 22px in from each card's centre. Landing the legs
+          // exactly on the centres makes two neighbouring arches share
+          // one vertical line over the middle cards, which reads as a
+          // T-junction rather than two separate hops. Insetting both
+          // ends leaves a clean 44px break at every centre.
+          const left = `calc(var(--wf-col) / 2 + ${i} * (var(--wf-col) + var(--wf-gap)) + 22px)`;
+          const width = `calc(var(--wf-col) + var(--wf-gap) - 44px)`;
           return (
-            <li
+            <div
               key={i}
-              className="workflow-step group relative flex flex-col rounded-2xl border border-line bg-paper p-5 sm:p-6 shadow-sm transition-all duration-300 hover:-translate-y-1.5 hover:border-accent hover:ring-2 hover:ring-accent/20 hover:shadow-[0_20px_40px_-15px_rgba(109,40,217,0.25)]"
-              style={{ "--step-index": i } as React.CSSProperties}
+              aria-hidden="true"
+              className={`workflow-link pointer-events-none absolute hidden md:block ${
+                last ? "workflow-link-under top-full" : "bottom-full"
+              }`}
+              style={{ left, width }}
             >
-              {/* Step Meta / Node Pill */}
-              <div className="flex items-center justify-between gap-2">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-accent/25 bg-accent-soft/70 px-2.5 py-0.5 text-[11px] font-semibold text-accent shadow-xs">
-                  <span className="h-1.5 w-1.5 rounded-full bg-accent" />
-                  {tag}
-                </span>
-                <span className="font-mono text-xs font-bold text-ink-soft transition-colors group-hover:text-accent">
-                  0{i + 1}
-                </span>
-              </div>
+              <span className="workflow-pulse" style={{ animationDelay: `${i * 900}ms` }} />
+            </div>
+          );
+        })}
 
-              {/* Glowing Node Icon Badge */}
-              <div className="mt-4 flex items-center justify-start">
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-accent/30 bg-gradient-to-br from-accent/15 via-purple-500/10 to-indigo-500/15 text-accent shadow-xs transition-all duration-300 group-hover:scale-110 group-hover:border-accent group-hover:bg-accent-soft group-hover:shadow-[0_0_24px_rgba(109,40,217,0.35)]">
+        <ol className={`relative grid gap-6 ${cols}`}>
+          {items.map((item, i) => {
+            const icon = WORKFLOW_STEP_ICONS[i % WORKFLOW_STEP_ICONS.length];
+            return (
+              <li
+                key={i}
+                className="workflow-step group relative flex flex-col items-center rounded-3xl border border-line/70 bg-paper px-6 py-8 text-center shadow-[0_10px_30px_-20px_rgba(15,10,26,0.35)] transition-all duration-300 hover:-translate-y-1.5 hover:border-accent/50 hover:shadow-[0_24px_44px_-22px_rgba(109,40,217,0.45)]"
+                style={{ "--step-index": i } as React.CSSProperties}
+              >
+                <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-accent-soft text-accent transition-transform duration-300 group-hover:scale-110">
                   {icon}
-                </div>
-              </div>
-
-              {/* Node Title & Description */}
-              <div className="mt-4 flex-1">
-                <h3 className="font-display text-base font-bold text-ink transition-colors group-hover:text-accent leading-snug">
+                </span>
+                <h3 className="mt-5 font-display text-lg font-bold leading-snug text-ink transition-colors group-hover:text-accent">
                   {str(item, "title")}
                 </h3>
                 {str(item, "text") && (
-                  <p className="mt-2 text-sm leading-relaxed text-ink-soft">
-                    {str(item, "text")}
-                  </p>
+                  <p className="mt-2 text-sm leading-relaxed text-ink-soft">{str(item, "text")}</p>
                 )}
-              </div>
-            </li>
-          );
-        })}
-      </ol>
+              </li>
+            );
+          })}
+        </ol>
+      </div>
     </div>
   );
   if (nested) return <RichBox props={props}>{content}</RichBox>;

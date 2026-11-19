@@ -440,6 +440,76 @@ body {
   }
 }
 
+/* "How this actually works" flow diagram.
+
+   .workflow-dots is the fine dotted texture behind the cards. It is
+   background-attachment: fixed on purpose: the dots stay registered to
+   the viewport while the panel scrolls over them, so the cards look like
+   they are moving across a stationary grid instead of carrying the
+   pattern along with them. Mobile Safari ignores fixed attachment and
+   just scrolls the pattern, which still reads correctly.
+
+   .workflow-link is one routed edge between two cards. Three borders and
+   a corner radius draw "up, across, down"; .workflow-link-under flips it
+   to "down, across, up" for the hop that routes beneath the row. Borders
+   rather than an SVG, because an SVG stretched to a fluid width with
+   preserveAspectRatio="none" skews its rounded corners, while a box
+   keeps the same radius at every width. */
+.workflow-dots {
+  background-image: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--accent) 26%, transparent) 1px,
+    transparent 1px
+  );
+  background-size: 22px 22px;
+  background-attachment: fixed;
+}
+.workflow-link {
+  height: 46px;
+  border: 2px solid var(--accent);
+  border-bottom: 0;
+  border-radius: 18px 18px 0 0;
+}
+.workflow-link-under {
+  border: 2px solid var(--accent);
+  border-top: 0;
+  border-radius: 0 0 18px 18px;
+}
+
+/* A light sweeps along the horizontal run of each edge, so the diagram
+   reads as something that is running rather than a static picture. It is
+   a moving background position on a 2px strip, which stays cheap. */
+.workflow-pulse {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -2px;
+  height: 2px;
+  background-image: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--accent) 35%, white),
+    transparent
+  );
+  background-size: 110px 100%;
+  background-repeat: no-repeat;
+  background-position: -20% 0;
+}
+.workflow-link-under .workflow-pulse {
+  top: auto;
+  bottom: -2px;
+}
+@keyframes workflow-pulse {
+  from { background-position: -20% 0; }
+  to { background-position: 120% 0; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .workflow-pulse {
+    animation: workflow-pulse 3.4s linear infinite;
+  }
+}
+
+
 /* Nav dropdown panels. They are conditionally rendered, so they appeared
    instantly with no motion at all. A short fade and drop on mount gives
    the menu the same feel as the rest of the site. The chevron beside the

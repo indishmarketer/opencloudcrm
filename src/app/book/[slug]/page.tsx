@@ -122,14 +122,26 @@ export default async function BookMeetingPage({ params, searchParams }: Props) {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
       <div className="rounded-2xl border border-line bg-paper p-6 shadow-sm">
         <Link href={`/author/${host.slug}`} className="group mb-4 flex items-center gap-3">
-          {host.avatar && (
+          {/* The photo is rendered only when a URL exists, so an author
+              row with no photo, or one whose file had gone missing from
+              the bucket, left this badge as bare text with no face on
+              it. Initials in a brand circle are the fallback, the same
+              one the blog byline uses. */}
+          {host.avatar ? (
             <SafeImage
               src={host.avatar}
               alt={`${host.name}, host of this call`}
               width={48}
               height={48}
-              className="h-12 w-12 rounded-full object-cover"
+              className="h-12 w-12 rounded-full bg-accent-soft object-cover"
             />
+          ) : (
+            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-accent text-sm font-semibold text-accent-on">
+              {host.name
+                .split(" ")
+                .map((part) => part[0])
+                .join("")}
+            </span>
           )}
           <span className="text-sm font-medium text-ink-soft group-hover:text-ink group-hover:underline">with {host.name}</span>
         </Link>

@@ -87,8 +87,8 @@ export function MonthCalendar({ selectedDate, onSelect }: { selectedDate: string
               aria-label={date.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" }) + (isToday ? " (today)" : "")}
               aria-pressed={isSelected}
               className={`aspect-square rounded-lg text-sm font-medium transition-colors ${
-                isSelected ? "bg-ink text-paper" : isPast ? "text-ink-soft opacity-30" : "hover:bg-paper-soft"
-              } ${isToday && !isSelected ? "border border-ink" : ""}`}
+                isSelected ? "bg-accent text-accent-on" : isPast ? "text-ink-soft opacity-30" : "hover:bg-accent-soft hover:text-accent"
+              } ${isToday && !isSelected ? "border border-accent text-accent" : ""}`}
             >
               {date.getDate()}
             </button>

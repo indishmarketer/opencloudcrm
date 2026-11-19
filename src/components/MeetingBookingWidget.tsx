@@ -294,7 +294,7 @@ export function MeetingBookingWidget({ slug, prefillName, prefillEmail }: { slug
       <button
         type="submit"
         disabled={isSubmitting || !turnstileToken}
-        className="mt-4 w-full rounded-full bg-ink px-4 py-2.5 text-sm font-medium text-paper transition-opacity hover:opacity-80 disabled:opacity-50"
+        className="mt-4 w-full rounded-full bg-accent px-4 py-2.5 text-sm font-medium text-accent-on transition-opacity hover:opacity-80 disabled:opacity-50"
       >
         {isSubmitting ? "Booking…" : "Confirm booking"}
       </button>
