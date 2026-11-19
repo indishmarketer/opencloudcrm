@@ -354,7 +354,7 @@ function SectionHeading({ heading, text, link }: { heading: string; text?: strin
   return (
     <div className="mb-10">
       <div className="flex items-end justify-between gap-4">
-        {heading && <h2 className="font-display text-3xl font-semibold">{heading}</h2>}
+        {heading && <h2 className="font-display text-3xl font-semibold"><AccentText text={heading} /></h2>}
         {link && link.label && (
           <Link href={link.href} className="shrink-0 text-sm font-medium text-ink-soft hover:text-ink">
             {link.label} →
@@ -371,8 +371,34 @@ function SectionHeading({ heading, text, link }: { heading: string; text?: strin
 // override instead of leaving both present -- see textStyleAttrs's doc
 // comment. Every other caller just wants the fixed look, via the full
 // constant below with those two folded back in.
-const BUTTON_DARK_SHAPE = "rounded-full bg-ink px-6 py-3 font-medium text-paper transition-opacity hover:opacity-80";
-const BUTTON_OUTLINE_SHAPE = "rounded-full border border-ink/25 px-6 py-3 font-medium text-ink transition-colors hover:border-ink";
+// The primary button on a light surface is the brand colour, not black.
+// It was bg-ink, which is why nothing on a white page ever looked like it
+// belonged to a brand. On a dark surface the hero flips to a light fill
+// instead, since purple on near-black is the weaker of the two contrasts.
+/** Renders *asterisked* runs of a heading in the brand colour, so a
+ * headline can read mostly black with the phrase that matters in purple
+ * (the pattern the brand reference uses) without the page editor having
+ * to accept raw HTML. Plain text in, JSX out, so nothing is injectable:
+ * the asterisks are the only markup and anything else stays literal. */
+function AccentText({ text }: { text: string }) {
+  if (!text.includes("*")) return <>{text}</>;
+  return (
+    <>
+      {text.split(/\*([^*]+)\*/g).map((part, i) =>
+        i % 2 === 1 ? (
+          <span key={i} className="text-accent">
+            {part}
+          </span>
+        ) : (
+          <span key={i}>{part}</span>
+        ),
+      )}
+    </>
+  );
+}
+
+const BUTTON_DARK_SHAPE = "rounded-full bg-accent px-6 py-3 font-medium text-accent-on shadow-[0_10px_24px_-12px_var(--accent)] transition-opacity hover:opacity-90";
+const BUTTON_OUTLINE_SHAPE = "rounded-full border border-accent/35 px-6 py-3 font-medium text-accent transition-colors hover:border-accent hover:bg-accent-soft";
 const BUTTON_DARK = `${BUTTON_DARK_SHAPE} text-center text-sm`;
 const BUTTON_OUTLINE = `${BUTTON_OUTLINE_SHAPE} text-center text-sm`;
 
@@ -411,8 +437,10 @@ export function HeroView({
   const primaryLabel = str(props, "primaryLabel");
   const primaryAction = str(props, "primaryAction");
   const guide = primaryAction === "leadMagnet" ? activeLeadMagnet : null;
+  // On the dark hero the fill is a white-to-lilac gradient rather than flat
+  // white, so the button still reads as this brand rather than a default.
   const primaryClass = dark
-    ? "rounded-full bg-paper px-6 py-3 text-center text-sm font-medium text-ink transition-opacity hover:opacity-80"
+    ? "rounded-full bg-[linear-gradient(135deg,#ffffff_0%,#ede9fe_100%)] px-6 py-3 text-center text-sm font-medium text-ink shadow-[0_10px_28px_-12px_rgba(167,139,250,0.65)] transition-opacity hover:opacity-90"
     : BUTTON_DARK;
   const secondaryClass = dark
     ? "rounded-full border border-white/30 px-6 py-3 text-center text-sm font-medium text-paper transition-colors hover:border-white"
@@ -421,9 +449,10 @@ export function HeroView({
   return (
     <section
       id={str(props, "anchor") || undefined}
-      // A dark hero used a flat `bg-ink` fill, so the sitewide dark gradient
-      // (Console -> Theme) never showed anywhere the visitor actually looks.
-      // Using it here is what makes a brand colour read as the brand.
+      // The dark hero uses the sitewide dark gradient rather than a flat
+      // fill, but that gradient stays near-black on purpose. Purple is the
+      // accent that sits on top of it (buttons, the highlighted words in
+      // the headline), not the surface itself.
       className={`relative overflow-hidden ${dark ? "bg-ink-gradient text-paper" : "bg-paper-gradient text-ink"}`}
       style={surfaceStyle(backgroundColor)}
     >
@@ -451,7 +480,7 @@ export function HeroView({
             </span>
           )}
           <h1 className="hero-animate hero-animate-2 text-balance font-display text-4xl font-semibold leading-tight md:text-5xl">
-            {str(props, "heading")}
+            <AccentText text={str(props, "heading")} />
           </h1>
           {str(props, "text") && (
             <p className={`hero-animate hero-animate-3 max-w-xl whitespace-pre-line text-lg ${dark ? "text-white/70" : "text-ink-soft"}`}>
@@ -1178,7 +1207,7 @@ export function CtaBlock({
     return (
       <Section props={props}>
         <div className="flex flex-col items-start gap-6 rounded-2xl bg-ink-gradient p-10 text-paper md:flex-row md:items-center md:justify-between">
-          <div className="max-w-xl">
+          <div className="max-w-2xl">
             <h2 className="font-display text-2xl font-semibold">{str(props, "heading")}</h2>
             {str(props, "text") && <p className="mt-2 whitespace-pre-line text-white/70">{str(props, "text")}</p>}
           </div>
@@ -1190,7 +1219,11 @@ export function CtaBlock({
   return (
     <section id={str(props, "anchor") || undefined} className={`border-t border-line ${str(props, "background") === "dark" ? "page-section-dark" : "bg-paper-gradient"}`}>
       <div className="mx-auto flex max-w-6xl flex-col items-start gap-6 px-6 py-24 md:flex-row md:items-center md:justify-between">
-        <div className="max-w-lg">
+        {/* max-w-lg (512px) forced the heading to wrap inside a 1152px
+            section, so a short line broke in two with hundreds of pixels
+            sitting empty before the button. The column only needs to stop
+            short of the button, not at half the width. */}
+        <div className="max-w-3xl">
           <h2 className="text-balance font-display text-3xl font-semibold">{str(props, "heading")}</h2>
           {str(props, "text") && <p className="mt-3 whitespace-pre-line text-ink-soft">{str(props, "text")}</p>}
         </div>
@@ -1847,15 +1880,28 @@ export function TeamMemberBlock({ props, nested = false }: { props: Props; neste
 export function StepsBlock({ props, nested = false }: { props: Props; nested?: boolean }) {
   const items = list(props, "items").filter((i) => str(i, "title"));
   if (!items.length) return null;
+  // Laid out as a workflow rather than a bullet list: nodes joined by a
+  // connector, flowing left to right on desktop and top to bottom on a
+  // phone, with each node easing in after the one before it so the eye
+  // follows the sequence. A plain numbered <ol> did not read as a process
+  // at all. Still an <ol>, so the order is correct for screen readers.
   const content = (
-    <ol className="flex flex-col gap-6">
+    <ol className={`workflow relative grid gap-8 ${items.length >= 4 ? "md:grid-cols-4" : items.length === 3 ? "md:grid-cols-3" : "md:grid-cols-2"}`}>
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute left-[7%] right-[7%] top-7 hidden h-px bg-[linear-gradient(90deg,transparent,var(--accent),transparent)] opacity-35 md:block"
+      />
       {items.map((item, i) => (
-        <li key={i} className="flex gap-4">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ink font-display text-sm font-semibold text-paper">
+        <li
+          key={i}
+          className="workflow-step relative flex flex-col gap-3"
+          style={{ "--step-index": i } as React.CSSProperties}
+        >
+          <span className="relative z-10 flex h-14 w-14 items-center justify-center rounded-2xl border border-accent/30 bg-accent-soft font-display text-lg font-semibold text-accent shadow-[0_10px_28px_-14px_var(--accent)]">
             {i + 1}
           </span>
           <div>
-            <div className="font-medium text-ink">{str(item, "title")}</div>
+            <div className="font-semibold text-ink">{str(item, "title")}</div>
             {str(item, "text") && <p className="mt-1 text-sm text-ink-soft">{str(item, "text")}</p>}
           </div>
         </li>
@@ -1864,7 +1910,7 @@ export function StepsBlock({ props, nested = false }: { props: Props; nested?: b
   );
   if (nested) return <RichBox props={props}>{content}</RichBox>;
   return (
-    <RichSection props={props} widthDefault={640}>
+    <RichSection props={props} widthDefault={1100}>
       {content}
     </RichSection>
   );

@@ -241,7 +241,7 @@ export default function NavClient({
                   type="button"
                   onClick={() => toggle(i)}
                   aria-expanded={menu === i}
-                  className="flex items-center gap-1 rounded-full px-3 py-2 text-sm font-semibold text-ink-soft transition-colors hover:text-ink"
+                  className={`flex items-center gap-1 rounded-full px-3 py-2 text-sm font-semibold transition-colors hover:bg-accent-soft hover:text-accent ${menu === i ? "bg-accent-soft text-accent" : "text-ink-soft"}`}
                 >
                   {item.label} <ChevronIcon open={menu === i} />
                 </button>
@@ -315,7 +315,7 @@ export default function NavClient({
           {ctaLabel && ctaHref && (
             <Link
               href={ctaHref}
-              className={`rounded-full bg-ink px-5 py-2 text-sm font-medium text-paper transition-opacity hover:opacity-80${loggedIn ? " hidden md:inline-block" : ""}`}
+              className={`rounded-full bg-accent px-5 py-2 text-sm font-medium text-accent-on shadow-[0_8px_20px_-10px_var(--accent)] transition-opacity hover:opacity-90${loggedIn ? " hidden md:inline-block" : ""}`}
             >
               {ctaLabel}
             </Link>

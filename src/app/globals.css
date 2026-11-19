@@ -424,6 +424,22 @@ body {
   }
 }
 
+/* Workflow steps arrive one after another as the block scrolls in, so the
+   sequence reads as a flow rather than four things appearing at once.
+   --step-index is set per node in StepsBlock. Same scroll-driven approach
+   as .reveal-on-scroll: no JS, and without support the node is simply
+   already visible. */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .workflow-step {
+      animation: section-reveal linear both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 22%;
+      animation-delay: calc(var(--step-index, 0) * 90ms);
+    }
+  }
+}
+
 /* Nav dropdown panels. They are conditionally rendered, so they appeared
    instantly with no motion at all. A short fade and drop on mount gives
    the menu the same feel as the rest of the site. The chevron beside the
@@ -466,15 +482,16 @@ body {
    -- text-ink-soft, border-line, bg-paper cards -- flip to its dark-mode
    counterpart automatically, so each block only has one set of classes. */
 .page-section-dark {
-  /* Tinted toward the brand purple rather than a neutral black. A flat
-     #0a0a0a here meant every dark band on the site read as "black site"
-     no matter what the theme said, because this class overrode the
-     themed tokens instead of deriving from them. */
-  --paper: #140826;
-  --paper-soft: #1f1038;
-  --ink: #faf8ff;
-  --ink-soft: rgb(237 233 254 / 0.72);
-  --line: rgb(196 181 253 / 0.22);
+  /* Deliberately near-black, not purple. Purple is this brand's accent,
+     not its surface: flooding a whole band with it reads as heavy and
+     cheap, while black with purple sitting on top is what makes the
+     accent register. Only the hairlines carry a faint violet cast so a
+     dark band still belongs to the same palette. */
+  --paper: #0a0a0a;
+  --paper-soft: #171717;
+  --ink: #fafafa;
+  --ink-soft: rgb(255 255 255 / 0.7);
+  --line: rgb(196 181 253 / 0.18);
   background: var(--paper);
   color: var(--ink);
 }
