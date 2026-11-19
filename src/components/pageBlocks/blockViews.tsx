@@ -1555,7 +1555,10 @@ export function BusinessDetailsBlock({ props, business }: { props: Props; busine
   if (!facts.length && !intro) return null;
   return (
     <Section props={props}>
-      <div className="border-t border-line pt-12">
+      {/* No top rule. The section already separates itself with its own
+          background and padding, so the hairline just read as a stray line
+          floating above the heading on /about. */}
+      <div>
         {str(props, "heading") && <h2 className="font-display text-2xl font-semibold">{str(props, "heading")}</h2>}
         {intro && <p className="mt-3 max-w-3xl whitespace-pre-line text-ink-soft">{intro}</p>}
         {facts.length > 0 && (

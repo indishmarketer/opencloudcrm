@@ -107,13 +107,15 @@ export default async function NewsletterPage() {
             }}
           />
           <div className="relative mx-auto max-w-4xl px-6 text-center">
-            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-line bg-paper px-4 py-1.5 text-xs font-medium text-ink-soft">
-              <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
-              Free · No spam · Unsubscribe any time
-            </div>
-            <h1 className="font-display text-4xl font-semibold leading-tight sm:text-5xl md:text-6xl">
+            {/* The "Free / No spam / Unsubscribe" pill used to sit above the
+                headline, pushing it down and leading with housekeeping
+                instead of the point. The same promise is already in the
+                paragraph below, so the pill is gone and the headline starts
+                the page. max-w-5xl + text-balance keeps it on one line on
+                desktop, where it was breaking after "Marketing that". */}
+            <h1 className="mx-auto max-w-5xl text-balance font-display text-4xl font-semibold leading-tight sm:text-5xl md:text-6xl">
               Marketing that{" "}
-              <span className="relative inline-block">
+              <span className="relative inline-block text-accent">
                 actually works
                 <svg
                   aria-hidden="true"
@@ -127,7 +129,7 @@ export default async function NewsletterPage() {
                     stroke="currentColor"
                     strokeWidth="2.5"
                     strokeLinecap="round"
-                    className="text-ink"
+                    className="text-accent"
                   />
                 </svg>
               </span>
@@ -181,7 +183,7 @@ export default async function NewsletterPage() {
                   key={title}
                   className="flex flex-col gap-4 rounded-2xl border border-line bg-paper p-6"
                 >
-                  <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-line bg-paper-soft text-ink">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-accent/25 bg-accent-soft text-accent">
                     {icon}
                   </span>
                   <div>
