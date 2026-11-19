@@ -81,10 +81,12 @@ export async function requestOtp(
         subject: `Your verification code: ${code}`,
         html: `
           <p>Hi,</p>
-          <p>Your verification code is <strong style="font-size:20px;letter-spacing:2px;">${code}</strong></p>
-          <p>Or just <a href="${verificationUrl}" style="color:#1a0dab;font-weight:600;">click here to confirm</a> — same thing, one less step.</p>
-          <p>It expires in 10 minutes. If you didn't ask for this, you can ignore this email.</p>
-          <p>— Shubho<br>Indish Marketer</p>
+          <p>Here is your verification code:</p>
+          <p><strong style="font-size:22px;letter-spacing:3px;">${code}</strong></p>
+          <p>Type that in and you're done. Or if it's easier, <a href="${verificationUrl}" style="color:#1a0dab;font-weight:600;">click here to confirm instead</a>. Both do the same thing.</p>
+          <p>The code works for the next 10 minutes. After that just ask for a new one, it takes a second.</p>
+          <p>If you didn't ask for this, you can ignore this email. Nothing happens until the code is used.</p>
+          <p>Shubho<br>Indish Marketer</p>
         `,
         critical: true,
         templateKey: "otp-code",

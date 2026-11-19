@@ -10,9 +10,9 @@ import { SITE_URL } from "@/lib/liveSiteUrl";
 const EMAIL_DOMAIN = new URL(SITE_URL).hostname.replace(/^www\./, "");
 
 export const SENDER_ADDRESSES = [
-  { value: `support@${EMAIL_DOMAIN}`, label: "support@ — replies and help" },
-  { value: `reach@${EMAIL_DOMAIN}`, label: "reach@ — outreach and newsletters" },
-  { value: `academy@${EMAIL_DOMAIN}`, label: "academy@ — courses" },
+  { value: `support@${EMAIL_DOMAIN}`, label: "support@ for replies and help" },
+  { value: `reach@${EMAIL_DOMAIN}`, label: "reach@ for outreach and newsletters" },
+  { value: `academy@${EMAIL_DOMAIN}`, label: "academy@ for courses" },
 ] as const;
 
 export const SENDER_VALUES: readonly string[] = SENDER_ADDRESSES.map((s) => s.value);

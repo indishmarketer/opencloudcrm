@@ -98,12 +98,13 @@ export async function POST(req: NextRequest) {
         // the font, width and colour, so the body stays plain.
         html: `
           <p>Hi ${safeName},</p>
-          <p>Here's the guide you asked for — <strong>${safeTitle}</strong>.</p>
+          <p>Here's the guide you asked for: <strong>${safeTitle}</strong>.</p>
           <p>👉 <a href="${downloadUrl}" style="color:#1a0dab;font-weight:600;">Download it here (PDF)</a></p>
           <p>${safeHeadline}</p>
-          <p>If that link ever gives you trouble, it also lives on <a href="${SITE_URL}/guide/${guide.slug}?unlocked=1" style="color:#1a0dab;">your guide page</a> — no need to sign in again.</p>
-          <p>Give it a read, and if something in it doesn't land, just hit reply and tell me. It comes straight to me.</p>
-          <p>— Shubho<br>Indish Marketer</p>
+          <p>If that link ever gives you trouble, it also lives on <a href="${SITE_URL}/guide/${guide.slug}?unlocked=1" style="color:#1a0dab;">your guide page</a>, and you won't need to sign in again to get it.</p>
+          <p>Give it a read when you have a quiet twenty minutes. It's short on theory and most of it is stuff you can set up the same day.</p>
+          <p>If something in it doesn't land, or you try it and hit a wall, just hit reply and tell me what happened. It comes straight to me and I read every one.</p>
+          <p>Shubho<br>Indish Marketer</p>
         `,
         category: "fixed",
       }).catch((err) => console.error("Direct guide email send failed:", err));
