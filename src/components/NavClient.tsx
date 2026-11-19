@@ -221,13 +221,8 @@ export default function NavClient({
             // eslint-disable-next-line @next/next/no-img-element -- logo is an arbitrary uploaded URL, no fixed dimensions
             <img src={logoUrl} alt={siteName} className="h-9 w-auto" />
           ) : (
-            <span className="flex items-center gap-2">
-              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-accent via-purple-600 to-indigo-950 text-xs font-bold text-white shadow-[0_4px_12px_-2px_rgba(109,40,217,0.45)]">
-                im
-              </span>
-              <span className="bg-gradient-to-r from-accent via-purple-900 to-ink bg-clip-text font-bold text-transparent">
-                {siteName}
-              </span>
+            <span className="bg-gradient-to-r from-purple-600 via-accent to-ink bg-clip-text text-xl font-bold text-transparent tracking-tight">
+              {siteName}
             </span>
           )}
         </Link>

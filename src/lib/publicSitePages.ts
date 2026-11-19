@@ -29,6 +29,7 @@ export const PUBLIC_SITE_PAGES: PublicSitePage[] = [
   { type: "page", title: "Blog", desc: "Guides, reviews, and practical marketing insights.", url: "/blog", changeFrequency: "daily", priority: 0.9 },
   { type: "page", title: "Blog categories", desc: "Browse blog posts by topic.", url: "/blog/category", changeFrequency: "weekly", priority: 0.5 },
   { type: "page", title: "Newsletter", desc: "The exact automations and AI agents we build for paying clients, broken down step by step.", url: "/newsletter", changeFrequency: "monthly", priority: 0.7 },
+  { type: "page", title: "Contact", desc: "Ask anything about building your own system instead of renting tools, or about a course or payment.", url: "/contact", changeFrequency: "monthly", priority: 0.7 },
   { type: "page", title: "Write for us", desc: "Apply to contribute a guest post.", url: "/apply-to-write", changeFrequency: "yearly", priority: 0.3 },
   { type: "page", title: "Terms and Conditions", desc: `The terms that govern use of ${SITE_NAME}.`, url: "/terms", changeFrequency: "yearly", priority: 0.2 },
   { type: "page", title: "Privacy Policy", desc: `How ${SITE_NAME} collects, uses, and protects information.`, url: "/privacy-policy", changeFrequency: "yearly", priority: 0.2 },

@@ -107,8 +107,8 @@ export default function Turnstile({
             <svg className="h-6 w-6 drop-shadow-sm" viewBox="0 0 40 40" fill="none">
               <defs>
                 <linearGradient id="rim-light" x1="0" y1="0" x2="0" y2="40" gradientUnits="userSpaceOnUse">
-                  <stop offset="0%" stopColor="#e2e2e0" />
-                  <stop offset="100%" stopColor="#d1d1cf" />
+                  <stop offset="0%" stopColor="#ede9fe" />
+                  <stop offset="100%" stopColor="#c4b5fd" />
                 </linearGradient>
               </defs>
               <polygon
@@ -119,7 +119,7 @@ export default function Turnstile({
               />
               <polygon
                 points="20,2 36.6,11 36.6,29 20,38 3.4,29 3.4,11"
-                stroke="#0a0a0a"
+                stroke="#8b5cf6"
                 strokeWidth="3.5"
                 fill="none"
                 strokeLinecap="round"
@@ -140,12 +140,12 @@ export default function Turnstile({
             <svg className="h-6 w-6 drop-shadow-md" viewBox="0 0 40 40" fill="none">
               <defs>
                 <linearGradient id="badge-rim" x1="0" y1="0" x2="0" y2="40" gradientUnits="userSpaceOnUse">
-                  <stop offset="0%" stopColor="#4b4b4b" />
-                  <stop offset="100%" stopColor="#0a0a0a" />
+                  <stop offset="0%" stopColor="#8b5cf6" />
+                  <stop offset="100%" stopColor="#6d28d9" />
                 </linearGradient>
                 <linearGradient id="badge-face" x1="0" y1="0" x2="0" y2="40" gradientUnits="userSpaceOnUse">
-                  <stop offset="0%" stopColor="#262626" />
-                  <stop offset="100%" stopColor="#000000" />
+                  <stop offset="0%" stopColor="#7c3aed" />
+                  <stop offset="100%" stopColor="#5b21b6" />
                 </linearGradient>
               </defs>
               <polygon points="20,2 36.6,11 36.6,29 20,38 3.4,29 3.4,11" fill="url(#badge-rim)" />
@@ -164,7 +164,7 @@ export default function Turnstile({
               />
             </svg>
           </div>
-          <p className={`text-xs font-medium ${dark ? "text-white" : "text-ink"}`}>Verified</p>
+          <p className={`text-xs font-semibold ${dark ? "text-purple-300" : "text-accent"}`}>Verified</p>
         </div>
       )}
 

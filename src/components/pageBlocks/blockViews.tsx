@@ -380,13 +380,13 @@ function SectionHeading({ heading, text, link }: { heading: string; text?: strin
  * (the pattern the brand reference uses) without the page editor having
  * to accept raw HTML. Plain text in, JSX out, so nothing is injectable:
  * the asterisks are the only markup and anything else stays literal. */
-function AccentText({ text }: { text: string }) {
-  if (!text.includes("*")) return <>{text}</>;
+function AccentText({ text, accentClass = "text-accent" }: { text: string; accentClass?: string }) {
+  if (!text || !text.includes("*")) return <>{text}</>;
   return (
     <>
       {text.split(/\*([^*]+)\*/g).map((part, i) =>
         i % 2 === 1 ? (
-          <span key={i} className="text-accent">
+          <span key={i} className={accentClass}>
             {part}
           </span>
         ) : (
@@ -440,7 +440,7 @@ export function HeroView({
   // On the dark hero the fill is a white-to-lilac gradient rather than flat
   // white, so the button still reads as this brand rather than a default.
   const primaryClass = dark
-    ? "rounded-full bg-[linear-gradient(135deg,#ffffff_0%,#ede9fe_100%)] px-6 py-3 text-center text-sm font-medium text-ink shadow-[0_10px_28px_-12px_rgba(167,139,250,0.65)] transition-opacity hover:opacity-90"
+    ? "rounded-full bg-[linear-gradient(135deg,#ffffff_0%,#ede9fe_60%,#ddd6fe_100%)] px-6 py-3 text-center text-sm font-semibold text-ink shadow-[0_10px_28px_-12px_rgba(167,139,250,0.65)] transition-opacity hover:opacity-90"
     : BUTTON_DARK;
   const secondaryClass = dark
     ? "rounded-full border border-white/30 px-6 py-3 text-center text-sm font-medium text-paper transition-colors hover:border-white"
@@ -480,7 +480,10 @@ export function HeroView({
             </span>
           )}
           <h1 className="hero-animate hero-animate-2 text-balance font-display text-4xl font-semibold leading-tight md:text-5xl">
-            <AccentText text={str(props, "heading")} />
+            <AccentText
+              text={str(props, "heading")}
+              accentClass={dark ? "font-bold text-purple-300 drop-shadow-[0_0_24px_rgba(192,132,252,0.45)]" : "text-accent font-semibold"}
+            />
           </h1>
           {str(props, "text") && (
             <p className={`hero-animate hero-animate-3 max-w-xl whitespace-pre-line text-lg ${dark ? "text-white/70" : "text-ink-soft"}`}>
@@ -528,14 +531,21 @@ export function HeroView({
 
 export function PageHeaderBlock({ props }: { props: Props }) {
   const center = str(props, "align") === "center";
+  const compact = str(props, "spacing") === "compact";
   return (
     <Section props={props}>
       <div className={center ? "mx-auto max-w-3xl text-center" : "max-w-3xl"}>
         {str(props, "eyebrow") && (
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-soft">{str(props, "eyebrow")}</p>
         )}
-        <h1 className={`font-display text-4xl font-semibold sm:text-5xl ${str(props, "eyebrow") ? "mt-4" : ""}`}>{str(props, "heading")}</h1>
-        {str(props, "text") && <p className="mt-5 whitespace-pre-line text-lg leading-7 text-ink-soft">{str(props, "text")}</p>}
+        <h1 className={`font-display font-semibold ${compact ? "text-3xl sm:text-4xl" : "text-4xl sm:text-5xl"} ${str(props, "eyebrow") ? "mt-4" : ""}`}>
+          <AccentText text={str(props, "heading")} />
+        </h1>
+        {str(props, "text") && (
+          <p className={`whitespace-pre-line text-ink-soft ${compact ? "mt-3 text-base leading-relaxed" : "mt-5 text-lg leading-7"}`}>
+            {str(props, "text")}
+          </p>
+        )}
       </div>
     </Section>
   );
@@ -969,7 +979,7 @@ export function SplitBlock({ props }: { props: Props }) {
           {str(props, "eyebrow") && <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-soft">{str(props, "eyebrow")}</p>}
           {str(props, "heading") && (
             <Heading className={`font-display font-semibold ${Heading === "h1" ? "text-4xl" : "text-3xl"} ${str(props, "eyebrow") ? "mt-3" : ""}`}>
-              {str(props, "heading")}
+              <AccentText text={str(props, "heading")} />
             </Heading>
           )}
           {str(props, "html") && <div className="page-richtext mt-6 text-ink-soft" dangerouslySetInnerHTML={{ __html: str(props, "html") }} />}
@@ -1208,7 +1218,9 @@ export function CtaBlock({
       <Section props={props}>
         <div className="flex flex-col items-start gap-6 rounded-2xl bg-ink-gradient p-10 text-paper md:flex-row md:items-center md:justify-between">
           <div className="max-w-2xl">
-            <h2 className="font-display text-2xl font-semibold">{str(props, "heading")}</h2>
+            <h2 className="font-display text-2xl font-semibold">
+              <AccentText text={str(props, "heading")} accentClass="font-bold text-purple-300 drop-shadow-[0_0_20px_rgba(192,132,252,0.4)]" />
+            </h2>
             {str(props, "text") && <p className="mt-2 whitespace-pre-line text-white/70">{str(props, "text")}</p>}
           </div>
           {buttons(true)}
@@ -1224,7 +1236,9 @@ export function CtaBlock({
             sitting empty before the button. The column only needs to stop
             short of the button, not at half the width. */}
         <div className="max-w-3xl">
-          <h2 className="text-balance font-display text-3xl font-semibold">{str(props, "heading")}</h2>
+          <h2 className="text-balance font-display text-3xl font-semibold">
+            <AccentText text={str(props, "heading")} />
+          </h2>
           {str(props, "text") && <p className="mt-3 whitespace-pre-line text-ink-soft">{str(props, "text")}</p>}
         </div>
         {buttons(false)}
@@ -1907,39 +1921,110 @@ const WORKFLOW_STEP_ICONS: React.ReactNode[] = [
   ),
 ];
 
+const WORKFLOW_STEP_TAGS = ["Trigger: Consultation", "Infrastructure Setup", "Custom Build & Polish", "Continuous Flow"];
+
 export function StepsBlock({ props, nested = false }: { props: Props; nested?: boolean }) {
   const items = list(props, "items").filter((i) => str(i, "title"));
   if (!items.length) return null;
-  // Laid out as a running workflow with purple-lit node cards and custom SVG icons,
-  // joined by a glowing connector line on desktop, flowing left to right.
+
   const content = (
-    <div className="relative">
+    <div
+      className="relative overflow-hidden rounded-3xl border border-line bg-paper-soft/40 p-6 sm:p-10 shadow-sm"
+      style={{
+        backgroundImage: "radial-gradient(circle, rgba(109, 40, 217, 0.16) 1.5px, transparent 1.5px)",
+        backgroundSize: "24px 24px",
+      }}
+    >
+      <style>{`
+        @keyframes workflow-motion {
+          from { stroke-dashoffset: 24; }
+          to { stroke-dashoffset: 0; }
+        }
+        .workflow-motion-line {
+          animation: workflow-motion 1.2s linear infinite;
+        }
+      `}</style>
+
+      {/* Workflow Canvas Header */}
+      <div className="mb-8 flex items-center justify-between border-b border-line/70 pb-4">
+        <div className="flex items-center gap-2">
+          <span className="relative flex h-2.5 w-2.5">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+          </span>
+          <span className="font-mono text-xs font-semibold uppercase tracking-wider text-ink-soft">
+            Automated System Architecture
+          </span>
+        </div>
+        <span className="hidden rounded-full border border-accent/25 bg-accent-soft px-3 py-0.5 font-mono text-xs font-semibold text-accent sm:inline-block shadow-xs">
+          {items.length} Connected Nodes
+        </span>
+      </div>
+
+      {/* Desktop Continuous Animated Moving Flow Line */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute left-[12%] right-[12%] top-12 hidden h-0.5 bg-gradient-to-r from-accent/20 via-accent/60 to-accent/20 md:block"
-      />
-      <ol className={`workflow relative grid gap-6 ${items.length >= 4 ? "md:grid-cols-4" : items.length === 3 ? "md:grid-cols-3" : "md:grid-cols-2"}`}>
+        className="pointer-events-none absolute left-0 right-0 top-[170px] hidden h-10 w-full md:block z-0"
+      >
+        <svg className="h-full w-full" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="flow-line-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.3" />
+              <stop offset="50%" stopColor="#a855f7" stopOpacity="0.9" />
+              <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0.3" />
+            </linearGradient>
+          </defs>
+          <line
+            x1="12%"
+            y1="20"
+            x2="88%"
+            y2="20"
+            stroke="url(#flow-line-grad)"
+            strokeWidth="2.5"
+            strokeDasharray="6 6"
+            className="workflow-motion-line"
+          />
+        </svg>
+      </div>
+
+      <ol className={`relative z-10 grid gap-6 ${items.length >= 4 ? "md:grid-cols-4" : items.length === 3 ? "md:grid-cols-3" : "md:grid-cols-2"}`}>
         {items.map((item, i) => {
           const icon = WORKFLOW_STEP_ICONS[i % WORKFLOW_STEP_ICONS.length];
+          const tag = WORKFLOW_STEP_TAGS[i % WORKFLOW_STEP_TAGS.length];
           return (
             <li
               key={i}
-              className="workflow-step group relative flex flex-col rounded-2xl border border-line bg-paper p-6 shadow-sm transition-all duration-300 hover:border-accent hover:shadow-[0_16px_36px_-12px_rgba(109,40,217,0.25)] hover:-translate-y-1"
+              className="workflow-step group relative flex flex-col rounded-2xl border border-line bg-paper p-5 sm:p-6 shadow-sm transition-all duration-300 hover:-translate-y-1.5 hover:border-accent hover:ring-2 hover:ring-accent/20 hover:shadow-[0_20px_40px_-15px_rgba(109,40,217,0.25)]"
               style={{ "--step-index": i } as React.CSSProperties}
             >
-              <div className="flex items-center justify-between">
-                <span className="flex h-12 w-12 items-center justify-center rounded-xl border border-accent/25 bg-accent-soft text-accent shadow-sm transition-transform duration-300 group-hover:scale-110">
-                  {icon}
+              {/* Step Meta / Node Pill */}
+              <div className="flex items-center justify-between gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-accent/25 bg-accent-soft/70 px-2.5 py-0.5 text-[11px] font-semibold text-accent shadow-xs">
+                  <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+                  {tag}
                 </span>
-                <span className="rounded-full border border-accent/20 bg-accent/5 px-2.5 py-0.5 font-mono text-xs font-semibold text-accent">
+                <span className="font-mono text-xs font-bold text-ink-soft transition-colors group-hover:text-accent">
                   0{i + 1}
                 </span>
               </div>
-              <div className="mt-5">
-                <div className="font-display text-base font-semibold text-ink transition-colors group-hover:text-accent">
-                  {str(item, "title")}
+
+              {/* Glowing Node Icon Badge */}
+              <div className="mt-4 flex items-center justify-start">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-accent/30 bg-gradient-to-br from-accent/15 via-purple-500/10 to-indigo-500/15 text-accent shadow-xs transition-all duration-300 group-hover:scale-110 group-hover:border-accent group-hover:bg-accent-soft group-hover:shadow-[0_0_24px_rgba(109,40,217,0.35)]">
+                  {icon}
                 </div>
-                {str(item, "text") && <p className="mt-2 text-sm leading-relaxed text-ink-soft">{str(item, "text")}</p>}
+              </div>
+
+              {/* Node Title & Description */}
+              <div className="mt-4 flex-1">
+                <h3 className="font-display text-base font-bold text-ink transition-colors group-hover:text-accent leading-snug">
+                  {str(item, "title")}
+                </h3>
+                {str(item, "text") && (
+                  <p className="mt-2 text-sm leading-relaxed text-ink-soft">
+                    {str(item, "text")}
+                  </p>
+                )}
               </div>
             </li>
           );

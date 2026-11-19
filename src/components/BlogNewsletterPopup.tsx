@@ -230,12 +230,7 @@ export default function BlogNewsletterPopup({
         {/* ── STEP 1: SIGNUP FORM ────────────────────────────────────────── */}
         {step === "form" && (
           <div>
-            <div className="inline-flex items-center gap-1.5 rounded-full border border-line bg-paper-soft px-3 py-1 text-xs font-semibold text-ink-soft">
-              <span>📩</span>
-              <span>Indish Marketer Dispatch</span>
-            </div>
-
-            <h2 className="mt-3 font-display text-2xl font-bold tracking-tight text-ink sm:text-3xl">
+            <h2 className="font-display text-2xl font-bold tracking-tight text-ink sm:text-3xl">
               Enjoying this read?
             </h2>
             <p className="mt-2 text-sm leading-6 text-ink-soft">
@@ -289,7 +284,7 @@ export default function BlogNewsletterPopup({
               <button
                 type="submit"
                 disabled={status === "submitting" || !turnstileToken}
-                className="w-full rounded-full bg-ink px-6 py-3.5 text-sm font-semibold text-paper shadow-md transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                className="w-full rounded-full bg-accent px-6 py-3.5 text-sm font-semibold text-accent-on shadow-[0_8px_20px_-10px_var(--accent)] transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {status === "submitting" ? "Sending confirmation..." : "Get free weekly insights"}
               </button>
@@ -343,7 +338,7 @@ export default function BlogNewsletterPopup({
               <button
                 type="submit"
                 disabled={status === "submitting" || code.length < 6}
-                className="w-full rounded-full bg-ink px-6 py-3.5 text-sm font-semibold text-paper transition hover:opacity-90 disabled:opacity-50"
+                className="w-full rounded-full bg-accent px-6 py-3.5 text-sm font-semibold text-accent-on shadow-[0_8px_20px_-10px_var(--accent)] transition hover:opacity-90 disabled:opacity-50"
               >
                 {status === "submitting" ? "Verifying..." : "Confirm & Subscribe"}
               </button>
@@ -366,7 +361,7 @@ export default function BlogNewsletterPopup({
             <button
               type="button"
               onClick={handleDismiss}
-              className="mt-6 rounded-full bg-ink px-6 py-2.5 text-sm font-medium text-paper transition hover:opacity-90"
+              className="mt-6 rounded-full bg-accent px-6 py-2.5 text-sm font-semibold text-accent-on shadow-[0_8px_20px_-10px_var(--accent)] transition hover:opacity-90"
             >
               Back to article
             </button>

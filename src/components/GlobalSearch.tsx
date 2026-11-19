@@ -131,7 +131,7 @@ export default function GlobalSearch() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="hidden items-center justify-center rounded-full text-ink-soft transition-colors hover:border-accent/50 hover:bg-accent-soft/40 hover:text-accent md:flex md:h-auto md:w-auto md:gap-2 md:border md:border-line md:px-3 md:py-2 md:hover:border-accent/50"
+        className="hidden items-center justify-center rounded-full border border-accent/35 text-ink transition-colors hover:border-accent hover:bg-accent-soft hover:text-accent md:flex md:h-auto md:w-auto md:gap-2 md:px-3.5 md:py-2"
         aria-label="Search"
       >
         <SearchIcon />
