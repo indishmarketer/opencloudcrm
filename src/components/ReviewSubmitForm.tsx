@@ -237,7 +237,7 @@ export default function ReviewSubmitForm({
       <button
         type="submit"
         disabled={status === "submitting" || uploading || !turnstileToken}
-        className="rounded-full bg-ink px-6 py-3 text-sm font-medium text-paper transition-opacity hover:opacity-80 disabled:opacity-50"
+        className="rounded-full bg-accent px-6 py-3 text-sm font-medium text-accent-on shadow-[0_8px_20px_-10px_var(--accent)] transition-opacity hover:opacity-90 disabled:opacity-50"
       >
         {status === "submitting" ? "Sending…" : "Submit review"}
       </button>

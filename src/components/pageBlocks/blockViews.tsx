@@ -864,7 +864,7 @@ export function RowBlock({
     renderColumn ?? ((column: PageBlock[]) => column.map((block) => <NestedElement key={block.id} block={block} popups={popups} />));
   return (
     <RichSection props={props} widthDefault={1152} contained={str(props, "sectionWidth") === "contained"}>
-      <div className={`grid ${gap} ${columns}`}>
+      <div className={`grid ${gap} ${columns} items-start`}>
         {items.map((column, i) => (
           <div
             key={i}
@@ -1880,36 +1880,72 @@ export function TeamMemberBlock({ props, nested = false }: { props: Props; neste
   );
 }
 
+const WORKFLOW_STEP_ICONS: React.ReactNode[] = [
+  // 01: Consultation / Chat / Conversation
+  (
+    <svg key="0" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+    </svg>
+  ),
+  // 02: Server / VPS rack / Infrastructure
+  (
+    <svg key="1" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
+    </svg>
+  ),
+  // 03: Modular builder / Components / Blocks
+  (
+    <svg key="2" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+    </svg>
+  ),
+  // 04: Automation / Sparkles / Cursor / Next flow
+  (
+    <svg key="3" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+    </svg>
+  ),
+];
+
 export function StepsBlock({ props, nested = false }: { props: Props; nested?: boolean }) {
   const items = list(props, "items").filter((i) => str(i, "title"));
   if (!items.length) return null;
-  // Laid out as a workflow rather than a bullet list: nodes joined by a
-  // connector, flowing left to right on desktop and top to bottom on a
-  // phone, with each node easing in after the one before it so the eye
-  // follows the sequence. A plain numbered <ol> did not read as a process
-  // at all. Still an <ol>, so the order is correct for screen readers.
+  // Laid out as a running workflow with purple-lit node cards and custom SVG icons,
+  // joined by a glowing connector line on desktop, flowing left to right.
   const content = (
-    <ol className={`workflow relative grid gap-8 ${items.length >= 4 ? "md:grid-cols-4" : items.length === 3 ? "md:grid-cols-3" : "md:grid-cols-2"}`}>
-      <span
+    <div className="relative">
+      <div
         aria-hidden="true"
-        className="pointer-events-none absolute left-[7%] right-[7%] top-7 hidden h-px bg-[linear-gradient(90deg,transparent,var(--accent),transparent)] opacity-35 md:block"
+        className="pointer-events-none absolute left-[12%] right-[12%] top-12 hidden h-0.5 bg-gradient-to-r from-accent/20 via-accent/60 to-accent/20 md:block"
       />
-      {items.map((item, i) => (
-        <li
-          key={i}
-          className="workflow-step relative flex flex-col gap-3"
-          style={{ "--step-index": i } as React.CSSProperties}
-        >
-          <span className="relative z-10 flex h-14 w-14 items-center justify-center rounded-2xl border border-accent/30 bg-accent-soft font-display text-lg font-semibold text-accent shadow-[0_10px_28px_-14px_var(--accent)]">
-            {i + 1}
-          </span>
-          <div>
-            <div className="font-semibold text-ink">{str(item, "title")}</div>
-            {str(item, "text") && <p className="mt-1 text-sm text-ink-soft">{str(item, "text")}</p>}
-          </div>
-        </li>
-      ))}
-    </ol>
+      <ol className={`workflow relative grid gap-6 ${items.length >= 4 ? "md:grid-cols-4" : items.length === 3 ? "md:grid-cols-3" : "md:grid-cols-2"}`}>
+        {items.map((item, i) => {
+          const icon = WORKFLOW_STEP_ICONS[i % WORKFLOW_STEP_ICONS.length];
+          return (
+            <li
+              key={i}
+              className="workflow-step group relative flex flex-col rounded-2xl border border-line bg-paper p-6 shadow-sm transition-all duration-300 hover:border-accent hover:shadow-[0_16px_36px_-12px_rgba(109,40,217,0.25)] hover:-translate-y-1"
+              style={{ "--step-index": i } as React.CSSProperties}
+            >
+              <div className="flex items-center justify-between">
+                <span className="flex h-12 w-12 items-center justify-center rounded-xl border border-accent/25 bg-accent-soft text-accent shadow-sm transition-transform duration-300 group-hover:scale-110">
+                  {icon}
+                </span>
+                <span className="rounded-full border border-accent/20 bg-accent/5 px-2.5 py-0.5 font-mono text-xs font-semibold text-accent">
+                  0{i + 1}
+                </span>
+              </div>
+              <div className="mt-5">
+                <div className="font-display text-base font-semibold text-ink transition-colors group-hover:text-accent">
+                  {str(item, "title")}
+                </div>
+                {str(item, "text") && <p className="mt-2 text-sm leading-relaxed text-ink-soft">{str(item, "text")}</p>}
+              </div>
+            </li>
+          );
+        })}
+      </ol>
+    </div>
   );
   if (nested) return <RichBox props={props}>{content}</RichBox>;
   return (

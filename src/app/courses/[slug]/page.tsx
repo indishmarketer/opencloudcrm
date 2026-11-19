@@ -149,21 +149,21 @@ export default async function CourseLandingPage({ params }: { params: Promise<{ 
           {enrollment ? (
             <Link
               href={`/account/courses/${course.slug}`}
-              className="rounded-full bg-ink px-6 py-3 text-sm font-medium text-paper transition-opacity hover:opacity-80"
+              className="rounded-full bg-accent px-6 py-3 text-sm font-medium text-accent-on shadow-[0_8px_20px_-10px_var(--accent)] transition-opacity hover:opacity-90"
             >
               Go to your course
             </Link>
           ) : hasFreeTier ? (
             <Link
               href={`/courses/${course.slug}/enroll`}
-              className="rounded-full bg-ink px-6 py-3 text-sm font-medium text-paper transition-opacity hover:opacity-80"
+              className="rounded-full bg-accent px-6 py-3 text-sm font-medium text-accent-on shadow-[0_8px_20px_-10px_var(--accent)] transition-opacity hover:opacity-90"
             >
               Enroll for free
             </Link>
           ) : (
             <a
               href="#buy"
-              className="rounded-full bg-ink px-6 py-3 text-sm font-medium text-paper transition-opacity hover:opacity-80"
+              className="rounded-full bg-accent px-6 py-3 text-sm font-medium text-accent-on shadow-[0_8px_20px_-10px_var(--accent)] transition-opacity hover:opacity-90"
             >
               Buy Now
             </a>
@@ -271,7 +271,7 @@ export default async function CourseLandingPage({ params }: { params: Promise<{ 
               ) : (
                 <Link
                   href={`/signup?redirect=${encodeURIComponent(`/courses/${course.slug}`)}`}
-                  className="rounded-full bg-ink px-6 py-3 text-sm font-medium text-paper transition-opacity hover:opacity-80"
+                  className="rounded-full bg-accent px-6 py-3 text-sm font-medium text-accent-on shadow-[0_8px_20px_-10px_var(--accent)] transition-opacity hover:opacity-90"
                 >
                   {hasFreeTier ? "Sign up to unlock PRO" : "Sign up to buy"}
                 </Link>

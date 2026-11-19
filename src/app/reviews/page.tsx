@@ -97,13 +97,13 @@ export default async function ReviewsPage() {
       />
 
       <div className="flex flex-wrap gap-3">
-        <span className="rounded-full border border-ink/15 bg-paper px-5 py-2 text-sm font-medium">
+        <span className="rounded-full border border-accent/25 bg-accent-soft px-5 py-2 text-sm font-semibold text-accent">
           {totalCount} reviews
         </span>
-        <span className="rounded-full border border-ink/15 bg-paper px-5 py-2 text-sm font-medium">
+        <span className="rounded-full border border-accent/25 bg-accent-soft px-5 py-2 text-sm font-semibold text-accent">
           {avgRating} avg. rating
         </span>
-        <span className="rounded-full border border-ink/15 bg-paper px-5 py-2 text-sm font-medium">
+        <span className="rounded-full border border-accent/25 bg-accent-soft px-5 py-2 text-sm font-semibold text-accent">
           {videoCount} video reviews
         </span>
       </div>
@@ -132,7 +132,7 @@ export default async function ReviewsPage() {
               href={googleReviewUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-6 inline-flex rounded-full bg-ink px-6 py-3 text-sm font-medium text-paper transition-opacity hover:opacity-80"
+              className="mt-6 inline-flex rounded-full bg-accent px-6 py-3 text-sm font-medium text-accent-on shadow-[0_8px_20px_-10px_var(--accent)] transition-opacity hover:opacity-90"
             >
               Leave a Google review
             </a>

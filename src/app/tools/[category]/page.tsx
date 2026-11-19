@@ -94,8 +94,8 @@ export default async function DirectoryCategoryPage({
         <div className="mt-6 flex flex-wrap gap-2">
           <Link
             href={`/tools/${slug}`}
-            className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${
-              !activeSubcategory ? "border-ink text-ink" : "border-line text-ink-soft hover:border-ink hover:text-ink"
+            className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-all ${
+              !activeSubcategory ? "border-accent bg-accent text-accent-on shadow-sm" : "border-line text-ink-soft hover:border-accent hover:text-accent"
             }`}
           >
             All
@@ -104,8 +104,8 @@ export default async function DirectoryCategoryPage({
             <Link
               key={s}
               href={`/tools/${slug}?subcategory=${encodeURIComponent(s)}`}
-              className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${
-                activeSubcategory === s ? "border-ink text-ink" : "border-line text-ink-soft hover:border-ink hover:text-ink"
+              className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-all ${
+                activeSubcategory === s ? "border-accent bg-accent text-accent-on shadow-sm" : "border-line text-ink-soft hover:border-accent hover:text-accent"
               }`}
             >
               {s}

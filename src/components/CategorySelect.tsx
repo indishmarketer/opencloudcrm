@@ -65,8 +65,8 @@ export default function CategorySelect({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className={`flex w-full items-center justify-between gap-2 rounded-lg border bg-paper px-4 py-2.5 text-left text-sm outline-none transition-colors focus:border-ink ${
-          open ? "border-ink" : "border-line"
+        className={`flex w-full items-center justify-between gap-2 rounded-lg border bg-paper px-4 py-2.5 text-left text-sm outline-none transition-colors ${
+          open ? "border-accent ring-1 ring-accent" : "border-line hover:border-accent/40"
         }`}
       >
         <span className="truncate">{activeLabel}</span>
@@ -95,8 +95,8 @@ export default function CategorySelect({
               <button
                 type="button"
                 onClick={() => select(allHref)}
-                className={`block w-full whitespace-nowrap px-4 py-2.5 text-left text-sm hover:bg-paper-soft ${
-                  !active ? "bg-paper-soft font-medium" : ""
+                className={`block w-full whitespace-nowrap px-4 py-2.5 text-left text-sm hover:bg-accent-soft hover:text-accent transition-colors ${
+                  !active ? "bg-accent-soft font-semibold text-accent" : ""
                 }`}
               >
                 {allLabel}
@@ -110,8 +110,8 @@ export default function CategorySelect({
                   key={o.slug}
                   type="button"
                   onClick={() => select(`${basePath}/${o.slug}`)}
-                  className={`block w-full whitespace-nowrap px-4 py-2.5 text-left text-sm hover:bg-paper-soft ${
-                    active === o.slug ? "bg-paper-soft font-medium" : ""
+                  className={`block w-full whitespace-nowrap px-4 py-2.5 text-left text-sm hover:bg-accent-soft hover:text-accent transition-colors ${
+                    active === o.slug ? "bg-accent-soft font-semibold text-accent" : ""
                   }`}
                 >
                   {o.name}

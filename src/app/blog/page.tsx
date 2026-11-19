@@ -83,7 +83,7 @@ export default async function BlogIndex({
             <Link
               key={post.slug}
               href={`/blog/${post.slug}`}
-              className="group flex flex-col overflow-hidden rounded-2xl border border-line"
+              className="group flex flex-col overflow-hidden rounded-2xl border border-line bg-paper transition-all duration-300 hover:border-accent hover:shadow-[0_16px_36px_-12px_rgba(109,40,217,0.22)] hover:-translate-y-1"
             >
               {img && (
                 <div className="relative aspect-[1200/650] w-full overflow-hidden rounded-xl border border-ink/15 bg-paper-soft">
@@ -98,11 +98,11 @@ export default async function BlogIndex({
               )}
               <div className="flex flex-1 flex-col gap-2 p-6">
                 {categoryName && (
-                  <span className="text-xs font-medium uppercase tracking-wide text-ink-soft">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-accent">
                     {categoryName}
                   </span>
                 )}
-                <h2 className="font-display text-lg font-semibold leading-snug">
+                <h2 className="font-display text-lg font-semibold leading-snug text-ink transition-colors group-hover:text-accent">
                   {post.title}
                 </h2>
                 <p className="line-clamp-2 text-sm text-ink-soft">{post.excerpt}</p>
@@ -121,7 +121,7 @@ export default async function BlogIndex({
         </div>
         <Link
           href="/apply-to-write"
-          className="shrink-0 rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-paper transition-opacity hover:opacity-80"
+          className="shrink-0 rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-accent-on shadow-[0_8px_20px_-10px_var(--accent)] transition-opacity hover:opacity-90"
         >
           Apply to write
         </Link>

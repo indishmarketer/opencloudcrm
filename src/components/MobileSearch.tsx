@@ -12,8 +12,8 @@ export default function MobileSearch({ onNavigate }: { onNavigate: () => void })
 
   return (
     <div className="mb-4">
-      <div className="flex items-center gap-2 rounded-xl border border-line px-3 py-2.5">
-        <SearchIcon className="h-4 w-4 text-ink-soft" />
+      <div className="flex items-center gap-2 rounded-xl border border-line px-3 py-2.5 transition-colors focus-within:border-accent focus-within:ring-1 focus-within:ring-accent">
+        <SearchIcon className="h-4 w-4 text-accent" />
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}

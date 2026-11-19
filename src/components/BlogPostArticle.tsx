@@ -108,7 +108,7 @@ export default async function BlogPostArticle({ post, indexEntry, preview = fals
       {category && (
         <Link
           href={`/blog/category/${category.slug}`}
-          className="text-xs font-medium uppercase tracking-wide text-ink-soft hover:text-ink"
+          className="text-xs font-semibold uppercase tracking-wider text-accent transition-colors hover:underline"
         >
           {category.name}
         </Link>
@@ -134,7 +134,7 @@ export default async function BlogPostArticle({ post, indexEntry, preview = fals
         </aside>
       )}
       <div
-        className="prose prose-neutral mt-10 max-w-none prose-headings:font-display prose-a:text-ink prose-a:underline prose-img:w-full prose-img:h-auto [&_img+p]:mt-2 [&_img+p]:text-center [&_img+p]:text-sm [&_img+p]:italic [&_img+p]:text-ink-soft [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:border-line [&_th]:border [&_th]:border-line [&_td]:p-2 [&_th]:p-2 [&_th]:bg-paper-soft"
+        className="prose prose-neutral mt-10 max-w-none prose-headings:font-display prose-a:text-accent prose-a:font-medium prose-a:underline hover:prose-a:opacity-85 prose-img:w-full prose-img:h-auto [&_img+p]:mt-2 [&_img+p]:text-center [&_img+p]:text-sm [&_img+p]:italic [&_img+p]:text-ink-soft [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:border-line [&_th]:border [&_th]:border-line [&_td]:p-2 [&_th]:p-2 [&_th]:bg-paper-soft"
         dangerouslySetInnerHTML={{ __html: fullHtml }}
       />
       {post.sources.length > 0 && (

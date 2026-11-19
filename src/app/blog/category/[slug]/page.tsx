@@ -104,7 +104,7 @@ export default async function BlogCategoryPage({
             <Link
               key={post.slug}
               href={`/blog/${post.slug}`}
-              className="group flex flex-col overflow-hidden rounded-2xl border border-line"
+              className="group flex flex-col overflow-hidden rounded-2xl border border-line bg-paper transition-all duration-300 hover:border-accent hover:shadow-[0_16px_36px_-12px_rgba(109,40,217,0.22)] hover:-translate-y-1"
             >
               {img && (
                 <div className="relative aspect-[1200/650] w-full overflow-hidden rounded-xl border border-ink/15 bg-paper-soft">
@@ -118,7 +118,7 @@ export default async function BlogCategoryPage({
                 </div>
               )}
               <div className="flex flex-1 flex-col gap-2 p-6">
-                <h2 className="font-display text-lg font-semibold leading-snug">{post.title}</h2>
+                <h2 className="font-display text-lg font-semibold leading-snug text-ink transition-colors group-hover:text-accent">{post.title}</h2>
                 <p className="line-clamp-2 text-sm text-ink-soft">{post.excerpt}</p>
               </div>
             </Link>
@@ -139,7 +139,7 @@ export default async function BlogCategoryPage({
                 <Link
                   key={c.slug}
                   href={`/blog/category/${c.slug}`}
-                  className="rounded-full border border-line px-4 py-1.5 text-sm text-ink-soft transition-colors hover:border-ink hover:text-ink"
+                  className="rounded-full border border-line bg-paper px-4 py-1.5 text-sm font-medium text-ink-soft transition-all hover:border-accent hover:bg-accent-soft hover:text-accent"
                 >
                   {c.name}
                 </Link>

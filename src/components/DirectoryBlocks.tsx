@@ -201,7 +201,7 @@ export function DirectoryResultsBlock({ props }: { props: Record<string, unknown
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{visible.map((tool) => <DirectoryToolCard key={tool.slug} tool={tool} />)}</div>
           {pageCount > 1 && <nav aria-label="Directory pages" className="mt-10 flex flex-nowrap items-center justify-center gap-1.5 sm:gap-2">
             <button type="button" onClick={() => movePage(currentPage - 1)} disabled={currentPage === 1} aria-label="Previous page" className="shrink-0 rounded-full border border-line px-3 py-2 text-sm disabled:opacity-40">←</button>
-            {pageRange(currentPage, pageCount).map((entry, index) => entry === null ? <span key={`gap-${index}`} aria-hidden="true">…</span> : <button key={entry} type="button" onClick={() => movePage(entry)} aria-label={`Page ${entry}`} aria-current={entry === currentPage ? "page" : undefined} className={`min-w-9 rounded-full border px-3 py-2 text-sm ${entry === currentPage ? "border-ink bg-ink text-paper" : "border-line"}`}>{entry}</button>)}
+            {pageRange(currentPage, pageCount).map((entry, index) => entry === null ? <span key={`gap-${index}`} aria-hidden="true">…</span> : <button key={entry} type="button" onClick={() => movePage(entry)} aria-label={`Page ${entry}`} aria-current={entry === currentPage ? "page" : undefined} className={`min-w-9 rounded-full border px-3 py-2 text-sm font-medium transition-all ${entry === currentPage ? "border-accent bg-accent text-accent-on shadow-[0_4px_12px_-4px_var(--accent)]" : "border-line hover:border-accent hover:text-accent"}`}>{entry}</button>)}
             <button type="button" onClick={() => movePage(currentPage + 1)} disabled={currentPage === pageCount} aria-label="Next page" className="shrink-0 rounded-full border border-line px-3 py-2 text-sm disabled:opacity-40">→</button>
           </nav>}
         </>}
@@ -215,8 +215,8 @@ export function DirectoryCategoriesBlock({ props }: { props: Record<string, unkn
   if (!directory) return null;
   return <div style={elementStyle(props)} className={`flex flex-wrap gap-2 ${str(props, "mobileClass")}`}>
     {directory.categories.filter((item) => item.tool_count > 0).map((item) => (
-      <Link key={item.slug} href={`/tools/${item.slug}`} className="inline-flex items-center gap-1.5 rounded-full border border-line px-3.5 py-2 text-sm text-ink-soft hover:border-ink hover:text-ink">
-        {item.name}<span className="text-xs text-ink-soft/70">{item.tool_count}</span>
+      <Link key={item.slug} href={`/tools/${item.slug}`} className="inline-flex items-center gap-1.5 rounded-full border border-line bg-paper px-3.5 py-2 text-sm font-medium text-ink-soft transition-all hover:border-accent hover:bg-accent-soft hover:text-accent">
+        {item.name}<span className="text-xs text-accent font-semibold">{item.tool_count}</span>
       </Link>
     ))}
   </div>;

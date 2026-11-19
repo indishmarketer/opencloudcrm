@@ -27,7 +27,7 @@ export default function DirectoryToolCard({ tool }: { tool: DirectoryToolCardDat
   return (
     <Link
       href={`/tools/${tool.category_slug}/${tool.slug}`}
-      className="group flex min-h-52 flex-col rounded-2xl border border-line bg-paper p-5 transition-colors hover:border-ink/50 hover:bg-paper-soft"
+      className="group flex min-h-52 flex-col rounded-2xl border border-line bg-paper p-5 transition-all duration-300 hover:border-accent hover:shadow-[0_16px_36px_-12px_rgba(109,40,217,0.22)] hover:-translate-y-1"
     >
       <div className="flex items-start gap-3">
         {tool.logo_url ? (
@@ -36,21 +36,18 @@ export default function DirectoryToolCard({ tool }: { tool: DirectoryToolCardDat
             alt={`${tool.name} logo`}
             width={48}
             height={48}
-            className="h-12 w-12 shrink-0 rounded-xl border border-line bg-paper object-contain p-1"
+            className="h-12 w-12 shrink-0 rounded-xl border border-line bg-paper object-contain p-1 transition-transform group-hover:scale-105"
           />
         ) : (
-          <div aria-hidden="true" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-line bg-paper font-display text-lg font-semibold">
+          <div aria-hidden="true" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-accent/25 bg-accent-soft font-display text-lg font-semibold text-accent">
             {tool.name.slice(0, 1).toUpperCase()}
           </div>
         )}
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            {/* No hover underline on the name. The whole card is the link
-                and already lifts its border on hover, so underlining the
-                title as well read as a stray text link inside the card. */}
-            <p className="font-display text-base font-semibold leading-tight">{tool.name}</p>
+            <p className="font-display text-base font-semibold leading-tight text-ink transition-colors group-hover:text-accent">{tool.name}</p>
             {tool.featured && (
-              <span className="rounded-full bg-ink px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-paper">
+              <span className="rounded-full bg-accent px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent-on shadow-sm">
                 Featured
               </span>
             )}
@@ -60,7 +57,7 @@ export default function DirectoryToolCard({ tool }: { tool: DirectoryToolCardDat
       </div>
 
       <div className="mt-auto flex flex-wrap items-center gap-2 border-t border-line pt-4">
-        <span className="rounded-full border border-line bg-paper px-2.5 py-1 text-xs font-medium text-ink">
+        <span className="rounded-full border border-accent/25 bg-accent-soft px-2.5 py-1 text-xs font-semibold text-accent">
           {PRICING_LABELS[tool.pricing_type] || tool.pricing_type}
         </span>
         {tool.category_name && (

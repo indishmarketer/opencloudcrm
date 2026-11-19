@@ -53,7 +53,7 @@ export default async function BlogCategoryIndex() {
           <Link
             key={c.slug}
             href={`/blog/category/${c.slug}`}
-            className="group flex flex-col overflow-hidden rounded-2xl border border-line"
+            className="group flex flex-col overflow-hidden rounded-2xl border border-line bg-paper transition-all duration-300 hover:border-accent hover:shadow-[0_16px_36px_-12px_rgba(109,40,217,0.22)] hover:-translate-y-1"
           >
             <div className="relative aspect-[1200/650] w-full overflow-hidden rounded-xl border border-ink/15 bg-paper-soft">
               {c.image && <SafeImage
@@ -65,9 +65,9 @@ export default async function BlogCategoryIndex() {
               />}
             </div>
             <div className="flex flex-1 flex-col gap-2 p-6">
-              <h2 className="font-display text-lg font-semibold leading-snug">{c.name}</h2>
+              <h2 className="font-display text-lg font-semibold leading-snug text-ink transition-colors group-hover:text-accent">{c.name}</h2>
               <p className="line-clamp-2 text-sm text-ink-soft">{c.description}</p>
-              <p className="mt-auto pt-2 text-xs font-medium uppercase tracking-wide text-ink-soft">
+              <p className="mt-auto pt-2 text-xs font-semibold uppercase tracking-wider text-accent">
                 {countBySlug.get(c.slug) || 0} posts
               </p>
             </div>

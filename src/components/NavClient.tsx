@@ -221,7 +221,14 @@ export default function NavClient({
             // eslint-disable-next-line @next/next/no-img-element -- logo is an arbitrary uploaded URL, no fixed dimensions
             <img src={logoUrl} alt={siteName} className="h-9 w-auto" />
           ) : (
-            siteName
+            <span className="flex items-center gap-2">
+              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-accent via-purple-600 to-indigo-950 text-xs font-bold text-white shadow-[0_4px_12px_-2px_rgba(109,40,217,0.45)]">
+                im
+              </span>
+              <span className="bg-gradient-to-r from-accent via-purple-900 to-ink bg-clip-text font-bold text-transparent">
+                {siteName}
+              </span>
+            </span>
           )}
         </Link>
 
@@ -231,7 +238,7 @@ export default function NavClient({
               <Link
                 key={i}
                 href={item.href}
-                className="rounded-full px-3 py-2 text-sm font-semibold text-ink-soft transition-colors hover:text-ink"
+                className="rounded-full px-3 py-2 text-sm font-semibold text-ink transition-colors hover:bg-accent-soft hover:text-accent"
               >
                 {item.label}
               </Link>
@@ -241,7 +248,7 @@ export default function NavClient({
                   type="button"
                   onClick={() => toggle(i)}
                   aria-expanded={menu === i}
-                  className={`flex items-center gap-1 rounded-full px-3 py-2 text-sm font-semibold transition-colors hover:bg-accent-soft hover:text-accent ${menu === i ? "bg-accent-soft text-accent" : "text-ink-soft"}`}
+                  className={`flex items-center gap-1 rounded-full px-3 py-2 text-sm font-semibold transition-colors hover:bg-accent-soft hover:text-accent ${menu === i ? "bg-accent-soft text-accent" : "text-ink hover:text-accent"}`}
                 >
                   {item.label} <ChevronIcon open={menu === i} />
                 </button>
@@ -295,7 +302,7 @@ export default function NavClient({
                 type="button"
                 onClick={() => setAuthMenuOpen((value) => !value)}
                 aria-expanded={authMenuOpen}
-                className="flex items-center gap-2 rounded-full border border-line px-3.5 py-2 text-sm font-medium text-ink transition-colors hover:border-ink/50 hover:bg-paper-soft"
+                className="flex items-center gap-2 rounded-full border border-accent/35 px-4 py-2 text-sm font-semibold text-accent transition-colors hover:border-accent hover:bg-accent-soft"
               >
                 <UserIcon />
                 Log in

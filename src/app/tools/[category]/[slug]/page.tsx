@@ -152,7 +152,7 @@ export default async function DirectoryToolPage({
               href={tool.website_url}
               target="_blank"
               rel="noopener noreferrer nofollow"
-              className="mt-4 rounded-full bg-ink px-5 py-3 text-center text-sm font-medium text-paper transition-opacity hover:opacity-80"
+              className="mt-4 rounded-full bg-accent px-5 py-3 text-center text-sm font-medium text-accent-on shadow-[0_8px_20px_-10px_var(--accent)] transition-opacity hover:opacity-90"
             >
               {isGithubLink(tool.website_url) ? "View on GitHub" : "Visit website"}
             </a>

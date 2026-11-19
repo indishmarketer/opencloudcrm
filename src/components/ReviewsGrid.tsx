@@ -44,8 +44,8 @@ export default function ReviewsGrid({
       <div className="flex flex-wrap gap-2">
         <button
           onClick={() => setFilter("all")}
-          className={`rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
-            filter === "all" ? "border-ink bg-ink text-paper" : "border-line hover:border-ink"
+          className={`rounded-full border px-4 py-2 text-sm font-semibold transition-all ${
+            filter === "all" ? "border-accent bg-accent text-accent-on shadow-[0_4px_12px_-4px_var(--accent)]" : "border-line hover:border-accent hover:text-accent"
           }`}
         >
           All ({total})
@@ -56,8 +56,8 @@ export default function ReviewsGrid({
               <button
                 key={n}
                 onClick={() => setFilter(n)}
-                className={`rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
-                  filter === n ? "border-ink bg-ink text-paper" : "border-line hover:border-ink"
+                className={`rounded-full border px-4 py-2 text-sm font-semibold transition-all ${
+                  filter === n ? "border-accent bg-accent text-accent-on shadow-[0_4px_12px_-4px_var(--accent)]" : "border-line hover:border-accent hover:text-accent"
                 }`}
               >
                 {n} star ({count})
@@ -71,7 +71,7 @@ export default function ReviewsGrid({
           <Link
             key={r.slug}
             href={`/reviews/${r.slug}`}
-            className="flex flex-col rounded-2xl border border-line p-8 transition-colors hover:border-ink"
+            className="flex flex-col rounded-2xl border border-line bg-paper p-8 transition-all duration-300 hover:border-accent hover:shadow-[0_16px_36px_-12px_rgba(109,40,217,0.22)] hover:-translate-y-1"
           >
             <span className="mb-3 w-fit rounded-full bg-paper-soft px-2 py-1 text-xs font-medium text-ink-soft">Website review</span>
             <Stars count={r.rating} />
@@ -102,7 +102,7 @@ export default function ReviewsGrid({
           <Link
             key={`submission-${s.id}`}
             href={`/reviews/review-${s.id}`}
-            className="flex flex-col rounded-2xl border border-line p-8 transition-colors hover:border-ink"
+            className="flex flex-col rounded-2xl border border-line bg-paper p-8 transition-all duration-300 hover:border-accent hover:shadow-[0_16px_36px_-12px_rgba(109,40,217,0.22)] hover:-translate-y-1"
           >
             <span className="mb-3 w-fit rounded-full bg-paper-soft px-2 py-1 text-xs font-medium text-ink-soft">Website review</span>
             <Stars count={s.rating} />

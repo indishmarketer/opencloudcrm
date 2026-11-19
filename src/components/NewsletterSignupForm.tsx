@@ -110,7 +110,7 @@ export default function NewsletterSignupForm() {
       <button
         type="submit"
         disabled={step === "submitting" || !token}
-        className="w-full rounded-xl bg-ink px-6 py-3 text-sm font-semibold text-paper transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
+        className="w-full rounded-xl bg-accent px-6 py-3 text-sm font-semibold text-accent-on shadow-[0_8px_20px_-10px_var(--accent)] transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {step === "submitting" ? "Subscribing…" : "Subscribe for free →"}
       </button>

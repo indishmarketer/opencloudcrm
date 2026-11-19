@@ -65,7 +65,7 @@ export default async function CoursesIndexPage() {
           <Link
             key={c.slug}
             href={`/courses/${c.slug}`}
-            className="group overflow-hidden rounded-2xl border border-line bg-paper transition-colors hover:border-ink"
+            className="group overflow-hidden rounded-2xl border border-line bg-paper transition-all duration-300 hover:border-accent hover:shadow-[0_16px_36px_-12px_rgba(109,40,217,0.25)] hover:-translate-y-1"
           >
             {c.cover_image_url && (
               <div className="relative aspect-[1200/650] w-full overflow-hidden">
@@ -81,16 +81,16 @@ export default async function CoursesIndexPage() {
               </div>
             )}
             <div className="p-6">
-              <h2 className="font-display text-xl font-semibold">{c.title}</h2>
+              <h2 className="font-display text-xl font-semibold transition-colors group-hover:text-accent">{c.title}</h2>
               {c.subtitle && <p className="mt-1 text-sm text-ink-soft">{c.subtitle}</p>}
               <div className="mt-3 flex items-center gap-2">
                 {c.has_free && (
-                  <span className="inline-block rounded-full border border-line px-3 py-1 text-xs font-semibold text-ink">
+                  <span className="inline-block rounded-full border border-accent/25 bg-accent-soft px-3 py-1 text-xs font-semibold text-accent">
                     FREE
                   </span>
                 )}
                 {c.has_pro && (
-                  <span className="inline-block rounded-full border border-red-600 px-3 py-1 text-xs font-semibold text-red-600">
+                  <span className="inline-block rounded-full border border-accent/30 bg-accent/10 px-3 py-1 text-xs font-semibold text-accent">
                     PRO
                   </span>
                 )}
