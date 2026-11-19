@@ -37,7 +37,7 @@ export async function GET(request: Request) {
 
   // Only records that have a public page are queried. Console, account,
   // webinar room, checkout, and token-only URLs are deliberately absent.
-  const [courses, tools, webinars, meetingTypes, communityPosts, prompts, skills, guides] = await Promise.all([
+  const [courses, tools, webinars, meetingTypes, communityPosts] = await Promise.all([
     pool.query(
       `SELECT slug, title, COALESCE(subtitle, description) AS description
        FROM courses
@@ -76,27 +76,6 @@ export async function GET(request: Request) {
        LIMIT ${QUERY_LIMIT}`,
       [pattern],
     ),
-    pool.query(
-      `SELECT slug, title, description
-       FROM prompts
-       WHERE status = 'published' AND show_in_library = true AND concat_ws(' ', title, description, prompt_text) ILIKE $1
-       LIMIT ${QUERY_LIMIT}`,
-      [pattern],
-    ),
-    pool.query(
-      `SELECT slug, title, description
-       FROM skills
-       WHERE status = 'published' AND show_in_library = true AND concat_ws(' ', title, description, skill_markdown) ILIKE $1
-       LIMIT ${QUERY_LIMIT}`,
-      [pattern],
-    ),
-    pool.query(
-      `SELECT slug, title, description
-       FROM prompt_guides
-       WHERE status = 'published' AND concat_ws(' ', title, description, body) ILIKE $1
-       LIMIT ${QUERY_LIMIT}`,
-      [pattern],
-    ),
   ]);
 
   const databaseResults: SearchResult[] = [
@@ -105,9 +84,6 @@ export async function GET(request: Request) {
     ...webinars.rows.map((row) => ({ type: "webinar", title: row.title, desc: row.description, url: `/webinars/${row.slug}` })),
     ...meetingTypes.rows.map((row) => ({ type: "booking", title: row.name, desc: row.description, url: `/book/${row.slug}` })),
     ...communityPosts.rows.map((row) => ({ type: "community", title: row.title, desc: row.body, url: `/community/general/${row.id}` })),
-    ...prompts.rows.map((row) => ({ type: "prompt", title: row.title, desc: row.description, url: `/resources/prompt-skill-library/browse/prompts/${row.slug}` })),
-    ...skills.rows.map((row) => ({ type: "skill", title: row.title, desc: row.description, url: `/resources/prompt-skill-library/browse/skills/${row.slug}` })),
-    ...guides.rows.map((row) => ({ type: "guide", title: row.title, desc: row.description, url: `/resources/prompt-skill-library/guides/${row.slug}` })),
   ];
 
   const staticContent: SearchResult[] = [

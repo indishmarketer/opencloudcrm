@@ -134,34 +134,10 @@ async function buildSitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8,
   }));
 
-  // Prompt & Skill Library: fully public as of 2026-09-20 (was login-gated).
-  const libraryBrowseRoutes: MetadataRoute.Sitemap = [
-    { url: `${BASE_URL}/resources/prompt-skill-library/browse`, changeFrequency: "weekly", priority: 0.6 },
-  ];
-
-  const prompts = await safeRows<{ slug: string; updated_at: string }>("prompts", "SELECT slug, updated_at FROM prompts WHERE status = 'published' AND show_in_library = true");
-  const promptRoutes: MetadataRoute.Sitemap = prompts.map((p) => ({
-    url: `${BASE_URL}/resources/prompt-skill-library/browse/prompts/${p.slug}`,
-    lastModified: new Date(p.updated_at),
-    changeFrequency: "monthly",
-    priority: 0.5,
-  }));
-
-  const skills = await safeRows<{ slug: string; updated_at: string }>("skills", "SELECT slug, updated_at FROM skills WHERE status = 'published' AND show_in_library = true");
-  const skillRoutes: MetadataRoute.Sitemap = skills.map((s) => ({
-    url: `${BASE_URL}/resources/prompt-skill-library/browse/skills/${s.slug}`,
-    lastModified: new Date(s.updated_at),
-    changeFrequency: "monthly",
-    priority: 0.5,
-  }));
-
-  const guides = await safeRows<{ slug: string; updated_at: string }>("guides", "SELECT slug, updated_at FROM prompt_guides WHERE status = 'published'");
-  const guideRoutes: MetadataRoute.Sitemap = guides.map((g) => ({
-    url: `${BASE_URL}/resources/prompt-skill-library/guides/${g.slug}`,
-    lastModified: new Date(g.updated_at),
-    changeFrequency: "monthly",
-    priority: 0.6,
-  }));
+  // The Prompt & Skill Library, and the /resources hub above it, were
+  // retired along with /services and /products -- see isRetiredPublicPath.
+  // Their routes, components and console area are deleted, so there is
+  // nothing left to list here.
 
   // Owner's own additions from /console/site-actions, for pages outside
   // every generator above. To remove something a generator already
@@ -185,10 +161,6 @@ async function buildSitemap(): Promise<MetadataRoute.Sitemap> {
     ...toolCategoryRoutes,
     ...toolRoutes,
     ...meetingTypeRoutes,
-    ...libraryBrowseRoutes,
-    ...promptRoutes,
-    ...skillRoutes,
-    ...guideRoutes,
   ];
 
   // Single filter point for every route above, rather than gating each

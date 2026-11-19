@@ -9,8 +9,6 @@ import type { HeaderItem } from "@/lib/siteChromeShape";
 
 type TeaserItem = { slug: string; title: string };
 
-const freeResourcesItems: TeaserItem[] = [{ slug: "prompt-skill-library", title: "Prompt & Skill Library" }];
-const freeResourcesHref = (slug: string) => `/resources/${slug}`;
 
 type MobileSection = string;
 
@@ -276,7 +274,6 @@ export default function NavClient({
             {showCourses && <LearnColumn title="Courses" allHref="/courses" allLabel="View all courses" items={courses} itemHref={(slug) => `/courses/${slug}`} />}
             <LearnColumn title="Blog" allHref="/blog" allLabel="View all posts" items={categories} itemHref={(slug) => `/blog/category/${slug}`} />
             {showWebinars && <LearnColumn title="Webinars" allHref="/webinars" allLabel="View all webinars" items={webinars} itemHref={(slug) => `/webinars/${slug}`} />}
-            <LearnColumn title="Free Resources" allHref="/resources" allLabel="View all resources" items={freeResourcesItems} itemHref={freeResourcesHref} />
           </div>
         )}
 
@@ -516,37 +513,6 @@ export default function NavClient({
                     </>
                     )}
 
-                    <button
-                      type="button"
-                      onClick={() => toggleMobile("learn-resources")}
-                      aria-expanded={isMobileSectionOpen("learn-resources")}
-                      className="flex w-full items-center justify-between rounded-lg px-1 py-2 text-sm text-ink-soft"
-                    >
-                      Free Resources
-                      <ChevronIcon open={isMobileSectionOpen("learn-resources")} />
-                    </button>
-                    {isMobileSectionOpen("learn-resources") && (
-                      <div className="pb-1 pl-2">
-                        <div className="divide-y divide-line">
-                          {freeResourcesItems.map((item) => (
-                            <Link
-                              key={item.slug}
-                              href={freeResourcesHref(item.slug)}
-                              onClick={closeMobile}
-                              className="block px-1 py-2 text-sm text-ink-soft transition-colors hover:text-ink"
-                            >
-                              {item.title}
-                            </Link>
-                          ))}
-                        </div>
-                        <ViewAllLink
-                          href="/resources"
-                          label="View all resources"
-                          onClick={closeMobile}
-                          className="border-t border-line px-1 py-2 pt-3 text-sm font-medium text-ink"
-                        />
-                      </div>
-                    )}
                   </div>
                 </li>
               );

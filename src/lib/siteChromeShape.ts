@@ -37,12 +37,9 @@ const link = (label: string, href: string, description = ""): ChromeLink => ({ l
 export const DEFAULT_SITE_CHROME: SiteChrome = {
   header: {
     items: [
-      {
-        type: "dropdown",
-        label: "Solutions",
-        columns: [{ title: "", links: [link("Services", "/services", "What we do for clients"), link("Products", "/products", "Ready-to-use products and tools")] }],
-      },
-      { type: "resources", label: "Resources" },
+      // Solutions held only Services and Products, both retired; the
+      // "resources" mega-menu fronted /resources and the prompt & skill
+      // library, also retired. See isRetiredPublicPath.
       { type: "link", label: "Directory", href: "/tools" },
       {
         type: "dropdown",
@@ -66,10 +63,10 @@ export const DEFAULT_SITE_CHROME: SiteChrome = {
   footer: {
     tagline: "",
     columns: [
-      { title: "Solutions", links: [link("Services", "/services"), link("Products", "/products"), link("Tools directory", "/tools")] },
+      { title: "Explore", links: [link("Tools directory", "/tools")] },
       {
         title: "Resources",
-        links: [link("Courses", "/courses"), link("Blog", "/blog"), link("Webinars", "/webinars"), link("Prompt & Skill Library", "/resources/prompt-skill-library")],
+        links: [link("Courses", "/courses"), link("Blog", "/blog"), link("Webinars", "/webinars")],
       },
       {
         title: "Connect",

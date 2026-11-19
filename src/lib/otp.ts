@@ -50,19 +50,47 @@ export async function requestOtp(
   }).catch((error) => { console.error("Verification workflow queue failed:", error); return false; });
   if (queued) return true;
 
-  const tpl = await getEmailTemplateOptional("otp-code");
-  if (!tpl) return false;
   const vars = { code, magic_link_url: verificationUrl };
-  const result = await sendEmail({
-    to: email,
-    subject: applyTemplateVars(tpl.subject, vars),
-    html: applyTemplateVars(tpl.body_html, vars),
-    from: tpl.from_email,
-    critical: tpl.critical,
-    templateKey: tpl.key,
-    category: "fixed",
-    trackOpens: tpl.track_opens,
-  });
+  const tpl = await getEmailTemplateOptional("otp-code");
+
+  // Last-resort built-in code email. Verification is the one email that must
+  // never silently not send: without it nobody can confirm an address, so
+  // signup, newsletter double opt-in, the free guide and the contact form
+  // all dead-end, and the contact is stuck at 'pending' forever.
+  //
+  // Both earlier paths are genuinely absent in a normal install: migrations
+  // 185-195 deleted every fixed email_templates row in favour of workflows,
+  // and the contact.verification_requested trigger is no longer offered when
+  // building one (see SITE_WORKFLOW_EVENT_KEYS), so an owner cannot easily
+  // recreate the workflow that was supposed to replace the template. That
+  // left requestOtp returning false for everyone. Hardcoded here so it
+  // works with no configuration at all; a workflow or template still wins.
+  const result = tpl
+    ? await sendEmail({
+        to: email,
+        subject: applyTemplateVars(tpl.subject, vars),
+        html: applyTemplateVars(tpl.body_html, vars),
+        from: tpl.from_email,
+        critical: tpl.critical,
+        templateKey: tpl.key,
+        category: "fixed",
+        trackOpens: tpl.track_opens,
+      })
+    : await sendEmail({
+        to: email,
+        subject: `Your verification code: ${code}`,
+        html: `
+          <p>Hi,</p>
+          <p>Your verification code is <strong style="font-size:20px;letter-spacing:2px;">${code}</strong></p>
+          <p>Or just <a href="${verificationUrl}" style="color:#1a0dab;font-weight:600;">click here to confirm</a> — same thing, one less step.</p>
+          <p>It expires in 10 minutes. If you didn't ask for this, you can ignore this email.</p>
+          <p>— Shubho<br>Indish Marketer</p>
+        `,
+        critical: true,
+        templateKey: "otp-code",
+        category: "fixed",
+        trackOpens: false,
+      });
   // Report delivery failure to the caller so it can tell the user "we
   // couldn't email you" instead of "check your inbox" with nothing sent.
   return result.ok;

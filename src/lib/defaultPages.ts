@@ -69,11 +69,9 @@ export const STARTER_PAGES: DefaultPage[] = [
       block("home-offer", "cards", {
         heading: "What we do",
         text: "",
-        columns: "4",
+        columns: "2",
         style: "outline",
         items: [
-          card("Services", "What you do for clients, in a sentence.", "/services", "See services"),
-          card("Products", "Ready-to-use products and tools.", "/products", "View products"),
           card("Courses", "Training your customers can take at their own pace.", "/courses", "Explore courses"),
           card("Tools directory", "A curated directory of useful tools.", "/tools", "Browse tools"),
         ],
@@ -108,57 +106,6 @@ export const STARTER_PAGES: DefaultPage[] = [
         showAddress: true,
         items: [],
         showContactLink: true,
-      }),
-    ],
-  }),
-  page("/services", "Services", {
-    title: "Services",
-    metaDescription: "Services offered by {{site_name}}.",
-    blocks: [
-      block("services-header", "pageHeader", { eyebrow: "", heading: "Services", text: "What you offer, and who it's for.", align: "left" }),
-      block("services-list", "cards", {
-        heading: "",
-        text: "",
-        columns: "2",
-        style: "outline",
-        items: [
-          card("First service", "What it is and the result a customer gets."),
-          card("Second service", "What it is and the result a customer gets."),
-          card("Third service", "What it is and the result a customer gets."),
-          card("Fourth service", "What it is and the result a customer gets."),
-        ],
-      }),
-      block("services-cta", "cta", { heading: "Tell us what you need.", text: "", buttonLabel: "Book a call", buttonHref: "/book/discovery-call", secondaryLabel: "", secondaryHref: "", style: "card" }),
-    ],
-  }),
-  page("/products", "Products", {
-    title: "Products",
-    metaDescription: "Products and tools from {{site_name}}.",
-    blocks: [
-      block("products-header", "pageHeader", { eyebrow: "", heading: "Products", text: "Products and tools you can use today.", align: "left" }),
-      block("products-list", "cards", {
-        heading: "",
-        text: "",
-        columns: "2",
-        style: "image",
-        items: [card("Your first product", "Describe it, then link it to its own page.", "", "", { badge: "Coming soon" })],
-      }),
-    ],
-  }),
-  page("/resources", "Free resources", {
-    title: "Free Resources",
-    metaDescription: "Free resources from {{site_name}}.",
-    blocks: [
-      block("resources-header", "pageHeader", { eyebrow: "", heading: "Free Resources", text: "Practical material you can use right away.", align: "left" }),
-      block("resources-list", "cards", {
-        heading: "",
-        text: "",
-        columns: "3",
-        style: "outline",
-        items: [
-          card("Prompt & Skill Library", "A searchable library of ready-to-use AI prompts and downloadable agent skills.", "/resources/prompt-skill-library", "Open the library"),
-          card("Guides", "Short, practical guides.", "", "", { badge: "Coming soon" }),
-        ],
       }),
     ],
   }),
@@ -206,11 +153,10 @@ export const BUILT_IN_PAGES: DefaultPage[] = [
       block("reviews-links", "cards", {
         heading: "",
         text: "",
-        columns: "3",
+        columns: "2",
         style: "outline",
         spacing: "compact",
         items: [
-          card("Services", "See what we can do for you.", "/services", "See services", { eyebrow: "Work with us" }),
           card("Courses", "Learn at your own pace.", "/courses", "Browse courses", { eyebrow: "Resources" }),
           card("Blog", "Guides, tips and updates.", "/blog", "Read the blog", { eyebrow: "Free" }),
         ],

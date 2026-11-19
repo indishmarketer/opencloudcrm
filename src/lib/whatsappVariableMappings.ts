@@ -52,14 +52,11 @@ const DYNAMIC_SOURCES: WhatsAppVariableSource[] = [
  * without a code change. Realistic example values are pre-calculated for each
  * source so template submission to Meta is immediate and requires zero manual typing. */
 export async function listWhatsAppVariableSources(): Promise<WhatsAppVariableSource[]> {
-  const [courses, webinars, tools, guides, prompts, posts, sampleContactRes, sampleMeetingRes] = await Promise.all([
+  const [courses, webinars, tools, guides, posts, sampleContactRes, sampleMeetingRes] = await Promise.all([
     pool.query<{ id: number; title: string; slug: string }>("SELECT id, title, slug FROM courses WHERE published = true ORDER BY title"),
     pool.query<{ id: number; title: string; slug: string }>("SELECT id, title, slug FROM webinars WHERE status = 'published' ORDER BY title"),
     pool.query<{ id: number; name: string; slug: string; category_slug: string }>("SELECT t.id, t.name, t.slug, c.slug AS category_slug FROM directory_tools t JOIN directory_categories c ON c.id = t.category_id WHERE t.status = 'published' ORDER BY t.name"),
     pool.query<{ id: number; title: string; slug: string }>("SELECT id, title, slug FROM lead_magnets WHERE published = true ORDER BY title"),
-    pool.query<{ id: number; title: string; slug: string; category: string }>(
-      `SELECT p.id, p.title, p.slug, pc.name AS category FROM prompts p JOIN prompt_categories pc ON pc.id = p.category_id WHERE p.status = 'published' ORDER BY pc.sort_order, p.title`,
-    ),
     getPublicPosts(),
     pool.query<{ name: string | null; email: string | null; phone: string | null; country: string | null }>(
       "SELECT name, email, phone, country FROM contacts WHERE name IS NOT NULL AND trim(name) != '' ORDER BY id DESC LIMIT 1",
@@ -140,11 +137,11 @@ export async function listWhatsAppVariableSources(): Promise<WhatsAppVariableSou
   }
   for (const row of guides.rows) {
     options.push({ key: `resource.guide.${row.id}.title`, label: row.title, group: "Guides · title", value: row.title, exampleValue: row.title, kind: "resource" });
-    options.push({ key: `resource.guide.${row.id}.link`, label: row.title, group: "Guides · links", value: `${SITE_URL}/resources/prompt-skill-library/guides/${row.slug}`, exampleValue: `${SITE_URL}/resources/prompt-skill-library/guides/${row.slug}`, kind: "resource" });
-  }
-  for (const row of prompts.rows) {
-    options.push({ key: `resource.prompt.${row.id}.title`, label: row.title, group: `Prompt library · ${row.category}`, value: row.title, exampleValue: row.title, kind: "resource" });
-    options.push({ key: `resource.prompt.${row.id}.link`, label: row.title, group: `Prompt library · ${row.category}`, value: `${SITE_URL}/resources/prompt-skill-library/browse/prompts/${row.slug}`, exampleValue: `${SITE_URL}/resources/prompt-skill-library/browse/prompts/${row.slug}`, kind: "resource" });
+    // These rows come from lead_magnets -- the free guides -- so the link is
+    // the guide's own page. It pointed into the (now deleted) prompt & skill
+    // library, which was the wrong route for a lead magnet even before that
+    // area was retired, so every guide link sent in WhatsApp was broken.
+    options.push({ key: `resource.guide.${row.id}.link`, label: row.title, group: "Guides · links", value: `${SITE_URL}/guide/${row.slug}`, exampleValue: `${SITE_URL}/guide/${row.slug}`, kind: "resource" });
   }
   return options;
 }

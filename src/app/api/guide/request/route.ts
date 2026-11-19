@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { pageSourceTagFromRequest } from "@/lib/pageSources";
 import { z } from "zod";
 import { checkRateLimit, privateRateLimitKey } from "@/lib/rateLimit";
 import { requestOtp } from "@/lib/otp";
@@ -92,16 +91,19 @@ export async function POST(req: NextRequest) {
       await sendEmail({
         to: email,
         subject: `Your Guide: ${guide.title}`,
+        // Written to read like a person typed it, not like a marketing
+        // template: no centred heading, no pill button, no card. Just
+        // paragraphs and inline links, which is also what keeps it out of
+        // the Promotions tab. The shell in emailShell.ts already supplies
+        // the font, width and colour, so the body stays plain.
         html: `
-          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #0a0a0a; line-height: 1.6;">
-            <h2 style="font-size: 22px; font-weight: 600; margin-bottom: 8px;">Here is your guide, ${safeName}</h2>
-            <p style="font-size: 16px; font-weight: 500; color: #0a0a0a; margin-bottom: 4px;">${safeTitle}</p>
-            <p style="color: #666; margin-bottom: 24px;">${safeHeadline}</p>
-            <div style="margin: 32px 0;">
-              <a href="${downloadUrl}" style="background-color: #0a0a0a; color: #ffffff; padding: 14px 28px; border-radius: 9999px; text-decoration: none; font-weight: 500; font-size: 14px; display: inline-block;">Download Guide (PDF)</a>
-            </div>
-            <p style="color: #888; font-size: 13px; margin-top: 32px;">You can also access your guide anytime at: <a href="${SITE_URL}/guide/${guide.slug}?unlocked=1" style="color: #0a0a0a;">${SITE_URL}/guide/${guide.slug}?unlocked=1</a></p>
-          </div>
+          <p>Hi ${safeName},</p>
+          <p>Here's the guide you asked for — <strong>${safeTitle}</strong>.</p>
+          <p>👉 <a href="${downloadUrl}" style="color:#1a0dab;font-weight:600;">Download it here (PDF)</a></p>
+          <p>${safeHeadline}</p>
+          <p>If that link ever gives you trouble, it also lives on <a href="${SITE_URL}/guide/${guide.slug}?unlocked=1" style="color:#1a0dab;">your guide page</a> — no need to sign in again.</p>
+          <p>Give it a read, and if something in it doesn't land, just hit reply and tell me. It comes straight to me.</p>
+          <p>— Shubho<br>Indish Marketer</p>
         `,
         category: "fixed",
       }).catch((err) => console.error("Direct guide email send failed:", err));
@@ -121,7 +123,12 @@ export async function POST(req: NextRequest) {
   // (via sendEmail -> ensureContact) with no name on it. Someone who opens
   // that email but never returns to finish verifying would otherwise stay
   // permanently nameless even though we had their real name right here.
-  await ensureContact({ source: "guide", sourceDetail: await pageSourceTagFromRequest(req),
+  // The source is the guide they asked for, not the page the popup happened
+  // to be sitting on. The same popup is embedded on the home page and on the
+  // guide's own page, so keying off the Referer recorded "Home page" for most
+  // of these -- which says nothing about what they actually wanted. The exact
+  // guide page is kept as the path so the console links straight to it.
+  await ensureContact({ source: "guide", sourceDetail: { label: "Free guide", path: `/guide/${guide.slug}` },
     email, name, phone: phone || null, phoneSource: phone ? "form" : undefined,
   }).catch((err) => console.error("guide request ensureContact failed (non-fatal):", err));
 

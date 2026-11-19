@@ -308,7 +308,7 @@ const MARKETING_STATUS_LABELS: Record<string, string> = {
   subscribed: "Subscribed",
   pending: "Pending confirmation",
   unsubscribed: "Unsubscribed",
-  unknown: "No opt-in yet",
+  unknown: "Not opted",
 };
 const MARKETING_STATUS_ORDER = ["subscribed", "pending", "unsubscribed", "unknown"];
 
@@ -350,7 +350,7 @@ function SourceTags({ row }: { row: ContactRow }) {
     .filter((source, index, all) => !sameSource(source.label, "Email engagement")
       && all.findIndex((item) => sameSource(item.label, source.label) && item.path === source.path) === index);
   const genericCanonicalPath = (source: ContactSourceTag) =>
-    (sameSource(source.label, "Free guide") && source.path === "/resources")
+    (sameSource(source.label, "Free guide") && source.path === "/guide")
     || (sameSource(source.label, "Contact form") && source.path === "/contact")
     || (sameSource(source.label, "Account signup") && source.path === "/signup");
   const score = (source: ContactSourceTag) => {

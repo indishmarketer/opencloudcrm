@@ -41,7 +41,7 @@ export function hardcodedPageSource(input: string | null | undefined): string {
   if (/^\/book(?:\/|$)/.test(path)) return "Meeting booking";
   if (/^\/newsletter(?:\/|$)/.test(path)) return "Newsletter";
   if (/^\/contact(?:\/|$)/.test(path)) return "Contact page";
-  if (/^\/(?:guide|guides|resources)(?:\/|$)/.test(path)) return "Free guide";
+  if (/^\/(?:guide|guides)(?:\/|$)/.test(path)) return "Free guide";
   if (/^\/(?:directory|tools)(?:\/|$)/.test(path)) return "Tools directory";
   if (/^\/community(?:\/|$)/.test(path)) return "Community";
   if (/^\/reviews?(?:\/|$)/.test(path)) return "Reviews";
@@ -57,7 +57,7 @@ export const HARDCODED_PAGE_SOURCES = [
   { path: MEETING_SOURCE_PATH, label: "Meeting booking" },
   { path: "/newsletter", label: "Newsletter" },
   { path: "/contact", label: "Contact page" },
-  { path: "/resources", label: "Free guide" },
+  { path: "/guide", label: "Free guide" },
   { path: "/directory", label: "Tools directory" },
   { path: "/community", label: "Community" },
   { path: "/reviews", label: "Reviews" },

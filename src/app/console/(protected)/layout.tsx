@@ -41,10 +41,6 @@ const baseNavGroups = [
     ],
   },
   {
-    title: "Resources",
-    links: [{ href: "/console/prompt-library", label: "Prompt & Skill Library" }],
-  },
-  {
     title: "Growth & Marketing",
     links: [
       { href: "/console/sales", label: "Sales" },

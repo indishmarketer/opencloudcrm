@@ -9,8 +9,6 @@ import { pool } from "./db";
 export async function getAllPublicUrls(): Promise<string[]> {
   const staticPaths = [
     "/",
-    "/services",
-    "/products",
     "/courses",
     "/reviews",
     "/blog",

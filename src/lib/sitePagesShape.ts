@@ -36,7 +36,7 @@ export type SitePage = PageSnapshot & {
 export const RESERVED_PATH_PREFIXES = [
   "/_next", "/.well-known", "/account", "/api", "/apply-to-write", "/author", "/blog", "/book", "/community",
   "/console", "/courses", "/f", "/forgot-password", "/guide", "/login", "/newsletter", "/new-newsletter", "/oauth", "/preview",
-  "/privacy-policy", "/refund-policy", "/reset-password", "/resources/prompt-skill-library",
+  "/privacy-policy", "/refund-policy", "/reset-password",
   "/reviews", "/signup", "/terms", "/tools", "/unsubscribe", "/verify", "/verify-email", "/webinars",
   "/sitemap.xml", "/robots.txt", "/llms.txt", "/favicon.ico", "/icon.png", "/apple-icon.png", "/icon.tsx", "/apple-icon.tsx", "/badges", "/images", "/console-assets",
 ];

@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 import { getSessionSecret } from "@/lib/sessionSecret";
 import { buildCspDirectives, withRazorpayUnsafeEval, withOauthAuthorizeFormAction } from "@/config/csp";
+import { isRetiredPublicPath } from "@/lib/retiredFeatures";
 
 const SESSION_COOKIE = "im_session";
 const ADMIN_COOKIE = "im_admin_session";
@@ -57,6 +58,22 @@ function withCsp(res: NextResponse, request: NextRequest): NextResponse {
 }
 
 export async function proxy(request: NextRequest) {
+  // Retired areas answer 410 Gone so search engines drop them. The
+  // catch-all page would otherwise 307 them to "/", which is the worst
+  // possible signal for a deliberately removed URL: a temporary redirect
+  // keeps it indexed, and a mass redirect to the home page reads as a soft
+  // 404 anyway. 410 is unambiguous and permanent, unlike 404. Handled here
+  // rather than in the page because a Next.js page can only produce 404.
+  if (isRetiredPublicPath(request.nextUrl.pathname)) {
+    return withCsp(
+      new NextResponse("This page has been removed.", {
+        status: 410,
+        headers: { "Content-Type": "text/plain; charset=utf-8", "X-Robots-Tag": "noindex" },
+      }),
+      request,
+    );
+  }
+
   if (request.nextUrl.pathname.startsWith("/api/") && !SAFE_METHODS.has(request.method)) {
     const usesCookieAuthentication =
       request.cookies.has(SESSION_COOKIE) || request.cookies.has(ADMIN_COOKIE);

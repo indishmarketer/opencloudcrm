@@ -12,7 +12,6 @@ export async function getPageLinkOptions(): Promise<string[]> {
       "/book/discovery-call",
       "/community/general",
       "/apply-to-write",
-      "/resources/prompt-skill-library",
       "/signup",
       "/login",
     ])

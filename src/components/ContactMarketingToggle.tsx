@@ -12,7 +12,7 @@ const STATUS_LABEL: Record<string, string> = {
   subscribed: "Subscribed",
   unsubscribed: "Unsubscribed",
   pending: "Waiting for confirmation",
-  unknown: "No opt-in yet",
+  unknown: "Not opted",
 };
 
 /** Lets the owner turn marketing email on or off for one contact. Turning it

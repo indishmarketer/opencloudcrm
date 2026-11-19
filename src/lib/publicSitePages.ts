@@ -37,7 +37,6 @@ export const PUBLIC_SITE_PAGES: PublicSitePage[] = [
   // Only the landing page belongs here -- individual prompts/skills/guides
   // are dynamic DB content, registered directly in sitemap.ts (like blog
   // posts) rather than duplicated into this static list.
-  { type: "page", title: "Free Prompt & Skill Library", desc: "A free, public library of ready-to-use AI prompts and downloadable agent skills for images, video, agents, coding, and marketing.", url: "/resources/prompt-skill-library", changeFrequency: "weekly", priority: 0.6 },
   { type: "page", title: "Submit Your Tool", desc: "Submit a tool to the directory.", url: "/tools/submit", changeFrequency: "monthly", priority: 0.3 },
 ];
 

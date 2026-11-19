@@ -240,8 +240,13 @@ export default function GuidePopup({
                 </div>
 
                 <div>
-                  <label htmlFor="guide-phone" className="sr-only">
-                    Phone number (optional)
+                  {/* Visible, not sr-only. The field has always been optional
+                      (the schema marks it optional and submit only validates
+                      a non-empty value), but with the only "optional" wording
+                      hidden from sighted users it sat between two required
+                      fields and read as required too. */}
+                  <label htmlFor="guide-phone" className="mb-1 block text-xs font-medium text-ink-soft">
+                    Phone number <span className="font-normal">(optional)</span>
                   </label>
                   <PhoneInput
                     id="guide-phone"
