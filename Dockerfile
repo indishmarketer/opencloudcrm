@@ -61,6 +61,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 # but needed at runtime so a fresh deploy can create its own schema --
 # see the entrypoint below and scripts/migrate.mjs.
 COPY --from=builder --chown=nextjs:nodejs /app/scripts/migrate.mjs ./scripts/migrate.mjs
+COPY --from=builder --chown=nextjs:nodejs /app/scripts/graceful-server.mjs ./scripts/graceful-server.mjs
 COPY --from=builder --chown=nextjs:nodejs /app/scripts/migrations ./scripts/migrations
 COPY --from=builder --chown=nextjs:nodejs /app/scripts/cron ./scripts/cron
 COPY --from=builder --chown=nextjs:nodejs /app/scripts/submit-search-sitemap.mjs ./scripts/submit-search-sitemap.mjs
@@ -69,6 +70,13 @@ USER nextjs
 EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
+# Stops Next.js installing its own SIGTERM handler, which calls
+# process.exit(143) the instant the signal lands and cuts off whatever
+# requests are in flight. scripts/graceful-server.mjs installs handlers
+# of its own instead -- see the comment at the top of that file for the
+# two measured failure modes this addresses. Setting this WITHOUT that
+# wrapper would leave the container with no SIGTERM handling at all.
+ENV NEXT_MANUAL_SIG_HANDLE=true
 
 # Readiness check for rolling updates. The Compose scheduler overrides it
 # with its own loop health check.
@@ -99,4 +107,11 @@ HEALTHCHECK --interval=5s --timeout=4s --start-period=15s --retries=30 \
 # with "relation ... does not exist" the first time a visitor hits a page
 # that queries it (this is how the WhatsApp tables went missing for
 # people deploying the public repo: nobody had run `npm run migrate`).
-CMD ["sh", "-c", "node scripts/migrate.mjs && node server.js"]
+# `exec` on the second command matters as much as the wrapper does.
+# Without it the shell stays PID 1 and node runs as its child, so a
+# `docker stop` delivers SIGTERM to the shell, which does not forward it.
+# Node never hears the signal, nothing drains, and Docker SIGKILLs the
+# whole container when its timeout expires -- which is what made one
+# observed "Removing old containers" step take 31 seconds. With exec,
+# node replaces the shell and receives the signal directly.
+CMD ["sh", "-c", "node scripts/migrate.mjs && exec node scripts/graceful-server.mjs"]
