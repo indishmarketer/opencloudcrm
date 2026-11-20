@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminSession } from "@/lib/auth";
 import { pool } from "@/lib/db";
-import { sendEmail } from "@/lib/email";
-import { getEmailTemplateOptional, applyTemplateVars } from "@/lib/emailTemplates";
-import { escapeHtml } from "@/lib/escapeHtml";
-import { SITE_URL } from "@/lib/siteMeta";
 import { emitWebhookEvent } from "@/lib/webhookEvents";
+import { sendAuthorApplicationEmail } from "@/lib/authorApplicationEmails";
 
 const ACTIONS = ["approved", "rejected", "request_changes", "accept_draft"] as const;
 type Action = (typeof ACTIONS)[number];
@@ -28,30 +25,23 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   const result = await pool.query(
-    `SELECT aa.id, u.name, u.email FROM author_applications aa
-     JOIN users u ON u.id = aa.user_id WHERE aa.id = $1`,
+    `SELECT aa.id, aa.user_id, aa.access_token,
+            COALESCE(aa.applicant_name, u.name) AS name,
+            COALESCE(aa.applicant_email, u.email) AS email
+     FROM author_applications aa
+     LEFT JOIN users u ON u.id = aa.user_id WHERE aa.id = $1`,
     [id]
   );
   const application = result.rows[0];
   if (!application) return NextResponse.json({ error: "Application not found." }, { status: 404 });
 
-  const submitUrl = `${SITE_URL}/apply-to-write`;
-  const vars = { name: escapeHtml(application.name || ""), submit_url: submitUrl };
-
   if (action === "approved" || action === "rejected") {
     await pool.query("UPDATE author_applications SET status = $1, reviewed_at = now() WHERE id = $2", [action, id]);
-    const tpl = await getEmailTemplateOptional(action === "approved" ? "author-application-approved" : "author-application-rejected");
-    if (tpl) {
-      await sendEmail({
-        to: application.email,
-        subject: applyTemplateVars(tpl.subject, vars),
-        html: applyTemplateVars(tpl.body_html, vars),
-        from: tpl.from_email,
-        templateKey: tpl.key,
-        category: "fixed",
-        trackOpens: tpl.track_opens,
-      });
-    }
+    await sendAuthorApplicationEmail(action, {
+      name: application.name,
+      email: application.email,
+      accessToken: application.access_token,
+    });
     emitWebhookEvent({
       eventType: "author_application.reviewed",
       source: "author_applications",
@@ -68,19 +58,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       "UPDATE author_applications SET status = 'changes_requested', admin_note = $1, reviewed_at = now() WHERE id = $2",
       [note, id]
     );
-    const tpl = await getEmailTemplateOptional("author-application-changes-requested");
-    if (tpl) {
-      const withNote = { ...vars, note: escapeHtml(note as string).replace(/\n/g, "<br>") };
-      await sendEmail({
-        to: application.email,
-        subject: applyTemplateVars(tpl.subject, withNote),
-        html: applyTemplateVars(tpl.body_html, withNote),
-        from: tpl.from_email,
-        templateKey: tpl.key,
-        category: "fixed",
-        trackOpens: tpl.track_opens,
-      });
-    }
+    await sendAuthorApplicationEmail("changes_requested", {
+      name: application.name,
+      email: application.email,
+      accessToken: application.access_token,
+      note,
+    });
     emitWebhookEvent({
       eventType: "author_application.reviewed",
       source: "author_applications",
@@ -94,18 +77,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   // accept_draft
   await pool.query("UPDATE author_applications SET status = 'accepted', reviewed_at = now() WHERE id = $1", [id]);
-  const tpl = await getEmailTemplateOptional("author-application-draft-accepted");
-  if (tpl) {
-    await sendEmail({
-      to: application.email,
-      subject: applyTemplateVars(tpl.subject, vars),
-      html: applyTemplateVars(tpl.body_html, vars),
-      from: tpl.from_email,
-      templateKey: tpl.key,
-      category: "fixed",
-      trackOpens: tpl.track_opens,
-    });
-  }
+  await sendAuthorApplicationEmail("accepted", {
+    name: application.name,
+    email: application.email,
+    accessToken: application.access_token,
+  });
   emitWebhookEvent({
     eventType: "author_application.accepted",
     source: "author_applications",

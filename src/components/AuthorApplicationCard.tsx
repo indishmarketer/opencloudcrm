@@ -13,6 +13,11 @@ const STATUS_LABEL: Record<string, { text: string; cls: string }> = {
   rejected: { text: "Rejected", cls: "bg-paper-soft text-ink-soft" },
 };
 
+function fileSize(bytes: number | null): string {
+  if (!bytes) return "";
+  return bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.ceil(bytes / 1024)} KB`;
+}
+
 export default function AuthorApplicationCard({ application }: { application: AuthorApplication }) {
   const [status, setStatus] = useState(application.status);
   const [adminNote, setAdminNote] = useState(application.admin_note);
@@ -72,6 +77,20 @@ export default function AuthorApplicationCard({ application }: { application: Au
           Writing sample
         </a>
       )}
+      {application.sample_file_name && (
+        <a
+          href={`/api/author-applications/file?id=${application.id}&kind=sample`}
+          className="ml-4 mt-2 inline-block text-sm font-medium underline"
+        >
+          Download {application.sample_file_name} {fileSize(application.sample_file_size) && `(${fileSize(application.sample_file_size)})`}
+        </a>
+      )}
+      {application.sample_text && (
+        <details className="mt-3 rounded-lg bg-paper-soft p-3 text-sm">
+          <summary className="cursor-pointer font-medium text-ink">Pasted writing sample</summary>
+          <p className="mt-3 whitespace-pre-wrap leading-6 text-ink-soft">{application.sample_text}</p>
+        </details>
+      )}
 
       {application.submission_url && (
         <div className="mt-3 rounded-lg bg-paper-soft p-3 text-sm">
@@ -84,6 +103,14 @@ export default function AuthorApplicationCard({ application }: { application: Au
           {application.submission_note && (
             <p className="mt-1 whitespace-pre-wrap text-xs text-ink-soft">{application.submission_note}</p>
           )}
+        </div>
+      )}
+      {application.submission_file_name && (
+        <div className="mt-3 rounded-lg bg-paper-soft p-3 text-sm">
+          <a href={`/api/author-applications/file?id=${application.id}&kind=submission`} className="font-medium underline">
+            Download draft: {application.submission_file_name}
+          </a>
+          {application.submission_note && <p className="mt-1 whitespace-pre-wrap text-xs text-ink-soft">{application.submission_note}</p>}
         </div>
       )}
 
@@ -141,7 +168,7 @@ export default function AuthorApplicationCard({ application }: { application: Au
         <div className="mt-4 flex flex-wrap gap-3">
           <button
             onClick={() => act("accept_draft")}
-            disabled={busy || !application.submission_url}
+            disabled={busy || (!application.submission_url && !application.submission_file_name)}
             className="rounded-full bg-ink px-5 py-2 text-sm font-medium text-paper transition-opacity hover:opacity-80 disabled:opacity-50"
           >
             Accept draft
