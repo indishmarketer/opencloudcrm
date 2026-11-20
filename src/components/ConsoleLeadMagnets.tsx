@@ -119,6 +119,7 @@ function GuideEditor({ mode, onClose }: { mode: EditorMode; onClose: () => void 
   const [uploadingCover, setUploadingCover] = useState(false);
   const [uploadingFile, setUploadingFile] = useState(false);
   const [error, setError] = useState("");
+  const { confirm, dialog } = useConfirm();
 
   async function save() {
     setSaving(true);
@@ -162,10 +163,38 @@ function GuideEditor({ mode, onClose }: { mode: EditorMode; onClose: () => void 
     router.refresh();
   }
 
+  /** Clearing a cover or a PDF outright, rather than by replacing it.
+   * Uploading a replacement already removed the previous object from
+   * storage; this is for taking one down and leaving it down, which is
+   * what swapping a guide out needs before the new file exists. */
+  async function removeAsset(kind: "cover" | "file") {
+    if (mode.kind !== "edit") return;
+    const isCover = kind === "cover";
+    const ok = await confirm({
+      message: isCover
+        ? "Delete this cover image? It is removed from storage permanently and cannot be undone."
+        : published
+          ? "Delete this PDF? It is removed from storage permanently and cannot be undone. This guide is published, so until you upload a replacement it will still take people's email addresses but have nothing to send them."
+          : "Delete this PDF? It is removed from storage permanently and cannot be undone.",
+      confirmLabel: "Delete",
+    });
+    if (!ok) return;
+    setError("");
+    if (isCover) setUploadingCover(true); else setUploadingFile(true);
+    const res = await fetch(`/api/console/lead-magnets/${mode.guide.id}/${kind}`, { method: "DELETE" });
+    const body = await res.json().catch(() => ({}));
+    if (isCover) setUploadingCover(false); else setUploadingFile(false);
+    if (!res.ok) return setError(body.error || "Could not delete that.");
+    if (isCover) setCoverUrl(""); else setFileUrl("");
+    router.refresh();
+  }
+
   const field = "mt-2 w-full rounded-lg border border-line bg-paper px-4 py-2.5 text-sm outline-none focus:border-ink";
+  const removeButton = "mt-2 rounded-full border border-red-300 px-3 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50";
 
   return (
     <ConsoleModal title={mode.kind === "create" ? "New guide" : "Edit guide"} onClose={onClose} wide>
+      {dialog}
       <div className="space-y-4">
         <div>
           <label className="text-sm font-medium">Title</label>
@@ -230,7 +259,12 @@ function GuideEditor({ mode, onClose }: { mode: EditorMode; onClose: () => void 
                 disabled={uploadingCover}
                 className="mt-2 block w-full text-xs text-ink-soft file:mr-3 file:rounded-full file:border file:border-line file:bg-paper file:px-3 file:py-1.5 file:text-xs file:font-medium"
               />
-              {uploadingCover && <p className="mt-1 text-xs text-ink-soft">Uploading…</p>}
+              {coverUrl && (
+                <button type="button" onClick={() => removeAsset("cover")} disabled={uploadingCover} className={removeButton}>
+                  Delete cover image
+                </button>
+              )}
+              {uploadingCover && <p className="mt-1 text-xs text-ink-soft">Working…</p>}
             </div>
             <div>
               <label className="text-sm font-medium">Guide file (PDF)</label>
@@ -246,7 +280,12 @@ function GuideEditor({ mode, onClose }: { mode: EditorMode; onClose: () => void 
                 disabled={uploadingFile}
                 className="mt-2 block w-full text-xs text-ink-soft file:mr-3 file:rounded-full file:border file:border-line file:bg-paper file:px-3 file:py-1.5 file:text-xs file:font-medium"
               />
-              {uploadingFile && <p className="mt-1 text-xs text-ink-soft">Uploading…</p>}
+              {fileUrl && (
+                <button type="button" onClick={() => removeAsset("file")} disabled={uploadingFile} className={removeButton}>
+                  Delete PDF
+                </button>
+              )}
+              {uploadingFile && <p className="mt-1 text-xs text-ink-soft">Working…</p>}
             </div>
           </div>
         ) : (

@@ -35,6 +35,7 @@ const baseNavGroups = [
     title: "Content & Products",
     links: [
       { href: "/console/blog", label: "Blog" },
+      { href: "/console/media", label: "Media Library" },
       { href: "/console/courses", label: "Courses" },
       { href: "/console/directory", label: "Tools directory" },
       { href: "/console/lead-magnets", label: "Free guides" },

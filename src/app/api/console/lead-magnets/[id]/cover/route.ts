@@ -24,3 +24,26 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   return NextResponse.json({ ok: true, url: result.url });
 }
+
+/** Remove the cover without putting another one in its place.
+ *
+ * Replacing a cover already deleted the old object (see the POST above),
+ * so the only gap was clearing one outright. The row is cleared first and
+ * the object deleted second: if the storage call fails, the result is an
+ * orphaned file nobody links to, which is a smaller problem than a row
+ * still pointing at an object that is gone. */
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  if (!(await getAdminSession())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const id = Number((await params).id);
+  if (!Number.isInteger(id) || id <= 0) return NextResponse.json({ error: "Invalid id" }, { status: 400 });
+
+  const guide = await getLeadMagnetById(id);
+  if (!guide) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!guide.cover_image_url) return NextResponse.json({ ok: true });
+
+  await pool.query("UPDATE lead_magnets SET cover_image_url = NULL, updated_at = now() WHERE id = $1", [id]);
+  await deleteFromR2(guide.cover_image_url).catch(() => {});
+
+  return NextResponse.json({ ok: true });
+}
+

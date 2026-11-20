@@ -21,6 +21,20 @@ function UserIcon() {
   );
 }
 
+/** The header CTA on phones. At full width the "Get in touch" pill sat
+ * almost against the wordmark on a narrow screen, so below md the same
+ * link becomes a round button the size of the menu toggle beside it. The
+ * label still travels with it as aria-label, so it reads the same to a
+ * screen reader and the destination is unchanged. */
+function MessageIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={1.75} aria-hidden="true">
+      <path d="M20 14.5a2.5 2.5 0 0 1-2.5 2.5H9l-4 3.5V7.5A2.5 2.5 0 0 1 7.5 5h10A2.5 2.5 0 0 1 20 7.5Z" strokeLinejoin="round" />
+      <path d="M9 10.5h6M9 13.5h3.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 function ChevronIcon({ open }: { open: boolean }) {
   return (
     <svg
@@ -315,12 +329,25 @@ export default function NavClient({
             </div>
           )}
           {ctaLabel && ctaHref && (
-            <Link
-              href={ctaHref}
-              className={`rounded-full bg-accent px-5 py-2 text-sm font-medium text-accent-on shadow-[0_8px_20px_-10px_var(--accent)] transition-opacity hover:opacity-90${loggedIn ? " hidden md:inline-block" : ""}`}
-            >
-              {ctaLabel}
-            </Link>
+            <>
+              {/* Phones: icon only, matching the menu toggle's 36px circle so
+                  the two sit as a pair instead of a wide pill crowding the
+                  wordmark. Hidden when signed in, exactly as the pill was. */}
+              <Link
+                href={ctaHref}
+                aria-label={ctaLabel}
+                title={ctaLabel}
+                className={`${loggedIn ? "hidden" : "flex"} h-9 w-9 items-center justify-center rounded-full bg-accent text-accent-on shadow-[0_8px_20px_-10px_var(--accent)] transition-opacity hover:opacity-90 md:hidden`}
+              >
+                <MessageIcon />
+              </Link>
+              <Link
+                href={ctaHref}
+                className="hidden rounded-full bg-accent px-5 py-2 text-sm font-medium text-accent-on shadow-[0_8px_20px_-10px_var(--accent)] transition-opacity hover:opacity-90 md:inline-block"
+              >
+                {ctaLabel}
+              </Link>
+            </>
           )}
           <button
             type="button"

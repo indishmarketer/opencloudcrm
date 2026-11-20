@@ -24,3 +24,25 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   return NextResponse.json({ ok: true, url: result.url });
 }
+
+/** Remove the PDF without putting another one in its place. Same ordering
+ * as the cover route: clear the row, then delete the object, so a storage
+ * failure leaves an unreferenced file rather than a dead link.
+ *
+ * A published guide with no file still collects the email and still sends
+ * the confirmation, so the console warns before this is used on one. */
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  if (!(await getAdminSession())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const id = Number((await params).id);
+  if (!Number.isInteger(id) || id <= 0) return NextResponse.json({ error: "Invalid id" }, { status: 400 });
+
+  const guide = await getLeadMagnetById(id);
+  if (!guide) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!guide.file_url) return NextResponse.json({ ok: true });
+
+  await pool.query("UPDATE lead_magnets SET file_url = NULL, updated_at = now() WHERE id = $1", [id]);
+  await deleteFromR2(guide.file_url).catch(() => {});
+
+  return NextResponse.json({ ok: true });
+}
+
