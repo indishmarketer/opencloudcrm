@@ -61,7 +61,9 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
   const contact = contactResult.rows[0];
   if (!contact) notFound();
   const contactSources = await pool.query<{ label: string; path: string | null }>(
-    "SELECT label, path FROM contact_sources WHERE contact_id = $1 AND lower(label) <> 'free guide' ORDER BY created_at, id", [contact.id],
+    // Shows every recorded source. The old 'free guide' exclusion hid the
+    // only source a lead-magnet contact has; see the contacts list query.
+    "SELECT label, path FROM contact_sources WHERE contact_id = $1 ORDER BY created_at, id", [contact.id],
   ).then((r) => r.rows).catch(() => []);
   const contactId = Number(contact.id);
   const formSubmissions = await pool.query<{

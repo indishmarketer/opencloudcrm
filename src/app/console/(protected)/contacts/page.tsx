@@ -7,8 +7,12 @@ export default async function ConsoleContactsPage() {
     pool.query(`
       SELECT c.id AS contact_id, c.user_id, c.email, COALESCE(c.name, u.name) AS name, c.phone,
         c.first_seen_at AS first_seen, c.source, c.source_detail, c.marketing_status,
+        -- Every recorded source is shown. "Free guide" used to be filtered
+        -- out here, which meant a lead who came in through a lead magnet had
+        -- its one and only source thrown away and then fell through to
+        -- "Unknown" below, despite contact_sources holding the exact page.
         COALESCE((SELECT json_agg(json_build_object('label', cs.label, 'path', cs.path) ORDER BY cs.created_at, cs.id)
-          FROM contact_sources cs WHERE cs.contact_id = c.id AND lower(cs.label) <> 'free guide'), '[]'::json) AS sources, c.deliverability_status,
+          FROM contact_sources cs WHERE cs.contact_id = c.id), '[]'::json) AS sources, c.deliverability_status,
         -- Code-owned source fallback. Older contacts often predate
         -- contact_sources; infer their real entry point from the canonical
         -- source and linked records instead of presenting them as Unknown.
@@ -22,6 +26,7 @@ export default async function ConsoleContactsPage() {
                 WHEN 'newsletter' THEN 'Newsletter'
                 WHEN 'contact_form' THEN 'Contact form'
                 WHEN 'form' THEN 'Form'
+                WHEN 'guide' THEN 'Free guide'
                 WHEN 'meeting' THEN 'Meeting booking'
                 WHEN 'webinar' THEN 'Webinar'
                 WHEN 'course' THEN 'Course'
@@ -57,6 +62,7 @@ export default async function ConsoleContactsPage() {
                        WHEN ae.landing_page ~ '^/(directory|tools)(?:/|$)' THEN 'Tools directory'
                        WHEN ae.landing_page ~ '^/community(?:/|$)' THEN 'Community'
                        WHEN ae.landing_page ~ '^/reviews?(?:/|$)' THEN 'Reviews'
+                       WHEN ae.landing_page ~ '^/(guide|guides)(?:/|$)' THEN 'Free guide'
                        WHEN ae.landing_page = '/' THEN 'Website'
                        ELSE NULL
                      END AS label,
