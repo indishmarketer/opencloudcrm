@@ -1949,12 +1949,23 @@ const WORKFLOW_STEP_ICONS: React.ReactNode[] = [
       <path strokeLinecap="round" strokeLinejoin="round" d="m3 16.5 9 4.5 9-4.5" />
     </svg>
   ),
-  // 04: Rocket -- it goes live and keeps running
+  // 04: Rocket -- it goes live and keeps running.
+  //
+  // Drawn upright rather than on the usual 45-degree diagonal. The
+  // diagonal rocket every icon set ships reads as a rocket at 32px and
+  // as a dart or a syringe at the 28px these cards use, which is what
+  // the previous glyph here had turned into. Upright keeps nose, body,
+  // fins and exhaust on one axis, so the silhouette survives the size.
+  // Each fin ends on the body's own bottom corner -- (8.2,15) and
+  // (15.8,15) -- so the fin's open side lands on the body outline
+  // instead of leaving a gap or doubling a stroke.
   (
     <svg key="3" className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 10.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M20.5 3.5c-4.6-.4-8 1.2-10.6 4.3l-2.6 3.1 2.8 2.8 3.1-2.6c3.1-2.6 4.7-6 4.3-10.6l3 3Z" transform="translate(0 0)" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9.3 13.7 7 16M6.5 11.2 4 12l1.5 1.5M12.8 17.5 12 20l1.5-1.5M4.5 19.5l2-2" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 2.5c2.4 2.3 3.8 5.4 3.8 8.7V15H8.2v-3.8c0-3.3 1.4-6.4 3.8-8.7Z" />
+      <circle cx="12" cy="9.6" r="1.8" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M8.2 11.9 5.9 14.5a3 3 0 0 0-.8 2v2.2L8.2 15" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15.8 11.9l2.3 2.6a3 3 0 0 1 .8 2v2.2L15.8 15" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 15.4c.1 2 .6 3.4 1.5 4.3.9-.9 1.4-2.3 1.5-4.3" />
     </svg>
   ),
 ];

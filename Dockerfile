@@ -70,9 +70,26 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-# Docker Image applications can use this readiness check for rolling updates.
-# The Compose scheduler overrides it with its own loop health check.
-HEALTHCHECK --interval=10s --timeout=5s --start-period=180s --retries=5 \
+# Readiness check for rolling updates. The Compose scheduler overrides it
+# with its own loop health check.
+#
+# The numbers matter more than they look. A rolling update keeps the old
+# container serving until the new one reports healthy, so this interval is
+# what decides how long BOTH containers sit behind the proxy at once, and
+# during that overlap two different builds of the same Next.js app answer
+# requests round-robin. Their /_next/static chunk filenames are
+# content-hashed, so HTML served by one container asks the other for files
+# it has never heard of. A short interval plus a short start period keeps
+# that window down to seconds.
+#
+# start-period was 180s, which is not a grace period in the usual sense:
+# Coolify sleeps the whole of it before it will even look at the first
+# check, so every deploy cost three minutes and spent all of them with two
+# builds live. This app answers /api/health in roughly 15 seconds from a
+# cold start, migrations included. 15s + 30 retries x 5s still leaves 165
+# seconds before anything is declared unhealthy, which is an order of
+# magnitude more headroom than a real boot needs.
+HEALTHCHECK --interval=5s --timeout=4s --start-period=15s --retries=30 \
   CMD curl -fsS http://127.0.0.1:3000/api/health >/dev/null || exit 1
 
 # Fresh deployments (a new Coolify app pointed at a brand-new Postgres

@@ -38,10 +38,14 @@ services:
       test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
       interval: 10s
       timeout: 5s
-      retries: 5
-      # Initial migrations run before the server starts. Give a new database
-      # enough time without delaying a healthy app's first successful check.
-      start_period: 180s
+      retries: 30
+      # Initial migrations run before the server starts, so a brand-new
+      # database needs real headroom here. 15s + 30 x 10s is 315 seconds
+      # before this container is called unhealthy, while a warm boot is
+      # still detected within about 15. The old 180s start period delayed
+      # the first check instead of only tolerating early failures, which is
+      # the opposite of what it reads like.
+      start_period: 15s
     environment:
       # Required -- see README.md's Deployment section.
       DATABASE_URL: postgres://opencloudcrm:${DB_PASSWORD:?set a DB_PASSWORD}@db:5432/opencloudcrm

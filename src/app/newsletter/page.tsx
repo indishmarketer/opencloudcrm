@@ -7,14 +7,23 @@ import { resolveImage } from "@/lib/images";
 import { SITE_NAME, OG_LOCALE, assetUrl } from "@/config/brand";
 import { SITE_URL } from "@/lib/liveSiteUrl";
 import NewsletterSignupForm from "@/components/NewsletterSignupForm";
+import NewsletterSignupDialog from "@/components/NewsletterSignupDialog";
 
 const OG_IMAGE = assetUrl("newsletter/og-newsletter.png");
+
+/** Path, on the asset domain, of the portrait image beside the hero copy.
+ * Set it to the uploaded file's path (for example
+ * "newsletter/newsletter-hero.webp") and the frame below swaps from the
+ * drawn panel to that photograph with no other change. Left empty the
+ * hero still reads as finished rather than as a hole waiting for art,
+ * which matters because this page is live while the photo is chosen. */
+const HERO_IMAGE_PATH = "";
 
 export const dynamic = "force-dynamic";
 
 const baseMetadata: Metadata = {
   title: "Newsletter by Indish Marketer",
-  description: `Real marketing insights, no fluff. Join ${SITE_NAME}'s free newsletter and get actionable tips delivered to your inbox every week.`,
+  description: `One email every Sunday on building your own marketing systems instead of renting them. Marketing, the server under it, and the AI that builds the rest. Free from ${SITE_NAME}.`,
   alternates: { canonical: `${SITE_URL}/newsletter` },
   openGraph: {
     type: "website",
@@ -22,13 +31,13 @@ const baseMetadata: Metadata = {
     siteName: SITE_NAME,
     locale: OG_LOCALE,
     title: `The ${SITE_NAME} Newsletter`,
-    description: "Real marketing insights, no fluff. Free, every week.",
+    description: "Build it, don't rent it. One email every Sunday, free.",
     images: [{ url: OG_IMAGE, width: 1520, height: 800, alt: `The ${SITE_NAME} newsletter` }],
   },
   twitter: {
     card: "summary_large_image",
     title: `The ${SITE_NAME} Newsletter`,
-    description: "Real marketing insights, no fluff. Free, every week.",
+    description: "Build it, don't rent it. One email every Sunday, free.",
     images: [OG_IMAGE],
   },
 };
@@ -44,8 +53,8 @@ const WHAT_YOU_GET = [
         <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77A5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     ),
-    title: "Real case studies",
-    description: "What actually worked for real Indian businesses. Not theory, actual results.",
+    title: "What I actually built",
+    description: "The thing I shipped that week, what it costs to run, and what broke on the way.",
   },
   {
     icon: (
@@ -53,8 +62,8 @@ const WHAT_YOU_GET = [
         <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     ),
-    title: "Growth tactics",
-    description: "Actionable strategies for growing your audience, email list, and revenue.",
+    title: "The prompts that built it",
+    description: "The exact instructions I gave the AI agent. Copy them and run them yourself.",
   },
   {
     icon: (
@@ -64,8 +73,8 @@ const WHAT_YOU_GET = [
         <line x1="12" y1="16" x2="12.01" y2="16" strokeLinecap="round" strokeWidth="2.5" />
       </svg>
     ),
-    title: "Tools & resources",
-    description: "Hand-picked tools, templates, and resources to save you hours of research.",
+    title: "A bill you can cut",
+    description: "One subscription worth dropping, what replaces it, and what it costs by usage.",
   },
   {
     icon: (
@@ -76,14 +85,14 @@ const WHAT_YOU_GET = [
         <path d="M16 3.13a4 4 0 0 1 0 7.75" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     ),
-    title: "Community insights",
-    description: "Learn from what fellow marketers and creators are doing right now.",
+    title: "Marketing that still sells",
+    description: "Offers, emails and traffic. The part that makes owning the system worth it.",
   },
 ];
 
 const SOCIAL_PROOF = [
-  { stat: "5,000+", label: "Subscribers" },
-  { stat: "Weekly", label: "Delivery" },
+  { stat: "5,000+", label: "Readers" },
+  { stat: "Sunday", label: "Every week" },
   { stat: "Free", label: "Always" },
 ];
 
@@ -106,59 +115,133 @@ export default async function NewsletterPage() {
               opacity: 0.5,
             }}
           />
-          <div className="relative mx-auto max-w-4xl px-6 text-center">
-            {/* The "Free / No spam / Unsubscribe" pill used to sit above the
-                headline, pushing it down and leading with housekeeping
-                instead of the point. The same promise is already in the
-                paragraph below, so the pill is gone and the headline starts
-                the page. max-w-5xl + text-balance keeps it on one line on
-                desktop, where it was breaking after "Marketing that". */}
-            <h1 className="mx-auto max-w-5xl text-balance font-display text-4xl font-semibold leading-tight sm:text-5xl md:text-6xl">
-              Marketing that{" "}
-              <span className="relative inline-block text-accent">
-                actually works
-                <svg
-                  aria-hidden="true"
-                  className="absolute -bottom-2 left-0 w-full"
-                  viewBox="0 0 200 8"
-                  preserveAspectRatio="none"
-                  fill="none"
-                >
-                  <path
-                    d="M2 6 C40 2, 80 7, 120 3 S170 1, 198 5"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    className="text-accent"
+          {/* Two columns from lg up: the pitch on the left, the image on
+              the right. Below lg they stack, copy first. Everything in
+              the left column is left-aligned, the stats row included, so
+              the whole column shares one edge with the headline. */}
+          <div className="relative mx-auto grid max-w-6xl items-center gap-12 px-6 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16">
+            <div className="text-left">
+              <p className="text-xs font-semibold uppercase tracking-widest text-ink-soft">
+                The Sunday email
+              </p>
+
+              {/* One line at every width. whitespace-nowrap is the
+                  guarantee; the clamp is what makes that guarantee
+                  affordable, shrinking the type with the viewport
+                  instead of letting the line break. The old heading
+                  leaned on text-balance, which does not prevent a break,
+                  it only evens the two lines out, which is why this read
+                  as "Marketing that / actually works" on every screen
+                  narrower than about 1100px. The ceiling is set so the
+                  longest line still clears the left column at max-w-6xl,
+                  and the floor so it clears a 360px phone inside px-6. */}
+              <h1 className="mt-4 whitespace-nowrap font-display text-[clamp(1.5rem,3.7vw,2.9rem)] font-semibold leading-tight">
+                Build it,{" "}
+                <span className="relative inline-block text-accent">
+                  don&apos;t rent it
+                  <svg
+                    aria-hidden="true"
+                    className="absolute -bottom-2 left-0 w-full"
+                    viewBox="0 0 200 8"
+                    preserveAspectRatio="none"
+                    fill="none"
+                  >
+                    <path
+                      d="M2 6 C40 2, 80 7, 120 3 S170 1, 198 5"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      className="text-accent"
+                    />
+                  </svg>
+                </span>
+              </h1>
+
+              <p className="mt-7 max-w-xl text-lg text-ink-soft">
+                Join{" "}
+                <strong className="font-semibold text-ink">
+                  5,000+ founders, marketers and creators
+                </strong>{" "}
+                who get one email every Sunday about owning your marketing instead of renting it.
+                One server in your name, a few API keys you pay for by usage, and an AI agent that
+                builds the rest. Free, and you can leave in one click.
+              </p>
+
+              {/* Social proof row */}
+              <div className="mt-8 flex flex-wrap items-center gap-10">
+                {SOCIAL_PROOF.map(({ stat, label }) => (
+                  <div key={label}>
+                    <p className="font-display text-2xl font-semibold">{stat}</p>
+                    <p className="text-xs text-ink-soft">{label}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* The form itself now lives behind this button, in the same
+                  modal shell the blog popup uses. The hero asks for one
+                  decision; the two inputs and the bot check only appear
+                  once that decision is made. The bottom-of-page CTA still
+                  renders the form inline for anyone who read the whole
+                  page first. */}
+              <div className="mt-9">
+                <NewsletterSignupDialog
+                  label="Subscribe for free →"
+                  title="Get the Sunday email"
+                  blurb="One email every Sunday on building the system instead of renting it. Confirm your address and the next issue lands this weekend."
+                />
+              </div>
+
+              <p className="mt-4 text-xs text-ink-soft">
+                We respect your privacy. Unsubscribe with one click, any time.
+              </p>
+            </div>
+
+            {/* Hero image. Set HERO_IMAGE_PATH above to swap the drawn
+                panel for a real photograph: the frame, its border and its
+                aspect ratio are identical either way, so nothing in the
+                layout moves when the image arrives. */}
+            <div className="relative order-first aspect-[5/6] w-full overflow-hidden rounded-[28px] border border-line bg-paper-soft shadow-[0_24px_60px_-40px_rgba(15,10,26,0.5)] lg:order-none">
+              {HERO_IMAGE_PATH ? (
+                <SafeImage
+                  src={assetUrl(HERO_IMAGE_PATH)}
+                  alt="The Indish Marketer newsletter"
+                  fill
+                  priority
+                  sizes="(min-width: 1024px) 45vw, 100vw"
+                  className="object-cover"
+                />
+              ) : (
+                <div className="absolute inset-0 bg-paper-gradient">
+                  <div
+                    aria-hidden="true"
+                    className="absolute inset-0"
+                    style={{
+                      backgroundImage:
+                        "radial-gradient(circle at 1px 1px, var(--color-line,#e5e7eb) 1px, transparent 0)",
+                      backgroundSize: "24px 24px",
+                      opacity: 0.6,
+                    }}
                   />
-                </svg>
-              </span>
-            </h1>
-            <p className="mx-auto mt-6 max-w-xl text-lg text-ink-soft">
-              Join{" "}
-              <strong className="font-semibold text-ink">5,000+ marketers and creators</strong>{" "}
-              who get one email on Sunday about building and marketing your own systems instead of
-              renting tools. Free, and you can leave in one click.
-            </p>
-
-            {/* Social proof row */}
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-6">
-              {SOCIAL_PROOF.map(({ stat, label }) => (
-                <div key={label} className="text-center">
-                  <p className="font-display text-2xl font-semibold">{stat}</p>
-                  <p className="text-xs text-ink-soft">{label}</p>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-5 px-8 text-center">
+                    <span className="flex h-20 w-20 items-center justify-center rounded-3xl border border-accent/25 bg-accent-soft text-accent">
+                      <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+                        <path d="M4 5h16c1.1 0 2 .9 2 2v10c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V7c0-1.1.9-2 2-2Z" strokeLinejoin="round" />
+                        <path d="m2.6 6.4 9.4 6.6 9.4-6.6" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </span>
+                    <p className="font-display text-2xl font-semibold leading-snug">
+                      One email.
+                      <br />
+                      Every Sunday.
+                    </p>
+                    <p className="max-w-xs text-sm text-ink-soft">
+                      Written from a system that runs on one server, a handful of API keys and an
+                      AI agent. The same one serving you this page.
+                    </p>
+                  </div>
                 </div>
-              ))}
+              )}
             </div>
-
-            {/* Sign-up form */}
-            <div className="mx-auto mt-10 max-w-md">
-              <NewsletterSignupForm />
-            </div>
-
-            <p className="mt-4 text-xs text-ink-soft">
-              We respect your privacy. Unsubscribe with one click, any time.
-            </p>
           </div>
         </section>
 
@@ -170,11 +253,11 @@ export default async function NewsletterPage() {
                 What&apos;s inside
               </p>
               <h2 className="mt-2 font-display text-3xl font-semibold">
-                Every issue, every week
+                One email, every Sunday
               </h2>
               <p className="mx-auto mt-3 max-w-xl text-ink-soft">
-                Each newsletter is packed with one big idea, one quick tactic, and one tool
-                worth knowing. Short enough to read in 5 minutes, dense enough to act on.
+                One thing I built that week, the prompts that built it, and one bill you can stop
+                paying. Short enough to read with a coffee, specific enough to copy.
               </p>
             </div>
             <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">

@@ -36,6 +36,24 @@ migrate an existing Compose site or its database.
    Deploy and wait for `running:healthy`. The image applies pending database
    migrations before starting the web server.
 
+   Set the timings to **interval 5s, timeout 4s, start period 15s, retries
+   30**, and treat the start period as the important one. Coolify does not
+   use it the way Docker does. Docker ignores *failing* checks during a
+   start period but accepts a passing one immediately; Coolify sleeps the
+   entire start period before it runs the first check at all. A 180 second
+   start period therefore does not make a deploy safer, it makes every
+   deploy take at least three minutes, and it holds the old and new
+   containers behind the proxy together for all three of them.
+
+   That overlap is not free. Both containers answer the same router, so
+   requests alternate between two different builds, and Next.js names its
+   `/_next/static` chunks after their contents. A page served by the new
+   container can ask the old one for a chunk that only exists in the new
+   build, and get a 404 for a file the page needs to work. Keeping the
+   overlap to seconds instead of minutes is the cheapest way to shrink
+   that; sticky sessions on the Traefik service remove it outright, at the
+   cost of hand-maintained container labels.
+
 ## Schedule background jobs
 
 Create these **Scheduled Tasks** on the standalone application. Coolify runs
