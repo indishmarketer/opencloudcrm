@@ -107,11 +107,13 @@ HEALTHCHECK --interval=5s --timeout=4s --start-period=15s --retries=30 \
 # with "relation ... does not exist" the first time a visitor hits a page
 # that queries it (this is how the WhatsApp tables went missing for
 # people deploying the public repo: nobody had run `npm run migrate`).
-# `exec` on the second command matters as much as the wrapper does.
-# Without it the shell stays PID 1 and node runs as its child, so a
-# `docker stop` delivers SIGTERM to the shell, which does not forward it.
-# Node never hears the signal, nothing drains, and Docker SIGKILLs the
-# whole container when its timeout expires -- which is what made one
-# observed "Removing old containers" step take 31 seconds. With exec,
-# node replaces the shell and receives the signal directly.
+# The `exec` makes explicit what busybox ash already did by luck. Its
+# `-c` handling tail-call-execs a final simple command, so node was in
+# fact already PID 1 here -- verified on the running container, where
+# /proc/1/exe pointed at /usr/local/bin/node rather than at sh. SIGTERM
+# was therefore reaching node all along, and Next.js's own handler
+# exiting on the spot is what cut requests off, which is what the
+# wrapper above addresses. Spelling out the exec keeps that true if the
+# command ever grows a third stage, where the optimisation stops
+# applying and the shell would stay PID 1 and swallow the signal.
 CMD ["sh", "-c", "node scripts/migrate.mjs && exec node scripts/graceful-server.mjs"]
