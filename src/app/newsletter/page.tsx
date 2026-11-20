@@ -11,13 +11,18 @@ import NewsletterSignupDialog from "@/components/NewsletterSignupDialog";
 
 const OG_IMAGE = assetUrl("newsletter/og-newsletter.png");
 
-/** Path, on the asset domain, of the portrait image beside the hero copy.
- * Set it to the uploaded file's path (for example
- * "newsletter/newsletter-hero.webp") and the frame below swaps from the
- * drawn panel to that photograph with no other change. Left empty the
- * hero still reads as finished rather than as a hole waiting for art,
- * which matters because this page is live while the photo is chosen. */
-const HERO_IMAGE_PATH = "";
+/** The illustration beside the hero copy. Empty string falls back to the
+ * drawn panel below, so the hero always reads as finished.
+ *
+ * Deliberately a whole URL and not assetUrl("newsletter/..."). assetUrl
+ * builds on config/brand's ASSET_DOMAIN, which reads
+ * NEXT_PUBLIC_ASSET_DOMAIN -- a build-time value that the image workflow
+ * does not pass, so in production it is frozen at the placeholder and
+ * assetUrl returns images.example.com. That is a real bug with its own
+ * victims (this page's own og:image is pointing there right now) but it
+ * belongs to brand.ts, not here, and routing one hero image around it is
+ * not the place to change how every asset URL on the site is built. */
+const HERO_IMAGE_URL = "https://images.indishmarketer.com/newsletter/32c2c305-10f7-4a33-b37f-51b18883aba9.webp";
 
 export const dynamic = "force-dynamic";
 
@@ -196,21 +201,34 @@ export default async function NewsletterPage() {
               </p>
             </div>
 
-            {/* Hero image. Set HERO_IMAGE_PATH above to swap the drawn
+            {/* Hero image. Set HERO_IMAGE_URL above to swap the drawn
                 panel for a real photograph: the frame, its border and its
                 aspect ratio are identical either way, so nothing in the
                 layout moves when the image arrives. */}
-            <div className="relative order-first aspect-[5/6] w-full overflow-hidden rounded-[28px] border border-line bg-paper-soft shadow-[0_24px_60px_-40px_rgba(15,10,26,0.5)] lg:order-none">
-              {HERO_IMAGE_PATH ? (
+            <div className="relative order-first w-full lg:order-none">
+              {HERO_IMAGE_URL ? (
+                // Intrinsic width/height rather than a fixed-ratio box with
+                // object-cover. The illustration carries labels right at its
+                // left and right edges, and cover would crop whichever side
+                // does not match the frame, taking "AI Systems" and "Revenue"
+                // with it. Sized from its own 1092x1440 it is never cropped
+                // and never letterboxed, and the row below lg keeps its own
+                // height instead of being forced to a guessed ratio.
+                //
+                // No border, fill or shadow either: the artwork is a floating
+                // object on its own light ground, so a card drawn around it
+                // reads as a box that failed to load rather than as a frame.
                 <SafeImage
-                  src={assetUrl(HERO_IMAGE_PATH)}
-                  alt="The Indish Marketer newsletter"
-                  fill
+                  src={HERO_IMAGE_URL}
+                  alt="The Indish Marketer newsletter, bringing together AI systems, marketing, automation and revenue"
+                  width={1092}
+                  height={1440}
                   priority
                   sizes="(min-width: 1024px) 45vw, 100vw"
-                  className="object-cover"
+                  className="mx-auto h-auto w-full max-w-[460px] lg:max-w-none"
                 />
               ) : (
+                <div className="relative aspect-[5/6] w-full overflow-hidden rounded-[28px] border border-line bg-paper-soft shadow-[0_24px_60px_-40px_rgba(15,10,26,0.5)]">
                 <div className="absolute inset-0 bg-paper-gradient">
                   <div
                     aria-hidden="true"
@@ -239,6 +257,7 @@ export default async function NewsletterPage() {
                       AI agent. The same one serving you this page.
                     </p>
                   </div>
+                </div>
                 </div>
               )}
             </div>
