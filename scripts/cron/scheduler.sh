@@ -24,7 +24,6 @@ while :; do
   # The reminder queries decide whether anything is due, so a short cadence
   # does not send duplicate reminders. Their database claims are unique.
   call_job meeting-reminders
-  call_job webinar-reminders
 
   if [ $((minute % 5)) -eq 0 ]; then
     call_job email-dispatch

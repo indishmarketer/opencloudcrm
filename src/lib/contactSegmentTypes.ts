@@ -10,7 +10,6 @@ export const SEGMENT_FIELDS = [
   { value: "whatsapp_status", label: "WhatsApp status", values: ["subscribed", "unsubscribed", "unknown"] },
   { value: "has_phone", label: "Has a phone number", values: ["true", "false"] },
   { value: "has_purchase", label: "Has purchased", values: ["true", "false"] },
-  { value: "community_member", label: "Active community member", values: ["true", "false"] },
   { value: "tool_submitter", label: "Has submitted a tool", values: ["true", "false"] },
   { value: "author_status", label: "Author application status", values: ["any", "pending", "approved", "rejected"] },
   { value: "course_enrolled", label: "Enrolled in course ID", values: [] },
@@ -63,7 +62,7 @@ export function isValidSegmentRule(rule: SegmentRule): boolean {
   if (rule.operator !== "equals" && rule.operator !== "within") return false;
   if (rule.field === "marketing_status") return rule.operator === "equals" && MARKETING_VALUES.has(rule.value);
   if (rule.field === "whatsapp_status") return rule.operator === "equals" && WHATSAPP_VALUES.has(rule.value);
-  if (["has_account", "has_purchase", "community_member", "tool_submitter", "never_engaged", "has_phone"].includes(rule.field)) {
+  if (["has_account", "has_purchase", "tool_submitter", "never_engaged", "has_phone"].includes(rule.field)) {
     return rule.operator === "equals" && BOOLEAN_VALUES.has(rule.value);
   }
   if (rule.field === "author_status") return rule.operator === "equals" && AUTHOR_VALUES.has(rule.value);

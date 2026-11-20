@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { pool } from "@/lib/db";
-import { getProfileById, isModeratorOrAdmin } from "@/lib/community";
+import { getProfileById, isModeratorOrAdmin } from "@/lib/siteMembers";
 import { isConsoleOwner } from "@/lib/consoleAdmins";
 import LogoutButton from "@/components/LogoutButton";
 import AccountDangerZone from "@/components/AccountDangerZone";
@@ -176,7 +176,7 @@ export default async function AccountPage({
       </div>
 
       <div className="mt-10">
-        {activeTab !== "settings" && activeTab !== "community" && (
+        {activeTab !== "settings" && (
           <div className="space-y-6">
             <div className="rounded-2xl border border-line bg-paper-soft p-6">
               <div className="flex items-center justify-between gap-4">
@@ -227,24 +227,6 @@ export default async function AccountPage({
                   })}
                 </div>
               )}
-            </div>
-
-            <div className="rounded-2xl border border-line bg-paper-soft p-6">
-              <div className="flex items-center justify-between gap-4">
-                <div className="min-w-0 flex-1">
-                  <h3 className="font-medium">Community</h3>
-                  <p className="mt-1 text-sm text-ink-soft">
-                    {profile?.username ? `@${profile.username} · ` : ""}{profile?.community_points ?? 0} points
-                    {myPosts > 0 ? ` · ${myPosts} discussion post${myPosts === 1 ? "" : "s"}` : ""}
-                  </p>
-                </div>
-                <Link
-                  href="/community/general"
-                  className="shrink-0 whitespace-nowrap rounded-full border border-line px-4 py-2 text-xs font-medium transition-colors hover:border-ink hover:bg-paper"
-                >
-                  Open community
-                </Link>
-              </div>
             </div>
 
             <div className="rounded-2xl border border-line bg-paper-soft p-6">
@@ -306,32 +288,6 @@ export default async function AccountPage({
           </div>
         )}
 
-        {activeTab === "community" && (
-          <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-paper-soft p-6">
-            <div>
-              <p className="text-sm font-medium">
-                Community profile{profile?.username ? `: @${profile.username}` : " not set up yet"}
-              </p>
-              <p className="mt-1 text-sm text-ink-soft">
-                {isMod ? "Moderator" : "Member"} · {profile?.community_points ?? 0} points
-              </p>
-            </div>
-            <Link
-              href="/community/settings"
-              className="ml-auto rounded-full border border-line px-5 py-2.5 text-sm font-medium transition-colors hover:border-ink hover:bg-paper"
-            >
-              Edit community profile
-            </Link>
-            {isMod && (
-              <Link
-                href="/community/admin"
-                className="rounded-full border border-line px-5 py-2.5 text-sm font-medium transition-colors hover:border-ink hover:bg-paper"
-              >
-                Community admin
-              </Link>
-            )}
-          </div>
-        )}
 
         {activeTab === "settings" && (
           <div className="space-y-6">

@@ -51,8 +51,8 @@ export default async function CourseUnlockedPage({ params }: { params: Promise<{
           )}
           <h1 className="font-display text-3xl font-semibold">You&apos;re in!</h1>
           <p className="mt-3 text-sm text-ink-soft">
-            Payment received. Every module of {course.title} is unlocked, and so is the PRO community, where
-            you can ask questions and talk with other PRO members.
+            Payment received. Every module of {course.title} is unlocked, and you can ask questions
+            underneath any lesson.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Link
@@ -60,12 +60,6 @@ export default async function CourseUnlockedPage({ params }: { params: Promise<{
               className="inline-block rounded-full bg-ink px-6 py-3 text-sm font-medium text-paper transition-opacity hover:opacity-80"
             >
               Start learning
-            </Link>
-            <Link
-              href="/community/pro"
-              className="inline-block rounded-full border border-line px-6 py-3 text-sm font-medium transition-colors hover:border-ink"
-            >
-              Join the PRO community
             </Link>
           </div>
         </>

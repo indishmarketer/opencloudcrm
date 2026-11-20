@@ -5,8 +5,8 @@
  * the copy button, between guide steps) so it reads as internal linking,
  * not an interruption, and (2) a popup that appears the moment someone
  * copies a prompt/skill, with a headline, subheadline, a thumbnail, and a
- * button -- rotating WHAT it offers (newsletter, courses, webinars, a
- * call, community) instead of always the same thing. */
+ * button -- rotating WHAT it offers (newsletter, courses, a call)
+ * instead of always the same thing. */
 export type SignupOffer = {
   headline: string;
   subheadline: string;
@@ -38,28 +38,12 @@ export const SIGNUP_OFFERS: SignupOffer[] = [
     image: `${IMG_BASE}-courses.webp`,
   },
   {
-    headline: "Watch a free live session",
-    subheadline: "We run free webinars on exactly this kind of workflow.",
-    buttonLabel: "See upcoming webinars",
-    linkLabel: "See upcoming webinars",
-    href: "/webinars",
-    image: `${IMG_BASE}-webinars.webp`,
-  },
-  {
     headline: "Want this built for you?",
     subheadline: "A free discovery call to see if we're a good fit for your business.",
     buttonLabel: "Book a free call",
     linkLabel: "Book a free discovery call",
     href: "/book/discovery-call",
     image: `${IMG_BASE}-call.webp`,
-  },
-  {
-    headline: "Trade notes with other builders",
-    subheadline: "A free community of people building the same kind of systems.",
-    buttonLabel: "Join the community",
-    linkLabel: "Join the free community",
-    href: "/community/general",
-    image: `${IMG_BASE}-community.webp`,
   },
 ];
 

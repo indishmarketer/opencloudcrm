@@ -7,8 +7,8 @@ export default async function ConsoleAuthorApplicationsPage() {
   return (
     <div>
       <p className="text-sm text-ink-soft">
-        Members who want to write for the blog. Approving asks them for a draft link, it doesn&apos;t publish
-        anything or grant any access on its own.
+        Public writer applications. Approving emails the applicant a private link where they can submit a draft
+        link or document. It does not publish anything or grant account access.
       </p>
       <div className="mt-6 space-y-4">
         {applications.length === 0 && <p className="text-sm text-ink-soft">No applications yet.</p>}

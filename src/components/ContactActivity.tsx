@@ -18,7 +18,7 @@ export type SourceInfo = { utm_source: string | null; utm_medium: string | null;
 
 type Activity = { id: string; kind: string; title: string; detail: string | null; at: string; href?: string };
 const formatTime = (iso: string) => new Date(iso).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata" });
-const FILTERS = ["All activity", "Email", "WhatsApp", "Courses", "Payments", "Meetings & webinars", "Website", "Source"];
+const FILTERS = ["All activity", "Email", "WhatsApp", "Courses", "Payments", "Meetings", "Website", "Source"];
 const PERIODS = ["Any time", "Today", "7 days", "30 days", "90 days"];
 const FILTER_OPTIONS = FILTERS.map((f) => ({ value: f, label: f }));
 const PERIOD_OPTIONS = PERIODS.map((p) => ({ value: p, label: p }));
@@ -39,7 +39,7 @@ export default function ContactActivity({ contactId, now, emails, whatsapp, what
     ...whatsapp.map((m) => ({ id: `whatsapp-${m.id}`, kind: "WhatsApp", title: `${m.direction === "outbound" ? "Sent" : "Received"} WhatsApp message`, detail: [m.body || "Media message", m.status].filter(Boolean).join(" · "), at: m.created_at, href: `/console/whatsapp/messages/c-${contactId}` })),
     ...courses.map((c) => ({ id: `course-${c.enrollment_id}`, kind: "Courses", title: `Course access: ${c.title}`, detail: `${c.tier} · ${c.completed_lessons}/${c.total_lessons} lessons completed`, at: c.created_at })),
     ...payments.map((p) => ({ id: `payment-${p.id}`, kind: "Payments", title: `Payment: ${p.course_title}`, detail: `${p.amount != null ? `${p.currency || ""} ${p.amount}` : "Amount not recorded"} · ${p.method} · ${p.status}`, at: p.created_at })),
-    ...bookings.map((b) => ({ id: b.id, kind: "Meetings & webinars", title: b.title, detail: b.detail, at: b.at })),
+    ...bookings.map((b) => ({ id: b.id, kind: "Meetings", title: b.title, detail: b.detail, at: b.at })),
     ...timeline.map((t) => ({ id: t.id, kind: "Website", title: t.label, detail: t.detail, at: t.at })),
     ...(source && (source.utm_source || source.utm_medium || source.utm_campaign || source.landing_page || source.referrer) ? [{
       id: "source-first-touch", kind: "Source", title: "First known visit", detail: [source.utm_source && `Source: ${source.utm_source}`, source.utm_medium && `Medium: ${source.utm_medium}`, source.utm_campaign && `Campaign: ${source.utm_campaign}`, source.landing_page && `Page: ${source.landing_page}`, source.referrer && `Referrer: ${source.referrer}`].filter(Boolean).join(" · "), at: source.at,

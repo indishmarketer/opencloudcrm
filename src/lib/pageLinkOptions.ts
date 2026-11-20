@@ -10,7 +10,6 @@ export async function getPageLinkOptions(): Promise<string[]> {
       ...pages.map((p) => p.path || "").filter(Boolean),
       ...BUILT_IN_PAGES.map((p) => p.path),
       "/book/discovery-call",
-      "/community/general",
       "/apply-to-write",
       "/signup",
       "/login",

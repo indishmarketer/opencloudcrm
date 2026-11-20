@@ -14,11 +14,10 @@ export const EMAIL_TRIGGERS = [
   { key: "course_inactivity", label: "Someone is inactive after enrolling / completing a lesson", courseScoped: true },
   { key: "course_completed", label: "Someone completes every accessible lesson in a course", courseScoped: true },
   { key: "newsletter_signup", label: "Someone confirms a newsletter signup", courseScoped: false },
-  { key: "community_inactivity", label: "A community member has not created their first post", courseScoped: false },
 ] as const;
 
 export type EmailTriggerKey = (typeof EMAIL_TRIGGERS)[number]["key"];
-export type AutomationGoal = "none" | "course_pro" | "course_completed" | "community_first_post";
+export type AutomationGoal = "none" | "course_pro" | "course_completed";
 
 function applyVars(text: string, vars: Record<string, string>): string {
   return text.replace(/\{\{(\w+)\}\}/g, (_, key) => escapeHtml(vars[key] ?? ""));
@@ -48,14 +47,6 @@ export async function automationGoalReached(
   courseId: number | null,
 ): Promise<boolean> {
   if (goal === "none") return false;
-  if (goal === "community_first_post") {
-    const result = await pool.query(
-      `SELECT 1 FROM contacts c JOIN forum_posts fp ON fp.user_id = c.user_id
-       WHERE c.normalized_email = lower(trim($1)) LIMIT 1`,
-      [recipientEmail],
-    );
-    return (result.rowCount ?? 0) > 0;
-  }
   if (!courseId) return false;
   if (goal === "course_pro") {
     const result = await pool.query(
@@ -321,102 +312,6 @@ export async function syncCourseInactivityFlows(): Promise<number> {
     }
   } catch (error) {
     console.error("Course inactivity synchronization failed (non-fatal):", error);
-  }
-  return scheduledCount;
-}
-
-/** Schedule the editable first-post journey for active community members.
- * The exit goal is rechecked at dispatch, so posting after scheduling stops it. */
-async function emitCommunityInactivityWorkflowEvents(): Promise<void> {
-  const active = await pool.query("SELECT 1 FROM automation_workflows WHERE trigger_type='event' AND trigger_key='community.member_inactive' AND status='active' AND archived_at IS NULL LIMIT 1");
-  if (!active.rowCount) return;
-  const members = await pool.query(
-    `SELECT cm.id AS membership_id, cm.created_at, u.id AS user_id, u.email, u.name
-     FROM community_memberships cm JOIN users u ON u.id=cm.user_id
-     WHERE cm.status='active' AND NOT EXISTS (SELECT 1 FROM forum_posts fp WHERE fp.user_id=u.id)`
-  );
-  for (const member of members.rows) {
-    await emitWebhookEvent({
-      eventType: "community.member_inactive", source: "community_memberships",
-      sourceRecordId: member.membership_id, occurredAt: member.created_at,
-      contactEmail: member.email, contactName: member.name, userId: member.user_id,
-      data: { membership_id: member.membership_id, email: member.email, name: member.name, community_url: `${SITE_URL}/community` },
-    }).catch((error) => console.error("Community inactivity workflow event failed:", error));
-  }
-}
-
-export async function syncCommunityInactivityFlows(): Promise<number> {
-  let scheduledCount = 0;
-  try {
-    await emitCommunityInactivityWorkflowEvents();
-    const flows = await pool.query(
-      `SELECT id FROM email_flows
-       WHERE trigger_key = 'community_inactivity' AND active = true AND visual_workflow_id IS NULL AND archived_at IS NULL`,
-    );
-    for (const flow of flows.rows) {
-      const steps = await pool.query(
-        "SELECT id, delay_days FROM email_flow_steps WHERE flow_id = $1 AND archived_at IS NULL ORDER BY position, id",
-        [flow.id],
-      );
-      const members = await pool.query(
-        `SELECT cm.id AS membership_id, cm.created_at, u.id AS user_id, u.email, u.name,
-                EXISTS (SELECT 1 FROM forum_posts fp WHERE fp.user_id = u.id) AS has_post
-         FROM community_memberships cm JOIN users u ON u.id = cm.user_id
-         WHERE cm.status = 'active'`,
-      );
-      for (const member of members.rows) {
-        const eventKey = `community-first-post:${member.membership_id}`;
-        const existingRun = await pool.query(
-          "SELECT id FROM email_flow_runs WHERE flow_id = $1 AND event_key = $2 LIMIT 1",
-          [flow.id, eventKey],
-        );
-        if (member.has_post) {
-          if (existingRun.rows[0]) {
-            await pool.query(
-              "UPDATE email_flow_scheduled SET status = 'skipped', skipped_reason = 'First community post created' WHERE run_id = $1 AND status = 'pending'",
-              [existingRun.rows[0].id],
-            );
-            await pool.query(
-              "UPDATE email_flow_runs SET status = 'exited', exit_reason = 'community_first_post', finished_at = now() WHERE id = $1 AND status = 'active'",
-              [existingRun.rows[0].id],
-            );
-          }
-          continue;
-        }
-        const vars = {
-          ...contactMessageValues({ name: member.name, email: member.email }),
-          community_url: `${SITE_URL}/community`,
-        };
-        let run = existingRun;
-        if (!run.rows[0]) {
-          const contactId = await ensureContact({ email: member.email, name: member.name, userId: member.user_id });
-          run = await pool.query(
-            `INSERT INTO email_flow_runs (flow_id, contact_id, recipient_email, event_key, vars)
-             VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-            [flow.id, contactId, member.email.toLowerCase(), eventKey, JSON.stringify(vars)],
-          );
-        }
-        let cumulativeDays = 0;
-        for (const step of steps.rows) {
-          cumulativeDays += Number(step.delay_days);
-          const sendAt = new Date(new Date(member.created_at).getTime() + cumulativeDays * 86400000);
-          const scheduled = await pool.query(
-            "SELECT 1 FROM email_flow_scheduled WHERE run_id = $1 AND step_id = $2 LIMIT 1",
-            [run.rows[0].id, step.id],
-          );
-          if (!scheduled.rowCount) {
-            await pool.query(
-              `INSERT INTO email_flow_scheduled (step_id, run_id, recipient_email, vars, send_at)
-               VALUES ($1, $2, $3, $4, $5)`,
-              [step.id, run.rows[0].id, member.email.toLowerCase(), JSON.stringify(vars), sendAt],
-            );
-            scheduledCount++;
-          }
-        }
-      }
-    }
-  } catch (error) {
-    console.error("Community inactivity synchronization failed (non-fatal):", error);
   }
   return scheduledCount;
 }

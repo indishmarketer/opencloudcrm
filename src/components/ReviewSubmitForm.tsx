@@ -89,7 +89,7 @@ export default function ReviewSubmitForm({
       <div className="rounded-2xl border border-line p-8 text-center">
         <p className="font-display text-lg font-semibold">Log in to leave a review</p>
         <p className="mt-2 text-sm text-ink-soft">
-          One account for courses, community, comments, and reviews. Log in or create one to
+          One account for courses, comments, and reviews. Log in or create one to
           share your experience.
         </p>
         <div className="mt-5 flex justify-center gap-3">

@@ -16,7 +16,6 @@ const SOURCES = [
   { value: "has_account", label: "Account" },
   { value: "has_course", label: "Course" },
   { value: "has_pro_access", label: "PRO access" },
-  { value: "has_community", label: "Community member" },
   { value: "has_newsletter", label: "Newsletter" },
   { value: "has_contact", label: "Contact form" },
   { value: "has_product_lead", label: "Product lead" },
@@ -124,7 +123,6 @@ type ContactRow = {
   has_product_lead: boolean;
   has_account: boolean;
   has_course: boolean;
-  has_community: boolean;
   has_pro_access: boolean;
   /** "courseId:tier" per enrollment. */
   enrollments: string[];
@@ -528,7 +526,7 @@ function ContactsListInner({
 
   const handleDeleteSelected = async () => {
     const ok = await confirm({
-      message: `Are you sure you want to permanently delete ${selectedKeys.size} contact(s)? This will completely remove their account, course access, and community posts.`,
+      message: `Are you sure you want to permanently delete ${selectedKeys.size} contact(s)? This will completely remove their account, course access, and comments.`,
     });
     if (!ok) return;
 

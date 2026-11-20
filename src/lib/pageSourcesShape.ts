@@ -37,6 +37,9 @@ export function hardcodedPageSource(input: string | null | undefined): string {
   if (path === "/") return HOME_SOURCE_LABEL;
   if (/^\/blog(?:\/|$)/.test(path)) return "Blog";
   if (/^\/courses?(?:\/|$)/.test(path)) return "Course";
+  // /webinars and /community no longer exist, but attribution_events rows
+  // written while they did still point at those paths, so the mapping
+  // stays to keep old contacts readable.
   if (/^\/webinars?(?:\/|$)/.test(path)) return "Webinar";
   if (/^\/book(?:\/|$)/.test(path)) return "Meeting booking";
   if (/^\/newsletter(?:\/|$)/.test(path)) return "Newsletter";

@@ -48,14 +48,10 @@ export const EMAIL_ATTRIBUTES: MessageVariable[] = [
     ["join_link", "Meeting link"], ["booking_page", "Booking page"], ["meeting_name", "Meeting name"],
   ].map(([token, label]) => ({ token: `data.${token}`, label, group: "Meetings" })),
   ...[
-    ["webinar_id", "Webinar ID"], ["webinar_title", "Webinar title"],
-    ["webinar_slug", "Webinar slug"], ["session_start_at", "Webinar session start"],
-  ].map(([token, label]) => ({ token: `data.${token}`, label, group: "Webinars" })),
-  ...[
     ["guide", "Guide slug"], ["guide_url", "Guide link"], ["application_id", "Application ID"],
     ["topics", "Application topics"], ["message", "Contact message"],
     ["sample_url", "Writing sample link"], ["submission_url", "Author submission link"],
-    ["community_url", "Community link"], ["form_id", "Form ID"], ["form_name", "Form name"],
+    ["form_id", "Form ID"], ["form_name", "Form name"],
     ["submission_id", "Form submission ID"], ["page_url", "Form page URL"],
   ].map(([token, label]) => ({ token: `data.${token}`, label, group: "Content & forms" })),
   ...[
@@ -100,7 +96,6 @@ export const EMAIL_FLOW_VARIABLES: Record<string, MessageVariable[]> = {
     { token: "current_module", label: "Next module" },
     { token: "current_lesson", label: "Next lesson" },
   ],
-  community_inactivity: [...RECIPIENT_FIELDS, { token: "community_url", label: "Community link" }],
 };
 
 export function contactMessageValues(contact: {

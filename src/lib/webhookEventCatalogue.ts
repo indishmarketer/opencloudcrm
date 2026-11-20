@@ -28,7 +28,6 @@ export const WEBHOOK_EVENT_TYPES = [
   { key: "contact_form.submitted", label: "Contact form submitted", description: "Someone submits the public contact form." },
   { key: "external_webhook.received", label: "External webhook received", description: "A signed inbound webhook reaches this deployment; use the source slug and payload fields in conditions and actions." },
   { key: "meeting.booked", label: "Meeting booked", description: "A visitor books a meeting and receives a confirmed time." },
-  { key: "webinar.registered", label: "Webinar registered", description: "A visitor registers for a webinar session, or moves to a different session time." },
   { key: "author_application.submitted", label: "Author application submitted", description: "Someone applies to write for the blog." },
   { key: "author_application.reviewed", label: "Author application reviewed", description: "An admin approves, rejects, or requests changes on an author application; the status field in the payload tells you which." },
   { key: "author_application.draft_submitted", label: "Author draft submitted", description: "An approved applicant submits (or resubmits) their draft link." },
@@ -38,8 +37,6 @@ export const WEBHOOK_EVENT_TYPES = [
   { key: "directory_tool.published", label: "Tool published", description: "A tool goes live in the directory: you approved it, or an approved paid listing was paid for. Carries the tool name, website and live link. (Submitted, review and payment emails are built in; see Tools directory > Communication.)" },
   { key: "directory_tool.paid", label: "Tool payment received", description: "A paid listing's fee was charged. data.status is \"published\" if it was already approved, otherwise \"pending\" (still awaiting review)." },
   { key: "review.submitted", label: "Review submitted", description: "Someone submits a testimonial/review." },
-  { key: "community.post_created", label: "Community post created", description: "Someone creates a forum post (General or PRO space)." },
-  { key: "community.member_inactive", label: "Community member inactive", description: "An active community member has not created their first post." },
   { key: "lead_magnet.downloaded", label: "Free guide downloaded", description: "Someone verifies their email after requesting a free guide and reaches its download page." },
   { key: "custom_form.submitted", label: "Custom form submitted", description: "Someone submits a form built in Console -> Forms. Can be narrowed to one specific form, or left on any form; the payload carries form_id, form_name and every submitted field for use in conditions and actions." },
 ] as const;

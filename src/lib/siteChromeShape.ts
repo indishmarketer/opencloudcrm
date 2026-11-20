@@ -13,7 +13,7 @@ export type ChromeLink = { label: string; href: string; description: string };
 /** "dropdown": a menu button opening a list of links.
  * "link": a plain top-level link.
  * "resources": the wide panel showing the latest courses, blog
- * categories, webinars and free resources (filled from the database). */
+ * categories and free resources (filled from the database). */
 export type HeaderItem =
   | { type: "dropdown"; label: string; columns: FooterColumn[]; links?: ChromeLink[] }
   | { type: "link"; label: string; href: string }
@@ -48,7 +48,6 @@ export const DEFAULT_SITE_CHROME: SiteChrome = {
           link("Newsletter", "/newsletter", "Updates in your inbox"),
           link("Book a call", "/book/discovery-call", "Find a time to talk"),
           link("Write for us", "/apply-to-write", "Apply to contribute a guest post"),
-          link("Community", "/community/general", "Discuss, ask questions, connect"),
         ] }],
       },
       {
@@ -66,11 +65,11 @@ export const DEFAULT_SITE_CHROME: SiteChrome = {
       { title: "Explore", links: [link("Tools directory", "/tools")] },
       {
         title: "Resources",
-        links: [link("Courses", "/courses"), link("Blog", "/blog"), link("Webinars", "/webinars")],
+        links: [link("Courses", "/courses"), link("Blog", "/blog")],
       },
       {
         title: "Connect",
-        links: [link("Newsletter", "/newsletter"), link("Book a call", "/book/discovery-call"), link("Write for us", "/apply-to-write"), link("Community", "/community/general")],
+        links: [link("Newsletter", "/newsletter"), link("Book a call", "/book/discovery-call"), link("Write for us", "/apply-to-write")],
       },
       { title: "Company", links: [link("About Us", "/about"), link("Contact Us", "/contact"), link("Reviews", "/reviews")] },
       {
@@ -115,7 +114,6 @@ function normalizeHeaderItem(raw: unknown): HeaderItem | null {
     columns: [
       { title: "Courses", links: [link("All courses", "/courses")] },
       { title: "Blog", links: [link("All posts", "/blog")] },
-      { title: "Webinars", links: [link("All webinars", "/webinars")] },
       { title: "Free resources", links: [link("All resources", "/resources")] },
     ],
   };

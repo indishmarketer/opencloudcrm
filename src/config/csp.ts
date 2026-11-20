@@ -42,7 +42,7 @@ export function buildCspDirectives(assetOrigin: string, siteWww: string): string
     "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://connect.facebook.net https://challenges.cloudflare.com https://static.cloudflareinsights.com https://checkout.razorpay.com https://cdn.razorpay.com https://www.paypal.com https://www.paypalobjects.com",
     "script-src-attr 'none'",
     "style-src 'self' 'unsafe-inline'",
-    // image.mux.com: Mux-hosted webinar thumbnails.
+    // image.mux.com: left in place for any historic Mux-hosted thumbnail.
     // The trailing hosts are the "Featured on" badges, every one hotlinked
     // from the directory that issued it. They re-check our homepage for their
     // own domain and pull the listing if it stops appearing, so a local copy

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { pool } from "@/lib/db";
 import { getCourseBySlug, getCourseCurriculum, getUserEnrollment, getCompletedLessonIds, tierSatisfies } from "@/lib/courses";
-import { getUserProAccess } from "@/lib/community";
+import { hasProCourseAccess } from "@/lib/siteMembers";
 import { isConsoleOwner } from "@/lib/consoleAdmins";
 import CourseLessonPlayer from "@/components/CourseLessonPlayer";
 import UnlockProModal from "@/components/UnlockProModal";
@@ -81,7 +81,7 @@ export default async function LessonPage({
   if (priorLocked) redirect(`/account/courses/${slug}`);
 
   const [hasProAccess, resourcesResult] = await Promise.all([
-    getUserProAccess(session.userId),
+    hasProCourseAccess(session.userId),
     pool.query("SELECT id, label, url FROM lesson_resources WHERE lesson_id = $1 ORDER BY position, id", [
       lesson.id,
     ]),
@@ -107,16 +107,6 @@ export default async function LessonPage({
           nextLessonHref={nextHref}
           alreadyCompleted={completedIds.has(lesson.id)}
         />
-      </div>
-
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-line bg-paper-soft px-5 py-4">
-        <p className="text-sm text-ink-soft">Have a question about this lesson? Ask it in the community.</p>
-        <Link
-          href={hasProAccess ? "/community/pro" : "/community/general"}
-          className="shrink-0 whitespace-nowrap rounded-full bg-ink px-4 py-2 text-sm font-medium text-paper transition hover:bg-ink/90"
-        >
-          Go to Community
-        </Link>
       </div>
 
       <LessonResources

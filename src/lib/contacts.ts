@@ -38,6 +38,10 @@ const PHONE_WINS = `EXCLUDED.phone IS NOT NULL AND (
 export const CONTACT_SOURCE_LABELS = {
   synced: "Unknown", email: "Sent an email", manual: "Added by you", import: "Imported", open_source: "Open-source waitlist",
   account: "Account signup", newsletter: "Newsletter", contact_form: "Contact form", form: "Form", guide: "Free guide",
+  // 'webinar' and 'community' stay after those features were removed:
+  // contacts recorded while they existed still carry those values, and a
+  // contact's origin is history, not a live feature. Dropping the labels
+  // would show the raw enum on old records instead of a readable name.
   meeting: "Meeting booking", webinar: "Webinar", course: "Course", tool_submission: "Tool submission", author: "Author application",
   payment: "Payment", review: "Review", community: "Community", event: "Site event",
 } as const;

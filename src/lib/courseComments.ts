@@ -37,7 +37,6 @@ export async function createCourseComment(opts: {
   );
   const commentId: number = result.rows[0].id;
 
-  await pool.query("UPDATE users SET community_points = community_points + 1 WHERE id = $1", [opts.userId]);
 
   // Best-effort: a notification failure must not fail the comment itself.
   try {

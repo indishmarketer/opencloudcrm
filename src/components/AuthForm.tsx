@@ -171,8 +171,8 @@ export default function AuthForm({ mode, design }: { mode: "signup" | "login"; d
           method: "email_password",
           signup_context: interest
             ? "course_interest"
-            : ref || redirect.startsWith("/community")
-              ? "community"
+            : ref
+              ? "referral"
               : "direct",
           destination: redirect,
         });

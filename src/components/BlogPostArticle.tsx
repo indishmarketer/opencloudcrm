@@ -5,7 +5,7 @@ import { resolveImage } from "@/lib/images";
 import { getAuthorViewBySlug, getDefaultAuthorView } from "@/lib/blogAuthors";
 import AuthorByline from "@/components/AuthorByline";
 import ShareButtons from "@/components/ShareButtons";
-import BlogCommentSection from "@/components/community/BlogCommentSection";
+import BlogCommentSection from "@/components/BlogCommentSection";
 import RelatedPosts from "@/components/RelatedPosts";
 import RelatedTools from "@/components/RelatedTools";
 import { getRelatedToolsForPost } from "@/lib/relatedBlogPosts";

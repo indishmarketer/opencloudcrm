@@ -21,7 +21,7 @@ type Course = { id: number; title: string; has_free_tier: boolean };
  *
  * It used to be scattered down the page: a Google review section here, an
  * email composer there, course access buried under the enrolment list, and
- * nothing at all for WhatsApp or community. Worse, the review request
+ * nothing at all for WhatsApp. Worse, the review request
  * fired the moment it was clicked -- a real email to a real person with no
  * way back. Every action here either opens a form or asks first. */
 export default function ContactActions({
@@ -34,7 +34,6 @@ export default function ContactActions({
   whatsappStatus,
   whatsappMessageCount,
   hasGoogleReviewLink,
-  communityActive,
   courses,
   enrollments = [],
   replyToEmail,
@@ -51,7 +50,6 @@ export default function ContactActions({
   whatsappStatus: string;
   whatsappMessageCount: number;
   hasGoogleReviewLink: boolean;
-  communityActive: boolean;
   courses: Course[];
   enrollments?: CourseEnrollment[];
 }) {
@@ -93,31 +91,6 @@ export default function ContactActions({
     }
   }
 
-  async function toggleCommunity() {
-    const ok = await confirm({
-      message: communityActive
-        ? "Remove PRO community access from this contact?"
-        : "Give this contact PRO community access?",
-      confirmLabel: communityActive ? "Remove" : "Give access",
-    });
-    if (!ok) return;
-    setBusy("community");
-    setFeedback(null);
-    const res = await fetch(`/api/console/contacts/${contactId}/community`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ active: !communityActive }),
-    });
-    const body = await res.json().catch(() => ({}));
-    setBusy("");
-    setFeedback(
-      res.ok
-        ? { kind: "ok", text: communityActive ? "PRO community access removed." : "PRO community access given." }
-        : { kind: "error", text: body.error || "Could not change community access." },
-    );
-    if (res.ok) router.refresh();
-  }
-
   const actions = [
     {
       key: "email",
@@ -150,13 +123,6 @@ export default function ContactActions({
           : "Creates an account for them",
       disabled: courses.length === 0,
       onClick: () => setOpen("course"),
-    },
-    {
-      key: "community",
-      label: communityActive ? "Remove community access" : "Give community access",
-      hint: hasAccount ? "Site-wide PRO community" : "Needs an account first",
-      disabled: !hasAccount || busy === "community",
-      onClick: toggleCommunity,
     },
   ];
 

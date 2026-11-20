@@ -97,7 +97,6 @@ function LearnColumn({ title, allHref, allLabel, items, itemHref }: { title: str
  * from Console -> Pages -> Menu & footer (passed in as `items`). */
 export default function NavClient({
   courses,
-  webinars,
   categories,
   items,
   ctaLabel,
@@ -105,10 +104,8 @@ export default function NavClient({
   siteName,
   logoUrl,
   showCourses = true,
-  showWebinars = true,
 }: {
   courses: TeaserItem[];
-  webinars: TeaserItem[];
   categories: TeaserItem[];
   items: HeaderItem[];
   ctaLabel: string;
@@ -116,15 +113,14 @@ export default function NavClient({
   siteName: string;
   logoUrl: string;
   showCourses?: boolean;
-  showWebinars?: boolean;
 }) {
-  // The "resources" mega-panel (Courses/Blog/Webinars/Free resources) only
-  // ever appears in the unsaved default chrome (see DEFAULT_SITE_CHROME) --
+  // The "resources" mega-panel (Courses/Blog/Free resources) only ever
+  // appears in the unsaved default chrome (see DEFAULT_SITE_CHROME) --
   // once nav is customized from the console it's a plain dropdown, already
   // filtered by getPublicSiteChrome. This column count still has to react
-  // to the toggles directly since Courses/Webinars here are hardcoded
-  // panel columns, not chrome links.
-  const resourceColumnCount = 2 + (showCourses ? 1 : 0) + (showWebinars ? 1 : 0);
+  // to the toggle directly since Courses here is a hardcoded panel column,
+  // not a chrome link.
+  const resourceColumnCount = 2 + (showCourses ? 1 : 0);
   const [open, setOpen] = useState(false);
   const [menu, setMenu] = useState<number | null>(null);
   const [authMenuOpen, setAuthMenuOpen] = useState(false);
@@ -289,7 +285,6 @@ export default function NavClient({
           >
             {showCourses && <LearnColumn title="Courses" allHref="/courses" allLabel="View all courses" items={courses} itemHref={(slug) => `/courses/${slug}`} />}
             <LearnColumn title="Blog" allHref="/blog" allLabel="View all posts" items={categories} itemHref={(slug) => `/blog/category/${slug}`} />
-            {showWebinars && <LearnColumn title="Webinars" allHref="/webinars" allLabel="View all webinars" items={webinars} itemHref={(slug) => `/webinars/${slug}`} />}
           </div>
         )}
 
@@ -504,42 +499,6 @@ export default function NavClient({
                           className="border-t border-line px-1 py-2 pt-3 text-sm font-medium text-ink"
                         />
                       </div>
-                    )}
-
-                    {showWebinars && (
-                    <>
-                    <button
-                      type="button"
-                      onClick={() => toggleMobile("learn-webinars")}
-                      aria-expanded={isMobileSectionOpen("learn-webinars")}
-                      className="flex w-full items-center justify-between rounded-lg px-1 py-2 text-sm text-ink-soft"
-                    >
-                      Webinars
-                      <ChevronIcon open={isMobileSectionOpen("learn-webinars")} />
-                    </button>
-                    {isMobileSectionOpen("learn-webinars") && (
-                      <div className="pb-1 pl-2">
-                        <div className="divide-y divide-line">
-                          {webinars.map((w) => (
-                            <Link
-                              key={w.slug}
-                              href={`/webinars/${w.slug}`}
-                              onClick={closeMobile}
-                              className="block px-1 py-2 text-sm text-ink-soft transition-colors hover:text-ink"
-                            >
-                              {w.title}
-                            </Link>
-                          ))}
-                        </div>
-                        <ViewAllLink
-                          href="/webinars"
-                          label="View all webinars"
-                          onClick={closeMobile}
-                          className="border-t border-line px-1 py-2 pt-3 text-sm font-medium text-ink"
-                        />
-                      </div>
-                    )}
-                    </>
                     )}
 
                   </div>

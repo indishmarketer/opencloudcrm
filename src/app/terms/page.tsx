@@ -14,7 +14,7 @@ async function baseMetadata(): Promise<Metadata> {
   return {
     title: "Terms and Conditions",
     description:
-      `The Terms and Conditions covering accounts, course purchases, refunds, community guidelines, and acceptable use for ${SITE_DOMAIN}, operated by ${business.ownerName || business.brand}.`,
+      `The Terms and Conditions covering accounts, course purchases, refunds, comment guidelines, and acceptable use for ${SITE_DOMAIN}, operated by ${business.ownerName || business.brand}.`,
     alternates: { canonical: "/terms" },
   };
 }
@@ -89,15 +89,15 @@ export default async function TermsPage() {
         </section>
 
         <section>
-          <h2>5. Community guidelines</h2>
+          <h2>5. Comment guidelines</h2>
           <p>
-            If you post in the community forum or comment on the blog, you agree to keep it respectful and
+            If you comment on a blog post or a course lesson, you agree to keep it respectful and
             on-topic: no harassment, spam, hate speech, or illegal content. We reserve the right to remove
             content, restrict, or ban accounts that violate these guidelines, at our discretion.
           </p>
           <p>
             You retain ownership of what you post, but you grant us a license to display it on the Site as part
-            of normal operation (for example, showing your post in the forum feed).
+            of normal operation (for example, showing your comment under the post it replies to).
           </p>
         </section>
 

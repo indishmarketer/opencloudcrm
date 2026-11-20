@@ -28,12 +28,6 @@ export function buildSegmentPredicate(rulesInput: unknown, parameterOffset = 1):
         rule.value,
       );
     }
-    if (rule.field === "community_member") {
-      clause = boolExpression(
-        "EXISTS (SELECT 1 FROM community_memberships cm WHERE cm.user_id = c.user_id AND cm.status = 'active')",
-        rule.value,
-      );
-    }
     if (rule.field === "tool_submitter") {
       clause = boolExpression(
         "EXISTS (SELECT 1 FROM directory_tools dt WHERE dt.submitted_by_user_id = c.user_id)",

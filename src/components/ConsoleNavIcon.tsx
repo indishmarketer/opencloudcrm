@@ -25,13 +25,6 @@ const PATHS: Record<string, React.ReactNode> = {
       <path d="m14.5 9.5 3-3M6.5 17.5l3-3M14.5 14.5l3 3M6.5 6.5l3 3" />
     </>
   ),
-  "/console/community": (
-    <>
-      <circle cx="8" cy="9" r="3" />
-      <circle cx="16.5" cy="10" r="2.5" />
-      <path d="M2.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5M15 14c3 0 6 1.5 6 5" />
-    </>
-  ),
   "/console/email": (
     <>
       <rect x="2.5" y="5" width="19" height="14" rx="2" />
@@ -122,12 +115,6 @@ const PATHS: Record<string, React.ReactNode> = {
     <>
       <rect x="3" y="5" width="18" height="16" rx="2" />
       <path d="M3 9.5h18M8 3v4M16 3v4" />
-    </>
-  ),
-  "/console/webinars": (
-    <>
-      <rect x="2.5" y="6" width="13" height="12" rx="2" />
-      <path d="m15.5 11 6-3.5v9l-6-3.5Z" />
     </>
   ),
   "/console/reviews": <path d="m12 3.5 2.6 5.5 6 .8-4.4 4.2 1.1 6-5.3-2.9-5.3 2.9 1.1-6L3.4 9.8l6-.8Z" />,

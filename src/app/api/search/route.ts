@@ -15,7 +15,7 @@ const QUERY_LIMIT = 12;
 /** Built-in routes with their own page-builder row -- a search result
  * under one of these is hidden whenever the owner has taken that page
  * offline, same as any other unpublished page's results would be. */
-const MANAGED_PAGE_PREFIXES = ["/courses", "/webinars", "/reviews", "/tools", "/newsletter"];
+const MANAGED_PAGE_PREFIXES = ["/courses", "/reviews", "/tools", "/newsletter"];
 
 async function offlineManagedPrefixes(): Promise<string[]> {
   const checks = await Promise.all(MANAGED_PAGE_PREFIXES.map(async (p) => ((await getPublishedPage(p)) ? null : p)));
@@ -36,8 +36,8 @@ export async function GET(request: Request) {
   }
 
   // Only records that have a public page are queried. Console, account,
-  // webinar room, checkout, and token-only URLs are deliberately absent.
-  const [courses, tools, webinars, meetingTypes, communityPosts] = await Promise.all([
+  // checkout, and token-only URLs are deliberately absent.
+  const [courses, tools, meetingTypes] = await Promise.all([
     pool.query(
       `SELECT slug, title, COALESCE(subtitle, description) AS description
        FROM courses
@@ -55,24 +55,9 @@ export async function GET(request: Request) {
       [pattern],
     ),
     pool.query(
-      `SELECT slug, title, COALESCE(subtitle, description, seo_description) AS description
-       FROM webinars
-       WHERE status = 'published' AND concat_ws(' ', title, subtitle, description, seo_title, seo_description, slug) ILIKE $1
-       LIMIT ${QUERY_LIMIT}`,
-      [pattern],
-    ),
-    pool.query(
       `SELECT slug, name, description
        FROM meeting_types
        WHERE active = true AND concat_ws(' ', name, description, slug) ILIKE $1
-       LIMIT ${QUERY_LIMIT}`,
-      [pattern],
-    ),
-    pool.query(
-      `SELECT id, title, body
-       FROM forum_posts
-       WHERE space = 'general' AND status = 'approved'
-         AND concat_ws(' ', title, body) ILIKE $1
        LIMIT ${QUERY_LIMIT}`,
       [pattern],
     ),
@@ -81,9 +66,7 @@ export async function GET(request: Request) {
   const databaseResults: SearchResult[] = [
     ...courses.rows.map((row) => ({ type: "course", title: row.title, desc: row.description, url: `/courses/${row.slug}` })),
     ...tools.rows.map((row) => ({ type: "tool", title: row.name, desc: row.description, url: `/tools/${row.category_slug}/${row.slug}` })),
-    ...webinars.rows.map((row) => ({ type: "webinar", title: row.title, desc: row.description, url: `/webinars/${row.slug}` })),
     ...meetingTypes.rows.map((row) => ({ type: "booking", title: row.name, desc: row.description, url: `/book/${row.slug}` })),
-    ...communityPosts.rows.map((row) => ({ type: "community", title: row.title, desc: row.body, url: `/community/general/${row.id}` })),
   ];
 
   const staticContent: SearchResult[] = [

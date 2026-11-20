@@ -7,7 +7,7 @@ import { deleteFromR2 } from "@/lib/r2Upload";
  * instead of deleting it -- see migration 034 for why (payment_claims
  * retention, forum_posts/forum_comments staying up for other people).
  * Explicitly hard-deletes only the genuinely private stuff: DMs,
- * notifications, course progress/enrollment, community membership, and
+ * notifications, course progress/enrollment, and
  * any leftover OTP codes for the old email. Never touches payment_claims,
  * forum_posts, forum_comments, or review_submissions content -- those stay,
  * just now attributed to the anonymized account. */
@@ -23,11 +23,9 @@ export async function deleteOwnAccount(userId: number): Promise<void> {
 
   await withTransaction(async (client) => {
     await client.query("UPDATE review_submissions SET user_id = NULL WHERE user_id = $1", [userId]);
-    await client.query("DELETE FROM direct_messages WHERE sender_id = $1 OR receiver_id = $1", [userId]);
     await client.query("DELETE FROM notifications WHERE user_id = $1", [userId]);
     await client.query("DELETE FROM lesson_progress WHERE user_id = $1", [userId]);
     await client.query("DELETE FROM course_enrollments WHERE user_id = $1", [userId]);
-    await client.query("DELETE FROM community_memberships WHERE user_id = $1", [userId]);
     await client.query("DELETE FROM otp_codes WHERE email = $1", [oldEmail]);
 
     // The other CRM system's trg_sync_user_contact trigger upserts
@@ -65,7 +63,7 @@ export async function exportOwnAccountData(userId: number) {
   const [profile, enrollments, payments, forumPosts, forumComments, reviewsSubmitted, notifications] =
     await Promise.all([
       pool.query(
-        "SELECT email, name, username, bio, created_at, community_points FROM users WHERE id = $1",
+        "SELECT email, name, username, bio, created_at FROM users WHERE id = $1",
         [userId]
       ),
       pool.query(

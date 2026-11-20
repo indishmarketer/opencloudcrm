@@ -178,7 +178,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             everything else this project fixed), which is exactly what was
             happening: the widget never rendered, so no form ever produced
             a token, so every captcha-gated submission (login, signup,
-            contact, newsletter, reviews, directory, webinar registration)
+            contact, newsletter, reviews, directory)
             failed server-side verification. See src/components/
             Turnstile.tsx, which reads this on mount. */}
         <script

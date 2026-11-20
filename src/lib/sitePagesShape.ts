@@ -34,6 +34,9 @@ export type SitePage = PageSnapshot & {
  * one of these (it would never be reachable, or would shadow real
  * functionality). Kept in sync with src/app by test/sitePages.test.mjs. */
 export const RESERVED_PATH_PREFIXES = [
+  // /community and /webinars remain reserved although the features are
+  // gone: both still answer 410 from retiredFeatures, so a page created at
+  // either path would be unreachable and look broken to whoever made it.
   "/_next", "/.well-known", "/account", "/api", "/apply-to-write", "/author", "/blog", "/book", "/community",
   "/console", "/contact", "/courses", "/f", "/forgot-password", "/guide", "/login", "/newsletter", "/new-newsletter", "/oauth", "/preview",
   "/privacy-policy", "/refund-policy", "/reset-password",

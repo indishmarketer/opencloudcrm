@@ -63,7 +63,7 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
   const courseId = trigger.courseScoped ? positiveId(String(body.courseId || "")) : null;
   if (trigger.courseScoped && !courseId) return NextResponse.json({ error: "Choose a course for this trigger." }, { status: 400 });
   const purpose = body.purpose === "marketing" ? "marketing" : "service";
-  const allowedGoals = ["none", "course_pro", "course_completed", "community_first_post"];
+  const allowedGoals = ["none", "course_pro", "course_completed"];
   const goalType = allowedGoals.includes(body.goalType) ? body.goalType : "none";
   const entrySegmentId = body.entrySegmentId ? positiveId(String(body.entrySegmentId)) : null;
   const validConditions = new Set(["always", "opened", "not_opened", "clicked", "not_clicked"]);

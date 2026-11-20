@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useMemo, useState } from "react";
-import Avatar from "@/components/community/Avatar";
+import Avatar from "@/components/MemberAvatar";
 import { timeAgo } from "@/lib/timeAgo";
 import type { LessonFunnelRow, StudentProgress } from "@/lib/courseAnalytics";
 

@@ -6,7 +6,7 @@
  * Deliberately additive only: the console can add extra Disallow/Allow
  * lines and extra sitemap URLs, but can never remove or override the
  * paths robots.ts already hard-blocks (console, account, password reset,
- * the API, private community/webinar areas) -- those protect every
+ * the API, private account areas) -- those protect every
  * deployment's privacy, not just this one's content. normalizeCrawlSettings
  * strips out anything that would touch a protected path, so a bad save
  * here can't make /console crawlable.
@@ -25,10 +25,6 @@ export const PROTECTED_PATH_PREFIXES = [
   "/reset-password",
   "/verify-email",
   "/forgot-password",
-  "/community/pro",
-  "/community/admin",
-  "/community/settings",
-  "/community/messages",
   "/api/",
   "/book/manage",
 ];

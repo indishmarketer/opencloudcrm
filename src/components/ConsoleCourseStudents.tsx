@@ -2,7 +2,7 @@
 
 import { Fragment, useState, useEffect } from "react";
 import Link from "next/link";
-import Avatar from "@/components/community/Avatar";
+import Avatar from "@/components/MemberAvatar";
 import { timeAgo } from "@/lib/timeAgo";
 import ConsoleModal from "@/components/ConsoleModal";
 import BrandSelect from "@/components/BrandSelect";

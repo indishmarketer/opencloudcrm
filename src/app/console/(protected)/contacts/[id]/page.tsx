@@ -114,14 +114,12 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
     enrollments,
     allCourses,
     payments,
-    membership,
     notes,
     deliveries,
     whatsappMessages,
     contactActivities,
     googleLocation,
     meetings,
-    webinarRegs,
   ] = await Promise.all([
     pool.query(
       "SELECT * FROM attribution_events WHERE user_id = $1 OR email = $2 ORDER BY created_at ASC",
@@ -158,12 +156,6 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
       : Promise.resolve({ rows: [] }),
     resolvedUserId
       ? pool.query(
-          "SELECT status, source, current_period_end, created_at FROM community_memberships WHERE user_id = $1",
-          [resolvedUserId],
-        )
-      : Promise.resolve({ rows: [] }),
-    resolvedUserId
-      ? pool.query(
           "SELECT id, body, created_by, created_at FROM contact_notes WHERE user_id = $1 ORDER BY created_at DESC",
           [resolvedUserId],
         )
@@ -191,14 +183,6 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
        WHERE mb.contact_id = $1 ORDER BY mb.scheduled_start DESC`,
       [contactId],
     ),
-    resolvedUserId
-      ? pool.query(
-          `SELECT wa.id, wa.registered_at, wa.session_start_at, w.title
-           FROM webinar_access wa JOIN webinars w ON w.id = wa.webinar_id
-           WHERE wa.user_id = $1 ORDER BY wa.registered_at DESC`,
-          [resolvedUserId],
-        )
-      : Promise.resolve({ rows: [] }),
   ]);
 
   // The conversation itself lives in the WhatsApp inbox; the accordion
@@ -209,7 +193,6 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
   );
 
   const firstTouch = attribution.rows[0];
-  const communityActive = membership.rows[0]?.status === "active";
   const emailEligible = contact.marketing_status !== "unsubscribed" && contact.deliverability_status === "ok";
   // Only an authenticated user's site heartbeat is a live-site signal.
   // contacts.last_seen_at is also touched by imports/forms/console flows and
@@ -270,12 +253,6 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
       title: String(row.meeting_type_name),
       detail: String(row.status),
       at: new Date(row.scheduled_start).toISOString(),
-    })),
-    ...webinarRegs.rows.map((row) => ({
-      id: `webinar-${row.id}`,
-      title: String(row.title),
-      detail: row.session_start_at ? "attended" : "registered",
-      at: new Date(row.registered_at).toISOString(),
     })),
   ].sort((a, b) => b.at.localeCompare(a.at));
 
@@ -403,7 +380,6 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
         whatsappStatus={contact.whatsapp_status}
         whatsappMessageCount={whatsappCount}
         hasGoogleReviewLink={Boolean(googleLocation.rowCount)}
-        communityActive={communityActive}
         courses={allCourses.rows.map((c) => ({
           id: Number(c.id),
           title: String(c.title),

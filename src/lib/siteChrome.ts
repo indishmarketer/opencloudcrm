@@ -15,7 +15,7 @@ export type { SiteChrome } from "@/lib/siteChromeShape";
  * these (or a path under one) is hidden from nav/footer whenever the
  * owner has taken that page offline, same as any other unpublished page
  * would be. */
-const MANAGED_PAGE_PREFIXES = ["/courses", "/webinars", "/reviews", "/tools", "/newsletter"];
+const MANAGED_PAGE_PREFIXES = ["/courses", "/reviews", "/tools", "/newsletter"];
 
 function managedPagePrefixFor(path: string): string | null {
   return MANAGED_PAGE_PREFIXES.find((p) => path === p || path.startsWith(`${p}/`)) || null;
@@ -66,7 +66,7 @@ async function filterHeaderItem(item: HeaderItem): Promise<HeaderItem | null> {
     return columns.length ? { ...item, columns } : null;
   }
   // "resources" only ever appears in the unsaved default chrome (see
-  // DEFAULT_SITE_CHROME); NavClient itself gates its Courses/Webinars
+  // DEFAULT_SITE_CHROME); NavClient itself gates its Courses
   // columns using the flags it's given directly (see Nav.tsx).
   return item;
 }

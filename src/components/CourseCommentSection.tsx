@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import type { CourseComment } from "@/lib/courses";
-import Avatar from "@/components/community/Avatar";
+import Avatar from "@/components/MemberAvatar";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { timeAgo } from "@/lib/timeAgo";
 import { trackEvent } from "@/lib/gtag";
@@ -12,13 +12,7 @@ function AuthorName({ comment }: { comment: CourseComment }) {
   const label = comment.author_name || comment.author_username || "Member";
   return (
     <span className="flex items-center gap-1.5">
-      {comment.author_username ? (
-        <Link href={`/community/${comment.author_username}`} className="font-medium text-ink hover:underline">
-          {label}
-        </Link>
-      ) : (
-        <span className="font-medium text-ink">{label}</span>
-      )}
+      <span className="font-medium text-ink">{label}</span>
       {comment.author_is_creator && (
         <span className="rounded-full border border-red-600 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-red-600">
           Creator

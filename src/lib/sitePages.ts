@@ -379,7 +379,7 @@ export async function publishPage(id: number, actor: string): Promise<SitePage> 
 }
 
 /** Takes a page offline (404) without deleting it -- including a built-in
- * page (courses, webinars, reviews, tools directory, newsletter...): the
+ * page (courses, reviews, tools directory, newsletter...): the
  * owner decides whether their site needs that section at all, same as any
  * other page. Only the homepage can't go offline (see NotLiveYet/"/" --
  * it has its own dedicated empty state instead). */

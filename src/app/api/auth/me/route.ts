@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
-import { isModeratorOrAdmin } from "@/lib/community";
+import { isModeratorOrAdmin } from "@/lib/siteMembers";
 
 export async function GET() {
   const session = await getSession();

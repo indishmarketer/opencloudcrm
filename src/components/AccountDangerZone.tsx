@@ -16,7 +16,7 @@ export default function AccountDangerZone() {
   async function startDelete() {
     const ok = await confirm({
       message:
-        "Delete your account? Your course access, community posts (kept but anonymized), payment records, and everything else tied to your account will be handled per our privacy policy. This can't be undone.",
+        "Delete your account? Your course access, comments (kept but anonymized), payment records, and everything else tied to your account will be handled per our privacy policy. This can't be undone.",
       confirmLabel: "Continue",
     });
     if (ok) {

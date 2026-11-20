@@ -9,7 +9,7 @@ import { createSession, consumeJti, getSessionSecret, safeRedirectPath } from "@
 import { isSsoProvider, exchangeCodeForToken, fetchSsoProfile, ssoCallbackUrl } from "@/lib/sso";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { confirmContactSubscribed, ensureContact, normalizeContactEmail } from "@/lib/contacts";
-import { generateUniqueUsername } from "@/lib/community";
+import { generateUniqueUsername } from "@/lib/siteMembers";
 import { getAttributionFromRequest } from "@/lib/attribution";
 import { normalizeCountry } from "@/lib/countries";
 import { requestOrigin } from "@/lib/requestOrigin";
@@ -125,11 +125,6 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
             const referrerId = referrerRes.rows[0].id;
             if (referrerId !== created.id) {
               await client.query("UPDATE users SET referred_by = $1 WHERE id = $2", [referrerId, created.id]);
-              await client.query(
-                "INSERT INTO community_invites (inviter_id, invitee_id, code) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING",
-                [referrerId, created.id, ref.trim()],
-              );
-              await client.query("UPDATE users SET community_points = community_points + 10 WHERE id = $1", [referrerId]);
             }
           }
         }

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { pool } from "@/lib/db";
-import { emitCourseInactivityEvents, syncCommunityInactivityFlows, syncCourseInactivityFlows } from "@/lib/emailAutomation";
+import { emitCourseInactivityEvents, syncCourseInactivityFlows } from "@/lib/emailAutomation";
 import { dispatchDueEmailWork } from "@/lib/emailDispatcher";
 import { pruneExpiredMedia } from "@/lib/whatsappMedia";
 
@@ -27,7 +27,6 @@ export async function POST(req: NextRequest) {
   // enrollment/lesson progress timestamps (spread per-user, not batch-blasted).
   const courseInactivityEvents = await emitCourseInactivityEvents();
   await syncCourseInactivityFlows();
-  await syncCommunityInactivityFlows();
 
   const dispatch = await dispatchDueEmailWork();
 

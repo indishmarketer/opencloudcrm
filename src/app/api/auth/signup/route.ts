@@ -6,7 +6,7 @@ import { pool, withTransaction } from "@/lib/db";
 import { safeRedirectPath } from "@/lib/auth";
 import { requestOtp } from "@/lib/otp";
 import { verifyTurnstile } from "@/lib/turnstile";
-import { generateUniqueUsername } from "@/lib/community";
+import { generateUniqueUsername } from "@/lib/siteMembers";
 import { getAttributionFromRequest } from "@/lib/attribution";
 import { checkRateLimit, privateRateLimitKey } from "@/lib/rateLimit";
 import { ensureContact, markContactSubscriptionPending } from "@/lib/contacts";
@@ -131,11 +131,6 @@ export async function POST(req: NextRequest) {
           const referrerId = referrerRes.rows[0].id;
           if (referrerId !== user.id) {
             await client.query("UPDATE users SET referred_by = $1 WHERE id = $2", [referrerId, user.id]);
-            await client.query(
-              "INSERT INTO community_invites (inviter_id, invitee_id, code) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING",
-              [referrerId, user.id, ref.trim()]
-            );
-            await client.query("UPDATE users SET community_points = community_points + 10 WHERE id = $1", [referrerId]);
           }
         }
         await client.query("RELEASE SAVEPOINT signup_referral_attempt");

@@ -18,7 +18,6 @@ const TRIGGERS: Record<string, string> = {
   course_inactivity: "Someone is inactive after enrolling / completing a lesson",
   course_completed: "Someone completes every accessible lesson in a course",
   newsletter_signup: "Someone confirms a newsletter signup",
-  community_inactivity: "A community member has not created their first post",
 };
 
 type Step = {
@@ -408,7 +407,6 @@ export default function ConsoleAutomationFlow({ flow, initialSteps, segments, de
                 { value: "course_pro", label: "Stop after PRO access" },
                 { value: "course_completed", label: "Stop after course completion" },
               ] : []),
-              { value: "community_first_post", label: "Stop after first community post" },
             ]} /></div>
           </div>
         </div>

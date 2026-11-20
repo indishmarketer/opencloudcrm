@@ -174,7 +174,7 @@ export default function ConsoleSegments({ segments, courses, campaigns }: { segm
   return (
     <div>
       <div className="flex items-start justify-between gap-4">
-        <p className="max-w-2xl text-sm text-ink-soft">Saved audiences update automatically from contact identity, consent, purchases, courses, community activity, and email engagement. Campaign recipients are frozen when you press Send.</p>
+        <p className="max-w-2xl text-sm text-ink-soft">Saved audiences update automatically from contact identity, consent, purchases, courses, and email engagement. Campaign recipients are frozen when you press Send.</p>
         <button type="button" onClick={() => setEditingId("new")} className="shrink-0 rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-paper">New segment</button>
       </div>
       {editingId === "new" && <div className="mt-5 rounded-2xl border border-line bg-paper p-5"><SegmentEditor courses={courses} campaigns={campaigns} onClose={() => setEditingId(null)} /></div>}

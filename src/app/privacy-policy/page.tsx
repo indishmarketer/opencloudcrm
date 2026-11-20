@@ -46,9 +46,8 @@ export default async function PrivacyPage() {
             password (we never store your password itself), and optionally your name.
           </p>
           <p>
-            <strong>Profile & community information.</strong> If you use the community forum or blog comments,
-            we store your username, avatar, bio, social links, posts, comments, and community activity you
-            choose to share.
+            <strong>Profile information.</strong> If you comment on a blog post or a course lesson, we
+            store your username, avatar, bio, social links, and the comments you choose to post.
           </p>
           <p>
             <strong>Course & payment records.</strong> We store which courses you&apos;re enrolled in, your
@@ -73,7 +72,7 @@ export default async function PrivacyPage() {
             <li>To create and maintain your account, and to grant access to courses you&apos;ve purchased</li>
             <li>To process payments and send purchase confirmations</li>
             <li>To respond to support requests, contact form messages, and author applications</li>
-            <li>To operate the community forum, including moderation and enforcing our Terms</li>
+            <li>To moderate comments and enforce our Terms</li>
             <li>To send you emails about your account, purchases, or (if you&apos;ve opted in) our newsletter</li>
             <li>To understand and improve how the Site performs, using aggregated analytics</li>
             <li>To detect and prevent spam, abuse, and fraudulent activity</li>
@@ -129,8 +128,8 @@ export default async function PrivacyPage() {
               Account Settings
             </Link>{" "}
             &mdash; no need to email us. Deleting your account removes your personal information (name, email,
-            avatar, bio, private messages, notifications) and course/community access; posts and comments you&apos;ve
-            made stay up so other people&apos;s conversations aren&apos;t broken, but are shown as posted by a
+            avatar, bio, notifications) and course access; comments you&apos;ve made stay up so other
+            people&apos;s conversations aren&apos;t broken, but are shown as posted by a
             &ldquo;Deleted user&rdquo; with no link back to you. As noted in section 5, we keep records we&apos;re
             legally required to retain (like a record that a payment was made) even after deletion. You can also
             reach us any time at{" "}

@@ -110,7 +110,7 @@ export default function ReviewsGrid({
             <div className="mt-6 flex items-center gap-3">
               {s.avatar_url ? (
                 // Reviewer avatars are the account's own uploaded avatar_url,
-                // which (like community Avatar.tsx) can be from any host --
+                // which (like MemberAvatar.tsx) can be from any host --
                 // not run through next/image's domain allowlist.
                 // eslint-disable-next-line @next/next/no-img-element
                 <img

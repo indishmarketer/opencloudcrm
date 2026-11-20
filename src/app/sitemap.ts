@@ -16,7 +16,7 @@ import { isRetiredPublicPath } from "@/lib/retiredFeatures";
 /** Built-in routes with their own page-builder row -- excluded from the
  * sitemap (the hub and everything under it) whenever the owner has taken
  * that page offline. */
-const MANAGED_PAGE_PREFIXES = ["/courses", "/webinars", "/reviews", "/tools", "/newsletter"];
+const MANAGED_PAGE_PREFIXES = ["/courses", "/reviews", "/tools", "/newsletter"];
 
 async function safePart<T>(name: string, read: () => Promise<T>, fallback: T): Promise<T> {
   try {

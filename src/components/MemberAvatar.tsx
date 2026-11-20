@@ -1,6 +1,10 @@
+/** The round avatar beside a blog or course comment: the commenter's
+ * uploaded picture when they have one, their initials when they do not.
+ * Distinct from components/Avatar.tsx, which is the WhatsApp inbox's
+ * initials-only chip and takes no image. */
 import { initialsOf } from "@/lib/initials";
 
-export default function Avatar({
+export default function MemberAvatar({
   url,
   name,
   size = 24,

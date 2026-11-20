@@ -83,10 +83,7 @@ export default async function ConsoleContactsPage() {
         EXISTS (SELECT 1 FROM newsletter_subscribers ns WHERE lower(trim(ns.email)) = c.normalized_email) AS has_newsletter,
         EXISTS (SELECT 1 FROM product_leads pl WHERE pl.user_id = c.user_id) AS has_product_lead,
         EXISTS (SELECT 1 FROM course_enrollments ce WHERE ce.user_id = c.user_id) AS has_course,
-        EXISTS (SELECT 1 FROM community_memberships cm WHERE cm.user_id = c.user_id) AS has_community,
-        (EXISTS (SELECT 1 FROM course_enrollments ce WHERE ce.user_id = c.user_id AND ce.tier = 'pro')
-          OR EXISTS (SELECT 1 FROM community_memberships cm WHERE cm.user_id = c.user_id AND cm.status = 'active'
-            AND (cm.current_period_end IS NULL OR cm.current_period_end > now()))) AS has_pro_access,
+        EXISTS (SELECT 1 FROM course_enrollments ce WHERE ce.user_id = c.user_id AND ce.tier = 'pro') AS has_pro_access,
         COALESCE((SELECT array_agg(ce.course_id || ':' || ce.tier) FROM course_enrollments ce WHERE ce.user_id = c.user_id), '{}') AS enrollments,
         EXISTS (SELECT 1 FROM author_applications aa WHERE aa.user_id = c.user_id) AS has_author_application,
         -- India-time days with an email open/click or a signed-in website visit,
@@ -124,7 +121,7 @@ export default async function ConsoleContactsPage() {
       </div>
       <p className="mt-2 text-sm text-ink-soft">
         One canonical contact per normalized email, synchronized across accounts, newsletters, courses,
-        payments, community, author applications, tool submissions, products, and email engagement.
+        payments, author applications, tool submissions, products, and email engagement.
       </p>
       <div className="mt-8">
         <ContactsList rows={result.rows} courses={courses.rows} />

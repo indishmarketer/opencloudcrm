@@ -119,7 +119,7 @@ export default async function ReviewerPage({
       <div className="mt-6 flex items-center gap-4">
         {review.avatar ? (
           // Avatar can be a hand-picked testimonial photo or a user's own
-          // account avatar_url (any host, like community Avatar.tsx) -- not
+          // account avatar_url (any host, like MemberAvatar.tsx) -- not
           // run through next/image's domain allowlist.
           // eslint-disable-next-line @next/next/no-img-element
           <img src={review.avatar} alt={review.name} className="h-16 w-16 rounded-full object-cover" />

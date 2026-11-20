@@ -534,7 +534,7 @@ export default function ToolSubmitForm({
               },
               {
                 title: "You make an account, if you don't have one",
-                body: "It is how you track the listing and ask for edits later. One account covers the courses, the community and the directory. Your typing is saved while you do it.",
+                body: "It is how you track the listing and ask for edits later. One account covers the courses and the directory. Your typing is saved while you do it.",
               },
               {
                 title: "You add screenshots and submit",
@@ -779,8 +779,8 @@ export default function ToolSubmitForm({
           browser. Create an account or log in and we&apos;ll bring you straight back to finish it.
         </p>
         <p className="mt-2 text-xs text-ink-soft">
-          The account is how you track the listing and edit it later. One account covers courses,
-          community and the directory.
+          The account is how you track the listing and edit it later. One account covers courses
+          and the directory.
         </p>
         <div className="mt-5 flex flex-col justify-center gap-3 sm:flex-row">
           <Link

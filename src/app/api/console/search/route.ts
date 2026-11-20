@@ -36,12 +36,12 @@ export async function GET(request: Request) {
     pool.query<{ id: number; name: string }>(
       "SELECT id, name FROM automation_workflows WHERE name ILIKE $1 AND archived_at IS NULL ORDER BY name LIMIT 8", [pattern]),
     pool.query<{ id: number; name: string; email: string; status: string }>(
-      `SELECT aa.id, u.name, u.email, aa.status FROM author_applications aa
-       JOIN users u ON u.id = aa.user_id
-       WHERE concat_ws(' ', u.name, u.email, aa.topics, aa.status) ILIKE $1
+      `SELECT aa.id, COALESCE(aa.applicant_name, u.name) AS name,
+              COALESCE(aa.applicant_email, u.email) AS email, aa.status
+       FROM author_applications aa
+       LEFT JOIN users u ON u.id = aa.user_id
+       WHERE concat_ws(' ', COALESCE(aa.applicant_name, u.name), COALESCE(aa.applicant_email, u.email), aa.topics, aa.status) ILIKE $1
        ORDER BY aa.created_at DESC LIMIT 6`, [pattern]),
-    pool.query<{ slug: string; title: string; status: string }>(
-      "SELECT slug, title, status FROM webinars WHERE concat_ws(' ', title, slug, status) ILIKE $1 ORDER BY created_at DESC LIMIT 5", [pattern]),
     pool.query<{ id: number; name: string; slug: string }>(
       "SELECT id, name, slug FROM meeting_types WHERE concat_ws(' ', name, slug) ILIKE $1 ORDER BY name LIMIT 5", [pattern]),
   ]);
@@ -59,8 +59,7 @@ export async function GET(request: Request) {
   for (const campaign of rows(6) as { id: number; subject: string; status: string }[]) results.push({ title: campaign.subject, href: `/console/email/campaigns/${campaign.id}`, section: "Email campaign", detail: campaign.status });
   for (const workflow of rows(7) as { id: number; name: string }[]) results.push({ title: workflow.name, href: `/console/workflows/${workflow.id}`, section: "Workflow" });
   for (const application of rows(8) as { id: number; name: string; email: string; status: string }[]) results.push({ title: application.name || application.email, href: "/console/blog/applications", section: "Author application", detail: application.status });
-  for (const webinar of rows(9) as { slug: string; title: string; status: string }[]) results.push({ title: webinar.title, href: "/console/webinars", section: "Webinar", detail: webinar.status });
-  for (const meetingType of rows(10) as { id: number; name: string; slug: string }[]) results.push({ title: meetingType.name, href: "/console/meetings/types", section: "Meeting type", detail: meetingType.slug });
+  for (const meetingType of rows(9) as { id: number; name: string; slug: string }[]) results.push({ title: meetingType.name, href: "/console/meetings/types", section: "Meeting type", detail: meetingType.slug });
 
   for (const post of await getUnpublishedDrafts()) {
     if (`${post.title} ${post.slug} ${post.category}`.toLocaleLowerCase().includes(query.toLocaleLowerCase())) {

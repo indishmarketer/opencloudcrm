@@ -14,7 +14,6 @@ const TRIGGERS = [
   { key: "course_inactivity", label: "Someone is inactive after enrolling / completing a lesson", courseScoped: true },
   { key: "course_completed", label: "Someone completes every accessible lesson in a course", courseScoped: true },
   { key: "newsletter_signup", label: "Someone confirms a newsletter signup", courseScoped: false },
-  { key: "community_inactivity", label: "A community member has not created their first post", courseScoped: false },
 ];
 
 type Flow = {

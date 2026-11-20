@@ -2,7 +2,7 @@ import { SignJWT, jwtVerify } from "jose";
 // From its actual source module, not @/lib/auth -- that re-exports the same
 // function but also top-level-imports next/headers, which node:test can't
 // resolve outside Next's own runtime (same root cause documented in
-// outbound-webhooks.md / meetings-and-webinars.md for consoleAdmins.ts).
+// outbound-webhooks.md / meetings.md for consoleAdmins.ts).
 import { getSessionSecret } from "@/lib/sessionSecret";
 
 const secret = () => new TextEncoder().encode(getSessionSecret());

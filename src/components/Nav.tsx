@@ -50,13 +50,9 @@ async function latestBlogCategories() {
 export default async function Nav() {
   const coursesPage = await getPublishedPage("/courses");
   const showCourses = Boolean(coursesPage);
-  const showWebinars = false;
-  const [courses, webinars, categories, chrome, identity] = await Promise.all([
+  const [courses, categories, chrome, identity] = await Promise.all([
     showCourses
       ? buildSafe(async () => (await pool.query("SELECT slug, title FROM courses WHERE published = true ORDER BY created_at DESC LIMIT 3")).rows, [])
-      : Promise.resolve([]),
-    showWebinars
-      ? buildSafe(async () => (await pool.query("SELECT slug, title FROM webinars WHERE status = 'published' ORDER BY created_at DESC LIMIT 3")).rows, [])
       : Promise.resolve([]),
     buildSafe(() => latestBlogCategories(), []),
     getPublicSiteChrome(),
@@ -66,7 +62,6 @@ export default async function Nav() {
   return (
     <NavClient
       courses={courses}
-      webinars={webinars}
       categories={categories}
       items={activeHeaderItems(chrome.header.items)}
       ctaLabel={chrome.header.ctaLabel}
@@ -74,7 +69,6 @@ export default async function Nav() {
       siteName={resolveSiteName(identity)}
       logoUrl={identity.logoUrl}
       showCourses={showCourses}
-      showWebinars={showWebinars}
     />
   );
 }

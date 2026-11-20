@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { pool } from "@/lib/db";
-import { isModeratorOrAdmin } from "@/lib/community";
+import { isModeratorOrAdmin } from "@/lib/siteMembers";
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();

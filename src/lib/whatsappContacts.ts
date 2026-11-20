@@ -18,7 +18,6 @@ export type WhatsAppStatusSource =
   | "signup"
   | "booking"
   | "checkout"
-  | "webinar"
   | "reply_stop"
   | "reply_button"
   | "backfill"

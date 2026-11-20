@@ -197,7 +197,7 @@ export default function GlobalSearch() {
                 </div>
               ) : !query.trim() ? (
                 <div className="p-8 text-center text-sm text-ink-soft">
-                  Search public pages, webinars, courses, tools, and more.
+                  Search public pages, courses, tools, and more.
                 </div>
               ) : null}
             </div>

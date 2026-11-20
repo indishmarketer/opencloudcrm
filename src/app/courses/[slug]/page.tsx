@@ -7,7 +7,7 @@ import { getBlogCategories } from "@/lib/blogCategories";
 import { getAdminSession, getSession } from "@/lib/auth";
 import { pool } from "@/lib/db";
 import { getCourseBySlug, getCourseCurriculum, getUserEnrollment } from "@/lib/courses";
-import { getSiteOwnerProfile } from "@/lib/community";
+import { getSiteOwnerProfile } from "@/lib/siteMembers";
 import { getSiteIdentity, resolveSiteName } from "@/lib/siteIdentity";
 import UnlockProModal from "@/components/UnlockProModal";
 import { checkoutOffer, getCheckoutRegion, accountPhone } from "@/lib/checkoutRegion";
@@ -68,14 +68,14 @@ export default async function CourseLandingPage({ params }: { params: Promise<{ 
   // There's no per-deployment "trainer" record -- show whoever this
   // deployment's console owner (ADMIN_EMAIL) actually is, with a generic
   // fallback (never another deployment's real name/photo/social links)
-  // when they haven't filled in a community profile yet. Was previously
+  // when they haven't filled in their profile yet. Was previously
   // hardcoded to the project maintainer's own identity from src/data/
   // authors.ts, which every fresh self-host inherited unchanged.
   const trainer = {
     name: ownerProfile?.name || resolveSiteName(siteIdentity),
     role: "Course Instructor",
     avatar: ownerProfile?.avatar_url || null,
-    url: ownerProfile?.username ? `/community/${ownerProfile.username}` : null,
+    url: null,
   };
   const [postsIndex, blogCategories] = await Promise.all([getPublicPosts(), getBlogCategories()]);
 

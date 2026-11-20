@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Avatar from "@/components/community/Avatar";
+import Avatar from "@/components/MemberAvatar";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { timeAgo } from "@/lib/timeAgo";
 import type { ConsoleCourseComment } from "@/lib/courseAnalytics";

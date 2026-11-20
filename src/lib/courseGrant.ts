@@ -6,7 +6,7 @@ import { sendEmailWithRetry } from "@/lib/emailOutbox";
 import { getEmailTemplateOptional, applyTemplateVars } from "@/lib/emailTemplates";
 import { firstNameOf } from "@/lib/emailAutomation";
 import { escapeHtml } from "@/lib/escapeHtml";
-import { generateUniqueUsername } from "@/lib/community";
+import { generateUniqueUsername } from "@/lib/siteMembers";
 import { normalizeContactEmail } from "@/lib/contacts";
 import { emitWebhookEvent } from "@/lib/webhookEvents";
 import { SITE_URL } from "@/lib/liveSiteUrl";

@@ -40,21 +40,18 @@ const DYNAMIC_SOURCES: WhatsAppVariableSource[] = [
   { key: "purchase.method", label: "Most recent purchase · payment method", group: "Purchase & access", kind: "activity" },
   { key: "course.latest_title", label: "Most recent enrollment · course name", group: "Courses & access", kind: "activity" },
   { key: "course.latest_access_link", label: "Most recent enrollment · access link", group: "Courses & access", kind: "activity" },
-  { key: "webinar.title", label: "Most recent webinar registration · title", group: "Webinars", kind: "activity" },
-  { key: "webinar.link", label: "Most recent webinar registration · link", group: "Webinars", kind: "activity" },
   { key: "review.google_review_url", label: "Official Google review link", group: "Reviews", kind: "resource" },
   { key: "custom", label: "Custom fixed text or URL", group: "Custom / external", kind: "custom" },
 ];
 
 /** The editor's dynamic CRM fields plus live internal content. Search/filter is
  * done in the editor, while the list itself always reflects current published
- * records so future courses, posts, webinars, tools, guides, and prompts appear
+ * records so future courses, posts, tools, guides, and prompts appear
  * without a code change. Realistic example values are pre-calculated for each
  * source so template submission to Meta is immediate and requires zero manual typing. */
 export async function listWhatsAppVariableSources(): Promise<WhatsAppVariableSource[]> {
-  const [courses, webinars, tools, guides, posts, sampleContactRes, sampleMeetingRes] = await Promise.all([
+  const [courses, tools, guides, posts, sampleContactRes, sampleMeetingRes] = await Promise.all([
     pool.query<{ id: number; title: string; slug: string }>("SELECT id, title, slug FROM courses WHERE published = true ORDER BY title"),
-    pool.query<{ id: number; title: string; slug: string }>("SELECT id, title, slug FROM webinars WHERE status = 'published' ORDER BY title"),
     pool.query<{ id: number; name: string; slug: string; category_slug: string }>("SELECT t.id, t.name, t.slug, c.slug AS category_slug FROM directory_tools t JOIN directory_categories c ON c.id = t.category_id WHERE t.status = 'published' ORDER BY t.name"),
     pool.query<{ id: number; title: string; slug: string }>("SELECT id, title, slug FROM lead_magnets WHERE published = true ORDER BY title"),
     getPublicPosts(),
@@ -83,10 +80,6 @@ export async function listWhatsAppVariableSources(): Promise<WhatsAppVariableSou
   const courseTitle = firstCourse?.title || "Full Stack Marketing Masterclass";
   const courseSlug = firstCourse?.slug || "full-stack-marketing";
 
-  const firstWebinar = webinars.rows[0];
-  const webinarTitle = firstWebinar?.title || "AI Marketing Masterclass";
-  const webinarSlug = firstWebinar?.slug || "ai-marketing-masterclass";
-
   const dynamicExamples: Record<string, string> = {
     "contact.first_name": sampleFirstName,
     "contact.last_name": sampleLastName,
@@ -107,8 +100,6 @@ export async function listWhatsAppVariableSources(): Promise<WhatsAppVariableSou
     "purchase.method": "UPI",
     "course.latest_title": courseTitle,
     "course.latest_access_link": `${SITE_URL}/account/courses/${courseSlug}`,
-    "webinar.title": webinarTitle,
-    "webinar.link": `${SITE_URL}/webinars/${webinarSlug}`,
     "review.google_review_url": "https://g.page/r/example/review",
     "custom": "",
   };
@@ -126,10 +117,6 @@ export async function listWhatsAppVariableSources(): Promise<WhatsAppVariableSou
   for (const row of posts) {
     options.push({ key: `resource.blog.${row.slug}.title`, label: row.title, group: "Blog posts · title", value: row.title, exampleValue: row.title, kind: "resource" });
     options.push({ key: `resource.blog.${row.slug}.link`, label: row.title, group: "Blog posts · links", value: `${SITE_URL}/blog/${row.slug}`, exampleValue: `${SITE_URL}/blog/${row.slug}`, kind: "resource" });
-  }
-  for (const row of webinars.rows) {
-    options.push({ key: `resource.webinar.${row.id}.title`, label: row.title, group: "Webinars · title", value: row.title, exampleValue: row.title, kind: "resource" });
-    options.push({ key: `resource.webinar.${row.id}.link`, label: row.title, group: "Webinars · links", value: `${SITE_URL}/webinars/${row.slug}`, exampleValue: `${SITE_URL}/webinars/${row.slug}`, kind: "resource" });
   }
   for (const row of tools.rows) {
     options.push({ key: `resource.tool.${row.id}.title`, label: row.name, group: "Tools · title", value: row.name, exampleValue: row.name, kind: "resource" });
@@ -211,10 +198,6 @@ export async function resolveWhatsAppVariableMappings(
         WHERE ce.user_id = c.user_id ORDER BY ce.created_at DESC, ce.id DESC LIMIT 1) AS latest_course_title,
        (SELECT co.slug FROM course_enrollments ce JOIN courses co ON co.id = ce.course_id
         WHERE ce.user_id = c.user_id ORDER BY ce.created_at DESC, ce.id DESC LIMIT 1) AS latest_course_slug,
-       (SELECT w.title FROM webinar_access wa JOIN webinars w ON w.id = wa.webinar_id
-        WHERE wa.user_id = c.user_id ORDER BY wa.registered_at DESC, wa.id DESC LIMIT 1) AS webinar_title,
-       (SELECT w.slug FROM webinar_access wa JOIN webinars w ON w.id = wa.webinar_id
-        WHERE wa.user_id = c.user_id ORDER BY wa.registered_at DESC, wa.id DESC LIMIT 1) AS webinar_slug,
        (SELECT value FROM site_settings WHERE key = 'google_review_url' LIMIT 1) AS google_review_url
      FROM contacts c WHERE c.id = $1 LIMIT 1`,
     [contactId],
@@ -248,8 +231,6 @@ export async function resolveWhatsAppVariableMappings(
     "purchase.method": String(row.payment_method || ""),
     "course.latest_title": String(row.latest_course_title || ""),
     "course.latest_access_link": row.latest_course_slug ? `${SITE_URL}/account/courses/${row.latest_course_slug}` : "",
-    "webinar.title": String(row.webinar_title || ""),
-    "webinar.link": row.webinar_slug ? `${SITE_URL}/webinars/${row.webinar_slug}` : "",
     "review.google_review_url": String(row.google_review_url || ""),
   };
 

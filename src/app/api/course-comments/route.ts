@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/rateLimit";
-import { isBanned } from "@/lib/community";
 import { listCourseComments, canCommentOnLesson } from "@/lib/courses";
 import { createCourseComment } from "@/lib/courseComments";
 
@@ -28,10 +27,6 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  if (await isBanned(session.userId)) {
-    return NextResponse.json({ error: "You've been restricted from posting in the community." }, { status: 403 });
-  }
 
   if (!(await checkRateLimit(`course-comment:${session.userId}`, 20, 10 * 60 * 1000))) {
     return NextResponse.json({ error: "Too many comments. Try again later." }, { status: 429 });

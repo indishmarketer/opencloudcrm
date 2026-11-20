@@ -21,7 +21,6 @@ call_job() {
 case "${1:-}" in
   minute)
     call_job meeting-reminders
-    call_job webinar-reminders
     ;;
   five-minute)
     call_job email-dispatch

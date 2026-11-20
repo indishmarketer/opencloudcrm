@@ -67,7 +67,7 @@ export async function POST(req: Request) {
           await client.query(`DELETE FROM contact_submissions WHERE email = ANY($1::text[])`, [matchedEmails]);
         }
 
-        // Finally, delete the users themselves (cascades to enrollments, community, progress, etc.)
+        // Finally, delete the users themselves (cascades to enrollments, progress, etc.)
         await client.query(`DELETE FROM users WHERE id = ANY($1::int[])`, [userIds]);
       }
 

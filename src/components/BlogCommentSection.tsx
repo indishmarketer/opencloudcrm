@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import type { BlogComment } from "@/lib/community";
+import type { BlogComment } from "@/lib/siteMembers";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { trackEvent } from "@/lib/gtag";
 
@@ -17,12 +17,7 @@ function timeAgo(iso: string) {
 }
 
 function AuthorName({ name, username }: { name: string | null; username: string | null }) {
-  if (!username) return <span className="font-medium text-ink">{name || "Member"}</span>;
-  return (
-    <Link href={`/community/${username}`} className="font-medium text-ink hover:underline">
-      {name || username}
-    </Link>
-  );
+  return <span className="font-medium text-ink">{name || username || "Member"}</span>;
 }
 
 function DeleteCommentButton({ commentId, onDeleted }: { commentId: number; onDeleted: () => void }) {

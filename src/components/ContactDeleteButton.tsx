@@ -19,7 +19,7 @@ export default function ContactDeleteButton({ contactId, label, hasAccount }: {
   async function handleDelete() {
     const ok = await confirm({
       message: hasAccount
-        ? `Permanently delete ${label}? This removes the contact and their account, course access, community posts and email history.`
+        ? `Permanently delete ${label}? This removes the contact and their account, course access, comments and email history.`
         : `Permanently delete ${label}? This removes the contact and their email history.`,
       confirmLabel: "Delete",
     });

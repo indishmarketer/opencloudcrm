@@ -494,7 +494,7 @@ async function executeRun(run: { id: number; workflow_id: number; trigger_payloa
       return { __workflowExited: true, reason: "Verification request source does not match." };
     }
     const recipientEmail = String(payload.contact?.email || payload.email || "").trim().toLowerCase();
-    const goalType = String(triggerConfig.goalType || "none") as "none" | "course_pro" | "course_completed" | "community_first_post";
+    const goalType = String(triggerConfig.goalType || "none") as "none" | "course_pro" | "course_completed";
     if (goalType !== "none" && recipientEmail && await automationGoalReached(goalType, recipientEmail, Number(triggerConfig.courseId) || null)) {
       return { __workflowExited: true, reason: "Entry goal already reached." };
     }
@@ -533,7 +533,7 @@ async function executeRun(run: { id: number; workflow_id: number; trigger_payloa
     visited.add(node.id);
     if (!test && ["email", "whatsapp", "google_review_request"].includes(node.data.kind)) {
       const triggerConfig = trigger.data.config;
-      const goalType = String(triggerConfig.goalType || "none") as "none" | "course_pro" | "course_completed" | "community_first_post";
+      const goalType = String(triggerConfig.goalType || "none") as "none" | "course_pro" | "course_completed";
       const recipientEmail = String(payload.contact?.email || payload.email || "").trim().toLowerCase();
       if (goalType !== "none" && recipientEmail && await automationGoalReached(goalType, recipientEmail, Number(triggerConfig.courseId) || null)) {
         results.__workflowExited = { reason: "The workflow exit goal has been reached." };

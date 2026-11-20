@@ -171,13 +171,6 @@ export const BUILT_IN_PAGES: DefaultPage[] = [
       ...directoryPageBlocks(),
     ],
   }),
-  page("/webinars", "Webinars", {
-    metaTitle: "Webinars",
-    blocks: [
-      block("webinars-header", "pageHeader", { eyebrow: "", heading: "Webinars", text: "Watch sessions at your own pace.", align: "left", spacing: "compact" }),
-      block("webinars-list", "builtIn"),
-    ],
-  }),
   page("/newsletter", "Newsletter", {
     metaTitle: "Newsletter",
     blocks: [

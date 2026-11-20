@@ -57,7 +57,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     values.push(segmentId); fields.push(`entry_segment_id = $${values.length}`);
   }
   if (goalType !== undefined) {
-    if (!['none', 'course_pro', 'course_completed', 'community_first_post'].includes(goalType)) {
+    if (!['none', 'course_pro', 'course_completed'].includes(goalType)) {
       return NextResponse.json({ error: "Invalid exit goal." }, { status: 400 });
     }
     values.push(goalType); fields.push(`goal_type = $${values.length}`);
