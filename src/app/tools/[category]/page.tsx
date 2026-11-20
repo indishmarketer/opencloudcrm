@@ -8,6 +8,7 @@ import { listCategories, listPublishedTools } from "@/lib/directory";
 import DirectoryToolCard from "@/components/DirectoryToolCard";
 import SubmitToolCta from "@/components/SubmitToolCta";
 import { getPublishedPage } from "@/lib/sitePages";
+import { defaultOgImages } from "@/lib/ogImage";
 
 export const revalidate = 300;
 
@@ -32,7 +33,14 @@ export async function generateMetadata({
     title: `${category.name}: Compare the Best Options`,
     description,
     alternates: { canonical: canonicalPath },
-    openGraph: { title: category.name, description, url: canonicalPath, siteName: SITE_NAME, locale: OG_LOCALE },
+    openGraph: {
+      title: category.name,
+      description,
+      url: canonicalPath,
+      siteName: SITE_NAME,
+      locale: OG_LOCALE,
+      images: await defaultOgImages(),
+    },
     // An empty category is a thin page. Keep it out of search until it has tools.
     ...(tools.length === 0 ? { robots: { index: false, follow: true } } : {}),
   };

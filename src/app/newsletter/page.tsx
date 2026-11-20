@@ -108,7 +108,7 @@ export default async function NewsletterPage() {
       <div>
 
         {/* ── HERO ─────────────────────────────────────────────── */}
-        <section className="relative overflow-hidden bg-paper py-20 sm:py-28">
+        <section className="relative overflow-hidden bg-paper py-10 sm:py-14 lg:py-16">
           {/* Subtle grid background */}
           <div
             aria-hidden="true"
@@ -124,7 +124,7 @@ export default async function NewsletterPage() {
               the right. Below lg they stack, copy first. Everything in
               the left column is left-aligned, the stats row included, so
               the whole column shares one edge with the headline. */}
-          <div className="relative mx-auto grid max-w-6xl items-center gap-12 px-6 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16">
+          <div className="relative mx-auto grid max-w-6xl items-center gap-8 px-6 lg:grid-cols-[1.05fr_0.95fr] lg:gap-14">
             <div className="text-left">
               <p className="text-xs font-semibold uppercase tracking-widest text-ink-soft">
                 The Sunday email
@@ -205,7 +205,7 @@ export default async function NewsletterPage() {
                 panel for a real photograph: the frame, its border and its
                 aspect ratio are identical either way, so nothing in the
                 layout moves when the image arrives. */}
-            <div className="relative order-first w-full lg:order-none">
+            <div className="relative w-full lg:order-none">
               {HERO_IMAGE_URL ? (
                 // Intrinsic width/height rather than a fixed-ratio box with
                 // object-cover. The illustration carries labels right at its
@@ -225,7 +225,7 @@ export default async function NewsletterPage() {
                   height={1440}
                   priority
                   sizes="(min-width: 1024px) 45vw, 100vw"
-                  className="mx-auto h-auto w-full max-w-[460px] lg:max-w-none"
+                  className="mx-auto h-auto w-full max-w-[300px] sm:max-w-[340px] lg:max-w-[420px]"
                 />
               ) : (
                 <div className="relative aspect-[5/6] w-full overflow-hidden rounded-[28px] border border-line bg-paper-soft shadow-[0_24px_60px_-40px_rgba(15,10,26,0.5)]">

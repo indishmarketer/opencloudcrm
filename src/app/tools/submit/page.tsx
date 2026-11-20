@@ -6,6 +6,7 @@ import { pool } from "@/lib/db";
 import { listCategoriesWithCounts } from "@/lib/directory";
 import ToolSubmitForm, { type SubmitCheckout } from "@/components/ToolSubmitForm";
 import { serializeJsonLd } from "@/lib/jsonLd";
+import { defaultOgImages } from "@/lib/ogImage";
 import { SITE_NAME, OG_LOCALE } from "@/config/brand";
 import { getCheckoutRegion, accountPhone } from "@/lib/checkoutRegion";
 import { getRazorpayKeyId } from "@/lib/razorpay";
@@ -32,6 +33,7 @@ export async function generateMetadata(): Promise<Metadata> {
       url: "/tools/submit",
       siteName: SITE_NAME,
       locale: OG_LOCALE,
+      images: await defaultOgImages(),
     },
   };
 }

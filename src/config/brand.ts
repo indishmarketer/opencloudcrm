@@ -11,7 +11,16 @@
 // if this module is ever pulled into client-bundled code.
 export const SITE_NAME = "Indish Marketer";
 export const SITE_URL = "https://indishmarketer.com";
-export const ASSET_DOMAIN = process.env.NEXT_PUBLIC_ASSET_DOMAIN || "images.example.com";
+// Hardcoded for the same reason SITE_NAME and SITE_URL above are, and it
+// was simply left behind when they were done. As a NEXT_PUBLIC_* var it is
+// inlined at `next build`, and the publish workflow passes no build args,
+// so every production image froze this at "images.example.com" -- a domain
+// that does not resolve. Everything assetUrl() built pointed there: the
+// newsletter's og:image, the organisation logo in the JSON-LD, the
+// site-wide default share image. It also fed next.config.ts's
+// images.remotePatterns and liveImageHost's allowlist, so next/image was
+// refusing to optimise the real asset host as well.
+export const ASSET_DOMAIN = "images.indishmarketer.com";
 export const OG_LOCALE = "en_US";
 
 // The color palette used to live here as NEXT_PUBLIC_COLOR_* env vars,
