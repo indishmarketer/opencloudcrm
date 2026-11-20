@@ -225,7 +225,7 @@ export default async function NewsletterPage() {
                   height={1440}
                   priority
                   sizes="(min-width: 1024px) 45vw, 100vw"
-                  className="mx-auto h-auto w-full max-w-[300px] sm:max-w-[340px] lg:max-w-[420px]"
+                  className="mx-auto h-auto w-full max-w-[300px] sm:max-w-[340px] lg:max-w-[345px]"
                 />
               ) : (
                 <div className="relative aspect-[5/6] w-full overflow-hidden rounded-[28px] border border-line bg-paper-soft shadow-[0_24px_60px_-40px_rgba(15,10,26,0.5)]">
