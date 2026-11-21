@@ -3,6 +3,7 @@ import { getAdminSession } from "@/lib/auth";
 import { pool } from "@/lib/db";
 import { emitWebhookEvent } from "@/lib/webhookEvents";
 import { sendAuthorApplicationEmail } from "@/lib/authorApplicationEmails";
+import { deleteAuthorDocument } from "@/lib/authorApplicationStorage";
 
 const ACTIONS = ["approved", "rejected", "request_changes", "accept_draft"] as const;
 type Action = (typeof ACTIONS)[number];
@@ -91,4 +92,63 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     data: { application_id: application.id },
   }).catch(() => {});
   return NextResponse.json({ ok: true, status: "accepted" });
+}
+
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const isAdmin = await getAdminSession();
+  if (!isAdmin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { id } = await params;
+  const result = await pool.query<{
+    status: string;
+    sample_file_key: string | null;
+    submission_file_key: string | null;
+  }>(
+    `SELECT status, sample_file_key, submission_file_key
+     FROM author_applications
+     WHERE id = $1`,
+    [id],
+  );
+  const application = result.rows[0];
+  if (!application) return NextResponse.json({ error: "Application not found." }, { status: 404 });
+  if (application.status !== "rejected") {
+    return NextResponse.json({ error: "Reject the application before deleting it permanently." }, { status: 409 });
+  }
+
+  try {
+    await deleteAuthorDocument(application.sample_file_key, { strict: true });
+    await deleteAuthorDocument(application.submission_file_key, { strict: true });
+  } catch (error) {
+    console.error("Could not delete author application documents:", error);
+    return NextResponse.json({ error: "The stored documents could not be deleted. Nothing was removed from the database." }, { status: 502 });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query(
+      `DELETE FROM contact_activities
+       WHERE source = 'author_applications' AND source_record_id = $1`,
+      [String(id)],
+    );
+    await client.query(
+      `DELETE FROM system_alerts
+       WHERE dedupe_key = $1 OR dedupe_key LIKE $2`,
+      [`author_application:${id}`, `author_application_progress:${id}:%`],
+    );
+    const deleted = await client.query(
+      "DELETE FROM author_applications WHERE id = $1 AND status = 'rejected' RETURNING id",
+      [id],
+    );
+    if (!deleted.rows[0]) throw new Error("Application status changed before deletion.");
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error("Could not delete author application:", error);
+    return NextResponse.json({ error: "The application could not be deleted." }, { status: 500 });
+  } finally {
+    client.release();
+  }
+
+  return NextResponse.json({ ok: true });
 }

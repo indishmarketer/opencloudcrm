@@ -11,7 +11,7 @@ import { serializeJsonLd } from "@/lib/jsonLd";
 
 const title = `Write for Us: Guest Post Guidelines`;
 const description = `Apply to become a contributor at ${SITE_NAME}. Share practical, experience-led articles about AI, automation, marketing, online business, and systems you have built.`;
-const image = "/images/apply-to-write.jpg";
+const image = "https://images.indishmarketer.com/page-images/aeb07cc4-b182-4664-8238-90686f2215b2.webp";
 
 export async function generateMetadata({ searchParams }: { searchParams: Promise<{ token?: string }> }): Promise<Metadata> {
   const hasToken = Boolean((await searchParams).token);

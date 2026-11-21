@@ -93,8 +93,23 @@ export async function readAuthorDocument(key: string): Promise<Buffer | null> {
   }
 }
 
-export async function deleteAuthorDocument(key: string | null): Promise<void> {
+export async function deleteAuthorDocument(
+  key: string | null,
+  options: { strict?: boolean } = {},
+): Promise<void> {
   const config = storageConfig();
-  if (!config || !key?.startsWith("author-applications/")) return;
-  await config.client.send(new DeleteObjectCommand({ Bucket: config.bucket, Key: key })).catch(() => {});
+  if (!key) return;
+  if (!key.startsWith("author-applications/")) {
+    if (options.strict) throw new Error("Refusing to delete an unknown storage key.");
+    return;
+  }
+  if (!config) {
+    if (options.strict) throw new Error("Document storage is not configured.");
+    return;
+  }
+  try {
+    await config.client.send(new DeleteObjectCommand({ Bucket: config.bucket, Key: key }));
+  } catch (error) {
+    if (options.strict) throw error;
+  }
 }
