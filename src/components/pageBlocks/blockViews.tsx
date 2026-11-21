@@ -438,31 +438,6 @@ function HighlightSolutionText({ text, dark }: { text: string; dark: boolean }) 
   );
 }
 
-function GuideButtonArrow() {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 72 48"
-      fill="none"
-      className="pointer-events-none absolute -top-12 left-[72%] hidden h-12 w-[4.5rem] overflow-visible text-purple-300/90 sm:block"
-    >
-      <path
-        d="M64 4C55 7 49 13 43 20C34 31 24 35 10 41"
-        stroke="currentColor"
-        strokeWidth="2.25"
-        strokeLinecap="round"
-      />
-      <path
-        d="M16 33C14 37 12 39 9 42C13 43 17 43 21 42"
-        stroke="currentColor"
-        strokeWidth="2.25"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
 const BUTTON_DARK_SHAPE = "rounded-full bg-accent px-6 py-3 font-medium text-accent-on shadow-[0_10px_24px_-12px_var(--accent)] transition-opacity hover:opacity-90";
 const BUTTON_OUTLINE_SHAPE = "rounded-full border border-accent/35 px-6 py-3 font-medium text-accent transition-colors hover:border-accent hover:bg-accent-soft";
 const BUTTON_DARK = `${BUTTON_DARK_SHAPE} text-center text-sm`;
@@ -506,11 +481,11 @@ export function HeroView({
   // On the dark hero the fill is a white-to-lilac gradient rather than flat
   // white, so the button still reads as this brand rather than a default.
   const primaryClass = dark
-    ? "rounded-full bg-[linear-gradient(135deg,#ffffff_0%,#ede9fe_60%,#ddd6fe_100%)] px-6 py-3 text-center text-sm font-semibold text-ink shadow-[0_10px_28px_-12px_rgba(167,139,250,0.65)] transition-opacity hover:opacity-90"
-    : BUTTON_DARK;
+    ? "w-52 rounded-full bg-[linear-gradient(135deg,#ffffff_0%,#ede9fe_60%,#ddd6fe_100%)] px-6 py-3 text-center text-sm font-semibold text-ink shadow-[0_10px_28px_-12px_rgba(167,139,250,0.65)] transition-opacity hover:opacity-90 sm:w-auto"
+    : `${BUTTON_DARK} w-52 sm:w-auto`;
   const secondaryClass = dark
-    ? "rounded-full border border-white/30 px-6 py-3 text-center text-sm font-medium text-paper transition-colors hover:border-white"
-    : BUTTON_OUTLINE;
+    ? "w-52 rounded-full border border-white/30 px-6 py-3 text-center text-sm font-medium text-paper transition-colors hover:border-white sm:w-auto"
+    : `${BUTTON_OUTLINE} w-52 sm:w-auto`;
 
   return (
     <section
@@ -557,10 +532,9 @@ export function HeroView({
             </p>
           )}
           {(primaryLabel || str(props, "secondaryLabel")) && (
-            <div className="hero-animate hero-animate-4 flex flex-col gap-4 sm:flex-row">
+            <div className="hero-animate hero-animate-4 flex flex-col items-center gap-4 sm:flex-row sm:items-stretch">
               {guide && primaryLabel ? (
                 <div className="relative w-fit">
-                  {dark && <GuideButtonArrow />}
                   <GuidePopup
                     guide={{
                       id: guide.id,
@@ -571,7 +545,7 @@ export function HeroView({
                       coverImageUrl: guide.cover_image_url,
                     }}
                     buttonLabel={primaryLabel}
-                    buttonClassName={primaryClass}
+                    buttonClassName={`${primaryClass} hero-guide-attention`}
                   />
                 </div>
               ) : popup && primaryLabel ? (
