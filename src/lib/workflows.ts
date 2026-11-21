@@ -228,6 +228,41 @@ function interpolate(value: string, payload: unknown, escapeValues = false): str
   });
 }
 
+/** What is true about this person right now, as opposed to when the
+ * event fired. A sequence that waits two days before selling a course
+ * has to know whether they bought it yesterday, and conditions can only
+ * read the frozen event payload, so without this a follow-up keeps
+ * nagging people who already paid. Resolved on every resume, under
+ * `live.` so it can never be confused with event data.
+ *
+ * Cheap by design: one indexed lookup per executed step. Any failure
+ * answers "unknown" rather than throwing, because a dead database read
+ * must not strand a run mid-sequence.
+ */
+async function liveContactFacts(email: string): Promise<Record<string, string>> {
+  const unknown = { enrolled_any: "", enrolled_slugs: "", enrollment_count: "0" };
+  if (!email) return unknown;
+  try {
+    const result = await pool.query<{ slug: string }>(
+      `SELECT courses.slug
+         FROM course_enrollments
+         JOIN courses ON courses.id = course_enrollments.course_id
+         JOIN users ON users.id = course_enrollments.user_id
+        WHERE lower(users.email) = lower($1)`,
+      [email],
+    );
+    const slugs = result.rows.map((row) => row.slug);
+    return {
+      enrolled_any: slugs.length ? "yes" : "no",
+      enrolled_slugs: slugs.join(","),
+      enrollment_count: String(slugs.length),
+    };
+  } catch (error) {
+    console.error("live contact facts lookup failed (non-fatal):", error);
+    return unknown;
+  }
+}
+
 function conditionPasses(node: WorkflowNode, payload: unknown): boolean {
   const config = node.data.config;
   // Tolerate {{data.x}} typed by hand: the field is a path, not a merge field.
@@ -484,6 +519,8 @@ async function executeRun(run: { id: number; workflow_id: number; trigger_payloa
     // The event a "Wait until an event" step resumed on (latest wins), so
     // later steps can read e.g. {{waited.data.status}}.
     waited: (run.node_results?.__waitedEvent as Record<string, unknown> | undefined) ?? undefined,
+    // Re-read on every resume, so a wait that has elapsed sees today's truth.
+    live: await liveContactFacts(String(workflowData.email || contact.email || "")),
   };
   const trigger = run.graph.nodes.find((node) => node.data.kind === "trigger");
   if (!trigger) throw new Error("Workflow trigger node is missing.");
