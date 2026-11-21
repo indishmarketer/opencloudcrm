@@ -84,7 +84,7 @@ export function workflowEventLabel(key: string): string {
 }
 
 const SITE_WORKFLOW_EVENT_KEYS = [
-  "contact.verified", "newsletter.unsubscribed", "course.enrolled", "course.upgraded",
+  "contact.verified", "lead_magnet.downloaded", "newsletter.unsubscribed", "course.enrolled", "course.upgraded",
   "course.revoked", "course.completed", "course.inactivity", "payment.succeeded", "payment.failed",
   // Submitted/reviewed/paid stay supported for existing workflows but are
   // no longer offered: their emails are built in (directoryEmails.ts).

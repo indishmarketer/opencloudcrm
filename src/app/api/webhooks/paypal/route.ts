@@ -84,6 +84,7 @@ export async function POST(req: NextRequest) {
         custom_id?: unknown;
         amount?: { value?: unknown; currency_code?: unknown };
         supplementary_data?: { related_ids?: { order_id?: unknown } };
+        payer?: { phone?: { phone_number?: { national_number?: unknown } } };
       }
     : {};
   const captureId = typeof resource.id === "string" ? resource.id : undefined;
@@ -147,6 +148,13 @@ export async function POST(req: NextRequest) {
     expectedMinor: purchase.expectedMinor,
     expectedCurrency: purchase.expectedCurrency,
     providerOrderId: orderId,
+    // PayPal only includes the payer's number when its checkout happened
+    // to collect one, and a capture webhook often omits it. Take it when
+    // it is there; grantCoursePurchase falls back to the number already
+    // on the contact, so WhatsApp still reaches buyers either way.
+    phone: typeof resource.payer?.phone?.phone_number?.national_number === "string"
+      ? resource.payer.phone.phone_number.national_number
+      : null,
   });
   if (result === "failed") {
     return NextResponse.json({ ok: false, error: "enrollment transaction failed, owner alerted" }, { status: 500 });
