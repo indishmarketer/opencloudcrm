@@ -17,12 +17,14 @@ type GuideDocumentSummary = {
 };
 
 /** The free-guide lead magnet popup: a responsive modal (horizontal on desktop
- * with a 3D guide cover preview on the left; vertical on mobile).
+ * with the real guide cover filling the left panel; vertical on mobile).
  * Portaled to document.body so it escapes any ancestor transforms or overflow-hidden.
- * Submitting requests the guide via /api/guide/request:
- * - If the contact/user already exists in the database, the download is unlocked
- *   IMMEDIATELY without sending any OTP verification code.
- * - If the contact is new, a verification email is sent with the magic link.
+ *
+ * Submitting requests the guide via /api/guide/request, which emails it
+ * immediately. There is no verification code and no in-popup download: the
+ * only way to the file is the tracked link in that email, which is what
+ * proves the address is real. So the success step has one job, which is to
+ * get them to go and open their inbox right now.
  */
 export default function GuidePopup({
   guideFile,
@@ -34,7 +36,7 @@ export default function GuidePopup({
   buttonClassName: string;
 }) {
   const [open, setOpen] = useState(false);
-  const [step, setStep] = useState<"form" | "sent" | "download">("form");
+  const [step, setStep] = useState<"form" | "sent">("form");
   const [status, setStatus] = useState<"idle" | "submitting" | "error">("idle");
   const [error, setError] = useState("");
   const [name, setName] = useState("");
@@ -42,7 +44,6 @@ export default function GuidePopup({
   const [phone, setPhone] = useState("");
   const [country, setCountry] = useState("");
   const [submittedEmail, setSubmittedEmail] = useState("");
-  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [turnstileToken, setTurnstileToken] = useState("");
   const handleToken = useCallback((t: string) => setTurnstileToken(t), []);
 
@@ -57,7 +58,6 @@ export default function GuidePopup({
         }
       })
       .catch(() => {});
-
   }, []);
 
   useEffect(() => {
@@ -74,7 +74,6 @@ export default function GuidePopup({
     setStatus("idle");
     setError("");
     setPhone("");
-    setDownloadUrl(null);
     setSubmittedEmail("");
     setTurnstileToken("");
   }
@@ -131,15 +130,7 @@ export default function GuidePopup({
         throw new Error(data.error || "Something went wrong.");
       }
       setSubmittedEmail(finalEmail);
-
-      if (data.alreadyVerified && data.downloadUrl) {
-        // Contact is already in database: instant unlock!
-        setDownloadUrl(data.downloadUrl);
-        setStep("download");
-      } else {
-        // New visitor: sent verification link
-        setStep("sent");
-      }
+      setStep("sent");
       setStatus("idle");
     } catch (err) {
       setStatus("error");
@@ -158,14 +149,14 @@ export default function GuidePopup({
       aria-modal="true"
     >
       <div
-        className="relative flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-t-2xl border border-line bg-paper text-ink shadow-2xl sm:flex-row sm:rounded-2xl"
+        className="relative flex max-h-[94vh] w-full max-w-4xl flex-col overflow-hidden rounded-t-2xl border border-line bg-paper text-ink shadow-2xl sm:flex-row sm:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close button */}
         <button
           onClick={handleClose}
           aria-label="Close"
-          className="absolute right-4 top-4 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-paper-soft text-ink-soft transition-colors hover:bg-line hover:text-ink"
+          className="absolute right-4 top-4 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-paper/90 text-ink-soft shadow-sm transition-colors hover:bg-line hover:text-ink"
         >
           <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
             <line x1="18" y1="6" x2="6" y2="18" />
@@ -173,19 +164,19 @@ export default function GuidePopup({
           </svg>
         </button>
 
-        {/* Cover image preview panel */}
+        {/* Cover panel. The image is the guide's real first page, so it is
+            shown edge to edge at its own A4 ratio rather than floated small
+            inside a padded box. */}
         {FREE_GUIDE_CONTENT.coverImageUrl && (
-          <div className="flex shrink-0 items-center justify-center border-b border-line bg-paper-soft p-6 sm:w-[280px] sm:border-b-0 sm:border-r">
-            <div className="relative aspect-[3/4] w-28 overflow-hidden rounded-lg border border-line/60 bg-ink shadow-xl sm:w-44">
-              <SafeImage
-                src={FREE_GUIDE_CONTENT.coverImageUrl}
-                alt={`${FREE_GUIDE_CONTENT.title} cover`}
-                fill
-                sizes="(min-width: 640px) 240px, 160px"
-                className="object-cover"
-                priority
-              />
-            </div>
+          <div className="relative hidden shrink-0 overflow-hidden bg-paper-soft sm:block sm:w-[38%]">
+            <SafeImage
+              src={FREE_GUIDE_CONTENT.coverImageUrl}
+              alt={`${FREE_GUIDE_CONTENT.title} cover`}
+              fill
+              sizes="(min-width: 640px) 40vw, 100vw"
+              className="object-cover object-top"
+              priority
+            />
           </div>
         )}
 
@@ -193,14 +184,39 @@ export default function GuidePopup({
         <div className="flex flex-1 flex-col justify-center overflow-y-auto p-6 sm:p-8">
           {step === "form" && (
             <>
+              {/* On phones the full cover would push the form below the fold,
+                  so a short strip of it sets the scene instead. */}
+              {FREE_GUIDE_CONTENT.coverImageUrl && (
+                <div className="relative mb-5 h-28 w-full overflow-hidden rounded-xl border border-line sm:hidden">
+                  <SafeImage
+                    src={FREE_GUIDE_CONTENT.coverImageUrl}
+                    alt=""
+                    fill
+                    sizes="100vw"
+                    className="object-cover object-top"
+                    priority
+                  />
+                </div>
+              )}
+
               <div className="pr-6">
                 <span className="inline-block rounded-full border border-ink/15 bg-paper-soft px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-ink-soft">
                   {FREE_GUIDE_CONTENT.badge}
                 </span>
-                <h3 className="mt-2.5 font-display text-xl font-semibold leading-snug tracking-tight text-ink sm:text-2xl">
+                <h3 className="mt-2.5 font-display text-xl font-semibold leading-snug tracking-tight text-ink sm:text-[1.6rem]">
                   {FREE_GUIDE_CONTENT.headline}
                 </h3>
-                <p className="mt-2 text-sm leading-relaxed text-ink-soft">{FREE_GUIDE_CONTENT.subheadline}</p>
+                <p className="mt-2.5 text-sm leading-relaxed text-ink-soft">{FREE_GUIDE_CONTENT.subheadline}</p>
+                <ul className="mt-4 space-y-2">
+                  {FREE_GUIDE_CONTENT.bullets.map((item) => (
+                    <li key={item} className="flex gap-2.5 text-sm leading-snug text-ink-soft">
+                      <svg className="mt-0.5 h-4 w-4 shrink-0 text-ink" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
 
               <form className="mt-6 space-y-3.5" onSubmit={handleSubmit}>
@@ -267,13 +283,16 @@ export default function GuidePopup({
                   disabled={status === "submitting" || !turnstileToken}
                   className="w-full rounded-full bg-ink px-6 py-3.5 text-sm font-medium text-paper transition-opacity hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {status === "submitting" ? "Sending your guide…" : "Get the free guide"}
+                  {status === "submitting" ? "Sending your guide…" : "Email me the free guide"}
                 </button>
+                <p className="text-center text-xs text-ink-soft">
+                  It lands in your inbox in a few seconds. No code to type.
+                </p>
               </form>
             </>
           )}
 
-          {step === "download" && (
+          {step === "sent" && (
             <div className="py-4 text-center sm:py-6 sm:text-left">
               <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600">
                 <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -281,58 +300,25 @@ export default function GuidePopup({
                 </svg>
               </div>
               <h3 className="mt-4 font-display text-2xl font-semibold text-ink">
-                Your guide is ready!
+                Your guide is on its way
               </h3>
               <p className="mt-2 text-sm leading-relaxed text-ink-soft">
-                Welcome back! Since your contact is already in our database, your copy of <strong className="text-ink">{FREE_GUIDE_CONTENT.title}</strong> is unlocked right away.
+                I just sent <strong className="text-ink">{FREE_GUIDE_CONTENT.title}</strong> to{" "}
+                <strong className="text-ink">{submittedEmail}</strong>. Open that email and tap the button inside to read it.
               </p>
-              {downloadUrl && (
-                <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
-                  <a
-                    href={downloadUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    download
-                    className="inline-flex items-center justify-center gap-2 rounded-full bg-ink px-6 py-3.5 text-sm font-medium text-paper transition-opacity hover:opacity-85"
-                  >
-                    <span>Download guide</span>
-                    <span aria-hidden="true">&darr;</span>
-                  </a>
-                  <button
-                    type="button"
-                    onClick={handleClose}
-                    className="rounded-full border border-line px-5 py-3 text-sm font-medium text-ink-soft transition-colors hover:text-ink"
-                  >
-                    Close
-                  </button>
-                </div>
-              )}
-              <p className="mt-4 text-xs text-ink-soft">
-                We also sent a direct download link to <strong className="text-ink">{submittedEmail}</strong> for your records.
-              </p>
-            </div>
-          )}
-
-          {step === "sent" && (
-            <div className="py-4 text-center sm:py-8 sm:text-left">
-              <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600">
-                <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
+              <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 text-left">
+                <p className="text-sm font-semibold text-ink">Go and open it now</p>
+                <p className="mt-1 text-sm leading-relaxed text-ink-soft">
+                  This is the only copy I send. If it gets buried under everything else in your inbox, you will not get another one, so grab it while you are thinking about it. Check your spam folder if it is not there in a minute.
+                </p>
               </div>
-              <h3 className="mt-4 font-display text-2xl font-semibold text-ink">
-                Thank you! Check your email
-              </h3>
-              <p className="mt-2 text-sm leading-relaxed text-ink-soft">
-                We just sent the verification link to <strong className="text-ink">{submittedEmail}</strong>. Click the link in that email to download your guide right away.
-              </p>
               <div className="mt-6 flex justify-center sm:justify-start">
                 <button
                   type="button"
                   onClick={handleClose}
                   className="rounded-full bg-ink px-6 py-2.5 text-sm font-medium text-paper transition-opacity hover:opacity-85"
                 >
-                  Done
+                  Got it
                 </button>
               </div>
             </div>

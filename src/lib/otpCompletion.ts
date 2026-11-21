@@ -160,19 +160,33 @@ export type GuidePayload = {
   name: string;
   phone?: string | null;
   country?: string | null;
+  /** The guide_requests token this open came from. Only set on the newer
+   * no-OTP path; legacy magic links in flight at deploy time have none. */
+  token?: string | null;
 };
 
-/** Everything that happens once a free-guide request's email is verified
- * (clicking the magic link or entering the code), shared by the code-entry
- * route and the magic-link route. Requesting a guide is itself the opt-in
- * -- there's no separate marketing checkbox -- so a verified click is
- * exactly the "fresh, provable consent" confirmContactSubscribed requires;
- * someone who never clicks never gets this far and is never subscribed.
+/** Everything that happens once a free-guide request's email is proven
+ * real. The guide no longer uses an OTP: the document is emailed straight
+ * away and opening that tracked link is the proof, so this now runs from
+ * the download route (see /api/guide/download). The older magic-link route
+ * still calls it too, which keeps any link already sitting in an inbox at
+ * deploy time working.
+ *
+ * Requesting a guide is itself the opt-in, there's no separate marketing
+ * checkbox, so a real open is exactly the "fresh, provable consent"
+ * confirmContactSubscribed requires. Someone who never opens never reaches
+ * this function and is never subscribed.
+ *
+ * `sendDeliveryEmail` is false when the guide email has already gone out
+ * and this is the open it produced, otherwise opening the link would mail
+ * the same guide back to the reader every time.
+ *
  * Returns the selected document's public URL, or null if it was deleted
  * between request and verification. */
 export async function completeGuideVerification(
   email: string,
   payload: GuidePayload,
+  options: { sendDeliveryEmail?: boolean } = {},
 ): Promise<{ downloadUrl: string; title: string } | null> {
   const guide = await getGuideDocumentById(payload.guideId);
   if (!guide) return null;
@@ -209,9 +223,11 @@ export async function completeGuideVerification(
     data: { email, name: payload.name, guide: guide.title, guide_id: guide.id, guide_url: guide.file_url },
   }).catch(() => {});
 
-  await sendGuideDocumentEmail({ email, name: payload.name, document: guide }).catch((error) =>
-    console.error("Guide delivery email failed:", error),
-  );
+  if (options.sendDeliveryEmail !== false && payload.token) {
+    await sendGuideDocumentEmail({ email, name: payload.name, token: payload.token }).catch((error) =>
+      console.error("Guide delivery email failed:", error),
+    );
+  }
 
   return { downloadUrl: guide.file_url, title: guide.title };
 }

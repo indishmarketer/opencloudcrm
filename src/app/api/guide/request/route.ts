@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { checkRateLimit, privateRateLimitKey } from "@/lib/rateLimit";
-import { requestOtp } from "@/lib/otp";
 import { verifyTurnstile } from "@/lib/turnstile";
 import { getGuideDocumentById } from "@/lib/guideDocuments";
-import { completeGuideVerification, type GuidePayload } from "@/lib/otpCompletion";
-import { pool } from "@/lib/db";
+import { createGuideRequest } from "@/lib/guideRequests";
+import { sendGuideDocumentEmail } from "@/lib/guideDelivery";
 import { ensureContact } from "@/lib/contacts";
 import { detectEmailTypo } from "@/lib/emailValidation";
 import { validatePhoneNumber } from "@/lib/phoneValidation";
@@ -20,15 +19,18 @@ const RequestSchema = z.object({
   turnstileToken: z.string().min(1).max(4096),
 }).strict();
 
-/** Requesting a guide:
- * 1. If the contact or user ALREADY exists in the database:
- *    We DO NOT send an OTP verification code. Their email is already known.
- *    We immediately unlock the download, record the activity, and send a direct
- *    email containing the download link.
- * 2. If this is a NEW contact (not in contacts or users):
- *    We send the OTP verification magic link so their email is verified
- *    before adding them to contacts.
- */
+/** Requesting the free guide.
+ *
+ * There is no OTP step and no instant in-popup download. Everyone gets the
+ * same thing: the guide is emailed straight away with a tracked download
+ * link, and the popup tells them to go and open it. Opening that link is
+ * what proves the address is real, and only then is the contact promoted to
+ * a subscribed lead (see /api/guide/download).
+ *
+ * Asking for a code first cost us people at the exact moment they were most
+ * interested, and it proved the same thing the download click already
+ * proves. The click carries no friction and arrives whenever they actually
+ * read their mail, so the link deliberately never expires. */
 export async function POST(req: NextRequest) {
   const ip = req.headers.get("cf-connecting-ip") || "unknown";
   if (!(await checkRateLimit(`guide-request:${ip}`, 5, 10 * 60 * 1000))) {
@@ -67,46 +69,30 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "That guide isn't available right now." }, { status: 404 });
   }
 
-  const payload: GuidePayload = { guideId: guide.id, name, phone: phone || null, country: selectedCountry };
-
-  // Check if this contact or user already exists in the database
-  const existing = await pool.query(
-    `SELECT id FROM contacts WHERE LOWER(email) = LOWER($1)
-     UNION
-     SELECT id FROM users WHERE LOWER(email) = LOWER($1)
-     LIMIT 1`,
-    [email]
-  );
-
-  if (existing.rows.length > 0) {
-    // Contact already exists: no need to send OTP verification code!
-    const completed = await completeGuideVerification(email, payload);
-    if (!completed) return NextResponse.json({ error: "That guide isn't available right now." }, { status: 404 });
-
-    return NextResponse.json({
-      ok: true,
-      alreadyVerified: true,
-      downloadUrl: completed.downloadUrl,
-      title: completed.title,
-    });
-  }
-
-  // New visitor: attach the name now -- requestOtp() below sends the code
-  // email, which is itself what first creates this person's contacts row
-  // (via sendEmail -> ensureContact) with no name on it. Someone who opens
-  // that email but never returns to finish verifying would otherwise stay
-  // permanently nameless even though we had their real name right here.
-  // The source is the guide request, not whichever page hosts the popup.
+  // Record what they told us now, while we have it. Sending the email below
+  // creates a contacts row by itself (sendEmail -> ensureContact) with no
+  // name on it, so without this anyone who never opens the guide would sit
+  // in the list permanently nameless. They stay unsubscribed until the open.
   await ensureContact({ source: "guide", sourceDetail: "Free guide",
     email, name, phone: phone || null, phoneSource: phone ? "form" : undefined,
     country: selectedCountry, countrySource: selectedCountry ? "form" : undefined,
   }).catch((err) => console.error("guide request ensureContact failed (non-fatal):", err));
 
-  // Send OTP email to verify ownership
-  const sent = await requestOtp(email, "guide", payload);
-  if (!sent) {
-    return NextResponse.json({ error: "We couldn't send the verification email. Please try again in a moment." }, { status: 502 });
+  const token = await createGuideRequest({
+    guideId: guide.id,
+    email,
+    name,
+    phone: phone || null,
+    country: selectedCountry,
+  });
+
+  const sent = await sendGuideDocumentEmail({ email, name, token });
+  if (!sent.ok) {
+    return NextResponse.json(
+      { error: "We couldn't email your guide. Please check the address and try again." },
+      { status: 502 },
+    );
   }
 
-  return NextResponse.json({ ok: true, alreadyVerified: false });
+  return NextResponse.json({ ok: true, email });
 }
