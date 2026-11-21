@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
+import { permanentRedirect, redirect } from "next/navigation";
 import { getPublishedPage } from "@/lib/sitePages";
 import { BUILT_IN_PATHS } from "@/lib/defaultPages";
 import { normalizePagePath } from "@/lib/sitePagesShape";
@@ -19,6 +19,17 @@ function pathFrom(slug: string[]): string | null {
   return path;
 }
 
+/** Course sales pages were removed, and the catch-all answers anything
+ * unknown by sending it to "/". Any of those URLs that were shared or
+ * indexed would land on the home page, which tells the visitor nothing.
+ * The content they wanted is the course itself, so send them there
+ * permanently instead. */
+function movedSalesPagePath(slug: string[]): string | null {
+  return slug.length === 3 && slug[0] === "courses" && slug[2] === "sales"
+    ? `/courses/${slug[1]}`
+    : null;
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ slug: string[] }> }): Promise<Metadata> {
   const path = pathFrom((await params).slug);
   const page = path ? await getPublishedPage(path) : null;
@@ -26,7 +37,10 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 }
 
 export default async function CustomPage({ params }: { params: Promise<{ slug: string[] }> }) {
-  const path = pathFrom((await params).slug);
+  const slug = (await params).slug;
+  const moved = movedSalesPagePath(slug);
+  if (moved) permanentRedirect(moved);
+  const path = pathFrom(slug);
   const page = path ? await getPublishedPage(path) : null;
   if (!page) redirect("/");
   return <SitePageView page={page} />;
