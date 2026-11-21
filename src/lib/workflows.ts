@@ -460,8 +460,13 @@ async function executeRun(run: { id: number; workflow_id: number; trigger_payloa
   if (!workflowData.course_url && typeof workflowData.course_slug === "string") {
     workflowData.course_url = `${SITE_URL}/account/courses/${encodeURIComponent(workflowData.course_slug)}`;
   }
-  if (!workflowData.guide_url && typeof workflowData.guide === "string") {
-    workflowData.guide_url = `${SITE_URL}/guide/${encodeURIComponent(workflowData.guide)}?unlocked=1`;
+  if (!workflowData.guide_url && Number.isInteger(Number(workflowData.guide_id)) && Number(workflowData.guide_id) > 0) {
+    const document = await pool.query("SELECT file_url FROM guide_documents WHERE id = $1", [Number(workflowData.guide_id)]);
+    if (document.rows[0]?.file_url) workflowData.guide_url = document.rows[0].file_url;
+  }
+  if (!workflowData.guide_url && rawPayload.event_type === "lead_magnet.downloaded") {
+    const document = await pool.query("SELECT file_url FROM guide_documents WHERE is_active = true LIMIT 1");
+    if (document.rows[0]?.file_url) workflowData.guide_url = document.rows[0].file_url;
   }
   const payload = {
     ...rawPayload,

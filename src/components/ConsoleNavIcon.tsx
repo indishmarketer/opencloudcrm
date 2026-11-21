@@ -93,7 +93,7 @@ const PATHS: Record<string, React.ReactNode> = {
       <path d="M8 16.5h8" />
     </>
   ),
-  "/console/lead-magnets": (
+  "/console/guide-files": (
     <>
       <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a2.5 2.5 0 0 1-2.5-2.5Z" />
       <path d="M12 2v8l2.5-2 2.5 2V2" />

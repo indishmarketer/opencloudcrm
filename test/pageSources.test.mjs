@@ -25,5 +25,8 @@ test("code-owned source labels have canonical public paths", () => {
   assert.equal(hardcodedSourcePathForLabel("Account"), "/signup");
   assert.equal(hardcodedSourcePathForLabel("Blog"), "/blog");
   assert.equal(hardcodedSourcePathForLabel("Course"), "/courses");
+  // Free-guide leads keep their source label, but it no longer points at a
+  // public page because delivery happens through the homepage popup.
+  assert.equal(hardcodedSourcePathForLabel("Free guide"), null);
   assert.equal(hardcodedSourcePathForLabel("something else"), null);
 });

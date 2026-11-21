@@ -81,13 +81,13 @@ export default async function ConsoleHome() {
         (SELECT COUNT(*)::int FROM course_enrollments) AS total_enrollments
       FROM courses
     `).catch(() => ({ rows: [{ total_courses: 0, published_courses: 0, total_enrollments: 0 }] })),
-    // 9. Free Guides Stats
+    // 9. Free Guide Document Stats
     pool.query(`
       SELECT
         COUNT(*)::int AS total_guides,
-        COUNT(*) FILTER (WHERE published = true)::int AS published_guides
-      FROM lead_magnets
-    `).catch(() => ({ rows: [{ total_guides: 0, published_guides: 0 }] })),
+        COUNT(*) FILTER (WHERE is_active = true)::int AS active_guides
+      FROM guide_documents
+    `).catch(() => ({ rows: [{ total_guides: 0, active_guides: 0 }] })),
     // 10. WhatsApp Stats
     pool.query(`
       SELECT
@@ -158,7 +158,7 @@ export default async function ConsoleHome() {
   const tools = toolsQuery.rows[0] || { total: 0, published: 0, pending: 0 };
   const emails = emailQuery.rows[0] || { active_flows: 0, sent_30d: 0, queued: 0 };
   const courses = coursesQuery.rows[0] || { total_courses: 0, published_courses: 0, total_enrollments: 0 };
-  const guides = guidesQuery.rows[0] || { total_guides: 0, published_guides: 0 };
+  const guides = guidesQuery.rows[0] || { total_guides: 0, active_guides: 0 };
   const whatsapp = whatsappQuery.rows[0] || { sent: 0, delivered: 0 };
   const meetings = meetingsQuery.rows[0] || { total_meetings: 0, confirmed_meetings: 0, upcoming_meetings: 0 };
   const attention = attentionQuery.rows[0] || { unreplied_support: 0, pending_reviews: 0, pending_claims: 0 };
@@ -333,21 +333,21 @@ export default async function ConsoleHome() {
             </div>
           </Link>
 
-          {/* 4. Free Guides */}
+          {/* 4. Free Guide Files */}
           <Link
-            href="/console/lead-magnets"
+            href="/console/guide-files"
             className="group flex flex-col justify-between rounded-2xl border border-line bg-paper p-4 transition-all hover:border-ink hover:shadow-sm sm:p-5"
           >
             <div>
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wider text-ink-soft">Free Guides</span>
+                <span className="text-xs font-semibold uppercase tracking-wider text-ink-soft">Free guide files</span>
                 <span className="text-xs text-ink-soft group-hover:text-ink">Open →</span>
               </div>
-              <p className="mt-2 font-display text-2xl font-semibold">{guides.published_guides}</p>
-              <p className="mt-1 text-xs text-ink-soft">Active lead magnets</p>
+              <p className="mt-2 font-display text-2xl font-semibold">{guides.active_guides}</p>
+              <p className="mt-1 text-xs text-ink-soft">Selected for the popup</p>
             </div>
             <div className="mt-4 border-t border-line pt-3 text-xs text-ink-soft">
-              {guides.total_guides} total guides
+              {guides.total_guides} stored documents
             </div>
           </Link>
 

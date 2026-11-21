@@ -97,7 +97,7 @@ export function renderLiveBlock(
   const business = liveData.business;
   switch (block.type) {
     case "hero":
-      return <HeroView props={props} activeLeadMagnet={liveData.activeLeadMagnet} />;
+      return <HeroView props={props} activeGuideDocument={liveData.activeGuideDocument} />;
     case "pageHeader":
       return <PageHeaderBlock props={props} />;
     case "richText":

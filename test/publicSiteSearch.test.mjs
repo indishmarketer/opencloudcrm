@@ -9,7 +9,7 @@ test("public site search excludes retired areas and private routes", () => {
   assert.deepEqual(PUBLIC_SITE_PAGES.filter((page) => page.url.startsWith("/new-newsletter")), []);
   assert.deepEqual(searchPublicSitePages("privacy policy").map((result) => result.url), ["/privacy-policy"]);
   assert.equal(PUBLIC_SITE_PAGES.some((page) => page.url.startsWith("/console") || page.url.startsWith("/account")), false);
-  for (const path of ["/community", "/community/general/1", "/webinars", "/webinars/example", "/new-newsletter"]) {
+  for (const path of ["/community", "/community/general/1", "/webinars", "/webinars/example", "/new-newsletter", "/guide", "/guide/old-free-guide"]) {
     assert.equal(isRetiredPublicPath(path), true, `${path} must never return to the sitemap`);
   }
 });

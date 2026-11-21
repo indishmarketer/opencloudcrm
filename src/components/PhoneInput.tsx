@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { getCountryFlag } from "@/lib/countryDialCodes";
 import {
   getCountryPhoneSpec,
@@ -17,6 +17,7 @@ export type PhoneInputProps = {
   placeholder?: string;
   required?: boolean;
   onValidationChange?: (isValid: boolean) => void;
+  showHint?: boolean;
 };
 
 /**
@@ -32,6 +33,7 @@ export default function PhoneInput({
   placeholder,
   required = false,
   onValidationChange,
+  showHint = true,
 }: PhoneInputProps) {
   const upperCountry = (country || "IN").toUpperCase();
   const spec = useMemo(() => getCountryPhoneSpec(upperCountry), [upperCountry]);
@@ -45,7 +47,7 @@ export default function PhoneInput({
   );
 
   // Notify parent component if callback provided
-  useMemo(() => {
+  useEffect(() => {
     onValidationChange?.(validation.isValid);
   }, [validation.isValid, onValidationChange]);
 
@@ -57,7 +59,7 @@ export default function PhoneInput({
   }
 
   const expectedCount = spec.exactDigits;
-  const isComplete = expectedCount ? digits.length === expectedCount : validation.isValid && digits.length > 0;
+  const isComplete = validation.isValid && digits.length > 0;
 
   return (
     <div className={`w-full ${className}`}>
@@ -113,12 +115,12 @@ export default function PhoneInput({
           <span>⚠️</span>
           <span>{validation.error}</span>
         </p>
-      ) : (
+      ) : showHint ? (
         <p className="mt-1.5 text-[11px] text-ink-soft">
           {spec.suggestion}
           {spec.example ? ` (e.g. ${spec.example})` : ""}
         </p>
-      )}
+      ) : null}
     </div>
   );
 }
@@ -128,10 +130,8 @@ export default function PhoneInput({
  * Returns null if empty.
  */
 export function toE164(country: string, nationalNumber: string): string | null {
-  const digits = normalizeNationalDigits(country, nationalNumber);
-  if (!digits) return null;
-  const spec = getCountryPhoneSpec(country);
-  return `+${spec.dialCode}${digits}`;
+  if (!nationalNumber.trim()) return null;
+  return validatePhoneNumber(country, nationalNumber, false).e164;
 }
 
 export { validatePhoneNumber, getCountryPhoneSpec } from "@/lib/phoneValidation";

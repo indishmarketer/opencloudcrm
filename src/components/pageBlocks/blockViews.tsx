@@ -37,7 +37,7 @@ import { extractYoutubeId } from "@/lib/youtube";
 import { serializeJsonLd } from "@/lib/jsonLd";
 import type { ResolvedBusiness } from "@/lib/businessProfile";
 import type { PageBlock } from "@/lib/pageBlocks";
-import type { LeadMagnet } from "@/lib/leadMagnets";
+import type { GuideDocument } from "@/lib/guideDocuments";
 import type { BlogIndexEntry } from "@/lib/blogPosts";
 import type { Reviewer } from "@/data/reviews";
 import { resolveImage } from "@/lib/images";
@@ -457,17 +457,17 @@ function ButtonLink({ href, label, className, style }: { href: string; label: st
   );
 }
 
-/** Hero's own visual output. `activeLeadMagnet` is fetched by the caller
+/** Hero's own visual output. `activeGuideDocument` is fetched by the caller
  * (the public renderer fetches it server-side; the editor canvas is handed
  * it once, pre-fetched, alongside the page) since this component itself
  * has to stay a plain sync function to be usable from client code. */
 export function HeroView({
   props,
-  activeLeadMagnet,
+  activeGuideDocument,
   popup,
 }: {
   props: Props;
-  activeLeadMagnet: LeadMagnet | null;
+  activeGuideDocument: GuideDocument | null;
   /** See ButtonBlock's doc comment. */
   popup?: { settings: PopupSettings; content: React.ReactNode };
 }) {
@@ -477,7 +477,7 @@ export function HeroView({
   const backgroundColor = str(props, "backgroundColor");
   const primaryLabel = str(props, "primaryLabel");
   const primaryAction = str(props, "primaryAction");
-  const guide = primaryAction === "leadMagnet" ? activeLeadMagnet : null;
+  const guideDocument = primaryAction === "leadMagnet" ? activeGuideDocument : null;
   // On the dark hero the fill is a white-to-lilac gradient rather than flat
   // white, so the button still reads as this brand rather than a default.
   const primaryClass = dark
@@ -533,16 +533,13 @@ export function HeroView({
           )}
           {(primaryLabel || str(props, "secondaryLabel")) && (
             <div className="hero-animate hero-animate-4 flex flex-col items-center gap-4 sm:flex-row sm:items-stretch">
-              {guide && primaryLabel ? (
+              {guideDocument && primaryLabel ? (
                 <div className="relative w-fit">
                   <GuidePopup
-                    guide={{
-                      id: guide.id,
-                      slug: guide.slug,
-                      title: guide.title,
-                      headline: guide.headline,
-                      subheadline: guide.subheadline,
-                      coverImageUrl: guide.cover_image_url,
+                    guideFile={{
+                      id: guideDocument.id,
+                      title: guideDocument.title,
+                      fileName: guideDocument.file_name,
                     }}
                     buttonLabel={primaryLabel}
                     buttonClassName={`${primaryClass} hero-guide-attention`}

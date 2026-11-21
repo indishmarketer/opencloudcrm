@@ -38,7 +38,7 @@ const baseNavGroups = [
       { href: "/console/media", label: "Media Library" },
       { href: "/console/courses", label: "Courses" },
       { href: "/console/directory", label: "Tools directory" },
-      { href: "/console/lead-magnets", label: "Free guides" },
+      { href: "/console/guide-files", label: "Free guide files" },
     ],
   },
   {

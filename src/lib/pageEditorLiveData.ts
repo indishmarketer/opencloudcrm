@@ -1,6 +1,6 @@
 import { pool } from "@/lib/db";
 import { getBusiness } from "@/lib/businessProfile";
-import { getActiveLeadMagnet } from "@/lib/leadMagnets";
+import { getActiveGuideDocument } from "@/lib/guideDocuments";
 import { getPublicPosts } from "@/lib/blogPosts";
 import { getCuratedReviewers } from "@/lib/curatedReviews";
 import type { CourseSummary } from "@/components/pageBlocks/blockViews";
@@ -11,14 +11,14 @@ import { formatListingPrice, getDirectoryListingPrice } from "@/lib/directoryLis
 /** Pre-fetched once per page-editor load (both console/pages/[id] and a
  * course/tool's extra-sections editor use this) so the editor's live
  * canvas can render the handful of blocks that normally fetch their own
- * data server-side (Hero's active lead magnet, latest posts/courses,
+ * data server-side (Hero's selected guide document, latest posts/courses,
  * reviews) without needing its own DB access -- see blockViews.tsx's note
  * on why those components take this data as a prop instead of fetching it
  * themselves. */
 export async function getPageEditorLiveData(path?: string | null) {
-  const [business, activeLeadMagnet, posts, courses, reviewers, directory] = await Promise.all([
+  const [business, activeGuideDocument, posts, courses, reviewers, directory] = await Promise.all([
     getBusiness(),
-    getActiveLeadMagnet().catch(() => null),
+    getActiveGuideDocument().catch(() => null),
     getPublicPosts().catch(() => []),
     pool
       .query<CourseSummary>("SELECT slug, title, description, cover_image_url FROM courses WHERE published = true ORDER BY created_at DESC LIMIT 12")
@@ -39,7 +39,7 @@ export async function getPageEditorLiveData(path?: string | null) {
         })).catch(() => null)
       : Promise.resolve(null),
   ]);
-  return { business, activeLeadMagnet, posts, courses, reviewers, directory };
+  return { business, activeGuideDocument, posts, courses, reviewers, directory };
 }
 
 export type PageEditorLiveData = Awaited<ReturnType<typeof getPageEditorLiveData>>;

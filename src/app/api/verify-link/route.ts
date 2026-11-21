@@ -89,10 +89,10 @@ export async function POST(req: NextRequest) {
     if (!result.payload) {
       return NextResponse.redirect(new URL("/verify?error=1", SITE_URL), { status: 303 });
     }
-    const slug = await completeGuideVerification(result.email, result.payload as unknown as GuidePayload);
-    if (!slug) return NextResponse.redirect(new URL("/verify?error=1", SITE_URL), { status: 303 });
+    const guide = await completeGuideVerification(result.email, result.payload as unknown as GuidePayload);
+    if (!guide) return NextResponse.redirect(new URL("/verify?error=1", SITE_URL), { status: 303 });
     await emitVerifiedContactEvent({ email: result.email, name: (result.payload as unknown as GuidePayload).name, source: "guide" }).catch((error) => console.error("Guide verified contact event failed:", error));
-    return NextResponse.redirect(new URL(`/guide/${slug}?unlocked=1`, SITE_URL), { status: 303 });
+    return NextResponse.redirect(new URL(guide.downloadUrl), { status: 303 });
   } else {
     return NextResponse.redirect(new URL("/verify?error=1", SITE_URL), { status: 303 });
   }

@@ -160,16 +160,53 @@ export async function rehostImageFromUrl(url: string, keyPrefix: string): Promis
   }
 }
 
-const MAX_GUIDE_FILE_SIZE = 20 * 1024 * 1024;
+const MAX_GUIDE_FILE_SIZE = 25 * 1024 * 1024;
+const GUIDE_DOCUMENT_TYPES: Record<string, { contentType: string; signature: "pdf" | "zip" | "ole" | "rtf" | "text" }> = {
+  pdf: { contentType: "application/pdf", signature: "pdf" },
+  doc: { contentType: "application/msword", signature: "ole" },
+  docx: { contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", signature: "zip" },
+  xls: { contentType: "application/vnd.ms-excel", signature: "ole" },
+  xlsx: { contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", signature: "zip" },
+  ppt: { contentType: "application/vnd.ms-powerpoint", signature: "ole" },
+  pptx: { contentType: "application/vnd.openxmlformats-officedocument.presentationml.presentation", signature: "zip" },
+  odt: { contentType: "application/vnd.oasis.opendocument.text", signature: "zip" },
+  ods: { contentType: "application/vnd.oasis.opendocument.spreadsheet", signature: "zip" },
+  odp: { contentType: "application/vnd.oasis.opendocument.presentation", signature: "zip" },
+  rtf: { contentType: "application/rtf", signature: "rtf" },
+  txt: { contentType: "text/plain", signature: "text" },
+  csv: { contentType: "text/csv", signature: "text" },
+  zip: { contentType: "application/zip", signature: "zip" },
+};
 
-/** The downloadable file behind a free-guide lead magnet (console upload).
- * PDF only, and checked by magic bytes rather than trusting the browser's
- * reported Content-Type -- same reasoning as verifyImageBytes for images,
- * just without sharp (it doesn't parse PDFs): a real PDF always starts
- * with the literal bytes "%PDF-". */
-export async function uploadGuideFileToR2(file: File, keyPrefix: string): Promise<{ url: string } | { error: string }> {
-  if (file.type !== "application/pdf") return { error: "Only PDF files are allowed." };
-  if (file.size > MAX_GUIDE_FILE_SIZE) return { error: "File must be under 20MB." };
+function hasGuideDocumentSignature(bytes: Buffer, signature: (typeof GUIDE_DOCUMENT_TYPES)[string]["signature"]): boolean {
+  if (signature === "pdf") return bytes.subarray(0, 5).toString("latin1") === "%PDF-";
+  if (signature === "zip") {
+    const header = bytes.subarray(0, 4).toString("hex");
+    return header === "504b0304" || header === "504b0506" || header === "504b0708";
+  }
+  if (signature === "ole") return bytes.subarray(0, 8).toString("hex") === "d0cf11e0a1b11ae1";
+  if (signature === "rtf") return bytes.subarray(0, 5).toString("latin1").toLowerCase() === "{\\rtf";
+  return !bytes.subarray(0, Math.min(bytes.length, 8192)).includes(0);
+}
+
+function safeDownloadName(name: string): string {
+  const cleaned = name.replace(/[\r\n"\\/]/g, "-").replace(/\s+/g, " ").trim().slice(0, 180);
+  return cleaned || "free-guide";
+}
+
+/** Uploads a downloadable guide document to public R2 storage. The extension
+ * is allow-listed and its container/file signature is checked, so accepting
+ * common office formats does not mean accepting arbitrary executable files. */
+export async function uploadGuideDocumentToR2(
+  file: File,
+  keyPrefix = "guide-files",
+): Promise<{ url: string; fileName: string; mimeType: string; size: number } | { error: string }> {
+  const fileName = safeDownloadName(file.name);
+  const extension = fileName.split(".").pop()?.toLowerCase() || "";
+  const type = GUIDE_DOCUMENT_TYPES[extension];
+  if (!type) return { error: "Upload a PDF, document, spreadsheet, presentation, text file, or ZIP archive." };
+  if (file.size === 0) return { error: "The file is empty." };
+  if (file.size > MAX_GUIDE_FILE_SIZE) return { error: "File must be under 25MB." };
 
   const endpoint = process.env.R2_S3_ENDPOINT;
   const accessKeyId = process.env.R2_ACCESS_KEY_ID;
@@ -181,15 +218,20 @@ export async function uploadGuideFileToR2(file: File, keyPrefix: string): Promis
   }
 
   const bytes = Buffer.from(await file.arrayBuffer());
-  if (bytes.subarray(0, 5).toString("latin1") !== "%PDF-") {
-    return { error: "That file isn't a valid PDF." };
-  }
+  if (!hasGuideDocumentSignature(bytes, type.signature)) return { error: "That file does not match its file type." };
 
   const s3 = getS3Client(endpoint, accessKeyId, secretAccessKey);
-  const key = `${keyPrefix}/${randomUUID()}.pdf`;
-  await s3.send(new PutObjectCommand({ Bucket: bucket, Key: key, Body: bytes, ContentType: "application/pdf" }));
+  const safePrefix = keyPrefix.replace(/[^a-z0-9/_-]/gi, "-").replace(/^\/+|\/+$/g, "") || "guide-files";
+  const key = `${safePrefix}/${randomUUID()}-${fileName.replace(/[^a-z0-9_.-]/gi, "-")}`;
+  await s3.send(new PutObjectCommand({
+    Bucket: bucket,
+    Key: key,
+    Body: bytes,
+    ContentType: type.contentType,
+    ContentDisposition: `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`,
+  }));
 
-  return { url: `${publicUrl}/${key}` };
+  return { url: `${publicUrl}/${key}`, fileName, mimeType: type.contentType, size: file.size };
 }
 
 type R2Config = { s3: S3Client; bucket: string; publicUrl: string };
@@ -356,24 +398,30 @@ export async function listR2Objects(opts: {
 }
 
 /** Deletes an object from R2 given its public URL (the same URL
- * uploadImageToR2/uploadDirectoryAsset returned). Silently does nothing
- * for a URL that isn't actually ours (e.g. R2 not configured, or a URL
- * from somewhere else), never throws, since a failed cleanup shouldn't
- * block the DB delete it's attached to. */
-export async function deleteFromR2(url: string): Promise<void> {
+ * uploadImageToR2/uploadDirectoryAsset returned). Cleanup callers use the
+ * default best-effort mode; destructive console actions opt into strict mode
+ * so the database record is kept when its stored file could not be removed. */
+export async function deleteFromR2(url: string, options: { strict?: boolean } = {}): Promise<void> {
   const endpoint = process.env.R2_S3_ENDPOINT;
   const accessKeyId = process.env.R2_ACCESS_KEY_ID;
   const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
   const bucket = process.env.R2_BUCKET;
   const publicUrl = process.env.R2_PUBLIC_URL;
-  if (!endpoint || !accessKeyId || !secretAccessKey || !bucket || !publicUrl) return;
+  if (!endpoint || !accessKeyId || !secretAccessKey || !bucket || !publicUrl) {
+    if (options.strict) throw new Error("File storage is not configured.");
+    return;
+  }
   const key = ownedPublicObjectKey(url, publicUrl);
-  if (!key) return;
+  if (!key) {
+    if (options.strict) throw new Error("Refusing to delete a file outside managed storage.");
+    return;
+  }
 
   try {
     const s3 = getS3Client(endpoint, accessKeyId, secretAccessKey);
     await s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
-  } catch {
+  } catch (error) {
+    if (options.strict) throw error;
     // best-effort, an orphaned R2 object is a smaller problem than a
     // failed admin action
   }

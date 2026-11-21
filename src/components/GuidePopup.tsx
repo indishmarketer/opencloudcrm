@@ -6,16 +6,14 @@ import SafeImage from "@/components/SafeImage";
 import Turnstile from "@/components/Turnstile";
 import EmailInput from "@/components/EmailInput";
 import PhoneInput, { toE164, validatePhoneNumber } from "@/components/PhoneInput";
-import { detectCountry } from "@/components/CountrySelect";
+import CountrySelect from "@/components/CountrySelect";
 import { detectEmailTypo } from "@/lib/emailValidation";
+import { FREE_GUIDE_CONTENT } from "@/lib/freeGuideContent";
 
-type GuideSummary = {
+type GuideDocumentSummary = {
   id: number;
-  slug: string;
   title: string;
-  headline: string;
-  subheadline: string | null;
-  coverImageUrl: string | null;
+  fileName: string;
 };
 
 /** The free-guide lead magnet popup: a responsive modal (horizontal on desktop
@@ -27,11 +25,11 @@ type GuideSummary = {
  * - If the contact is new, a verification email is sent with the magic link.
  */
 export default function GuidePopup({
-  guide,
+  guideFile,
   buttonLabel,
   buttonClassName,
 }: {
-  guide: GuideSummary;
+  guideFile: GuideDocumentSummary;
   buttonLabel: string;
   buttonClassName: string;
 }) {
@@ -42,13 +40,14 @@ export default function GuidePopup({
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [country, setCountry] = useState("IN");
+  const [country, setCountry] = useState("");
   const [submittedEmail, setSubmittedEmail] = useState("");
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [turnstileToken, setTurnstileToken] = useState("");
   const handleToken = useCallback((t: string) => setTurnstileToken(t), []);
 
-  // Pre-fill email if user is already logged in, and detect country for phone input
+  // Pre-fill email if the visitor is already logged in. CountrySelect owns
+  // country detection and always lets the visitor override that guess.
   useEffect(() => {
     fetch("/api/auth/me")
       .then((r) => (r.ok ? r.json() : null))
@@ -59,9 +58,6 @@ export default function GuidePopup({
       })
       .catch(() => {});
 
-    void detectCountry().then((c) => {
-      if (c) setCountry(c);
-    });
   }, []);
 
   useEffect(() => {
@@ -91,6 +87,11 @@ export default function GuidePopup({
     e.preventDefault();
     if (!email.trim() || !name.trim()) return;
 
+    if (phone.trim() && !country) {
+      setStatus("error");
+      setError("Select your country before entering a phone number.");
+      return;
+    }
     if (phone.trim()) {
       const phoneVal = validatePhoneNumber(country, phone, true);
       if (!phoneVal.isValid && phoneVal.error) {
@@ -117,10 +118,11 @@ export default function GuidePopup({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          guideId: guide.id,
+          guideId: guideFile.id,
           name: name.trim(),
           email: finalEmail,
           phone: e164Phone ?? undefined,
+          country: country || undefined,
           turnstileToken,
         }),
       });
@@ -172,12 +174,12 @@ export default function GuidePopup({
         </button>
 
         {/* Cover image preview panel */}
-        {guide.coverImageUrl && (
+        {FREE_GUIDE_CONTENT.coverImageUrl && (
           <div className="flex shrink-0 items-center justify-center border-b border-line bg-paper-soft p-6 sm:w-[280px] sm:border-b-0 sm:border-r">
             <div className="relative aspect-[3/4] w-28 overflow-hidden rounded-lg border border-line/60 bg-ink shadow-xl sm:w-44">
               <SafeImage
-                src={guide.coverImageUrl}
-                alt={guide.title}
+                src={FREE_GUIDE_CONTENT.coverImageUrl}
+                alt={`${FREE_GUIDE_CONTENT.title} cover`}
                 fill
                 sizes="(min-width: 640px) 240px, 160px"
                 className="object-cover"
@@ -193,16 +195,12 @@ export default function GuidePopup({
             <>
               <div className="pr-6">
                 <span className="inline-block rounded-full border border-ink/15 bg-paper-soft px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-ink-soft">
-                  Free Starter Guide
+                  {FREE_GUIDE_CONTENT.badge}
                 </span>
                 <h3 className="mt-2.5 font-display text-xl font-semibold leading-snug tracking-tight text-ink sm:text-2xl">
-                  {guide.headline}
+                  {FREE_GUIDE_CONTENT.headline}
                 </h3>
-                {guide.subheadline && (
-                  <p className="mt-2 text-sm leading-relaxed text-ink-soft">
-                    {guide.subheadline}
-                  </p>
-                )}
+                <p className="mt-2 text-sm leading-relaxed text-ink-soft">{FREE_GUIDE_CONTENT.subheadline}</p>
               </div>
 
               <form className="mt-6 space-y-3.5" onSubmit={handleSubmit}>
@@ -248,12 +246,14 @@ export default function GuidePopup({
                   <label htmlFor="guide-phone" className="mb-1 block text-xs font-medium text-ink-soft">
                     Phone number <span className="font-normal">(optional)</span>
                   </label>
-                  <PhoneInput
-                    id="guide-phone"
-                    country={country}
-                    value={phone}
-                    onChange={setPhone}
-                  />
+                  <div className="grid gap-2 sm:grid-cols-[0.9fr_1.1fr]">
+                    <CountrySelect id="guide-country" value={country} onChange={(code) => { setCountry(code); setPhone(""); }} autoDetect />
+                    {country ? (
+                      <PhoneInput id="guide-phone" country={country} value={phone} onChange={setPhone} showHint={false} />
+                    ) : (
+                      <div className="flex min-h-11 items-center rounded-xl border border-dashed border-line px-4 text-sm text-ink-soft">Select a country first</div>
+                    )}
+                  </div>
                 </div>
 
                 {status === "error" && (
@@ -284,7 +284,7 @@ export default function GuidePopup({
                 Your guide is ready!
               </h3>
               <p className="mt-2 text-sm leading-relaxed text-ink-soft">
-                Welcome back! Since your contact is already in our database, your copy of <strong className="text-ink">{guide.title}</strong> is unlocked right away.
+                Welcome back! Since your contact is already in our database, your copy of <strong className="text-ink">{FREE_GUIDE_CONTENT.title}</strong> is unlocked right away.
               </p>
               {downloadUrl && (
                 <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -295,7 +295,7 @@ export default function GuidePopup({
                     download
                     className="inline-flex items-center justify-center gap-2 rounded-full bg-ink px-6 py-3.5 text-sm font-medium text-paper transition-opacity hover:opacity-85"
                   >
-                    <span>Download Guide (PDF)</span>
+                    <span>Download guide</span>
                     <span aria-hidden="true">&darr;</span>
                   </a>
                   <button

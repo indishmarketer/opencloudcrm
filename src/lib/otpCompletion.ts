@@ -6,7 +6,8 @@ import { emitWebhookEvent } from "@/lib/webhookEvents";
 import { sendEmail } from "@/lib/email";
 import { getEmailTemplateOptional, applyTemplateVars } from "@/lib/emailTemplates";
 import { escapeHtml } from "@/lib/escapeHtml";
-import { getLeadMagnetById } from "@/lib/leadMagnets";
+import { getGuideDocumentById } from "@/lib/guideDocuments";
+import { sendGuideDocumentEmail } from "@/lib/guideDelivery";
 
 /** Everything that happens once a newsletter signup's email is verified,
  * shared by both the code-entry route and the magic-link route so neither
@@ -158,6 +159,7 @@ export type GuidePayload = {
   guideId: number;
   name: string;
   phone?: string | null;
+  country?: string | null;
 };
 
 /** Everything that happens once a free-guide request's email is verified
@@ -166,17 +168,22 @@ export type GuidePayload = {
  * -- there's no separate marketing checkbox -- so a verified click is
  * exactly the "fresh, provable consent" confirmContactSubscribed requires;
  * someone who never clicks never gets this far and is never subscribed.
- * Returns the guide's slug so the caller can send them to its download
- * page, or null if the guide was deleted between request and click. */
-export async function completeGuideVerification(email: string, payload: GuidePayload): Promise<string | null> {
-  const guide = await getLeadMagnetById(payload.guideId);
+ * Returns the selected document's public URL, or null if it was deleted
+ * between request and verification. */
+export async function completeGuideVerification(
+  email: string,
+  payload: GuidePayload,
+): Promise<{ downloadUrl: string; title: string } | null> {
+  const guide = await getGuideDocumentById(payload.guideId);
   if (!guide) return null;
 
-  const contactId = await ensureContact({ source: "guide",
+  const contactId = await ensureContact({ source: "guide", sourceDetail: "Free guide",
     email,
     name: String(payload.name || "").slice(0, 200) || null,
     phone: payload.phone ? String(payload.phone).slice(0, 30) : null,
     phoneSource: payload.phone ? "form" : undefined,
+    country: normalizeCountry(payload.country),
+    countrySource: normalizeCountry(payload.country) ? "form" : undefined,
   });
   // Only promotes the default/never-touched source -- a contact who
   // already came in as a manual entry or an import keeps that label, this
@@ -190,7 +197,7 @@ export async function completeGuideVerification(email: string, payload: GuidePay
     activityType: "guide_downloaded",
     source: "lead_magnets",
     sourceRecordId: guide.id,
-    metadata: { slug: guide.slug, title: guide.title },
+    metadata: { title: guide.title, fileName: guide.file_name, fileUrl: guide.file_url },
   });
 
   emitWebhookEvent({
@@ -199,8 +206,12 @@ export async function completeGuideVerification(email: string, payload: GuidePay
     sourceRecordId: guide.id,
     contactEmail: email,
     contactName: payload.name,
-    data: { email, name: payload.name, guide: guide.slug },
+    data: { email, name: payload.name, guide: guide.title, guide_id: guide.id, guide_url: guide.file_url },
   }).catch(() => {});
 
-  return guide.slug;
+  await sendGuideDocumentEmail({ email, name: payload.name, document: guide }).catch((error) =>
+    console.error("Guide delivery email failed:", error),
+  );
+
+  return { downloadUrl: guide.file_url, title: guide.title };
 }

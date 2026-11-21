@@ -60,7 +60,6 @@ export const HARDCODED_PAGE_SOURCES = [
   { path: MEETING_SOURCE_PATH, label: "Meeting booking" },
   { path: "/newsletter", label: "Newsletter" },
   { path: "/contact", label: "Contact page" },
-  { path: "/guide", label: "Free guide" },
   { path: "/directory", label: "Tools directory" },
   { path: "/community", label: "Community" },
   { path: "/reviews", label: "Reviews" },

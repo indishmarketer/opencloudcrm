@@ -37,7 +37,7 @@ export const WEBHOOK_EVENT_TYPES = [
   { key: "directory_tool.published", label: "Tool published", description: "A tool goes live in the directory: you approved it, or an approved paid listing was paid for. Carries the tool name, website and live link. (Submitted, review and payment emails are built in; see Tools directory > Communication.)" },
   { key: "directory_tool.paid", label: "Tool payment received", description: "A paid listing's fee was charged. data.status is \"published\" if it was already approved, otherwise \"pending\" (still awaiting review)." },
   { key: "review.submitted", label: "Review submitted", description: "Someone submits a testimonial/review." },
-  { key: "lead_magnet.downloaded", label: "Free guide downloaded", description: "Someone verifies their email after requesting a free guide and reaches its download page." },
+  { key: "lead_magnet.downloaded", label: "Free guide downloaded", description: "Someone verifies their email and receives the selected free guide document." },
   { key: "custom_form.submitted", label: "Custom form submitted", description: "Someone submits a form built in Console -> Forms. Can be narrowed to one specific form, or left on any form; the payload carries form_id, form_name and every submitted field for use in conditions and actions." },
 ] as const;
 

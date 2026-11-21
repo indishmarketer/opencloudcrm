@@ -1,6 +1,6 @@
 import { getPublicPosts } from "@/lib/blogPosts";
 import { pool } from "@/lib/db";
-import { getActiveLeadMagnet } from "@/lib/leadMagnets";
+import { getActiveGuideDocument } from "@/lib/guideDocuments";
 import { getCuratedReviewers } from "@/lib/curatedReviews";
 import { HeroView, LatestCoursesView, LatestPostsView, ReviewsView, num, str, type CourseSummary, type Props } from "@/components/pageBlocks/blockViews";
 import type { PopupSettings } from "@/lib/popupsShape";
@@ -23,8 +23,8 @@ export async function HeroBlock({
   props: Props;
   popup?: { settings: PopupSettings; content: React.ReactNode };
 }) {
-  const activeLeadMagnet = str(props, "primaryAction") === "leadMagnet" ? await getActiveLeadMagnet().catch(() => null) : null;
-  return <HeroView props={props} activeLeadMagnet={activeLeadMagnet} popup={popup} />;
+  const activeGuideDocument = str(props, "primaryAction") === "leadMagnet" ? await getActiveGuideDocument().catch(() => null) : null;
+  return <HeroView props={props} activeGuideDocument={activeGuideDocument} popup={popup} />;
 }
 
 export async function LatestPostsBlock({ props }: { props: Props }) {
