@@ -1,3 +1,4 @@
+import { recordCheckoutStarted } from "@/lib/courseInterest";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getSession } from "@/lib/auth";
@@ -27,7 +28,7 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) return NextResponse.json({ error: "Invalid course." }, { status: 400 });
 
   const result = await pool.query(
-    "SELECT id, title, price, price_currency FROM courses WHERE id = $1 AND published = true",
+    "SELECT id, slug, title, price, price_currency FROM courses WHERE id = $1 AND published = true",
     [parsed.data.courseId],
   );
   const course = result.rows[0];
@@ -43,6 +44,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "This course has no price set." }, { status: 400 });
   }
   const amountCents = Math.round(priceUsd * 100);
+  // Opening checkout is the strongest interest signal short of paying.
+  // Recorded before the gateway call so an abandoned attempt still
+  // counts, which is the whole point of tracking it.
+  await recordCheckoutStarted({
+    courseId: course.id,
+    courseSlug: course.slug,
+    courseTitle: course.title,
+    email: session.email,
+    userId: session.userId,
+    method: "paypal",
+    amount: amountCents / 100,
+    currency: "USD",
+  }).catch((error) => console.error("checkout tracking failed (non-fatal):", error));
+
   const purchase = { provider: "paypal" as const, userId: session.userId, courseId: course.id, amountMinor: amountCents, currency: "USD" as const };
 
   const existing = await findReusableOrder(purchase);

@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { getPublicPosts } from "@/lib/blogPosts";
 import { getBlogCategories } from "@/lib/blogCategories";
 import { getAdminSession, getSession } from "@/lib/auth";
+import { recordCourseView } from "@/lib/courseInterest";
 import { pool } from "@/lib/db";
 import { getCourseBySlug, getCourseCurriculum, getUserEnrollment } from "@/lib/courses";
 import { getSiteOwnerProfile } from "@/lib/siteMembers";
@@ -47,7 +48,13 @@ export async function generateMetadata({
   };
 }
 
-export default async function CourseLandingPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function CourseLandingPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   if (!(await getPublishedPage("/courses"))) notFound();
   const { slug } = await params;
   const course = await getCourseBySlug(slug);
@@ -62,6 +69,25 @@ export default async function CourseLandingPage({ params }: { params: Promise<{ 
     getSiteIdentity(),
   ]);
   const enrollment = session ? await getUserEnrollment(session.userId, course.id) : null;
+
+  // Who looked, when we can tell. A signed-in visitor is known; so is
+  // one who arrived from a guide email, which carries the token we
+  // issued to that address. Everyone else stays anonymous. Never allowed
+  // to break the page, since this is analytics, not content.
+  {
+    const query = await searchParams;
+    const guideToken = typeof query.g === "string" ? query.g : null;
+    if (session?.email || guideToken) {
+      await recordCourseView({
+        courseId: course.id,
+        courseSlug: course.slug,
+        courseTitle: course.title,
+        email: session?.email ?? null,
+        userId: session?.userId ?? null,
+        guideToken,
+      }).catch((error) => console.error("course view tracking failed (non-fatal):", error));
+    }
+  }
   const userName = session
     ? (await pool.query("SELECT name FROM users WHERE id = $1", [session.userId])).rows[0]?.name || session.email
     : null;

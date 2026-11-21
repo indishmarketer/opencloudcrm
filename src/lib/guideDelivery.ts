@@ -28,7 +28,7 @@ export async function sendGuideDocumentEmail(input: {
           <p style="margin:0;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#6d28d9;">If you want to watch me do it</p>
           <p style="margin:8px 0 0;font-size:16px;font-weight:700;color:#0a0a0a;">${escapeHtml(course.title)}${course.priceLabel ? ` &middot; ${escapeHtml(course.priceLabel)}` : ""}</p>
           ${course.subtitle ? `<p style="margin:6px 0 0;font-size:14px;line-height:1.5;color:#44403c;">${escapeHtml(course.subtitle)}</p>` : ""}
-          <p style="margin:16px 0 0;"><a href="${escapeHtml(`${SITE_URL}${course.url}`)}" style="color:#6d28d9;font-weight:700;text-decoration:none;">See what is inside &rarr;</a></p>
+          <p style="margin:16px 0 0;"><a href="${escapeHtml(`${SITE_URL}${course.url}?g=${encodeURIComponent(input.token)}`)}" style="color:#6d28d9;font-weight:700;text-decoration:none;">See what is inside &rarr;</a></p>
         </td></tr>
       </table>`
     : "";
