@@ -414,6 +414,55 @@ function AccentText({ text, accentClass = "text-accent" }: { text: string; accen
   );
 }
 
+const HOME_SOLUTION_STATEMENT = "one server you own, a few keys you pay for by usage, and an ai agent";
+
+/** Give the homepage's solution statement a clear visual cue without
+ * introducing markup into page-builder content. Matching case-insensitively
+ * keeps the saved copy editable while limiting the treatment to this exact
+ * sentence. */
+function HighlightSolutionText({ text, dark }: { text: string; dark: boolean }) {
+  const start = text.toLowerCase().indexOf(HOME_SOLUTION_STATEMENT);
+  if (start === -1) return <>{text}</>;
+
+  const end = start + HOME_SOLUTION_STATEMENT.length;
+  return (
+    <>
+      {text.slice(0, start)}
+      <span
+        className={`font-medium underline decoration-[3px] underline-offset-[7px] ${dark ? "decoration-purple-300/90" : "decoration-accent/70"}`}
+      >
+        {text.slice(start, end)}
+      </span>
+      {text.slice(end)}
+    </>
+  );
+}
+
+function GuideButtonArrow() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 72 48"
+      fill="none"
+      className="pointer-events-none absolute -top-12 left-[72%] hidden h-12 w-[4.5rem] overflow-visible text-purple-300/90 sm:block"
+    >
+      <path
+        d="M64 4C55 7 49 13 43 20C34 31 24 35 10 41"
+        stroke="currentColor"
+        strokeWidth="2.25"
+        strokeLinecap="round"
+      />
+      <path
+        d="M16 33C14 37 12 39 9 42C13 43 17 43 21 42"
+        stroke="currentColor"
+        strokeWidth="2.25"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 const BUTTON_DARK_SHAPE = "rounded-full bg-accent px-6 py-3 font-medium text-accent-on shadow-[0_10px_24px_-12px_var(--accent)] transition-opacity hover:opacity-90";
 const BUTTON_OUTLINE_SHAPE = "rounded-full border border-accent/35 px-6 py-3 font-medium text-accent transition-colors hover:border-accent hover:bg-accent-soft";
 const BUTTON_DARK = `${BUTTON_DARK_SHAPE} text-center text-sm`;
@@ -504,24 +553,27 @@ export function HeroView({
           </h1>
           {str(props, "text") && (
             <p className={`hero-animate hero-animate-3 max-w-xl whitespace-pre-line text-lg ${dark ? "text-white/70" : "text-ink-soft"}`}>
-              {str(props, "text")}
+              <HighlightSolutionText text={str(props, "text")} dark={dark} />
             </p>
           )}
           {(primaryLabel || str(props, "secondaryLabel")) && (
             <div className="hero-animate hero-animate-4 flex flex-col gap-4 sm:flex-row">
               {guide && primaryLabel ? (
-                <GuidePopup
-                  guide={{
-                    id: guide.id,
-                    slug: guide.slug,
-                    title: guide.title,
-                    headline: guide.headline,
-                    subheadline: guide.subheadline,
-                    coverImageUrl: guide.cover_image_url,
-                  }}
-                  buttonLabel={primaryLabel}
-                  buttonClassName={primaryClass}
-                />
+                <div className="relative w-fit">
+                  {dark && <GuideButtonArrow />}
+                  <GuidePopup
+                    guide={{
+                      id: guide.id,
+                      slug: guide.slug,
+                      title: guide.title,
+                      headline: guide.headline,
+                      subheadline: guide.subheadline,
+                      coverImageUrl: guide.cover_image_url,
+                    }}
+                    buttonLabel={primaryLabel}
+                    buttonClassName={primaryClass}
+                  />
+                </div>
               ) : popup && primaryLabel ? (
                 <PopupTrigger buttonLabel={primaryLabel} buttonClassName={primaryClass} settings={popup.settings}>
                   {popup.content}
