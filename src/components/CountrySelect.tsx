@@ -2,6 +2,8 @@
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { countryOptions, isIndianTimeZone, normalizeCountry } from "@/lib/countries";
+import { getCountryFlag } from "@/lib/countryDialCodes";
+import { getCountryPhoneSpec } from "@/lib/phoneValidation";
 
 let detected: Promise<string | null> | null = null;
 
@@ -36,6 +38,7 @@ export default function CountrySelect({
   disabled,
   pill = false,
   className,
+  display = "name",
 }: {
   value: string;
   onChange: (code: string) => void;
@@ -46,8 +49,16 @@ export default function CountrySelect({
   /** Rounded-full, to sit in a row of pill inputs. */
   pill?: boolean;
   className?: string;
+  /** "dial" shows just the flag and calling code, for sitting directly in
+   * front of a phone field. The list still shows full country names, and
+   * carries the calling code so searching "+91" finds India too. */
+  display?: "name" | "dial";
 }) {
-  const options = useMemo(() => countryOptions(), []);
+  const options = useMemo(() => {
+    const base = countryOptions();
+    if (display !== "dial") return base;
+    return base.map((o) => ({ ...o, label: `${o.label} (${getCountryPhoneSpec(o.value).dialCode})` }));
+  }, [display]);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
@@ -118,7 +129,14 @@ export default function CountrySelect({
           open ? "border-ink" : "border-line"
         }`}
       >
-        <span className={`truncate ${selected ? "" : "text-ink-soft"}`}>{selected ? selected.label : "Select your country"}</span>
+        {display === "dial" ? (
+          <span className={`flex items-center gap-1.5 truncate ${value ? "" : "text-ink-soft"}`}>
+            <span aria-hidden="true">{getCountryFlag(value || "US")}</span>
+            <span>{getCountryPhoneSpec(value || "US").dialCode}</span>
+          </span>
+        ) : (
+          <span className={`truncate ${selected ? "" : "text-ink-soft"}`}>{selected ? selected.label : "Select your country"}</span>
+        )}
         <svg
           viewBox="0 0 24 24"
           aria-hidden="true"

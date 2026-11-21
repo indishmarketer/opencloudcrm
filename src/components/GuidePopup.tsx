@@ -121,7 +121,11 @@ export default function GuidePopup({
           name: name.trim(),
           email: finalEmail,
           phone: e164Phone ?? undefined,
-          country: country || undefined,
+          // Only a country the visitor actually stood behind by typing a
+          // number against it. The picker auto-detects, so sending it
+          // regardless would record a guess as if they had chosen it, and
+          // the server already falls back to the IP country.
+          country: e164Phone ? country || undefined : undefined,
           turnstileToken,
         }),
       });
@@ -200,7 +204,10 @@ export default function GuidePopup({
               )}
 
               <div className="pr-6">
-                <span className="inline-block rounded-full border border-ink/15 bg-paper-soft px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-ink-soft">
+                {/* w-fit matters: this sits inside a flex column, where a
+                    bare inline-block still stretches the full width and the
+                    pill's outline runs the whole panel. */}
+                <span className="inline-flex w-fit self-start rounded-full border border-ink/15 bg-paper-soft px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-ink-soft">
                   {FREE_GUIDE_CONTENT.badge}
                 </span>
                 <h3 className="mt-2.5 font-display text-xl font-semibold leading-snug tracking-tight text-ink sm:text-[1.6rem]">
@@ -262,13 +269,19 @@ export default function GuidePopup({
                   <label htmlFor="guide-phone" className="mb-1 block text-xs font-medium text-ink-soft">
                     Phone number <span className="font-normal">(optional)</span>
                   </label>
-                  <div className="grid gap-2 sm:grid-cols-[0.9fr_1.1fr]">
-                    <CountrySelect id="guide-country" value={country} onChange={(code) => { setCountry(code); setPhone(""); }} autoDetect />
-                    {country ? (
-                      <PhoneInput id="guide-phone" country={country} value={phone} onChange={setPhone} showHint={false} />
-                    ) : (
-                      <div className="flex min-h-11 items-center rounded-xl border border-dashed border-line px-4 text-sm text-ink-soft">Select a country first</div>
-                    )}
+                  {/* One phone row, not a country question followed by a
+                      number. The picker shows the calling code and opens a
+                      searchable country list, so changing it is the same
+                      gesture as on a phone keypad. */}
+                  <div className="grid grid-cols-[7.5rem_1fr] gap-2">
+                    <CountrySelect
+                      id="guide-country"
+                      value={country}
+                      onChange={(code) => { setCountry(code); setPhone(""); }}
+                      autoDetect
+                      display="dial"
+                    />
+                    <PhoneInput id="guide-phone" country={country || "US"} value={phone} onChange={setPhone} showHint={false} />
                   </div>
                 </div>
 
@@ -281,12 +294,12 @@ export default function GuidePopup({
                 <button
                   type="submit"
                   disabled={status === "submitting" || !turnstileToken}
-                  className="w-full rounded-full bg-ink px-6 py-3.5 text-sm font-medium text-paper transition-opacity hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="w-full rounded-full bg-gradient-to-r from-violet-600 to-purple-700 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-violet-600/25 transition-all hover:from-violet-500 hover:to-purple-600 hover:shadow-xl hover:shadow-violet-600/30 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
                 >
-                  {status === "submitting" ? "Sending your guide…" : "Email me the free guide"}
+                  {status === "submitting" ? "Sending your guide…" : "Send me the free guide"}
                 </button>
                 <p className="text-center text-xs text-ink-soft">
-                  It lands in your inbox in a few seconds. No code to type.
+                  I respect your privacy. No spam, and you can unsubscribe any time.
                 </p>
               </form>
             </>
