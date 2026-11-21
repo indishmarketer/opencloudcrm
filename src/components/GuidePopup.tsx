@@ -10,6 +10,14 @@ import CountrySelect from "@/components/CountrySelect";
 import { detectEmailTypo } from "@/lib/emailValidation";
 import { FREE_GUIDE_CONTENT } from "@/lib/freeGuideContent";
 
+type FollowUpCourse = {
+  slug: string;
+  title: string;
+  subtitle: string | null;
+  url: string;
+  priceLabel: string | null;
+};
+
 type GuideDocumentSummary = {
   id: number;
   title: string;
@@ -45,6 +53,7 @@ export default function GuidePopup({
   const [country, setCountry] = useState("US");
   const [submittedEmail, setSubmittedEmail] = useState("");
   const [turnstileToken, setTurnstileToken] = useState("");
+  const [followUp, setFollowUp] = useState<FollowUpCourse | null>(null);
   const handleToken = useCallback((t: string) => setTurnstileToken(t), []);
 
   // Pre-fill email if the visitor is already logged in. CountrySelect owns
@@ -61,6 +70,20 @@ export default function GuidePopup({
   }, []);
 
   useEffect(() => {
+    if (step !== "sent") return;
+    let cancelled = false;
+    fetch("/api/guide/follow-up-course")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!cancelled && d?.course) setFollowUp(d.course);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [step]);
+
+  useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -75,6 +98,7 @@ export default function GuidePopup({
     setError("");
     setPhone("");
     setCountry("US");
+    setFollowUp(null);
     setSubmittedEmail("");
     setTurnstileToken("");
   }
@@ -333,6 +357,23 @@ export default function GuidePopup({
                   This is the only copy I send. If it gets buried under everything else in your inbox, you will not get another one, so grab it while you are thinking about it. Check your spam folder if it is not there in a minute.
                 </p>
               </div>
+              {followUp && (
+                <a
+                  href={followUp.url}
+                  className="mt-4 block rounded-xl border border-line bg-paper-soft p-4 text-left transition-colors hover:border-ink"
+                >
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-soft">While you are here</p>
+                  <p className="mt-1.5 text-sm font-semibold text-ink">
+                    {followUp.title}
+                    {followUp.priceLabel ? <span className="font-normal text-ink-soft"> · {followUp.priceLabel}</span> : null}
+                  </p>
+                  {followUp.subtitle && (
+                    <p className="mt-1 text-sm leading-relaxed text-ink-soft">{followUp.subtitle}</p>
+                  )}
+                  <span className="mt-2 inline-block text-sm font-semibold text-violet-700">Take a look &rarr;</span>
+                </a>
+              )}
+
               <div className="mt-6 flex justify-center sm:justify-start">
                 <button
                   type="button"
