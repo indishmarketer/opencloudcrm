@@ -42,7 +42,7 @@ export default function GuidePopup({
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [country, setCountry] = useState("");
+  const [country, setCountry] = useState("US");
   const [submittedEmail, setSubmittedEmail] = useState("");
   const [turnstileToken, setTurnstileToken] = useState("");
   const handleToken = useCallback((t: string) => setTurnstileToken(t), []);
@@ -74,6 +74,7 @@ export default function GuidePopup({
     setStatus("idle");
     setError("");
     setPhone("");
+    setCountry("US");
     setSubmittedEmail("");
     setTurnstileToken("");
   }
@@ -273,15 +274,22 @@ export default function GuidePopup({
                       number. The picker shows the calling code and opens a
                       searchable country list, so changing it is the same
                       gesture as on a phone keypad. */}
-                  <div className="grid grid-cols-[7.5rem_1fr] gap-2">
+                  <div className="grid grid-cols-[6.5rem_1fr] gap-2">
                     <CountrySelect
                       id="guide-country"
                       value={country}
                       onChange={(code) => { setCountry(code); setPhone(""); }}
-                      autoDetect
+                      autoDetect={false}
                       display="dial"
                     />
-                    <PhoneInput id="guide-phone" country={country || "US"} value={phone} onChange={setPhone} showHint={false} />
+                    <PhoneInput
+                      id="guide-phone"
+                      country={country}
+                      value={phone}
+                      onChange={setPhone}
+                      showHint={false}
+                      showCodePrefix={false}
+                    />
                   </div>
                 </div>
 

@@ -39,9 +39,16 @@ export function countryName(code: string | null | undefined): string {
 }
 
 /** Every country sorted by name, India first (most of the audience). */
-export function countryOptions(): { value: string; label: string }[] {
+/** `pinIndiaFirst` is the default because most of these pickers ask a
+ * visitor which country they are in, and most of them are in India. A
+ * calling-code picker is a different question: there the list is read as
+ * a plain A to Z index, so a jumped row just looks like a bug. */
+export function countryOptions(
+  { pinIndiaFirst = true }: { pinIndiaFirst?: boolean } = {},
+): { value: string; label: string }[] {
   const all = COUNTRY_CODES.map((code) => ({ value: code, label: countryName(code) }));
   all.sort((a, b) => a.label.localeCompare(b.label));
+  if (!pinIndiaFirst) return all;
   const india = all.findIndex((c) => c.value === "IN");
   if (india > 0) all.unshift(...all.splice(india, 1));
   return all;

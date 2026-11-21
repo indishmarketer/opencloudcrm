@@ -54,10 +54,20 @@ export default function CountrySelect({
    * carries the calling code so searching "+91" finds India too. */
   display?: "name" | "dial";
 }) {
+  // In dial mode the row reads "IN +91", not the country's full name: the
+  // field is asking for a calling code, and the long names made the list
+  // hard to scan. The name stays in `search` so typing "india" still finds
+  // it, which is the only thing the name was doing there.
   const options = useMemo(() => {
-    const base = countryOptions();
-    if (display !== "dial") return base;
-    return base.map((o) => ({ ...o, label: `${o.label} (${getCountryPhoneSpec(o.value).dialCode})` }));
+    const base = countryOptions({ pinIndiaFirst: display !== "dial" });
+    return base.map((o) => {
+      const dial = `+${getCountryPhoneSpec(o.value).dialCode}`;
+      return {
+        value: o.value,
+        label: display === "dial" ? `${o.value} ${dial}` : o.label,
+        search: `${o.label} ${o.value} ${dial}`.toLowerCase(),
+      };
+    });
   }, [display]);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -97,7 +107,7 @@ export default function CountrySelect({
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return options;
-    return options.filter((o) => o.label.toLowerCase().includes(q) || o.value.toLowerCase() === q);
+    return options.filter((o) => o.search.includes(q) || o.value.toLowerCase() === q);
   }, [options, query]);
 
   const selected = options.find((o) => o.value === value);
@@ -130,9 +140,10 @@ export default function CountrySelect({
         }`}
       >
         {display === "dial" ? (
-          <span className={`flex items-center gap-1.5 truncate ${value ? "" : "text-ink-soft"}`}>
-            <span aria-hidden="true">{getCountryFlag(value || "US")}</span>
-            <span>{getCountryPhoneSpec(value || "US").dialCode}</span>
+          // Plain text on one baseline. An emoji flag next to it rendered a
+          // line apart on Windows, which is what made this look broken.
+          <span className="truncate font-medium tabular-nums">
+            {(value || "US").toUpperCase()} +{getCountryPhoneSpec(value || "US").dialCode}
           </span>
         ) : (
           <span className={`truncate ${selected ? "" : "text-ink-soft"}`}>{selected ? selected.label : "Select your country"}</span>

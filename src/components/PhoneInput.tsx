@@ -18,6 +18,10 @@ export type PhoneInputProps = {
   required?: boolean;
   onValidationChange?: (isValid: boolean) => void;
   showHint?: boolean;
+  /** Set false when the calling code is already shown by a picker sitting
+   * next to this field, otherwise the code appears twice and the row reads
+   * as three boxes instead of two. */
+  showCodePrefix?: boolean;
 };
 
 /**
@@ -34,6 +38,7 @@ export default function PhoneInput({
   required = false,
   onValidationChange,
   showHint = true,
+  showCodePrefix = true,
 }: PhoneInputProps) {
   const upperCountry = (country || "IN").toUpperCase();
   const spec = useMemo(() => getCountryPhoneSpec(upperCountry), [upperCountry]);
@@ -64,13 +69,15 @@ export default function PhoneInput({
   return (
     <div className={`w-full ${className}`}>
       <div className="flex items-stretch gap-2">
-        <span
-          className="flex shrink-0 items-center gap-1.5 rounded-xl border border-line bg-paper-soft px-3 py-2 text-sm font-medium text-ink select-none"
-          title={`${spec.name} (+${code})`}
-        >
-          <span className="text-base">{flag}</span>
-          <span className="font-mono text-xs font-semibold text-ink">+{code}</span>
-        </span>
+        {showCodePrefix && (
+          <span
+            className="flex shrink-0 items-center gap-1.5 rounded-xl border border-line bg-paper-soft px-3 py-2 text-sm font-medium text-ink select-none"
+            title={`${spec.name} (+${code})`}
+          >
+            <span className="text-base">{flag}</span>
+            <span className="font-mono text-xs font-semibold text-ink">+{code}</span>
+          </span>
+        )}
 
         <div className="relative min-w-0 flex-1">
           <input
