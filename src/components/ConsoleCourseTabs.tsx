@@ -9,7 +9,6 @@ export default function ConsoleCourseTabs({ courseId }: { courseId: string }) {
   const TABS = [
     { href: `/console/courses/${courseId}`, label: "Settings", exact: true },
     { href: `/console/courses/${courseId}/curriculum`, label: "Curriculum" },
-    { href: `/console/courses/${courseId}/page-sections`, label: "Sales page" },
     { href: `/console/courses/${courseId}/students`, label: "Students & Progress" },
     { href: `/console/courses/${courseId}/comments`, label: "Comments" },
     { href: `/console/courses/${courseId}/preview`, label: "Preview" },

@@ -304,48 +304,6 @@ export function createMcpTools(authHeader: string): ToolDef[] {
       handler: async ({ id, ...updates }) => unwrap(courseUpdatePATCH(fakeRequest(authHeader, updates), idParams(id))),
     },
     {
-      name: "get_course_sales_page",
-      description: "Get (creating a draft on first use) a course's independent optional sales page. The ordinary course page remains at /courses/{slug}; the sales page is /courses/{slug}/sales. Add a CTA link to /courses/{slug}/enroll for signup, access, or checkout.",
-      inputSchema: { courseId: z.number().int().positive() },
-      handler: async ({ courseId }) => unwrap(editTargetPOST(fakeRequest(authHeader, { kind: "course", refId: courseId }))),
-    },
-    {
-      name: "save_course_sales_page",
-      description: "Save the course's optional standalone sales page using the Pages editor blocks and metadata. Set publish=true to make /courses/{slug}/sales live. Link its CTA to /courses/{slug}/enroll.",
-      inputSchema: {
-        courseId: z.number().int().positive(),
-        title: z.string().optional(),
-        blocks: z.array(z.object({ type: z.string(), props: z.record(z.string(), z.unknown()).optional() }).passthrough()).optional(),
-        metaTitle: z.string().optional(),
-        metaDescription: z.string().optional(),
-        ogImage: z.string().optional(),
-        noindex: z.boolean().optional(),
-        publish: z.boolean().optional(),
-      },
-      handler: async ({ courseId, ...updates }) => {
-        const target = await unwrap(editTargetPOST(fakeRequest(authHeader, { kind: "course", refId: courseId }))) as { page: { id: number } };
-        return unwrap(pageUpdatePATCH(fakeRequest(authHeader, updates), idParams(target.page.id)));
-      },
-    },
-    {
-      name: "publish_course_sales_page",
-      description: "Publish a course's optional sales page at /courses/{slug}/sales. The ordinary course page stays unchanged.",
-      inputSchema: { courseId: z.number().int().positive() },
-      handler: async ({ courseId }) => {
-        const target = await unwrap(editTargetPOST(fakeRequest(authHeader, { kind: "course", refId: courseId }))) as { page: { id: number } };
-        return unwrap(pagePublishPOST(fakeRequest(authHeader, {}), idParams(target.page.id)));
-      },
-    },
-    {
-      name: "unpublish_course_sales_page",
-      description: "Take the optional course sales page offline without changing the normal course page or enrollments.",
-      inputSchema: { courseId: z.number().int().positive() },
-      handler: async ({ courseId }) => {
-        const target = await unwrap(editTargetPOST(fakeRequest(authHeader, { kind: "course", refId: courseId }))) as { page: { id: number } };
-        return unwrap(pageUnpublishPOST(fakeRequest(authHeader, {}), idParams(target.page.id)));
-      },
-    },
-    {
       name: "list_pages",
       description: "List every page on the site (homepage, custom pages, built-in pages like /courses or /terms) with status. Built-in pages never edited have id null.",
       inputSchema: {},

@@ -41,7 +41,6 @@ export default function ConsoleFrame({
     /^\/console\/email-builder\/fixed\/[^/]+$/.test(pathname) ||
     /^\/console\/email-builder\/campaign\/[^/]+$/.test(pathname) ||
     /^\/console\/workflows\/[^/]+$/.test(pathname) ||
-    /^\/console\/courses\/[^/]+\/page-sections$/.test(pathname) ||
     /^\/console\/directory\/tools\/[^/]+\/page-sections$/.test(pathname);
 
   if (isBlogEditor || isPageEditor) {

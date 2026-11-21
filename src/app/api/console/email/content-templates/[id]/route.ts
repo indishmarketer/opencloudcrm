@@ -23,13 +23,16 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const subject = typeof body.subject === "string" ? body.subject : "";
   const bodyHtml = typeof body.bodyHtml === "string" ? body.bodyHtml : "";
   const category = body.category === "marketing" || body.category === "transactional" ? body.category : undefined;
+  // Omitted leaves the folder alone; a string (including "") sets it, so
+  // the picker can move a template back to General.
+  const folder = typeof body.folder === "string" ? body.folder : undefined;
   if (!name) return NextResponse.json({ error: "Give this template a name." }, { status: 400 });
 
   // An array saves a Visual layout; null explicitly saves Classic/HTML and
   // clears stale blocks. Omission leaves any existing layout unchanged.
   const blocks = body.blocks === null ? null : Array.isArray(body.blocks) ? body.blocks : undefined;
 
-  const template = await updateContentTemplate(id, { name, subject, bodyHtml, category, blocks }, email);
+  const template = await updateContentTemplate(id, { name, subject, bodyHtml, category, folder, blocks }, email);
   if (!template) return NextResponse.json({ error: "Template not found." }, { status: 404 });
   return NextResponse.json({ template });
 }

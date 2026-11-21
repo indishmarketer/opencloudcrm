@@ -2,7 +2,6 @@ import { redirect, notFound } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { pool } from "@/lib/db";
 import { getCourseBySlug, getCourseCurriculum, getUserEnrollment } from "@/lib/courses";
-import { getPublishedEntityPage } from "@/lib/sitePages";
 import { sendEmailWithRetry } from "@/lib/emailOutbox";
 import { getEmailTemplateOptional, applyTemplateVars } from "@/lib/emailTemplates";
 import { triggerEmailFlow, firstNameOf } from "@/lib/emailAutomation";
@@ -26,8 +25,7 @@ export default async function CourseEnrollPage({ params }: { params: Promise<{ s
   if (existingEnrollment) redirect(`/account/courses/${course.slug}`);
   const modules = await getCourseCurriculum(course.id);
   if (!modules.some((module) => module.tier === "free")) {
-    const salesPage = await getPublishedEntityPage("course", course.id);
-    redirect(salesPage ? `/courses/${course.slug}/sales#purchase` : `/courses/${course.slug}#buy`);
+    redirect(`/courses/${course.slug}#buy`);
   }
 
   const result = await pool.query(

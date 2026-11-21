@@ -15,7 +15,6 @@ export default function ConsoleCourseStudioFrame({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  if (pathname === `/console/courses/${courseId}/page-sections`) return children;
 
   return (
     <div>

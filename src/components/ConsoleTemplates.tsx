@@ -12,6 +12,7 @@ export type ContentTemplateRow = {
   subject: string;
   body_html: string;
   category: "marketing" | "transactional";
+  folder: string | null;
 };
 
 export type FixedTemplateRow = {
@@ -24,6 +25,9 @@ export type FixedTemplateRow = {
   from_email: string;
   track_opens: boolean;
   allowed_vars: string[];
+  /** The fixed templates already ship grouped (courses, meetings,
+   * admin, security, account), so their folder is that category. */
+  folder: string | null;
 };
 
 export type TemplateRow = ContentTemplateRow | FixedTemplateRow;
@@ -34,6 +38,25 @@ function rowName(row: TemplateRow): string {
 function rowKey(row: TemplateRow): string {
   return row.kind === "content" ? `content-${row.id}` : `fixed-${row.key}`;
 }
+function rowFolder(row: TemplateRow): string {
+  return (row.folder || "").trim() || "General";
+}
+
+/** Folders in display order: General last, everything else A to Z, so a
+ * named group never hides below the ungrouped pile. */
+function groupByFolder(rows: TemplateRow[]): [string, TemplateRow[]][] {
+  const groups = new Map<string, TemplateRow[]>();
+  for (const row of rows) {
+    const name = rowFolder(row);
+    const bucket = groups.get(name);
+    if (bucket) bucket.push(row);
+    else groups.set(name, [row]);
+  }
+  return [...groups.entries()].sort(([a], [b]) =>
+    a === "General" ? 1 : b === "General" ? -1 : a.localeCompare(b),
+  );
+}
+
 function composerHref(row: TemplateRow): string {
   return row.kind === "content" ? `/console/email-builder/${row.id}` : `/console/email-builder/fixed/${encodeURIComponent(row.key)}`;
 }
@@ -53,6 +76,7 @@ export default function ConsoleTemplates({
   const [createError, setCreateError] = useState("");
   const [deleteError, setDeleteError] = useState("");
   const [deletingKey, setDeletingKey] = useState<string | null>(null);
+  const [moveError, setMoveError] = useState("");
 
   const rows: TemplateRow[] = useMemo(() => {
     if (tab === "marketing") return contentTemplates.filter((t) => t.category === "marketing");
@@ -61,6 +85,28 @@ export default function ConsoleTemplates({
       ...fixedTemplates,
     ];
   }, [tab, contentTemplates, fixedTemplates]);
+
+  const groups = useMemo(() => groupByFolder(rows), [rows]);
+
+  const folderChoices = useMemo(() => {
+    const names = new Set<string>(["Courses"]);
+    for (const t of contentTemplates) if (t.folder?.trim()) names.add(t.folder.trim());
+    return [...names].sort((a, b) => a.localeCompare(b));
+  }, [contentTemplates]);
+
+  async function moveToFolder(row: ContentTemplateRow, folder: string) {
+    setMoveError("");
+    const res = await fetch(`/api/console/email/content-templates/${row.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: row.name, subject: row.subject, bodyHtml: row.body_html, folder }),
+    });
+    if (!res.ok) {
+      setMoveError("Could not move that template. Try again.");
+      return;
+    }
+    router.refresh();
+  }
 
   async function createAndOpen() {
     const name = (creatingName || "").trim();
@@ -140,13 +186,24 @@ export default function ConsoleTemplates({
 
       <div className="mt-6">
         {deleteError && <p role="alert" className="mb-3 text-sm text-red-600">{deleteError}</p>}
+        {moveError && <p role="alert" className="mb-3 text-sm text-red-600">{moveError}</p>}
         {!rows.length ? (
           <p className="text-sm text-ink-soft">
             {tab === "marketing" ? "No marketing templates yet." : "No transactional templates yet."}
           </p>
         ) : (
-          <div className="space-y-3">
-            {rows.map((row) => {
+          <div className="space-y-8">
+            {groups.map(([folderName, folderRows]) => (
+            <section key={folderName}>
+              <h3 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-ink-soft">
+                <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                </svg>
+                {folderName}
+                <span className="font-normal normal-case tracking-normal">({folderRows.length})</span>
+              </h3>
+              <div className="space-y-3">
+            {folderRows.map((row) => {
               const k = rowKey(row);
               return (
                 <div key={k} className="rounded-2xl border border-line bg-paper p-5">
@@ -156,6 +213,19 @@ export default function ConsoleTemplates({
                       <p className="mt-1 text-xs text-ink-soft">{row.subject || "No subject set"}</p>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
+                      {row.kind === "content" && (
+                        <select
+                          aria-label={`Folder for ${rowName(row)}`}
+                          value={rowFolder(row) === "General" ? "" : rowFolder(row)}
+                          onChange={(e) => void moveToFolder(row, e.target.value)}
+                          className="rounded-full border border-line bg-paper px-3 py-1.5 text-xs font-medium text-ink-soft outline-none transition-colors hover:border-ink"
+                        >
+                          <option value="">General</option>
+                          {folderChoices.map((name) => (
+                            <option key={name} value={name}>{name}</option>
+                          ))}
+                        </select>
+                      )}
                       <Link href={composerHref(row)} className="rounded-full border border-line px-3 py-1.5 text-xs font-medium text-ink transition-colors hover:border-ink">
                         Open composer
                       </Link>
@@ -172,6 +242,9 @@ export default function ConsoleTemplates({
                 </div>
               );
             })}
+              </div>
+            </section>
+            ))}
           </div>
         )}
       </div>
