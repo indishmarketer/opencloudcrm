@@ -2,8 +2,7 @@
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { countryOptions, isIndianTimeZone, normalizeCountry } from "@/lib/countries";
-import { getCountryFlag } from "@/lib/countryDialCodes";
-import { getCountryPhoneSpec } from "@/lib/phoneValidation";
+import { dialCodeOrNull } from "@/lib/phoneValidation";
 
 let detected: Promise<string | null> | null = null;
 
@@ -60,13 +59,17 @@ export default function CountrySelect({
   // it, which is the only thing the name was doing there.
   const options = useMemo(() => {
     const base = countryOptions({ pinIndiaFirst: display !== "dial" });
-    return base.map((o) => {
-      const dial = `+${getCountryPhoneSpec(o.value).dialCode}`;
-      return {
+    return base.flatMap((o) => {
+      const dial = dialCodeOrNull(o.value);
+      // A place with no numbering plan cannot be picked as a calling code,
+      // so it is left out of the dial list rather than shown without one.
+      if (display === "dial" && !dial) return [];
+      const suffix = dial ? ` +${dial}` : "";
+      return [{
         value: o.value,
-        label: display === "dial" ? `${o.value} ${dial}` : o.label,
-        search: `${o.label} ${o.value} ${dial}`.toLowerCase(),
-      };
+        label: display === "dial" ? `${o.value}${suffix}` : o.label,
+        search: `${o.label} ${o.value}${suffix}`.toLowerCase(),
+      }];
     });
   }, [display]);
   const [open, setOpen] = useState(false);
@@ -143,7 +146,7 @@ export default function CountrySelect({
           // Plain text on one baseline. An emoji flag next to it rendered a
           // line apart on Windows, which is what made this look broken.
           <span className="truncate font-medium tabular-nums">
-            {(value || "US").toUpperCase()} +{getCountryPhoneSpec(value || "US").dialCode}
+            {(value || "US").toUpperCase()} +{dialCodeOrNull(value || "US") ?? dialCodeOrNull("US")}
           </span>
         ) : (
           <span className={`truncate ${selected ? "" : "text-ink-soft"}`}>{selected ? selected.label : "Select your country"}</span>

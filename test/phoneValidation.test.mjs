@@ -4,7 +4,9 @@ import {
   getCountryPhoneSpec,
   normalizeNationalDigits,
   validatePhoneNumber,
+  dialCodeOrNull,
 } from "../src/lib/phoneValidation.ts";
+import { countryOptions } from "../src/lib/countries.ts";
 
 test("phone validation follows the selected country's numbering plan", () => {
   const cases = [
@@ -38,4 +40,20 @@ test("a national number requires a selected country", () => {
   const result = validatePhoneNumber("9876543210", null, false);
   assert.equal(result.isValid, false);
   assert.equal(result.error, "Select your country first.");
+});
+
+test("every listed country can be put in a calling-code picker", () => {
+  // Seven ISO territories have no numbering plan at all, and
+  // getCountryCallingCode throws for them. Building a dial-code list by
+  // mapping getCountryPhoneSpec over the whole country list therefore
+  // took the free-guide popup down with a blank modal. dialCodeOrNull is
+  // the guard; this walks the real list so a regression shows up here
+  // rather than in a browser.
+  const withoutPlan = [];
+  for (const { value } of countryOptions()) {
+    const dial = dialCodeOrNull(value);
+    if (dial === null) withoutPlan.push(value);
+    else assert.match(dial, /^\d+$/, `${value} should yield digits, got ${dial}`);
+  }
+  assert.deepEqual(withoutPlan.sort(), ["AQ", "BV", "GS", "HM", "PN", "TF", "UM"]);
 });

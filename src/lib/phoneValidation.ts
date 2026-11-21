@@ -54,6 +54,26 @@ export function getCountryPhoneSpec(input: string | null | undefined): CountryPh
   };
 }
 
+/** The calling code for a country, or null where there is no numbering
+ * plan at all: Antarctica, Bouvet Island, South Georgia, Heard Island,
+ * Pitcairn, the French Southern Territories and the US Minor Outlying
+ * Islands are in the ISO list but have no dial code.
+ *
+ * getCountryCallingCode throws for those. That is harmless when you ask
+ * about the one country somebody selected, and fatal when you map it over
+ * the whole country list to build a picker, which takes the entire
+ * component down with it. Anything that walks all of COUNTRY_CODES must
+ * come through here. */
+export function dialCodeOrNull(input: string | null | undefined): string | null {
+  const code = countryCode(input);
+  if (!code) return null;
+  try {
+    return getCountryCallingCode(code);
+  } catch {
+    return null;
+  }
+}
+
 export const COUNTRY_PHONE_SPECS: Record<string, CountryPhoneSpec> = new Proxy(
   {},
   { get: (_target, property: string) => typeof property === "string" ? getCountryPhoneSpec(property) : undefined },
