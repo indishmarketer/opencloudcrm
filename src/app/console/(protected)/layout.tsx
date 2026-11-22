@@ -46,6 +46,7 @@ const baseNavGroups = [
     links: [
       { href: "/console/sales", label: "Sales" },
       { href: "/console/meetings", label: "Meetings" },
+      { href: "/console/support", label: "Support" },
     ],
   },
   {

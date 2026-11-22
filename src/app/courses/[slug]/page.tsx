@@ -7,7 +7,7 @@ import { getBlogCategories } from "@/lib/blogCategories";
 import { getAdminSession, getSession } from "@/lib/auth";
 import { recordCourseView } from "@/lib/courseInterest";
 import { pool } from "@/lib/db";
-import { getCourseBySlug, getCourseCurriculum, getUserEnrollment } from "@/lib/courses";
+import { getCourseBySlug, getCourseCurriculum, getUserEnrollment, type CourseSections } from "@/lib/courses";
 import { getSiteOwnerProfile } from "@/lib/siteMembers";
 import { getSiteIdentity, resolveSiteName } from "@/lib/siteIdentity";
 import UnlockProModal from "@/components/UnlockProModal";
@@ -105,6 +105,9 @@ export default async function CourseLandingPage({
   };
   const [postsIndex, blogCategories] = await Promise.all([getPublicPosts(), getBlogCategories()]);
 
+  // Stored as jsonb, so guard the shape rather than trust it: a
+  // half-written section must not take the whole course page down.
+  const sections = (course.sections && typeof course.sections === "object" ? course.sections : {}) as CourseSections;
   const totalLessons = modules.reduce((sum, m) => sum + m.lessons.length, 0);
   const hasFreeTier = modules.some((m) => m.tier === "free");
   const prices = await getCoursePrices(course);
@@ -222,6 +225,57 @@ export default async function CourseLandingPage({
           </div>
         </Link>
 
+        {/* What the course actually does for them. A title and a module
+            list describes a course; none of it answers "should I buy
+            this". Each list is optional and skipped when empty, so a
+            course with nothing set renders as it always did. */}
+        {!!sections.outcomes?.length && (
+          <div className="mt-16">
+            <h2 className="font-display text-2xl font-semibold">What you will be able to do</h2>
+            <ul className="mt-6 grid gap-4 sm:grid-cols-2">
+              {sections.outcomes.map((item) => (
+                <li key={item} className="flex gap-3 text-ink-soft">
+                  <svg className="mt-1 h-5 w-5 shrink-0 text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {(!!sections.audience?.length || !!sections.requirements?.length) && (
+          <div className="mt-16 grid gap-10 md:grid-cols-2">
+            {!!sections.audience?.length && (
+              <div>
+                <h2 className="font-display text-2xl font-semibold">Who this is for</h2>
+                <ul className="mt-6 space-y-3">
+                  {sections.audience.map((item) => (
+                    <li key={item} className="flex gap-3 text-ink-soft">
+                      <span aria-hidden="true" className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {!!sections.requirements?.length && (
+              <div>
+                <h2 className="font-display text-2xl font-semibold">What you need before you start</h2>
+                <ul className="mt-6 space-y-3">
+                  {sections.requirements.map((item) => (
+                    <li key={item} className="flex gap-3 text-ink-soft">
+                      <span aria-hidden="true" className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="mt-16">
           <h2 className="font-display text-2xl font-semibold">Curriculum</h2>
           <div className="mt-6 space-y-4">
@@ -267,6 +321,25 @@ export default async function CourseLandingPage({
             ))}
           </div>
         </div>
+
+        {!!sections.faq?.length && (
+          <div className="mt-16">
+            <h2 className="font-display text-2xl font-semibold">Questions people ask</h2>
+            <div className="mt-6 space-y-3">
+              {sections.faq.map((item) => (
+                <details key={item.q} className="group rounded-2xl border border-line bg-paper p-6 open:bg-paper-soft transition-colors">
+                  <summary className="cursor-pointer list-none font-medium">
+                    <span className="flex items-start justify-between gap-4">
+                      <span>{item.q}</span>
+                      <span aria-hidden="true" className="mt-1 shrink-0 text-ink-soft transition-transform group-open:rotate-45">+</span>
+                    </span>
+                  </summary>
+                  <p className="mt-3 text-sm leading-relaxed text-ink-soft">{item.a}</p>
+                </details>
+              ))}
+            </div>
+          </div>
+        )}
 
         {shownPrice && enrollment?.tier !== "pro" && (
           <div id={hasFreeTier ? "unlock-pro" : "buy"} className="mt-16 rounded-2xl border border-line bg-paper-soft p-8">

@@ -34,6 +34,17 @@ export type Course = {
   price_currency: "INR" | "USD";
   published: boolean;
   created_at: string;
+  /** Optional selling sections for the public page. Any key may be
+   * absent; the page renders only what is there, so a course with
+   * nothing set looks exactly as it did before these existed. */
+  sections: CourseSections;
+};
+
+export type CourseSections = {
+  outcomes?: string[];
+  audience?: string[];
+  requirements?: string[];
+  faq?: { q: string; a: string }[];
 };
 
 export async function getCourseBySlug(slug: string): Promise<Course | null> {
