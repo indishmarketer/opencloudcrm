@@ -36,18 +36,16 @@ export async function POST(req: Request) {
       }
     }
 
-    // Deleting a user cascades to their forum_posts/review_submissions/
+    // Deleting a user cascades to their review_submissions/
     // avatar reference, so collect every R2 image those rows carry
     // before the transaction wipes the rows that point to them.
     const r2UrlsToClean: string[] = [];
     if (userIds.length > 0) {
-      const [avatars, posts, reviews] = await Promise.all([
+      const [avatars, reviews] = await Promise.all([
         pool.query("SELECT avatar_url FROM users WHERE id = ANY($1::int[]) AND avatar_url IS NOT NULL", [userIds]),
-        pool.query("SELECT body FROM forum_posts WHERE user_id = ANY($1::int[])", [userIds]),
         pool.query("SELECT screenshots FROM review_submissions WHERE user_id = ANY($1::int[])", [userIds]),
       ]);
       for (const row of avatars.rows) r2UrlsToClean.push(row.avatar_url);
-      for (const row of posts.rows) r2UrlsToClean.push(...extractR2ImageUrls(row.body));
       for (const row of reviews.rows) r2UrlsToClean.push(...(row.screenshots || []));
     }
 

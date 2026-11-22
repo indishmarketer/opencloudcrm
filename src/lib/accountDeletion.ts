@@ -60,7 +60,7 @@ export async function deleteOwnAccount(userId: number): Promise<void> {
  * -- their own submissions/records, not other people's data (e.g. no DM
  * contents from the other side, no other members' info). */
 export async function exportOwnAccountData(userId: number) {
-  const [profile, enrollments, payments, forumPosts, forumComments, reviewsSubmitted, notifications] =
+  const [profile, enrollments, payments, reviewsSubmitted, notifications] =
     await Promise.all([
       pool.query(
         "SELECT email, name, username, bio, created_at FROM users WHERE id = $1",
@@ -73,14 +73,6 @@ export async function exportOwnAccountData(userId: number) {
       ),
       pool.query(
         "SELECT course_id, method, reference, status, amount, currency, created_at FROM payment_claims WHERE user_id = $1",
-        [userId]
-      ),
-      pool.query(
-        "SELECT title, body, status, created_at FROM forum_posts WHERE user_id = $1 ORDER BY created_at",
-        [userId]
-      ),
-      pool.query(
-        "SELECT body, status, created_at FROM forum_comments WHERE user_id = $1 ORDER BY created_at",
         [userId]
       ),
       pool.query(
@@ -98,8 +90,8 @@ export async function exportOwnAccountData(userId: number) {
     profile: profile.rows[0] || null,
     course_enrollments: enrollments.rows,
     payment_claims: payments.rows,
-    forum_posts: forumPosts.rows,
-    forum_comments: forumComments.rows,
+    forum_posts: [],
+    forum_comments: [],
     reviews_submitted: reviewsSubmitted.rows,
     recent_notifications: notifications.rows,
   };

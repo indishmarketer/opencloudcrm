@@ -93,11 +93,7 @@ export default async function AccountPage({
   // the hub can show a real number or a real empty state rather than
   // hiding a section that happens to be empty, which is what made it
   // impossible to tell "you have none" from "this does not exist".
-  const [postCount, meetingCount, authorRow] = await Promise.all([
-    pool.query<{ n: number }>(
-      "SELECT count(*)::int AS n FROM forum_posts WHERE user_id = $1",
-      [session.userId],
-    ),
+  const [meetingCount, authorRow] = await Promise.all([
     pool.query<{ n: number }>(
       "SELECT count(*)::int AS n FROM meeting_bookings WHERE user_id = $1 OR lower(attendee_email) = lower($2)",
       [session.userId, session.email],
@@ -112,7 +108,6 @@ export default async function AccountPage({
       )
     ),
   ]);
-  const myPosts = postCount.rows[0]?.n ?? 0;
   const myMeetings = meetingCount.rows[0]?.n ?? 0;
   const authorSlug = authorRow.rows[0]?.slug ?? null;
   const myBlogPosts = authorSlug
