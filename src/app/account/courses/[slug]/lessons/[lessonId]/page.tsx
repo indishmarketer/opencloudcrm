@@ -82,9 +82,10 @@ export default async function LessonPage({
 
   const [hasProAccess, resourcesResult] = await Promise.all([
     hasProCourseAccess(session.userId),
-    pool.query("SELECT id, label, url FROM lesson_resources WHERE lesson_id = $1 ORDER BY position, id", [
-      lesson.id,
-    ]),
+    pool.query(
+      "SELECT id, label, url, type, content, icon, position FROM lesson_resources WHERE lesson_id = $1 ORDER BY position, id",
+      [lesson.id]
+    ),
   ]);
   const next = flat[idx + 1];
   const nextHref = next ? `/account/courses/${slug}/lessons/${next.id}` : null;
@@ -110,6 +111,7 @@ export default async function LessonPage({
       </div>
 
       <LessonResources
+        courseId={course.id}
         lessonId={lesson.id}
         resources={resourcesResult.rows}
         canManage={isConsoleOwner(session.email)}

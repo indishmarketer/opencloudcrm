@@ -6,6 +6,8 @@ import {
   courseReorderSchema,
   evaluateCoursePublicationReadiness,
   normalizeCourseVideoRef,
+  normalizeResourceUrl,
+  courseResourceSchema,
   parsePositiveId,
 } from "../src/lib/courseStudio.ts";
 
@@ -76,4 +78,50 @@ test("positive id parsing rejects zero, decimals, and non-numbers", () => {
   assert.equal(parsePositiveId("0"), null);
   assert.equal(parsePositiveId("1.5"), null);
   assert.equal(parsePositiveId("not-a-number"), null);
+});
+
+test("resource url normalization handles bare domains and protocols", () => {
+  assert.equal(normalizeResourceUrl("vultr.com"), "https://vultr.com");
+  assert.equal(normalizeResourceUrl("https://vultr.com"), "https://vultr.com");
+  assert.equal(normalizeResourceUrl("http://vultr.com"), "http://vultr.com");
+  assert.equal(normalizeResourceUrl("/downloads/guide.pdf"), "/downloads/guide.pdf");
+  assert.equal(normalizeResourceUrl("   "), null);
+  assert.equal(normalizeResourceUrl(null), null);
+});
+
+test("course resource schema validates buttons, pdfs, and text notes", () => {
+  // Button requires url
+  const button = courseResourceSchema.safeParse({
+    lesson_id: 1,
+    label: "Get Vultr VPS",
+    type: "button",
+    url: "vultr.com",
+    icon: "server",
+  });
+  assert.equal(button.success, true);
+  if (button.success) {
+    assert.equal(button.data.url, "https://vultr.com");
+    assert.equal(button.data.icon, "server");
+  }
+
+  // Text note allows null url
+  const note = courseResourceSchema.safeParse({
+    lesson_id: 1,
+    label: "Specs",
+    type: "text",
+    content: "2 vCPU / 4GB RAM",
+  });
+  assert.equal(note.success, true);
+  if (note.success) {
+    assert.equal(note.data.url, null);
+    assert.equal(note.data.content, "2 vCPU / 4GB RAM");
+  }
+
+  // PDF requires url
+  const pdfWithoutUrl = courseResourceSchema.safeParse({
+    lesson_id: 1,
+    label: "Cheat Sheet",
+    type: "pdf",
+  });
+  assert.equal(pdfWithoutUrl.success, false);
 });

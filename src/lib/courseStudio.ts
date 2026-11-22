@@ -41,14 +41,66 @@ export const courseLessonSchema = z.object({
 
 export const courseLessonUpdateSchema = courseLessonSchema.omit({ module_id: true, position: true }).partial();
 
-export const courseResourceSchema = z.object({
-  lesson_id: z.number().int().positive(),
-  label: z.string().trim().min(1).max(200),
-  url: z.string().trim().url().max(2_000).refine((value) => ["http:", "https:"].includes(new URL(value).protocol)),
-  position: z.number().int().min(1).max(100_000),
-});
+export function normalizeResourceUrl(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  if (/^https?:\/\//i.test(trimmed) || trimmed.startsWith("/")) return trimmed;
+  return `https://${trimmed}`;
+}
 
-export const courseResourceUpdateSchema = courseResourceSchema.omit({ lesson_id: true, position: true }).partial();
+const resourceUrlField = z
+  .string()
+  .trim()
+  .max(2_000)
+  .nullable()
+  .optional()
+  .transform((val, ctx) => {
+    if (!val) return null;
+    const normalized = normalizeResourceUrl(val);
+    if (!normalized) return null;
+    if (normalized.startsWith("/")) return normalized;
+    try {
+      const parsed = new URL(normalized);
+      if (!["http:", "https:"].includes(parsed.protocol)) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "URL must be http or https." });
+        return z.NEVER;
+      }
+      return normalized;
+    } catch {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Please enter a valid URL." });
+      return z.NEVER;
+    }
+  });
+
+export const courseResourceSchema = z
+  .object({
+    lesson_id: z.number().int().positive(),
+    label: z.string().trim().min(1).max(200),
+    type: z.enum(["button", "link", "pdf", "text"]).default("button"),
+    url: resourceUrlField,
+    content: optionalText(50_000),
+    icon: optionalText(64),
+    position: z.number().int().min(1).max(100_000).default(1),
+  })
+  .superRefine((data, ctx) => {
+    if (data.type !== "text" && !data.url) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["url"],
+        message: "URL is required for button, link, and PDF resources.",
+      });
+    }
+  });
+
+export const courseResourceUpdateSchema = z.object({
+  label: z.string().trim().min(1).max(200).optional(),
+  type: z.enum(["button", "link", "pdf", "text"]).optional(),
+  url: resourceUrlField,
+  content: optionalText(50_000),
+  icon: optionalText(64),
+  position: z.number().int().min(1).max(100_000).optional(),
+});
 
 export const courseReorderSchema = z.object({
   updates: z.array(z.object({

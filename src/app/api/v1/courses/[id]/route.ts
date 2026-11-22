@@ -27,7 +27,7 @@ export async function GET(req: NextRequest, { params }: Params) {
     pool.query("SELECT * FROM courses WHERE id = $1", [id]),
     pool.query("SELECT id, title, description, tier, position FROM course_modules WHERE course_id = $1 ORDER BY position, id", [id]),
     pool.query("SELECT l.id, l.module_id, l.title, l.description, l.video_type, l.video_ref, l.position FROM course_lessons l JOIN course_modules m ON m.id = l.module_id WHERE m.course_id = $1 ORDER BY m.position, l.position, l.id", [id]),
-    pool.query("SELECT r.id, r.lesson_id, r.label, r.url, r.position FROM lesson_resources r JOIN course_lessons l ON l.id = r.lesson_id JOIN course_modules m ON m.id = l.module_id WHERE m.course_id = $1 ORDER BY r.position, r.id", [id]),
+    pool.query("SELECT r.id, r.lesson_id, r.label, r.url, r.type, r.content, r.icon, r.position FROM lesson_resources r JOIN course_lessons l ON l.id = r.lesson_id JOIN course_modules m ON m.id = l.module_id WHERE m.course_id = $1 ORDER BY r.position, r.id", [id]),
   ]);
   if (!course.rows[0]) return NextResponse.json({ error: "Course not found." }, { status: 404 });
   return NextResponse.json({

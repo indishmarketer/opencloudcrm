@@ -29,7 +29,10 @@ type Resource = {
   id: number;
   lesson_id: number;
   label: string;
-  url: string;
+  url: string | null;
+  type?: "button" | "link" | "pdf" | "text";
+  content?: string | null;
+  icon?: string | null;
   position: number;
 };
 
@@ -55,6 +58,7 @@ export default function ConsoleCourseCurriculum({
   const [editingModule, setEditingModule] = useState<Partial<Module> | null>(null);
   const [editingLesson, setEditingLesson] = useState<Partial<Lesson> | null>(null);
   const [editingResource, setEditingResource] = useState<Partial<Resource> | null>(null);
+  const [resourceUploading, setResourceUploading] = useState(false);
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(-1);
   const [videoPickerOpen, setVideoPickerOpen] = useState(false);
@@ -250,29 +254,80 @@ export default function ConsoleCourseCurriculum({
   };
 
   // --- Resources ---
+  const handleResourcePdfUpload = async (file: File) => {
+    if (!file) return;
+    if (file.size > 50 * 1024 * 1024) {
+      setError("File must be 50MB or less.");
+      return;
+    }
+    setResourceUploading(true);
+    setError("");
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch(`/api/console/courses/${courseId}/resources/upload`, {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Failed to upload document.");
+      } else {
+        setEditingResource((prev) => ({
+          ...prev,
+          url: data.url,
+          label: prev?.label || file.name.replace(/\.[^/.]+$/, ""),
+        }));
+      }
+    } catch {
+      setError("Network error while uploading file.");
+    } finally {
+      setResourceUploading(false);
+    }
+  };
+
   const handleSaveResource = async () => {
-    if (!editingResource?.label || !editingResource?.url) return setError("Label and URL are required");
+    const type = editingResource?.type || "button";
+    if (type !== "text") {
+      if (!editingResource?.label?.trim()) return setError("Label is required");
+      if (!editingResource?.url?.trim()) return setError("URL is required");
+    } else {
+      if (!editingResource?.label?.trim() && !editingResource?.content?.trim()) {
+        return setError("Label or content is required for guide notes");
+      }
+    }
+
     setBusy(true);
     setError("");
 
-    const isNew = !editingResource.id;
+    const isNew = !editingResource?.id;
     const url = isNew 
       ? `/api/console/courses/${courseId}/resources`
-      : `/api/console/courses/${courseId}/resources/${editingResource.id}`;
+      : `/api/console/courses/${courseId}/resources/${editingResource?.id}`;
     
+    const payload = {
+      ...editingResource,
+      type,
+      label: editingResource?.label?.trim() || (type === "text" ? "Note" : "Resource"),
+      url: type !== "text" ? editingResource?.url?.trim() : null,
+      content: type === "text" ? editingResource?.content?.trim() : null,
+      icon: type === "button" ? (editingResource?.icon || "server") : null,
+    };
+
     const res = await fetch(url, {
       method: isNew ? "POST" : "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(editingResource),
+      body: JSON.stringify(payload),
     });
 
+    const saved = await res.json().catch(() => ({}));
+
     if (!res.ok) {
-      setError("Failed to save resource");
+      setError(saved.error || "Failed to save resource");
       setBusy(false);
       return;
     }
     
-    const saved = await res.json();
     if (isNew) {
       setResources([...resources, saved.resource]);
     } else {
@@ -355,16 +410,50 @@ export default function ConsoleCourseCurriculum({
                   {resources.filter(r => r.lesson_id === l.id).length > 0 && (
                     <div className="mt-2 pt-2 border-t border-line/50 flex flex-wrap gap-2">
                       {resources.filter(r => r.lesson_id === l.id).map(r => (
-                        <div key={r.id} className="text-xs flex items-center gap-1 bg-white px-2 py-1 rounded border border-line">
-                          <span className="truncate max-w-[120px]">{r.label}</span>
-                          <button onClick={() => setEditingResource(r)} className="ml-1 text-ink-soft hover:text-ink">✎</button>
-                          <button onClick={() => handleDeleteResource(r.id)} className="text-red-400 hover:text-red-600">×</button>
+                        <div key={r.id} className="text-xs flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-md border border-line shadow-2xs">
+                          <span
+                            className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                              r.type === "pdf"
+                                ? "bg-red-50 text-red-700 border border-red-100"
+                                : r.type === "text"
+                                ? "bg-amber-50 text-amber-800 border border-amber-200"
+                                : "bg-purple-50 text-purple-700 border border-purple-200"
+                            }`}
+                          >
+                            {r.type === "pdf" ? "PDF" : r.type === "text" ? "Note" : "Button"}
+                          </span>
+                          <span className="truncate max-w-[140px] font-medium text-ink">{r.label || "Untitled"}</span>
+                          <button
+                            onClick={() => {
+                              setError("");
+                              setEditingResource(r);
+                            }}
+                            className="ml-1 text-ink-soft hover:text-ink"
+                            title="Edit"
+                          >
+                            ✎
+                          </button>
+                          <button
+                            onClick={() => handleDeleteResource(r.id)}
+                            className="text-red-400 hover:text-red-600 font-bold"
+                            title="Delete"
+                          >
+                            ×
+                          </button>
                         </div>
                       ))}
                     </div>
                   )}
                   <button
-                    onClick={() => setEditingResource({ lesson_id: l.id, position: resources.filter(r => r.lesson_id === l.id).length + 1 })}
+                    onClick={() => {
+                      setError("");
+                      setEditingResource({
+                        lesson_id: l.id,
+                        type: "button",
+                        icon: "server",
+                        position: resources.filter(r => r.lesson_id === l.id).length + 1,
+                      });
+                    }}
                     className="text-xs text-ink-soft hover:text-ink mt-2 block underline"
                   >
                     + Add resource
@@ -527,29 +616,150 @@ export default function ConsoleCourseCurriculum({
       {editingResource && (
         <ConsoleModal title={editingResource.id ? "Edit Resource" : "New Resource"} onClose={() => setEditingResource(null)}>
           <div className="space-y-4">
+            {/* Resource Type Tabs */}
+            <div className="flex rounded-xl border border-line bg-paper-soft p-1">
+              <button
+                type="button"
+                onClick={() => setEditingResource({ ...editingResource, type: "button", icon: editingResource.icon || "server" })}
+                className={`flex-1 rounded-lg py-1.5 text-xs font-medium transition-colors ${
+                  (editingResource.type || "button") === "button"
+                    ? "bg-paper text-ink shadow-2xs font-semibold"
+                    : "text-ink-soft hover:text-ink"
+                }`}
+              >
+                Action Button
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditingResource({ ...editingResource, type: "pdf" })}
+                className={`flex-1 rounded-lg py-1.5 text-xs font-medium transition-colors ${
+                  editingResource.type === "pdf"
+                    ? "bg-paper text-ink shadow-2xs font-semibold"
+                    : "text-ink-soft hover:text-ink"
+                }`}
+              >
+                PDF Document
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditingResource({ ...editingResource, type: "text" })}
+                className={`flex-1 rounded-lg py-1.5 text-xs font-medium transition-colors ${
+                  editingResource.type === "text"
+                    ? "bg-paper text-ink shadow-2xs font-semibold"
+                    : "text-ink-soft hover:text-ink"
+                }`}
+              >
+                Guide Note
+              </button>
+            </div>
+
             <div>
-              <label className="text-xs font-medium text-ink-soft">Label</label>
+              <label className="text-xs font-medium text-ink-soft">
+                {editingResource.type === "text" ? "Title / Heading (optional)" : "Label"}
+              </label>
               <input
                 value={editingResource.label || ""}
                 onChange={(e) => setEditingResource({ ...editingResource, label: e.target.value })}
-                placeholder="e.g. Download Slides (PDF)"
+                placeholder={
+                  editingResource.type === "pdf"
+                    ? "e.g. System Guide (PDF)"
+                    : editingResource.type === "text"
+                    ? "e.g. Recommended VPS Specs"
+                    : "e.g. Get Vultr VPS"
+                }
                 className="mt-1 w-full rounded-lg border border-line bg-paper px-4 py-2.5 text-sm outline-none focus:border-ink"
               />
             </div>
-            <div>
-              <label className="text-xs font-medium text-ink-soft">URL</label>
-              <input
-                value={editingResource.url || ""}
-                onChange={(e) => setEditingResource({ ...editingResource, url: e.target.value })}
-                placeholder="https://..."
-                className="mt-1 w-full rounded-lg border border-line bg-paper px-4 py-2.5 text-sm outline-none focus:border-ink"
-              />
-            </div>
+
+            {(editingResource.type || "button") === "button" && (
+              <>
+                <div>
+                  <label className="text-xs font-medium text-ink-soft">Destination URL</label>
+                  <input
+                    value={editingResource.url || ""}
+                    onChange={(e) => setEditingResource({ ...editingResource, url: e.target.value })}
+                    placeholder="https://www.vultr.com"
+                    className="mt-1 w-full rounded-lg border border-line bg-paper px-4 py-2.5 text-sm outline-none focus:border-ink"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-ink-soft">Icon</label>
+                  <div className="mt-1.5 flex flex-wrap gap-2">
+                    {[
+                      { key: "server", label: "Server" },
+                      { key: "link", label: "Link" },
+                      { key: "cloud", label: "Cloud" },
+                      { key: "code", label: "Code" },
+                      { key: "book", label: "Book" },
+                      { key: "rocket", label: "Rocket" },
+                    ].map((ic) => (
+                      <button
+                        key={ic.key}
+                        type="button"
+                        onClick={() => setEditingResource({ ...editingResource, icon: ic.key })}
+                        className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+                          (editingResource.icon || "server") === ic.key
+                            ? "border-purple-600 bg-purple-50 text-purple-700 font-semibold"
+                            : "border-line bg-paper text-ink-soft hover:border-ink"
+                        }`}
+                      >
+                        {ic.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {editingResource.type === "pdf" && (
+              <>
+                <div className="rounded-xl border border-line bg-paper-soft p-3.5">
+                  <label className="text-xs font-medium text-ink-soft block mb-1.5">
+                    Upload Document to R2 Storage
+                  </label>
+                  <input
+                    type="file"
+                    accept=".pdf,.doc,.docx,.zip,.tar.gz"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleResourcePdfUpload(file);
+                    }}
+                    className="text-xs w-full file:mr-3 file:cursor-pointer file:rounded-full file:border-0 file:bg-ink file:px-3 file:py-1.5 file:font-semibold file:text-paper hover:file:opacity-85"
+                  />
+                  {resourceUploading && (
+                    <p className="mt-2 text-xs text-purple-600 font-medium">Uploading to storage...</p>
+                  )}
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-ink-soft">Document URL</label>
+                  <input
+                    value={editingResource.url || ""}
+                    onChange={(e) => setEditingResource({ ...editingResource, url: e.target.value })}
+                    placeholder="https://images.indishmarketer.com/..."
+                    className="mt-1 w-full rounded-lg border border-line bg-paper px-4 py-2.5 text-sm outline-none focus:border-ink"
+                  />
+                </div>
+              </>
+            )}
+
+            {editingResource.type === "text" && (
+              <div>
+                <label className="text-xs font-medium text-ink-soft">Guide Notes / Commands</label>
+                <textarea
+                  rows={6}
+                  value={editingResource.content || ""}
+                  onChange={(e) => setEditingResource({ ...editingResource, content: e.target.value })}
+                  placeholder="Enter commands, notes, or reference text..."
+                  className="mt-1 w-full rounded-lg border border-line bg-paper p-3 text-xs font-mono outline-none focus:border-ink"
+                />
+              </div>
+            )}
+
             {error && <p className="text-xs text-red-600">{error}</p>}
           </div>
           <div className="mt-6 flex justify-end gap-3">
             <button onClick={() => setEditingResource(null)} className="rounded-full border border-line px-4 py-2 text-sm font-medium hover:border-ink">Cancel</button>
-            <button onClick={handleSaveResource} disabled={busy} className="rounded-full bg-ink px-4 py-2 text-sm font-medium text-paper hover:opacity-80 disabled:opacity-50">Save</button>
+            <button onClick={handleSaveResource} disabled={busy || resourceUploading} className="rounded-full bg-ink px-4 py-2 text-sm font-medium text-paper hover:opacity-80 disabled:opacity-50">Save</button>
           </div>
         </ConsoleModal>
       )}

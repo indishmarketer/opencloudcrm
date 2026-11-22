@@ -1,16 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminSession } from "@/lib/auth";
+import { getAdminSession, getSession } from "@/lib/auth";
+import { isConsoleOwner } from "@/lib/consoleAdmins";
 import { pool } from "@/lib/db";
 import { courseResourceSchema, parsePositiveId, validationMessage } from "@/lib/courseStudio";
 
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string  }> }) {
-  if (!(await getAdminSession())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+async function isAuthorized(): Promise<boolean> {
+  if (await getAdminSession()) return true;
+  const session = await getSession();
+  return !!session && isConsoleOwner(session.email);
+}
+
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  if (!(await isAuthorized())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const courseId = parsePositiveId((await params).id);
   if (!courseId) return NextResponse.json({ error: "Invalid course." }, { status: 400 });
-  const parsed = courseResourceSchema.safeParse(await req.json().catch(() => null));
+  const body = await req.json().catch(() => null);
+  const parsed = courseResourceSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: validationMessage(parsed.error) }, { status: 400 });
-  const { lesson_id, label, url, position } = parsed.data;
+  const { lesson_id, label, url, type, content, icon, position } = parsed.data;
 
   // Verify lesson belongs to course
   const check = await pool.query(
@@ -20,9 +28,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (check.rows.length === 0) return NextResponse.json({ error: "Lesson not found" }, { status: 404 });
 
   const result = await pool.query(
-    "INSERT INTO lesson_resources (lesson_id, label, url, position) VALUES ($1, $2, $3, $4) RETURNING *",
-    [lesson_id, label, url, position]
+    `INSERT INTO lesson_resources (lesson_id, label, url, type, content, icon, position)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
+     RETURNING *`,
+    [lesson_id, label, url || null, type || "button", content || null, icon || null, position]
   );
-  
+
   return NextResponse.json({ resource: result.rows[0] });
 }
