@@ -7,13 +7,21 @@ name: Build and publish Docker image
 # the Deployment section of README.md. Self-hosters pull the resulting
 # image and never run `npm run build` at all.
 #
-# This image is built WITHOUT any of the Dockerfile's NEXT_PUBLIC_* build
-# args, since those are baked in at build time and a single shared image
-# can't carry a different value per deployer's domain. It's a generic,
-# unbranded image -- see README.md's Deployment section for exactly what
-# that does and doesn't affect, and how to get a fully-branded image of
-# your own (still built on GitHub's runners, not your server) by forking
-# this repo.
+# The Dockerfile's NEXT_PUBLIC_* build args (branding, GA4, Meta Pixel,
+# Turnstile) are passed below from this repo's own Actions secrets. On the
+# public opencloudcrm repo none of those secrets exist, so they resolve to
+# empty strings and the image stays generic/unbranded for other
+# self-hosters. A fork (including indishmarketer/indishmarketer-crm, the
+# private repo indishmarketer.com actually deploys from) gets a
+# fully-branded image automatically once its own repo's Settings ->
+# Secrets and variables -> Actions has these same names set.
+#
+# This matters because Coolify's own env vars are NOT used as build args
+# here: indishmarketer.com's Coolify app (build_pack: dockerimage) only
+# pulls the prebuilt ghcr.io image this workflow publishes -- it never runs
+# `docker build` itself, so anything that must be baked in at build time
+# (every NEXT_PUBLIC_* var) has to come from THIS workflow, not from
+# Coolify's "buildtime" env var flags, which that build mode never reads.
 
 on:
   push:
@@ -64,3 +72,14 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          build-args: |
+            NEXT_PUBLIC_GA4_MEASUREMENT_ID=${{ secrets.NEXT_PUBLIC_GA4_MEASUREMENT_ID }}
+            NEXT_PUBLIC_META_PIXEL_ID=${{ secrets.NEXT_PUBLIC_META_PIXEL_ID }}
+            NEXT_PUBLIC_TURNSTILE_SITE_KEY=${{ secrets.NEXT_PUBLIC_TURNSTILE_SITE_KEY }}
+            NEXT_PUBLIC_SITE_NAME=${{ secrets.NEXT_PUBLIC_SITE_NAME }}
+            NEXT_PUBLIC_SITE_URL=${{ secrets.NEXT_PUBLIC_SITE_URL }}
+            NEXT_PUBLIC_ASSET_DOMAIN=${{ secrets.NEXT_PUBLIC_ASSET_DOMAIN }}
+            NEXT_PUBLIC_SOCIAL_FACEBOOK=${{ secrets.NEXT_PUBLIC_SOCIAL_FACEBOOK }}
+            NEXT_PUBLIC_SOCIAL_X=${{ secrets.NEXT_PUBLIC_SOCIAL_X }}
+            NEXT_PUBLIC_SOCIAL_YOUTUBE=${{ secrets.NEXT_PUBLIC_SOCIAL_YOUTUBE }}
+            NEXT_PUBLIC_SOCIAL_LINKEDIN=${{ secrets.NEXT_PUBLIC_SOCIAL_LINKEDIN }}
