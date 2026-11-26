@@ -37,6 +37,15 @@ export default function ConsoleFixedTemplateBuilder({
         if (!res?.ok) return { ok: false, error: body.error || "Could not save this template." };
         return { ok: true };
       }}
+      onSendTest={async ({ subject, bodyHtml }, testTo) => {
+        const res = await fetch(`/api/console/email/templates/${encodeURIComponent(template.key)}/test`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ subject, bodyHtml, fromEmail: template.from_email, testTo }),
+        }).catch(() => null);
+        const body = (await res?.json().catch(() => ({}))) ?? {};
+        return res?.ok ? { ok: true, sentTo: body.sentTo } : { ok: false, error: body.error || "Could not send the test." };
+      }}
     />
   );
 }
