@@ -79,7 +79,9 @@ function row(innerHtml: string, cellAttrs: string): string {
 
 function renderHeading(props: Record<string, unknown>, vars: Record<string, string>): string {
   const text = escapeHtml(applyVars(str(props, "text"), vars));
-  return row(`<h1 style="margin:0;${textStyle(props)}">${text}</h1>`, `style="${cellStyle(props)}"`);
+  const level = str(props, "level", "1");
+  const tag = ["1", "2", "3", "4"].includes(level) ? `h${level}` : "h1";
+  return row(`<${tag} style="margin:0;${textStyle(props)}">${text}</${tag}>`, `style="${cellStyle(props)}"`);
 }
 
 function renderText(props: Record<string, unknown>, vars: Record<string, string>): string {

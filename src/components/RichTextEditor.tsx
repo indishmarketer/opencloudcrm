@@ -683,24 +683,56 @@ function ImageNodeView({ node, deleteNode, extension, updateAttributes }: NodeVi
   // instance (blog vs. email), rather than a second hardcoded copy that
   // could drift from the one that actually gets saved.
   const configuredStyle = (extension.options?.HTMLAttributes?.style as string | undefined) || "width:100%;height:auto;";
+  const width = typeof node.attrs.width === "number" && node.attrs.width > 0 ? node.attrs.width : null;
   const [editingAlt, setEditingAlt] = useState(false);
   const [altDraft, setAltDraft] = useState(node.attrs.alt || "");
   const altInputRef = useRef<HTMLInputElement>(null);
+  const [editingWidth, setEditingWidth] = useState(false);
+  const [widthDraft, setWidthDraft] = useState(width ? String(width) : "");
+  const widthInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (editingAlt) altInputRef.current?.focus();
   }, [editingAlt]);
+  useEffect(() => {
+    if (editingWidth) { widthInputRef.current?.focus(); widthInputRef.current?.select(); }
+  }, [editingWidth]);
 
   function saveAlt() {
     updateAttributes({ alt: altDraft.trim() });
     setEditingAlt(false);
   }
 
+  function saveWidth() {
+    const parsed = Number(widthDraft);
+    updateAttributes({ width: Number.isFinite(parsed) && parsed > 0 ? Math.round(parsed) : null });
+    setEditingWidth(false);
+  }
+
+  function resetWidth() {
+    updateAttributes({ width: null });
+    setWidthDraft("");
+    setEditingWidth(false);
+  }
+
   return (
     <NodeViewWrapper className="group relative block overflow-hidden rounded-lg leading-[0]" data-drag-handle>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={node.attrs.src} alt={node.attrs.alt || ""} style={{ ...cssStringToObject(configuredStyle), display: "block", borderRadius: 0 }} />
+      <img
+        src={node.attrs.src}
+        alt={node.attrs.alt || ""}
+        style={width ? { width, maxWidth: "100%", height: "auto", display: "block", borderRadius: 0 } : { ...cssStringToObject(configuredStyle), display: "block", borderRadius: 0 }}
+      />
       <div className="absolute right-2 top-2 hidden gap-1.5 group-hover:flex">
+        <button
+          type="button"
+          aria-label="Resize image"
+          title="Resize image"
+          onClick={(event) => { event.preventDefault(); setWidthDraft(width ? String(width) : ""); setEditingWidth(true); }}
+          className="flex h-8 items-center rounded-full bg-ink/70 px-3 text-xs font-medium text-white hover:bg-ink"
+        >
+          Resize
+        </button>
         <button
           type="button"
           aria-label="Edit alt text"
@@ -720,6 +752,29 @@ function ImageNodeView({ node, deleteNode, extension, updateAttributes }: NodeVi
           ×
         </button>
       </div>
+      {editingWidth && (
+        <div
+          className="absolute inset-x-2 bottom-2 flex items-center gap-1.5 rounded-lg bg-white p-1.5 shadow-lg"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <input
+            ref={widthInputRef}
+            type="number"
+            min={20}
+            max={1200}
+            value={widthDraft}
+            onChange={(event) => setWidthDraft(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") { event.preventDefault(); saveWidth(); }
+              if (event.key === "Escape") { event.preventDefault(); setEditingWidth(false); }
+            }}
+            placeholder="Width in px (blank = full width)"
+            className="min-w-0 flex-1 rounded-md border border-line px-2 py-1.5 text-xs leading-normal text-ink outline-none focus:border-ink"
+          />
+          <button type="button" onClick={resetWidth} className="shrink-0 rounded-md px-2.5 py-1.5 text-xs font-medium text-ink-soft hover:bg-paper-soft">Reset</button>
+          <button type="button" onClick={saveWidth} className="shrink-0 rounded-md bg-ink px-2.5 py-1.5 text-xs font-medium text-white hover:opacity-85">Save</button>
+        </div>
+      )}
       {editingAlt && (
         <div
           className="absolute inset-x-2 bottom-2 flex items-center gap-1.5 rounded-lg bg-white p-1.5 shadow-lg"
@@ -753,14 +808,32 @@ const Image = TiptapImage.extend({
         parseHTML: (element: HTMLElement) => element.closest("a")?.getAttribute("href") || null,
         renderHTML: () => ({}),
       },
+      // A deliberately shrunk image (e.g. a small inline logo) -- without
+      // this, Classic mode could only ever insert an image at the parent's
+      // configured default (full column width), with no way back from that
+      // like the Visual block's own Image element already has.
+      width: {
+        default: null,
+        parseHTML: (element: HTMLElement) => {
+          const attr = element.getAttribute("width");
+          if (attr && /^\d+$/.test(attr)) return Number(attr);
+          const match = element.style.width.match(/^(\d+)px$/);
+          return match ? Number(match[1]) : null;
+        },
+        renderHTML: () => ({}),
+      },
     };
   },
   addNodeView() {
     return ReactNodeViewRenderer(ImageNodeView);
   },
   renderHTML({ HTMLAttributes }) {
-    const { href, ...imgAttrs } = HTMLAttributes;
-    const img = ["img", { ...this.options.HTMLAttributes, ...imgAttrs }] as const;
+    const { href, width, ...imgAttrs } = HTMLAttributes;
+    const baseStyle = (this.options.HTMLAttributes?.style as string | undefined) || "";
+    const sized = typeof width === "number" && width > 0
+      ? { width, style: `${baseStyle}width:${width}px;` }
+      : {};
+    const img = ["img", { ...this.options.HTMLAttributes, ...imgAttrs, ...sized }] as const;
     if (href) return ["a", { href, target: "_blank", rel: "noopener noreferrer" }, img];
     return img;
   },
@@ -1402,6 +1475,10 @@ export default function RichTextEditor({
   imageUploadUrl = "/api/console/email/image-upload",
   textOnly = false,
   allowPopupLinks = false,
+  showToolbar = true,
+  wrapperClassName,
+  contentClassName,
+  fillHeight = false,
 }: {
   value: string;
   onChange: (html: string) => void;
@@ -1427,6 +1504,24 @@ export default function RichTextEditor({
    * data-popup-id into a floating dialog. Email, automation and blog
    * content are not, so this stays off there. */
   allowPopupLinks?: boolean;
+  /** Hides the non-blogCanvas toolbar entirely while still allowing edits --
+   * for an inline block editor (the email Visual builder's Text/Columns
+   * elements) that only wants formatting controls to appear once the block
+   * is actually selected, instead of every block on the canvas showing its
+   * own toolbar at once. */
+  showToolbar?: boolean;
+  /** Overrides the non-blogCanvas outer box (default: a bordered, rounded
+   * card). Pass "" to embed bare inside a container that already supplies
+   * its own border/background, e.g. an email builder block card. */
+  wrapperClassName?: string;
+  /** Overrides the non-blogCanvas EditorContent classes (default includes a
+   * 200px min-height meant for a standalone editor box). */
+  contentClassName?: string;
+  /** Non-blogCanvas only: makes the editor fill its parent's height with
+   * its own internal scroll area, keeping the toolbar fixed at the top
+   * instead of scrolling away with long content. The parent must give this
+   * component a bounded height (e.g. a flex child with min-h-0). */
+  fillHeight?: boolean;
 }) {
   const [promptOpen, setPromptOpen] = useState(false);
   const [buttonPromptOpen, setButtonPromptOpen] = useState(false);
@@ -1484,7 +1579,7 @@ export default function RichTextEditor({
       attributes: {
         class: blogCanvas
           ? "blog-writing-canvas prose prose-lg mx-auto min-h-full w-full max-w-none px-6 py-7 focus:outline-none sm:px-12 sm:py-9 xl:px-16 [&_iframe]:max-w-full [&_[data-youtube-video]]:my-8 [&_.node-image+p]:text-center [&_.node-image+p]:text-sm [&_.node-image+p]:italic [&_.node-image+p]:text-ink-soft [&_table]:[table-layout:fixed] [&_table]:w-full [&_table]:border-collapse [&_td]:min-w-[80px] [&_td]:min-h-[2.5rem] [&_th]:min-w-[80px] [&_td]:border [&_td]:border-line [&_th]:border [&_th]:border-line [&_td]:p-2 [&_th]:p-2 [&_th]:bg-paper-soft [&_.selectedCell]:bg-paper-soft"
-          : "prose prose-sm max-w-none min-h-[200px] px-4 py-3 focus:outline-none",
+          : contentClassName ?? "prose prose-sm max-w-none min-h-[200px] px-4 py-3 focus:outline-none",
       },
       // Belt-and-suspenders on top of Link's own openOnClick:false -- a
       // link whose href is a literal unresolved placeholder like
@@ -1553,8 +1648,15 @@ export default function RichTextEditor({
     }`;
   }
 
+  const nonBlogWrapper = wrapperClassName !== undefined ? wrapperClassName : "overflow-hidden rounded-xl border border-line";
+  const outerClassName = blogCanvas
+    ? "flex min-h-0 flex-1 flex-col overflow-hidden bg-white"
+    : fillHeight
+      ? `flex h-full min-h-0 flex-col ${nonBlogWrapper}`
+      : nonBlogWrapper;
+
   return (
-    <div className={blogCanvas ? "flex min-h-0 flex-1 flex-col overflow-hidden bg-white" : "overflow-hidden rounded-xl border border-line"}>
+    <div className={outerClassName}>
       {blogCanvas ? (
         <BlogToolbar
           editor={editor}
@@ -1563,7 +1665,7 @@ export default function RichTextEditor({
           onButton={() => setButtonPromptOpen(true)}
           onDeletePost={onDeletePost}
         />
-      ) : (
+      ) : showToolbar ? (
         <div className="flex flex-wrap items-center gap-1 border-b border-line bg-paper-soft p-2">
         <button
           type="button"
@@ -1736,9 +1838,9 @@ export default function RichTextEditor({
           </>
         )}
         </div>
-      )}
+      ) : null}
       <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImagePick} className="hidden" />
-      <div className={blogCanvas ? "min-h-0 flex-1 overflow-y-auto overscroll-contain" : undefined}>
+      <div className={blogCanvas || fillHeight ? "min-h-0 flex-1 overflow-y-auto overscroll-contain" : undefined}>
         {blogCanvas && canvasHeader}
         <EditorContent editor={editor} />
       </div>

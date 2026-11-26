@@ -64,6 +64,13 @@ const primaryButton =
   "inline-flex items-center gap-1.5 rounded-full bg-ink px-5 py-2 text-sm font-medium text-paper transition-opacity hover:opacity-85 disabled:opacity-50";
 const iconButton = "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-ink-soft hover:bg-paper-soft hover:text-ink";
 
+/** Drops Tiptap's "prose" typography sizing/colour (which would override
+ * this block's own Text colour/Text size style fields via inherited inline
+ * styles) while keeping just enough of its own styling that lists, quotes
+ * and links still look like themselves on the canvas. */
+const INLINE_TEXT_CONTENT_CLASS =
+  "max-w-none min-h-[1.4em] focus:outline-none [&_p]:my-0 [&_ul]:my-1 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:my-1 [&_ol]:list-decimal [&_ol]:pl-5 [&_blockquote]:border-l-2 [&_blockquote]:border-line [&_blockquote]:pl-3 [&_blockquote]:italic [&_a]:underline";
+
 const BackIcon = () => (
   <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
     <path d="m14.5 5-7 7 7 7M8 12h12" />
@@ -101,14 +108,6 @@ const GripIcon = () => (
     <circle cx="9" cy="18" r="1.3" /><circle cx="15" cy="18" r="1.3" />
   </svg>
 );
-
-function InlineHtml({ value, onChange, label }: { value: string; onChange: (value: string) => void; label: string }) {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (ref.current && ref.current.innerHTML !== value) ref.current.innerHTML = value;
-  }, [value]);
-  return <div ref={ref} contentEditable suppressContentEditableWarning role="textbox" aria-label={label} aria-multiline="true" onInput={(event) => onChange(event.currentTarget.innerHTML)} className="min-h-6 cursor-text outline-none focus:ring-1 focus:ring-ink/30" />;
-}
 
 function InlineText({ value, onChange, label }: { value: string; onChange: (value: string) => void; label: string }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -209,9 +208,39 @@ function SortableBlockCard({
   if (block.type === "heading") {
     content = <div style={blockPadding(props)}><div style={blockTextStyle(props)}><InlineText label="Heading text" value={String(props.text || "")} onChange={(value) => update("text", value)} /></div></div>;
   } else if (block.type === "text") {
-    content = <div style={blockPadding(props)}><div style={blockTextStyle(props)}><InlineHtml label="Email text" value={String(props.html || "")} onChange={(value) => update("html", value)} /></div></div>;
+    content = <div style={blockPadding(props)}><div style={blockTextStyle(props)}>
+      <RichTextEditor
+        value={String(props.html || "")}
+        onChange={(html) => update("html", html)}
+        textOnly
+        showToolbar={selected}
+        wrapperClassName=""
+        contentClassName={INLINE_TEXT_CONTENT_CLASS}
+      />
+    </div></div>;
   } else if (block.type === "columns") {
-    content = <div style={blockPadding(props)}><div className="grid grid-cols-2" style={blockTextStyle(props)}><div className="min-w-0 pr-3"><InlineHtml label="Left column" value={String(props.leftHtml || "")} onChange={(value) => update("leftHtml", value)} /></div><div className="min-w-0 pl-3"><InlineHtml label="Right column" value={String(props.rightHtml || "")} onChange={(value) => update("rightHtml", value)} /></div></div></div>;
+    content = <div style={blockPadding(props)}><div className="grid grid-cols-2" style={blockTextStyle(props)}>
+      <div className="min-w-0 pr-3">
+        <RichTextEditor
+          value={String(props.leftHtml || "")}
+          onChange={(html) => update("leftHtml", html)}
+          textOnly
+          showToolbar={selected}
+          wrapperClassName=""
+          contentClassName={INLINE_TEXT_CONTENT_CLASS}
+        />
+      </div>
+      <div className="min-w-0 pl-3">
+        <RichTextEditor
+          value={String(props.rightHtml || "")}
+          onChange={(html) => update("rightHtml", html)}
+          textOnly
+          showToolbar={selected}
+          wrapperClassName=""
+          contentClassName={INLINE_TEXT_CONTENT_CLASS}
+        />
+      </div>
+    </div></div>;
   } else if (block.type === "button") {
     content = <div style={blockPadding(props)}><input aria-label="Button label" value={String(props.label || "")} onChange={(event) => update("label", event.target.value)} className="max-w-full text-center outline-none" style={{ backgroundColor: String(props.buttonColor || "#0a0a0a"), color: String(props.buttonTextColor || "#ffffff"), borderRadius: Number(props.borderRadius ?? 6), padding: "12px 28px", fontFamily: "Helvetica, Arial, sans-serif", fontSize: 15, fontWeight: 600, width: `${Math.max(120, String(props.label || "").length * 10 + 56)}px` }} placeholder="Button label" />{selected && <input aria-label="Button link" value={String(props.href || "")} onChange={(event) => update("href", event.target.value)} className="mt-2 block w-full rounded border border-line bg-white px-2 py-1 text-xs text-ink outline-none focus:border-ink" placeholder="https://... or paste a link attribute" />}</div>;
   } else if (block.type === "image") {
@@ -244,6 +273,7 @@ export default function ConsoleEmailBuilder({
   initialBlocks,
   initialBodyHtml,
   onSave,
+  onSendTest,
   backHref,
   backLabel,
   businessName,
@@ -261,6 +291,11 @@ export default function ConsoleEmailBuilder({
    * become the save's source of truth again. */
   initialBodyHtml: string;
   onSave: (next: { subject: string; blocks: EmailBlock[] | null; bodyHtml: string }) => Promise<{ ok: boolean; error?: string }>;
+  /** Sends the CURRENT unsaved draft (whichever tab was last edited) to a
+   * test address, without leaving the composer or saving first. Only
+   * offered where the caller actually has somewhere to send from -- a
+   * campaign; reusable templates have no send-test concept of their own. */
+  onSendTest?: (next: { subject: string; bodyHtml: string }, testTo: string) => Promise<{ ok: boolean; error?: string; sentTo?: string }>;
   backHref: string;
   backLabel: string;
   /** Live values, so the Footer block's preview (style-only, never part
@@ -298,6 +333,10 @@ export default function ConsoleEmailBuilder({
   const [message, setMessage] = useState("");
   const [activeDragLabel, setActiveDragLabel] = useState<string | null>(null);
   const htmlInput = useRef<HTMLTextAreaElement>(null);
+  const [testOpen, setTestOpen] = useState(false);
+  const [testTo, setTestTo] = useState("");
+  const [testStatus, setTestStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const [testMessage, setTestMessage] = useState("");
 
   const catalogVariables = [...EMAIL_ATTRIBUTES, ...variables.filter((variable) => !EMAIL_ATTRIBUTES.some((known) => known.token === variable.token))];
 
@@ -373,6 +412,22 @@ export default function ConsoleEmailBuilder({
     else if (returnAfterSave) router.push(backHref);
     return true;
   }, [blocks, subject, freeformHtml, onSave, onSaved, router, bodySource, returnAfterSave, backHref]);
+
+  async function sendTest() {
+    if (!onSendTest) return;
+    setTestStatus("sending");
+    setTestMessage("");
+    // The draft as it stands right now, not the last-saved copy -- a test
+    // send must not force a save first, and must not silently show the
+    // sample preview vars (PREVIEW_SAMPLE_VARS) instead of the real
+    // {{token}} placeholders the test endpoint fills with the recipient's
+    // own data.
+    const bodyHtml = bodySource === "visual" ? renderEmailBlocksToHtml(blocks, {}) : freeformHtml;
+    const result = await onSendTest({ subject, bodyHtml }, testTo).catch((e): { ok: boolean; error?: string; sentTo?: string } => ({ ok: false, error: e instanceof Error ? e.message : "Could not send the test." }));
+    setTestStatus(result.ok ? "sent" : "error");
+    setTestMessage(result.ok ? `Sent to ${result.sentTo}` : result.error || "Something went wrong.");
+    if (result.ok) setTimeout(() => { setTestStatus("idle"); setTestOpen(false); }, 2000);
+  }
 
   const saveRef = useRef(save);
   const undoRef = useRef(undo);
@@ -514,6 +569,33 @@ export default function ConsoleEmailBuilder({
               {previewFormat === "visual" ? "View HTML" : "View visual"}
             </button>
           )}
+          {onSendTest && (
+            <div className="relative">
+              <button type="button" onClick={() => { setTestOpen((v) => !v); setTestStatus("idle"); setTestMessage(""); }} className={button}>
+                Send test
+              </button>
+              {testOpen && (
+                <div className="absolute right-0 top-full z-30 mt-2 w-72 rounded-xl border border-line bg-white p-3 shadow-lg">
+                  <p className="text-xs font-medium text-ink">Send this draft as a test</p>
+                  <p className="mt-0.5 text-[11px] text-ink-soft">Sends exactly what&apos;s on screen now, unsaved changes included.</p>
+                  <input
+                    value={testTo}
+                    onChange={(e) => setTestTo(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") void sendTest(); }}
+                    placeholder="Send test to (default: you)"
+                    aria-label="Send test to"
+                    className="mt-2 block w-full rounded-lg border border-line px-3 py-2 text-sm outline-none focus:border-ink"
+                  />
+                  <div className="mt-2 flex items-center justify-between gap-2">
+                    {testMessage && <span className={`text-xs ${testStatus === "error" ? "text-red-600" : "text-ink-soft"}`}>{testMessage}</span>}
+                    <button type="button" onClick={() => void sendTest()} disabled={testStatus === "sending"} className={`${primaryButton} ml-auto`}>
+                      {testStatus === "sending" ? "Sending…" : "Send"}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
           <button type="button" onClick={() => void save()} disabled={busy || !dirty} className={primaryButton}>
             {busy ? "Saving…" : dirty ? "Save" : "Saved"}
           </button>
@@ -571,18 +653,22 @@ export default function ConsoleEmailBuilder({
         </main>
       ) : composerMode === "classic" ? (
         <div className="flex min-h-0 flex-1">
-          <main className="min-h-0 flex-1 overflow-y-auto bg-paper-soft p-6">
-            <div className="w-full">
-              <RichTextEditor
-                value={freeformHtml}
-                variables={[]}
-                onChange={(html) => {
-                  setFreeformHtml(html);
-                  setBodySource("html");
-                  setDirty(true);
-                }}
-              />
-            </div>
+          <main className="flex min-h-0 flex-1 flex-col bg-paper-soft p-6">
+            {/* fillHeight: the toolbar stays fixed at the top of this panel
+                and only the text below it scrolls, instead of the whole
+                editor (toolbar included) scrolling away inside a taller
+                page -- without it, formatting a long email meant scrolling
+                back up to reach the toolbar every time. */}
+            <RichTextEditor
+              value={freeformHtml}
+              variables={[]}
+              fillHeight
+              onChange={(html) => {
+                setFreeformHtml(html);
+                setBodySource("html");
+                setDirty(true);
+              }}
+            />
           </main>
           <aside className="w-[340px] shrink-0 overflow-y-auto border-l border-line p-4"><EmailAttributeCatalog variables={catalogVariables} /></aside>
         </div>

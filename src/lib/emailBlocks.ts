@@ -91,8 +91,12 @@ export const EMAIL_BLOCK_DEFS: EmailBlockDef[] = [
     label: "Heading",
     description: "A title or section header.",
     fields: [text("text", "Heading", { max: 200 })],
-    styleFields: [...COMMON_STYLE_FIELDS, ...TEXT_STYLE_FIELDS],
-    defaults: { text: "Heading", ...COMMON_STYLE_DEFAULTS, ...TEXT_STYLE_DEFAULTS, fontSize: 24, fontWeight: "bold" },
+    styleFields: [
+      select("level", "Heading level", [["1", "H1"], ["2", "H2"], ["3", "H3"], ["4", "H4"]], "Controls the HTML tag sent (h1-h4), not just the size below."),
+      ...COMMON_STYLE_FIELDS,
+      ...TEXT_STYLE_FIELDS,
+    ],
+    defaults: { text: "Heading", level: "1", ...COMMON_STYLE_DEFAULTS, ...TEXT_STYLE_DEFAULTS, fontSize: 24, fontWeight: "bold" },
   },
   {
     type: "text",
